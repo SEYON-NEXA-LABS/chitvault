@@ -35,6 +35,7 @@ export default function CollectionPage() {
       const members  = m.data || []
       const auctions = a.data || []
       const payments = p.data || []
+      // Make payments accessible in Row component via closure
 
       const pendItems: PendingItem[] = []
       const defItems:  PendingItem[] = []
