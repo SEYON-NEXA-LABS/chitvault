@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -41,7 +42,7 @@ function RegisterForm() {
       applyBranding(data.primary_color || '#c9a84c', 'DM Sans')
     }
     validateToken()
-  }, [token])
+  }, [token, supabase])
 
   function slugify(name: string) {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -107,8 +108,8 @@ function RegisterForm() {
         {/* Header */}
         <div style={{ textAlign:'center', marginBottom:28 }}>
           {tokenFirm?.logo_url ? (
-            <img src={tokenFirm.logo_url} alt={tokenFirm.name}
-              style={{ height:48, borderRadius:8, marginBottom:10, objectFit:'contain' }} />
+            <Image src={tokenFirm.logo_url} alt={tokenFirm.name} width={192} height={48}
+              style={{ borderRadius:8, marginBottom:10, objectFit:'contain' }} />
           ) : <div style={{ fontSize:44, marginBottom:10 }}>🏦</div>}
           <div style={{ fontSize:22, fontWeight:800, color:clr }}>
             {token && tokenFirm ? `Join ${tokenFirm.name}` : 'Create Your Account'}
@@ -137,7 +138,7 @@ function RegisterForm() {
             <div>
               <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Create Your Account</div>
               <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>
-                You're joining <strong style={{ color:clr }}>{tokenFirm?.name}</strong> as Staff.
+                You&apos;re joining <strong style={{ color:clr }}>{tokenFirm?.name}</strong> as Staff.
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 {[

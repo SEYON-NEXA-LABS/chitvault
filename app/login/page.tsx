@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
@@ -56,7 +57,8 @@ function LoginForm() {
       }
     }
     loadBranding()
-  }, [firmSlug])
+    document.documentElement.classList.add('light')
+  }, [firmSlug, supabase])
 
   const clr = branding.primary_color
 
@@ -115,8 +117,8 @@ function LoginForm() {
         {/* Logo / branding */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           {branding.logo_url ? (
-            <img src={branding.logo_url} alt={branding.name}
-              style={{ height: 56, marginBottom: 12, borderRadius: 10, objectFit: 'contain' }} />
+            <Image src={branding.logo_url} alt={branding.name} width={224} height={56}
+              style={{ marginBottom: 12, borderRadius: 10, objectFit: 'contain' }} />
           ) : (
             <div style={{ fontSize: 48, marginBottom: 8 }}>🏦</div>
           )}
@@ -174,7 +176,7 @@ function LoginForm() {
           )}
 
           {/* Dev Credentials (development only) */}
-          <DevCredentials />
+          <DevCredentials setemail={setSiEmail} setpass={setSiPass} />
         </div>
 
         {/* Powered by */}

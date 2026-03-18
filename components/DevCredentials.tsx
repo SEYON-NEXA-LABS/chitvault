@@ -27,7 +27,6 @@ export function DevCredentials() {
   async function handleDevLogin(email: string, password: string) {
     setError('')
     setLoading(email)
-    console.log('[DevCredentials] 1. Starting login for:', email)
 
     try {
       // 1. Sign in
@@ -36,46 +35,21 @@ export function DevCredentials() {
         password
       })
 
-      console.log('[DevCredentials] 2. Auth response - Success:', !!data?.session, 'Error:', authError?.message)
-
       if (authError) {
-        console.error('[DevCredentials] ❌ Auth failed:', authError.message)
         setError(`Login failed: ${authError.message}`)
         setLoading(null)
         return
       }
 
       if (!data.session) {
-        console.error('[DevCredentials] ❌ No session created')
         setError('No session. User may not exist in auth.')
         setLoading(null)
         return
       }
 
-      console.log('[DevCredentials] 3. Session active:', data.session.user.email)
-
-      // 2. Verify session is actually stored before redirect
-      const { data: sessionCheck } = await supabase.auth.getSession()
-      console.log('[DevCredentials] 4. Session verification:', sessionCheck?.session?.user?.email)
-
-      if (!sessionCheck?.session) {
-        console.error('[DevCredentials] ❌ Session not persisted')
-        setError('Session lost after auth. Retrying...')
-        // Retry once
-        await new Promise(r => setTimeout(r, 500))
-        const { data: retry } = await supabase.auth.getSession()
-        if (!retry?.session) {
-          setError('Session failed to persist. Check browser cookies.')
-          setLoading(null)
-          return
-        }
-      }
-
-      console.log('[DevCredentials] 5. ✅ All checks passed, redirecting...')
-      // 3. Hard navigate to dashboard
-      window.location.assign('/dashboard')
+      // 2. Hard navigate to dashboard to ensure middleware runs
+      window.location.href = '/dashboard'
     } catch (err: any) {
-      console.error('[DevCredentials] ❌ Exception:', err.message)
       setError(`Error: ${err.message}`)
       setLoading(null)
     }

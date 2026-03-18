@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -28,6 +28,18 @@ export default function InvitePage() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
+  const doAccept = useCallback(async () => {
+    // Use accept_invite RPC — handles firm_id update safely (SECURITY DEFINER bypasses trigger)
+    const { error: rpcErr } = await supabase.rpc('accept_invite', { invite_id: inviteId })
+    if (rpcErr) {
+      setError(rpcErr.message)
+      setState('error')
+      return
+    }
+    setState('success')
+    setTimeout(() => window.location.replace('/dashboard'), 2000)
+  }, [inviteId, supabase])
+
   useEffect(() => {
     async function check() {
       // Use the get_invite RPC — works for anon users too
@@ -54,19 +66,7 @@ export default function InvitePage() {
       }
     }
     check()
-  }, [inviteId])
-
-  async function doAccept() {
-    // Use accept_invite RPC — handles firm_id update safely (SECURITY DEFINER bypasses trigger)
-    const { error: rpcErr } = await supabase.rpc('accept_invite', { invite_id: inviteId })
-    if (rpcErr) {
-      setError(rpcErr.message)
-      setState('error')
-      return
-    }
-    setState('success')
-    setTimeout(() => window.location.replace('/dashboard'), 2000)
-  }
+  }, [inviteId, supabase, doAccept])
 
   async function handleSignUp() {
     setError(''); setLoading(true)
@@ -127,7 +127,7 @@ export default function InvitePage() {
       <div style={{ fontSize: 48, marginBottom: 14 }}>✅</div>
       <h2 style={{ color: '#c9a84c', marginBottom: 8 }}>Already a Member</h2>
       <p style={{ color: '#8892aa', fontSize: 14 }}>
-        You're already part of a firm.{' '}
+        You&apos;re already part of a firm.{' '}
         <a href="/dashboard" style={{ color: '#c9a84c' }}>Go to dashboard →</a>
       </p>
     </div></div>
@@ -136,8 +136,8 @@ export default function InvitePage() {
   if (state === 'success') return (
     <div style={sty.page}><div style={{ ...sty.box, textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 14 }}>🎉</div>
-      <h2 style={{ color: '#3ecf8e', marginBottom: 8 }}>You're in!</h2>
-      <p style={{ color: '#8892aa', fontSize: 14 }}>You've joined {invite?.firm_name}. Redirecting...</p>
+      <h2 style={{ color: '#3ecf8e', marginBottom: 8 }}>You&apos;re in!</h2>
+      <p style={{ color: '#8892aa', fontSize: 14 }}>You&apos;ve joined {invite?.firm_name}. Redirecting...</p>
     </div></div>
   )
 
@@ -156,7 +156,7 @@ export default function InvitePage() {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 44, marginBottom: 10 }}>📨</div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#e8ecf5', marginBottom: 6 }}>
-            You're invited to join
+            You&apos;re invited to join
           </h1>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#c9a84c' }}>{invite?.firm_name}</div>
           <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 20, padding: '4px 14px', fontSize: 13, color: '#c9a84c' }}>

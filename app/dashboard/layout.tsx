@@ -9,7 +9,7 @@ import { APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette
 } from 'lucide-react'
 
 const NAV = [
@@ -26,6 +26,7 @@ const NAV = [
   { label: 'Manage', divider: true },
   { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
   { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },
+  { href: '/admin/branding', label: 'Branding',      icon: Palette, superAdminOnly: true },
 ]
 
 const planColor: Record<string, string> = {
@@ -46,7 +47,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const saved = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(saved)
     document.documentElement.classList.toggle('light', saved === 'light')
-  }, [])
+    if (firm?.name) {
+      document.title = firm.name
+    }
+  }, [firm, supabase.auth])
 
   // Suspended check
   if (firm?.plan_status === 'suspended') {
@@ -56,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ fontSize: 52, marginBottom: 12 }}>⏸️</div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--red)', marginBottom: 10 }}>Account Suspended</h2>
           <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 20 }}>
-            {firm.name}'s account has been suspended. Contact us to renew.
+            {firm.name}&apos;s account has been suspended. Contact us to renew.
           </p>
           <a href="mailto:billing@chitvault.app" style={{ color: 'var(--gold)', fontSize: 14 }}>billing@chitvault.app</a>
           <br />
@@ -108,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Role badge */}
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
               style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--blue-dim)', color: isOwner ? 'var(--gold)' : 'var(--blue)' }}>
-              {isOwner ? '👑 Owner' : '👤 Staff'}
+              {role === 'superadmin' ? '👑 Superadmin' : (isOwner ? '👑 Owner' : '👤 Staff')}
             </span>
           </div>
         </div>
@@ -119,7 +123,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{item.label}</div>
             )
             if (!('href' in item)) return null
-            if ((item as any).ownerOnly && !isOwner) return null   // hide owner-only items for staff
+            if ((item as any).ownerOnly && !isOwner) return null
+            if ((item as any).superAdminOnly && role !== 'superadmin') return null
             const Icon   = item.icon!
             const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
             return (
@@ -156,7 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu size={20} />
             </button>
             <h1 className="font-display text-lg" style={{ color: 'var(--text)' }}>
-              {NAV.find(n => 'href' in n && n.href === pathname)?.label || APP_NAME}
+              {NAV.find(n => 'href' in n && n.href === pathname)?.label || firm?.name || APP_NAME}
             </h1>
           </div>
           <div className="flex items-center gap-2">

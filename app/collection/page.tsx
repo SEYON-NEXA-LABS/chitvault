@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, fmtDate } from '@/lib/utils'
-import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Empty, Btn } from '@/components/ui'
+import { fmt } from '@/lib/utils'
+import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn } from '@/components/ui'
 import { Printer } from 'lucide-react'
-import type { Group, Member, Auction, Payment } from '@/types'
+import type { Group, Member, Auction } from '@/types'
 
 interface PendingItem {
   member: Member
@@ -70,7 +70,7 @@ export default function CollectionPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [supabase])
 
   if (loading) return <Loading />
 

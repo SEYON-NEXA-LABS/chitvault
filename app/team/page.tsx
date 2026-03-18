@@ -75,7 +75,7 @@ export default function TeamPage() {
 
     setInvites(inv || [])
     setLoading(false)
-  }, [firm])
+  }, [firm, supabase])
 
   useEffect(() => { if (firm) load() }, [firm, load])
 

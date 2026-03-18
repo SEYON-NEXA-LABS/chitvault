@@ -5,17 +5,17 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt } from '@/lib/utils'
-import { Btn, Card, Loading, Toast, Badge } from '@/components/ui'
+import { Btn, Card, Loading, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { ArrowLeft, Info } from 'lucide-react'
-import type { GroupWithRules, CommissionType, COMMISSION_TYPE_LABELS } from '@/types'
+import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
 
 export default function GroupRulesPage() {
   const params   = useParams()
   const router   = useRouter()
   const supabase = createClient()
-  const { firm, can } = useFirm()
+  const { firm } = useFirm()
   const { toast, show, hide } = useToast()
 
   const groupId = Number(params.id)
@@ -56,7 +56,7 @@ export default function GroupRulesPage() {
       setLoading(false)
     }
     load()
-  }, [firm, groupId])
+  }, [firm, groupId, router, supabase])
 
   async function livePreview(bid: string) {
     setTestBid(bid)
@@ -78,30 +78,14 @@ export default function GroupRulesPage() {
     setGroup(g => g ? { ...g, ...rules } : g)
   }
 
-  const pct = (v: number) => `${Math.round(v * 100)}%`
-  const rupee = (v: number) => fmt(group ? group.chit_value * v : 0)
-
   if (loading) return <Loading />
   if (!group)  return null
 
   const minBid = Math.round(group.chit_value * rules.min_bid_pct)
   const maxBid = Math.round(group.chit_value * rules.max_bid_pct)
-  const capAmt = Math.round(group.chit_value * rules.discount_cap_pct)
 
   return (
     <div className="max-w-2xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Btn variant="ghost" size="sm" onClick={() => router.push('/groups')}>
-          <ArrowLeft size={15} /> Back
-        </Btn>
-        <div>
-          <h1 className="font-display text-xl" style={{ color: 'var(--text)' }}>{group.name}</h1>
-          <div className="text-sm mt-0.5" style={{ color: 'var(--text2)' }}>
-            Auction Rules & Commission Settings · {fmt(group.chit_value)} · {group.duration} months
-          </div>
-        </div>
-      </div>
-
       {/* ── Bid Limits ──────────────────────────────────── */}
       <Card className="overflow-hidden mb-4">
         <div className="px-5 py-4 border-b font-semibold text-sm flex items-center gap-2"
@@ -120,7 +104,7 @@ export default function GroupRulesPage() {
             <div className="flex justify-between mb-2">
               <label className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Minimum Bid (Floor)</label>
               <span className="text-sm font-mono font-bold" style={{ color: 'var(--gold)' }}>
-                {pct(rules.min_bid_pct)} = {fmt(minBid)}
+                {Math.round(rules.min_bid_pct * 100)}% = {fmt(minBid)}
               </span>
             </div>
             <input type="range" min="50" max="100" step="1"
@@ -130,37 +114,6 @@ export default function GroupRulesPage() {
             <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text3)' }}>
               <span>50% = {fmt(group.chit_value * 0.5)}</span>
               <span>100% = No discount allowed</span>
-            </div>
-          </div>
-
-          {/* Max bid */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Maximum Bid (Ceiling)</label>
-              <span className="text-sm font-mono font-bold" style={{ color: 'var(--gold)' }}>
-                {pct(rules.max_bid_pct)} = {fmt(maxBid)}
-              </span>
-            </div>
-            <input type="range" min="70" max="100" step="1"
-              value={Math.round(rules.max_bid_pct * 100)}
-              onChange={e => setRules(r => ({...r, max_bid_pct: +e.target.value / 100}))}
-              className="w-full" style={{ accentColor: 'var(--gold)' }} />
-          </div>
-
-          {/* Discount cap */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Max Discount Allowed</label>
-              <span className="text-sm font-mono font-bold" style={{ color: 'var(--gold)' }}>
-                {pct(rules.discount_cap_pct)} = {fmt(capAmt)} max discount
-              </span>
-            </div>
-            <input type="range" min="10" max="100" step="1"
-              value={Math.round(rules.discount_cap_pct * 100)}
-              onChange={e => setRules(r => ({...r, discount_cap_pct: +e.target.value / 100}))}
-              className="w-full" style={{ accentColor: 'var(--red)' }} />
-            <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text3)' }}>
-              <span>Strict: 10%</span><span>Unlimited: 100%</span>
             </div>
           </div>
         </div>
@@ -196,7 +149,7 @@ export default function GroupRulesPage() {
                   </div>
                   {type === 'percent_of_chit' && (
                     <div className="text-xs mt-1.5 ml-6" style={{ color: 'var(--text3)' }}>
-                      e.g. 5% → ₹{Math.round(group.chit_value * (rules.commission_value/100)).toLocaleString('en-IN')} every month regardless of bid
+                      e.g. 5% → {fmt(group.chit_value * (rules.commission_value/100))} every month regardless of bid
                     </div>
                   )}
                   {type === 'percent_of_discount' && (
@@ -206,7 +159,7 @@ export default function GroupRulesPage() {
                   )}
                   {type === 'fixed_amount' && (
                     <div className="text-xs mt-1.5 ml-6" style={{ color: 'var(--text3)' }}>
-                      e.g. ₹500 flat every month no matter what
+                      e.g. {fmt(500)} flat every month no matter what
                     </div>
                   )}
                 </button>

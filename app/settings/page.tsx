@@ -8,8 +8,9 @@ import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS } from '@/lib/branding/co
 import { Btn, Card, Badge, Toast } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { APP_NAME, fmt } from '@/lib/utils'
-import { Sun, Moon, LogOut, Key, Database, Palette, Type, Image, Link } from 'lucide-react'
+import { APP_NAME } from '@/lib/utils'
+import { Sun, Moon, LogOut, Key, Palette, Type, Image as ImageIcon, Link } from 'lucide-react'
+import Image from 'next/image'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -43,7 +44,7 @@ export default function SettingsPage() {
       setFont(firm.font || 'DM Sans')
       setRegToken(firm.register_token || '')
     }
-  }, [firm])
+  }, [firm, supabase.auth])
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
@@ -116,12 +117,12 @@ export default function SettingsPage() {
             {/* Logo */}
             <div>
               <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Image size={13} /> Logo URL
+                <ImageIcon size={13} /> Logo URL
               </div>
               <div className="flex gap-3 items-center">
                 {logoUrl && (
-                  <img src={logoUrl} alt="logo preview"
-                    style={{ height: 44, borderRadius: 8, border: '1px solid var(--border)', objectFit: 'contain', background: '#fff', padding: 4 }} />
+                  <Image src={logoUrl} alt="logo preview" width={176} height={44}
+                    style={{ borderRadius: 8, border: '1px solid var(--border)', objectFit: 'contain', background: '#fff', padding: 4 }} />
                 )}
                 <input className={inputClass} style={inputStyle} value={logoUrl}
                   onChange={e => setLogoUrl(e.target.value)}
@@ -290,7 +291,7 @@ export default function SettingsPage() {
       {/* ── App Info ──────────────────────────────────────── */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          ℹ️ App Info
+          <span style={{fontFamily: "'DM Sans', sans-serif"}}>{APP_NAME} Info</span>
         </div>
         <div className="p-5 space-y-0">
           {[
