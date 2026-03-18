@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Playfair_Display } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
 import './globals.css'
@@ -10,8 +10,11 @@ export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
   description: 'Chit Fund Management Software',
   manifest: '/manifest.json',
-  themeColor: '#c9a84c',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-152.png' },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#c9a84c',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

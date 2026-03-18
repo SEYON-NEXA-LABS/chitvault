@@ -37,19 +37,22 @@ export async function middleware(request: NextRequest) {
 
   // Logged in on a public page — route to the right place
   if (user && isPublic) {
-    const { data: profile } = await supabase
-      .from('profiles').select('firm_id, role').eq('id', user.id).single()
+    const { data: profile, error } = await supabase
+      .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
+
+    // If no profile exists yet, send to /onboarding (user hasn't completed registration)
+    if (!profile) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
 
     if (profile?.role === 'superadmin') {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       return NextResponse.redirect(url)
     }
-    if (!profile?.firm_id) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/onboarding'
-      return NextResponse.redirect(url)
-    }
+
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
@@ -58,13 +61,22 @@ export async function middleware(request: NextRequest) {
   // Logged in, protected route — enforce admin guard + firm check
   if (user && !isPublic && !isOnboarding && !isInvite) {
     const { data: profile } = await supabase
-      .from('profiles').select('firm_id, role').eq('id', user.id).single()
+      .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
+
+    // If no profile exists, redirect to onboarding to complete registration
+    if (!profile) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
 
     if (isAdmin && profile?.role !== 'superadmin') {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
+
+    // Enforce firm_id requirement
     if (!profile?.firm_id && !isAdmin) {
       const url = request.nextUrl.clone()
       url.pathname = '/onboarding'

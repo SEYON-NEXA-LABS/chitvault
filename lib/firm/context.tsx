@@ -31,16 +31,47 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
-    const { data: prof } = await supabase
-      .from('profiles').select('*').eq('id', user.id).single()
+    
+    // Use maybeSingle() to avoid 406 when profile doesn't exist
+    const { data: prof, error: profError } = await supabase
+      .from('profiles').select('*').eq('id', user.id).maybeSingle()
+    
+    // If no profile exists, try to create one for dev firm
+    if (!prof && profError?.code === 'PGRST116') {
+      const { data: newProf, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          firm_id: '7e92aa8b-ca5e-4e70-af7d-a4d166ba9a2c', // Dev firm from seed_dev_firm.sql
+          full_name: user.email?.split('@')[0] || 'User',
+          role: 'staff'
+        })
+        .select('*')
+        .maybeSingle()
+      
+      if (newProf) {
+        setProfile(newProf)
+        // Load firm if profile has firm_id
+        if (newProf.firm_id) {
+          const { data: f } = await supabase
+            .from('firms').select('*').eq('id', newProf.firm_id).maybeSingle()
+          setFirm(f)
+          if (f) applyBranding(f.primary_color || '#c9a84c', f.font || 'DM Sans')
+        }
+        setLoading(false)
+        return
+      }
+    }
+    
+    setProfile(prof)
+    
+    // Load firm if profile exists with firm_id
     if (prof?.firm_id) {
       const { data: f } = await supabase
-        .from('firms').select('*').eq('id', prof.firm_id).single()
+        .from('firms').select('*').eq('id', prof.firm_id).maybeSingle()
       setFirm(f)
-      // Apply branding as soon as firm loads
       if (f) applyBranding(f.primary_color || '#c9a84c', f.font || 'DM Sans')
     }
-    setProfile(prof)
     setLoading(false)
   }, [])
 

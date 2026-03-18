@@ -56,10 +56,10 @@ create trigger set_firms_updated_at
   before update on firms
   for each row execute procedure moddatetime(updated_at);
 
--- 1.2 PROFILES
+-- 1.2 PROFILES (firm_id is MANDATORY)
 create table if not exists profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
-  firm_id    uuid references firms(id) on delete cascade,
+  firm_id    uuid not null references firms(id) on delete cascade,
   full_name  text,
   role       text default 'staff',
   created_at timestamptz default now(),
@@ -304,7 +304,7 @@ $$;
 -- Drop all existing policies
 do $pol$ declare r record; begin
   for r in select schemaname, tablename, policyname from pg_policies
-    where tablename in ('firms','profiles','groups','members','auctions','payments','invites','denominations')
+    where tablename in ('firms','profiles','groups','members','auctions','payments','invites','denominations','foreman_commissions')
   loop
     execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
   end loop;
@@ -312,7 +312,7 @@ end $pol$;
 
 -- FIRMS
 create policy firms_select on firms for select
-  using (owner_id = auth.uid() or is_superadmin());
+  using (owner_id = auth.uid() or id = my_firm_id() or is_superadmin());
 create policy firms_insert on firms for insert
   with check (owner_id = auth.uid() or is_superadmin());
 create policy firms_update on firms for update
@@ -390,21 +390,12 @@ create policy denom_delete on denominations for delete
 grant usage, select on all sequences in schema public to authenticated;
 grant all on firms, profiles, groups, members, auctions, payments, invites, denominations to authenticated;
 
--- ── 4. AUTH TRIGGER: AUTO-CREATE PROFILE ON SIGNUP ───────────
-create or replace function handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  insert into profiles (id, full_name)
-  values (new.id, new.raw_user_meta_data->>'full_name')
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function handle_new_user();
+-- ── 4. AUTH TRIGGER: DISABLED ──────────────────────────────
+-- DISABLED: Profiles must be created with firm_id (NOT NULL).
+-- Creation happens only in register_firm(), accept_invite(), or join_firm_by_token() RPCs.
+-- This ensures users cannot exist without being assigned to a firm.
+-- 
+-- drop trigger if exists on_auth_user_created on auth.users;
 
 -- ── 5. RPC: REGISTER FIRM (replaces direct upsert in app) ────
 -- Called after Supabase auth signup. Creates firm + links profile in one tx.
@@ -437,12 +428,13 @@ begin
   values (p_name, p_slug, auth.uid(), p_city, p_phone, 'trial')
   returning id into v_firm_id;
 
-  -- Link profile: set firm_id + role + optionally name
-  update profiles
-     set firm_id   = v_firm_id,
-         role      = 'owner',
-         full_name = coalesce(p_full_name, full_name)
-   where id = auth.uid();
+  -- Create or link profile: insert if not exists, or update firm_id/role if does
+  insert into profiles (id, firm_id, role, full_name)
+  values (auth.uid(), v_firm_id, 'owner', p_full_name)
+  on conflict (id) do update
+  set firm_id   = v_firm_id,
+      role      = 'owner',
+      full_name = coalesce(p_full_name, profiles.full_name);
 
   return v_firm_id;
 end;
@@ -502,9 +494,11 @@ begin
     raise exception 'This invite was sent to a different email address';
   end if;
 
-  update profiles
-     set firm_id = v_firm, role = coalesce(v_role, 'staff')
-   where id = auth.uid();
+  -- Create or link profile to the invited firm
+  insert into profiles (id, firm_id, role)
+  values (auth.uid(), v_firm, coalesce(v_role, 'staff'))
+  on conflict (id) do update
+  set firm_id = v_firm, role = coalesce(v_role, 'staff');
 
   update invites set status = 'accepted' where id = invite_id;
 end;
@@ -513,6 +507,7 @@ $$;
 grant execute on function public.accept_invite(uuid) to authenticated;
 
 -- ── 7. RPC: GET INVITE (public read for invite page) ─────────
+drop function if exists public.get_invite(uuid);
 create or replace function public.get_invite(invite_id uuid)
 returns table (
   id uuid, firm_id uuid, email text, role text,
@@ -632,11 +627,13 @@ begin
   select id into v_firm_id from firms where register_token = p_token;
   if not found then raise exception 'INVALID_TOKEN'; end if;
 
-  update profiles
-    set firm_id   = v_firm_id,
-        role      = 'staff',
-        full_name = coalesce(p_full_name, full_name)
-  where id = auth.uid();
+  -- Create or link profile: insert if not exists, or update firm_id/role if does
+  insert into profiles (id, firm_id, role, full_name)
+  values (auth.uid(), v_firm_id, 'staff', p_full_name)
+  on conflict (id) do update
+  set firm_id   = v_firm_id,
+      role      = 'staff',
+      full_name = coalesce(p_full_name, profiles.full_name);
 end;
 $$;
 grant execute on function public.join_firm_by_token(text, text) to authenticated;
