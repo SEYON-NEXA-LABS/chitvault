@@ -10,12 +10,14 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import type { Group, Auction, Payment } from '@/types'
 
 export default function GroupsPage() {
   const supabase = createClient()
   const { can } = useFirm()
+  const router = useRouter()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -150,6 +152,12 @@ export default function GroupsPage() {
               </Td>
               <Td>
                 <div className="flex items-center gap-1.5">
+                  {can('editGroup') && (
+                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/groups/${g.id}`)}
+                      style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
+                      <Settings2 size={12} /> Rules
+                    </Btn>
+                  )}
                   {showArchBtn && can('archiveGroup') && (
                     <Btn size="sm" variant="ghost" onClick={() => archive(g.id)}
                       style={{ color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.3)' }}>

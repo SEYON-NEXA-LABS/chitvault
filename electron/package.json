@@ -1,7 +1,7 @@
 {
   "name": "chitvault-desktop",
   "productName": "ChitVault",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "ChitVault — Auction Chit Fund Management Software",
   "main": "main.js",
   "private": true,
@@ -10,22 +10,22 @@
     "email": "info@chitvault.app"
   },
   "scripts": {
-    "start": "electron .",
-    "build:win": "electron-builder --win --x64",
-    "build:mac": "electron-builder --mac",
+    "start":       "electron .",
+    "build:win":   "electron-builder --win --x64",
+    "build:mac":   "electron-builder --mac",
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7"
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron":         "^41.0.3",
+    "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "app.chitvault.desktop",
+    "appId":       "app.chitvault.desktop",
     "productName": "ChitVault",
-    "copyright": "Copyright © 2026 ChitVault",
+    "copyright":   "Copyright © 2026 ChitVault",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -39,17 +39,17 @@
     "extraResources": [
       {
         "from": "../.next/standalone",
-        "to": "server",
+        "to":   "server",
         "filter": ["**/*"]
       },
       {
         "from": "../.next/static",
-        "to": "server/.next/static",
+        "to":   "server/.next/static",
         "filter": ["**/*"]
       },
       {
         "from": "../public",
-        "to": "server/public",
+        "to":   "server/public",
         "filter": ["**/*"]
       }
     ],

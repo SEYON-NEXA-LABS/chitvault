@@ -5,17 +5,23 @@ export type PlanStatus = 'active' | 'suspended' | 'cancelled'
 export type UserRole = 'owner' | 'staff' | 'superadmin'
 
 export interface Firm {
-  id:          string
-  name:        string
-  slug:        string
-  owner_id:    string | null
-  plan:        Plan
-  plan_status: PlanStatus
-  trial_ends:  string | null
-  invoice_ref: string | null
-  city:        string | null
-  phone:       string | null
-  created_at:  string
+  id:             string
+  name:           string
+  slug:           string
+  owner_id:       string | null
+  plan:           Plan
+  plan_status:    PlanStatus
+  trial_ends:     string | null
+  invoice_ref:    string | null
+  city:           string | null
+  phone:          string | null
+  // Branding
+  primary_color:  string | null
+  logo_url:       string | null
+  tagline:        string | null
+  font:           string | null
+  register_token: string | null
+  created_at:     string
 }
 
 export interface Profile {
@@ -104,3 +110,64 @@ export const DENOMINATIONS = [
   { key: 'coin_2',    label: '₹2',    value: 2,    type: 'coin' },
   { key: 'coin_1',    label: '₹1',    value: 1,    type: 'coin' },
 ] as const
+
+// ── Auction Rules (stored on Group) ──────────────────────────
+export type CommissionType = 'percent_of_chit' | 'percent_of_discount' | 'fixed_amount'
+export type DividendRule   = 'equal_split' | 'proportional'
+export type CommissionRecipient = 'foreman' | 'firm'
+
+// Extended Group with auction rules
+export interface GroupWithRules extends Group {
+  min_bid_pct:           number   // 0.70 = 70%
+  max_bid_pct:           number   // 1.00 = 100%
+  discount_cap_pct:      number   // 1.00 = unlimited
+  commission_type:       CommissionType
+  commission_value:      number   // % or ₹ amount
+  commission_recipient:  CommissionRecipient
+  dividend_rule:         DividendRule
+}
+
+// Foreman Commission record (one per auction month)
+export interface ForemanCommission {
+  id:                   number
+  firm_id:              string
+  group_id:             number
+  auction_id:           number | null
+  month:                number
+  chit_value:           number
+  bid_amount:           number
+  discount:             number
+  commission_type:      CommissionType
+  commission_rate:      number
+  commission_amt:       number
+  net_dividend:         number
+  per_member_div:       number
+  paid_to:              CommissionRecipient
+  foreman_member_id:    number | null
+  notes:                string | null
+  created_at:           string
+}
+
+// Result from calculate_auction RPC
+export interface AuctionCalculation {
+  chit_value:           number
+  bid_amount:           number
+  min_bid:              number
+  max_bid:              number
+  discount:             number
+  discount_cap:         number
+  commission_type:      CommissionType
+  commission_rate:      number
+  commission_amt:       number
+  commission_recipient: CommissionRecipient
+  net_dividend:         number
+  num_members:          number
+  per_member_div:       number
+  each_pays:            number
+}
+
+export const COMMISSION_TYPE_LABELS: Record<CommissionType, string> = {
+  percent_of_chit:     '% of Chit Value (per month)',
+  percent_of_discount: '% of Discount (per auction)',
+  fixed_amount:        'Fixed Amount (per month)',
+}

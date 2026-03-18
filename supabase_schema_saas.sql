@@ -21,10 +21,24 @@ create table if not exists firms (
   trial_ends  timestamptz default (now() + interval '30 days'),
   invoice_ref text,
   city        text,
-  phone       text,
-  created_at  timestamptz default now(),
-  updated_at  timestamptz default now()
+  phone           text,
+  -- Branding / white-label
+  primary_color   text default '#c9a84c',     -- hex colour
+  logo_url        text,                        -- hosted image URL
+  tagline         text default 'Chit Fund Manager',
+  font            text default 'DM Sans',      -- Google Font name
+  register_token  text unique,                 -- private registration link token
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
 );
+
+
+-- Migration: add branding columns if table already exists
+alter table firms add column if not exists primary_color  text default '#c9a84c';
+alter table firms add column if not exists logo_url       text;
+alter table firms add column if not exists tagline        text default 'Chit Fund Manager';
+alter table firms add column if not exists font           text default 'DM Sans';
+alter table firms add column if not exists register_token text unique;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'firms_plan_chk') then
@@ -436,6 +450,28 @@ $$;
 
 grant execute on function public.register_firm(text,text,text,text,text) to authenticated;
 
+-- Public RPC: get firm branding by slug (for login page)
+create or replace function public.get_firm_branding(p_slug text)
+returns table (
+  name text, primary_color text, logo_url text,
+  tagline text, font text, plan_status text
+)
+language sql stable security definer set search_path = public as $$
+  select name, primary_color, logo_url, tagline, font, plan_status
+  from firms where slug = p_slug
+$$;
+grant execute on function public.get_firm_branding(text) to anon, authenticated;
+
+-- Public RPC: validate register token
+create or replace function public.get_firm_by_register_token(p_token text)
+returns table (id uuid, name text, slug text, primary_color text, logo_url text, tagline text)
+language sql stable security definer set search_path = public as $$
+  select id, name, slug, primary_color, logo_url, tagline
+  from firms where register_token = p_token
+$$;
+grant execute on function public.get_firm_by_register_token(text) to anon, authenticated;
+
+
 -- ── 6. RPC: ACCEPT INVITE ────────────────────────────────────
 -- Called from invite accept page. Sets firm_id + role safely.
 create or replace function public.accept_invite(invite_id uuid)
@@ -584,3 +620,280 @@ group by p.firm_id, p.group_id, p.member_id, p.month;
 -- ── 10. POST-SETUP ───────────────────────────────────────────
 -- Set yourself as superadmin after first sign-up:
 --   update profiles set role = 'superadmin' where id = '<your-auth-user-id>';
+
+-- ── join_firm_by_token RPC (for token-based staff registration) ──
+create or replace function public.join_firm_by_token(p_token text, p_full_name text default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_firm_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Must be authenticated'; end if;
+
+  select id into v_firm_id from firms where register_token = p_token;
+  if not found then raise exception 'INVALID_TOKEN'; end if;
+
+  update profiles
+    set firm_id   = v_firm_id,
+        role      = 'staff',
+        full_name = coalesce(p_full_name, full_name)
+  where id = auth.uid();
+end;
+$$;
+grant execute on function public.join_firm_by_token(text, text) to authenticated;
+
+-- ── admin_create_firm RPC (superadmin creates firm for a client) ──
+create or replace function public.admin_create_firm(
+  p_name          text,
+  p_slug          text,
+  p_city          text default null,
+  p_phone         text default null,
+  p_plan          text default 'trial',
+  p_primary_color text default '#c9a84c',
+  p_tagline       text default 'Chit Fund Manager',
+  p_font          text default 'DM Sans'
+)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare
+  v_firm_id uuid;
+begin
+  if not exists (select 1 from profiles where id = auth.uid() and role = 'superadmin') then
+    raise exception 'Superadmin access required';
+  end if;
+
+  if exists (select 1 from firms where slug = p_slug) then
+    raise exception 'SLUG_TAKEN';
+  end if;
+
+  insert into firms (name, slug, city, phone, plan, primary_color, tagline, font)
+  values (p_name, p_slug, p_city, p_phone, p_plan, p_primary_color, p_tagline, p_font)
+  returning id into v_firm_id;
+
+  return v_firm_id;
+end;
+$$;
+grant execute on function public.admin_create_firm(text,text,text,text,text,text,text,text) to authenticated;
+
+-- ══════════════════════════════════════════════════════════════
+-- AUCTION RULES & FOREMAN COMMISSION (v1.3 additions)
+-- ══════════════════════════════════════════════════════════════
+
+-- ── Auction rules columns on groups table ────────────────────
+alter table groups
+  add column if not exists min_bid_pct            numeric(5,4) default 0.70,   -- 70% of chit_value
+  add column if not exists max_bid_pct            numeric(5,4) default 1.00,   -- 100% of chit_value
+  add column if not exists discount_cap_pct       numeric(5,4) default 1.00,   -- max discount as % of chit_value
+  add column if not exists commission_type        text         default 'percent_of_chit',
+  -- percent_of_chit | percent_of_discount | fixed_amount
+  add column if not exists commission_value       numeric(12,2) default 5.00,
+  -- if percent_of_chit:     5.00  → 5% of chit_value per month
+  -- if percent_of_discount: 5.00  → 5% of discount
+  -- if fixed_amount:        500   → ₹500 flat per month
+  add column if not exists dividend_rule          text         default 'equal_split',
+  -- equal_split | proportional (future use)
+  add column if not exists commission_recipient   text         default 'foreman';
+  -- foreman | firm (who gets the commission)
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'groups_commission_type_chk') then
+    alter table groups add constraint groups_commission_type_chk
+      check (commission_type in ('percent_of_chit','percent_of_discount','fixed_amount'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'groups_commission_recipient_chk') then
+    alter table groups add constraint groups_commission_recipient_chk
+      check (commission_recipient in ('foreman','firm'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'groups_bid_pct_chk') then
+    alter table groups add constraint groups_bid_pct_chk
+      check (min_bid_pct >= 0 and min_bid_pct <= 1 and max_bid_pct > 0 and max_bid_pct <= 1 and min_bid_pct <= max_bid_pct);
+  end if;
+end $$;
+
+-- ── Foreman commissions table ─────────────────────────────────
+-- One row per auction month per group — tracks foreman earnings
+create table if not exists foreman_commissions (
+  id              bigint primary key generated always as identity,
+  firm_id         uuid not null references firms(id) on delete cascade,
+  group_id        bigint not null references groups(id) on delete cascade,
+  auction_id      bigint references auctions(id) on delete cascade,
+  month           int not null,
+  chit_value      numeric(12,2) not null,
+  bid_amount      numeric(12,2) not null,
+  discount        numeric(12,2) not null,      -- total_pot - bid_amount
+  commission_type text not null,
+  commission_rate numeric(12,4) not null,      -- % or fixed
+  commission_amt  numeric(12,2) not null,      -- final ₹ commission
+  net_dividend    numeric(12,2) not null,      -- discount - commission_amt
+  per_member_div  numeric(12,2) not null,      -- net_dividend / num_members
+  paid_to         text default 'foreman',      -- foreman | firm
+  foreman_member_id bigint references members(id) on delete set null,
+  notes           text,
+  created_at      timestamptz default now(),
+  unique(firm_id, group_id, month)
+);
+
+alter table foreman_commissions enable row level security;
+grant all on foreman_commissions to authenticated;
+grant usage, select on sequence foreman_commissions_id_seq to authenticated;
+
+create index if not exists idx_fc_firm_group on foreman_commissions(firm_id, group_id);
+
+-- RLS: same firm isolation
+create policy "fc_select" on foreman_commissions for select
+  using (firm_id = my_firm_id() or is_superadmin());
+create policy "fc_insert" on foreman_commissions for insert
+  with check ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
+create policy "fc_update" on foreman_commissions for update
+  using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
+create policy "fc_delete" on foreman_commissions for delete
+  using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
+
+-- ── RPC: calculate_auction ───────────────────────────────────
+-- Given a group + bid amount, returns the full breakdown
+-- (bid limits enforced, commission deducted, dividend computed)
+create or replace function public.calculate_auction(
+  p_group_id  bigint,
+  p_bid_amount numeric
+)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  g            groups%rowtype;
+  v_min_bid    numeric(12,2);
+  v_max_bid    numeric(12,2);
+  v_discount   numeric(12,2);
+  v_cap        numeric(12,2);
+  v_commission numeric(12,2);
+  v_net_div    numeric(12,2);
+  v_per_member numeric(12,2);
+  v_num_members int;
+begin
+  select * into g from groups where id = p_group_id and firm_id = my_firm_id();
+  if not found then raise exception 'Group not found'; end if;
+
+  v_min_bid := round(g.chit_value * g.min_bid_pct, 2);
+  v_max_bid := round(g.chit_value * g.max_bid_pct, 2);
+
+  -- Enforce bid range
+  if p_bid_amount < v_min_bid then
+    raise exception 'Bid ₹% is below minimum allowed ₹%', p_bid_amount, v_min_bid;
+  end if;
+  if p_bid_amount > v_max_bid then
+    raise exception 'Bid ₹% exceeds maximum allowed ₹%', p_bid_amount, v_max_bid;
+  end if;
+
+  v_discount := g.chit_value - p_bid_amount;
+
+  -- Enforce discount cap
+  v_cap := round(g.chit_value * g.discount_cap_pct, 2);
+  if v_discount > v_cap then
+    raise exception 'Discount ₹% exceeds cap ₹% (% of chit value)', v_discount, v_cap, (g.discount_cap_pct * 100);
+  end if;
+
+  -- Calculate foreman commission
+  case g.commission_type
+    when 'percent_of_chit'     then v_commission := round(g.chit_value * g.commission_value / 100, 2);
+    when 'percent_of_discount' then v_commission := round(v_discount    * g.commission_value / 100, 2);
+    when 'fixed_amount'        then v_commission := g.commission_value;
+    else v_commission := 0;
+  end case;
+
+  -- Net dividend after commission
+  v_net_div := v_discount - v_commission;
+  if v_net_div < 0 then v_net_div := 0; end if;
+
+  -- Count active members for per-member split
+  select count(*) into v_num_members
+  from members
+  where group_id = p_group_id and firm_id = my_firm_id()
+    and status in ('active','foreman');
+
+  v_num_members := greatest(v_num_members, 1); -- avoid divide by zero
+  v_per_member  := round(v_net_div / v_num_members, 2);
+
+  return jsonb_build_object(
+    'chit_value',      g.chit_value,
+    'bid_amount',      p_bid_amount,
+    'min_bid',         v_min_bid,
+    'max_bid',         v_max_bid,
+    'discount',        v_discount,
+    'discount_cap',    v_cap,
+    'commission_type', g.commission_type,
+    'commission_rate', g.commission_value,
+    'commission_amt',  v_commission,
+    'commission_recipient', g.commission_recipient,
+    'net_dividend',    v_net_div,
+    'num_members',     v_num_members,
+    'per_member_div',  v_per_member,
+    'each_pays',       g.monthly_contribution - v_per_member
+  );
+end;
+$$;
+
+grant execute on function public.calculate_auction(bigint, numeric) to authenticated;
+
+-- ── RPC: record_auction_with_commission ──────────────────────
+-- Inserts auction + foreman_commission row atomically
+create or replace function public.record_auction_with_commission(
+  p_group_id      bigint,
+  p_month         int,
+  p_auction_date  date,
+  p_winner_id     bigint,
+  p_bid_amount    numeric,
+  p_foreman_member_id bigint default null,
+  p_notes         text default null
+)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  g            groups%rowtype;
+  v_calc       jsonb;
+  v_auction_id bigint;
+  v_firm_id    uuid;
+begin
+  if not is_firm_owner() then
+    raise exception 'Owner access required to record auctions';
+  end if;
+
+  select * into g from groups where id = p_group_id and firm_id = my_firm_id();
+  if not found then raise exception 'Group not found'; end if;
+
+  v_firm_id := my_firm_id();
+
+  -- Get full calculation (also validates bid range)
+  v_calc := public.calculate_auction(p_group_id, p_bid_amount);
+
+  -- Insert auction
+  insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend)
+  values (
+    v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
+    p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric
+  )
+  returning id into v_auction_id;
+
+  -- Insert foreman commission record
+  insert into foreman_commissions (
+    firm_id, group_id, auction_id, month,
+    chit_value, bid_amount, discount,
+    commission_type, commission_rate, commission_amt,
+    net_dividend, per_member_div,
+    paid_to, foreman_member_id, notes
+  ) values (
+    v_firm_id, p_group_id, v_auction_id, p_month,
+    g.chit_value, p_bid_amount, (v_calc->>'discount')::numeric,
+    (v_calc->>'commission_type')::text,
+    (v_calc->>'commission_rate')::numeric,
+    (v_calc->>'commission_amt')::numeric,
+    (v_calc->>'net_dividend')::numeric,
+    (v_calc->>'per_member_div')::numeric,
+    g.commission_recipient,
+    p_foreman_member_id,
+    p_notes
+  );
+
+  return v_calc || jsonb_build_object('auction_id', v_auction_id);
+end;
+$$;
+
+grant execute on function public.record_auction_with_commission(bigint,int,date,bigint,numeric,bigint,text) to authenticated;

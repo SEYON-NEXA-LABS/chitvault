@@ -1,50 +1,72 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter }  from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { APP_NAME }     from '@/lib/utils'
+import { applyBranding } from '@/lib/branding/context'
+
+interface FirmBranding {
+  name: string; primary_color: string; logo_url: string | null
+  tagline: string; font: string
+}
 
 type Tab = 'signin' | 'signup' | 'forgot'
 
-export default function LoginPage() {
-  const router   = useRouter()
-  const supabase = createClient()
+function LoginForm() {
+  const router        = useRouter()
+  const searchParams  = useSearchParams()
+  const supabase      = createClient()
+  const firmSlug      = searchParams.get('firm')
 
-  const [tab,     setTab]     = useState<Tab>('signin')
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
-  const [success, setSuccess] = useState('')
+  const [tab,      setTab]      = useState<Tab>('signin')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState('')
+  const [branding, setBranding] = useState<FirmBranding>({
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
+    primary_color: '#c9a84c', logo_url: null,
+    tagline: 'Chit Fund Manager', font: 'DM Sans'
+  })
 
-  // Sign in
   const [siEmail, setSiEmail] = useState('')
   const [siPass,  setSiPass]  = useState('')
-
-  // Sign up
   const [suName,  setSuName]  = useState('')
   const [suEmail, setSuEmail] = useState('')
   const [suPass,  setSuPass]  = useState('')
   const [suPass2, setSuPass2] = useState('')
-
-  // Forgot
   const [fpEmail, setFpEmail] = useState('')
 
-  const clearMessages = () => { setError(''); setSuccess('') }
+  // Load firm branding if slug param present
+  useEffect(() => {
+    async function loadBranding() {
+      if (!firmSlug) return
+      const { data } = await supabase
+        .rpc('get_firm_branding', { p_slug: firmSlug })
+        .single()
+      if (data) {
+        setBranding({
+          name: data.name, primary_color: data.primary_color || '#c9a84c',
+          logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
+          font: data.font || 'DM Sans'
+        })
+        applyBranding(data.primary_color || '#c9a84c', data.font || 'DM Sans')
+      }
+    }
+    loadBranding()
+  }, [firmSlug])
+
+  const clr = branding.primary_color
 
   async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    clearMessages(); setLoading(true)
+    e.preventDefault(); setError(''); setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
     setLoading(false)
-    if (error) { setError(error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message); return }
-    // Let middleware decide destination (dashboard / onboarding / admin)
-    // based on profile.firm_id and role — just refresh to trigger middleware
+    if (error) { setError('Incorrect email or password.'); return }
     window.location.replace('/')
   }
 
   async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault()
-    clearMessages()
+    e.preventDefault(); setError('')
     if (suPass !== suPass2) { setError('Passwords do not match.'); return }
     if (suPass.length < 6)  { setError('Password must be at least 6 characters.'); return }
     setLoading(true)
@@ -59,8 +81,7 @@ export default function LoginPage() {
   }
 
   async function handleForgot(e: React.FormEvent) {
-    e.preventDefault()
-    clearMessages(); setLoading(true)
+    e.preventDefault(); setError(''); setLoading(true)
     const { error } = await supabase.auth.resetPasswordForEmail(fpEmail, {
       redirectTo: `${window.location.origin}/dashboard`
     })
@@ -69,104 +90,137 @@ export default function LoginPage() {
     setSuccess('Reset link sent! Check your inbox.')
   }
 
-  const activeTab = 'bg-[var(--gold)] text-white font-semibold'
-  const inactiveTab = 'bg-transparent text-[var(--text2)]'
+  const sty = {
+    page: {
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, background: 'var(--bg)'
+    } as React.CSSProperties,
+    card: {
+      width: '100%', maxWidth: 400, background: 'var(--surface)',
+      border: '1px solid var(--border)', borderRadius: 18,
+      padding: 32, boxShadow: 'var(--shadow)'
+    } as React.CSSProperties,
+    inp: {
+      width: '100%', padding: '10px 14px', background: 'var(--surface2)',
+      border: '1px solid var(--border)', borderRadius: 9, color: 'var(--text)',
+      fontSize: 14, outline: 'none', transition: 'border-color 0.2s'
+    } as React.CSSProperties,
+    lbl: { fontSize: 11, fontWeight: 600 as const, color: 'var(--text2)',
+           textTransform: 'uppercase' as const, letterSpacing: 1, display: 'block', marginBottom: 4 },
+    btn: {
+      width: '100%', padding: '12px 0', borderRadius: 9, border: 'none',
+      fontSize: 15, fontWeight: 700 as const, cursor: 'pointer',
+      background: clr, color: '#fff', marginTop: 20, transition: 'opacity 0.15s'
+    } as React.CSSProperties,
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4"
-      style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-sm">
+    <div style={sty.page}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏦</div>
-          <h1 className="font-display text-3xl" style={{ color: 'var(--gold)' }}>{APP_NAME}</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text3)' }}>Chit Fund Manager</p>
+        {/* Logo / branding */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          {branding.logo_url ? (
+            <img src={branding.logo_url} alt={branding.name}
+              style={{ height: 56, marginBottom: 12, borderRadius: 10, objectFit: 'contain' }} />
+          ) : (
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🏦</div>
+          )}
+          <div style={{ fontSize: 26, fontWeight: 800, color: clr }}>{branding.name}</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 3 }}>{branding.tagline}</div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border p-7"
-          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow)' }}>
-
-          {/* Tab switcher — only for signin/signup */}
+        <div style={sty.card}>
+          {/* Tab switcher */}
           {tab !== 'forgot' && (
-            <div className="flex gap-1 p-1 rounded-xl mb-6"
-              style={{ background: 'var(--surface2)' }}>
+            <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface2)', borderRadius: 10, marginBottom: 24 }}>
               {(['signin','signup'] as Tab[]).map(t => (
-                <button key={t} onClick={() => { setTab(t); clearMessages() }}
-                  className={`flex-1 py-2 rounded-lg text-sm transition-all ${tab === t ? activeTab : inactiveTab}`}>
+                <button key={t} onClick={() => { setTab(t); setError(''); setSuccess('') }}
+                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer',
+                    fontWeight: tab === t ? 700 : 400,
+                    background: tab === t ? clr : 'transparent',
+                    color: tab === t ? '#fff' : 'var(--text2)' }}>
                   {t === 'signin' ? 'Sign In' : 'Sign Up'}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Error / Success */}
-          {error   && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>✗ {error}</div>}
-          {success && <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>✓ {success}</div>}
+          {error   && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {error}</div>}
+          {success && <div style={{ background:'var(--green-dim)', color:'var(--green)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✓ {success}</div>}
 
           {/* Sign In */}
           {tab === 'signin' && (
-            <form onSubmit={handleSignIn} className="flex flex-col gap-4">
-              <Field label="Email" type="email"    value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="you@example.com" />
-              <Field label="Password" type="password" value={siPass}  onChange={e => setSiPass(e.target.value)}  placeholder="Your password" />
-              <div className="text-right -mt-2">
-                <button type="button" onClick={() => { setTab('forgot'); clearMessages() }}
-                  className="text-xs" style={{ color: 'var(--gold)' }}>Forgot password?</button>
+            <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div><label style={sty.lbl}>Email</label>
+                <input style={sty.inp} type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="you@example.com" required /></div>
+              <div><label style={sty.lbl}>Password</label>
+                <input style={sty.inp} type="password" value={siPass} onChange={e => setSiPass(e.target.value)} placeholder="Your password" required /></div>
+              <div style={{ textAlign: 'right', marginTop: -6 }}>
+                <button type="button" onClick={() => { setTab('forgot'); setError(''); setSuccess('') }}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: clr, cursor: 'pointer' }}>
+                  Forgot password?
+                </button>
               </div>
-              <SubmitBtn loading={loading}>Sign In</SubmitBtn>
+              <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
             </form>
           )}
 
           {/* Sign Up */}
           {tab === 'signup' && (
-            <form onSubmit={handleSignUp} className="flex flex-col gap-4">
-              <Field label="Full Name"        value={suName}  onChange={e => setSuName(e.target.value)}  placeholder="e.g. Ravi Kumar" />
-              <Field label="Email" type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@example.com" />
-              <Field label="Password" type="password" value={suPass}  onChange={e => setSuPass(e.target.value)}  placeholder="Min. 6 characters" />
-              <Field label="Confirm Password" type="password" value={suPass2} onChange={e => setSuPass2(e.target.value)} placeholder="Re-enter password" />
-              <SubmitBtn loading={loading}>Create Account</SubmitBtn>
+            <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div><label style={sty.lbl}>Full Name</label>
+                <input style={sty.inp} value={suName} onChange={e => setSuName(e.target.value)} placeholder="e.g. Ravi Kumar" /></div>
+              <div><label style={sty.lbl}>Email</label>
+                <input style={sty.inp} type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@example.com" required /></div>
+              <div><label style={sty.lbl}>Password</label>
+                <input style={sty.inp} type="password" value={suPass} onChange={e => setSuPass(e.target.value)} placeholder="Min. 6 characters" required /></div>
+              <div><label style={sty.lbl}>Confirm Password</label>
+                <input style={sty.inp} type="password" value={suPass2} onChange={e => setSuPass2(e.target.value)} placeholder="Re-enter password" required /></div>
+              <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
+                {loading ? 'Creating...' : 'Create Account'}
+              </button>
             </form>
           )}
 
-          {/* Forgot Password */}
+          {/* Forgot */}
           {tab === 'forgot' && (
-            <form onSubmit={handleForgot} className="flex flex-col gap-4">
-              <p className="text-sm" style={{ color: 'var(--text2)' }}>Enter your email and we'll send a reset link.</p>
-              <Field label="Email" type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="you@example.com" />
-              <SubmitBtn loading={loading}>Send Reset Link</SubmitBtn>
-              <button type="button" onClick={() => { setTab('signin'); clearMessages() }}
-                className="text-sm text-center" style={{ color: 'var(--text2)' }}>← Back to Sign In</button>
+            <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>Enter your email and we'll send a reset link.</p>
+              <div><label style={sty.lbl}>Email</label>
+                <input style={sty.inp} type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="you@example.com" required /></div>
+              <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+              <button type="button" onClick={() => { setTab('signin'); setError(''); setSuccess('') }}
+                style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                ← Back to Sign In
+              </button>
             </form>
           )}
         </div>
 
+        {/* Powered by */}
+        {firmSlug && (
+          <p style={{ textAlign: 'center', marginTop: 18, fontSize: 11, color: 'var(--text3)' }}>
+            Powered by ChitVault
+          </p>
+        )}
       </div>
     </div>
   )
 }
 
-// ── Small reusable components ─────────────────────────────────────────────────
-function Field({ label, type = 'text', value, onChange, placeholder }: {
-  label: string; type?: string; value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string
-}) {
+export default function LoginPage() {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>{label}</label>
-      <input type={type} value={value} onChange={onChange} placeholder={placeholder} required
-        className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-        style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
-    </div>
-  )
-}
-
-function SubmitBtn({ loading, children }: { loading: boolean; children: React.ReactNode }) {
-  return (
-    <button type="submit" disabled={loading}
-      className="w-full py-3 rounded-lg font-semibold text-sm transition-all disabled:opacity-50"
-      style={{ background: 'var(--gold)', color: '#0d0f14' }}>
-      {loading ? <span className="spinner" /> : children}
-    </button>
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--text3)' }}>
+        Loading...
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
