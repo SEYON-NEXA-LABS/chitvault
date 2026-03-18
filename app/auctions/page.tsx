@@ -12,7 +12,7 @@ import type { Group, Member, Auction } from '@/types'
 
 export default function AuctionsPage() {
   const supabase = createClient()
-  const { can, firm } = useFirm()
+  const { can } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -75,7 +75,7 @@ export default function AuctionsPage() {
       group_id: +form.group_id, month: +form.month,
       auction_date: form.auction_date || null,
       winner_id: +form.winner_id,
-      bid_amount: +form.bid_amount, firm_id: firm!.id, total_pot: +form.total_pot, dividend: +form.dividend
+      bid_amount: +form.bid_amount, firm_id: firmId!, total_pot: +form.total_pot, dividend: +form.dividend
     })
     setSaving(false)
     if (error) { show(error.message, 'error'); return }
