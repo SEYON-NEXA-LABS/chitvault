@@ -9,7 +9,7 @@ export function useFirmId() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      const { data } = await supabase.from('profiles').select('firm_id').eq('id', user.id).single()
+      const { data } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
       setFirmId(data?.firm_id || null)
     })
   }, [])

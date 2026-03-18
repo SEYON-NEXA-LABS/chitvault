@@ -68,7 +68,7 @@ function RegisterForm() {
       })
       setLoading(false)
       if (rpcErr) { setError(rpcErr.message); return }
-      window.location.replace('/onboarding')
+      window.location.replace('/dashboard')
     } else {
       // Normal: create new firm
       const { error: firmErr } = await supabase.rpc('register_firm', {
@@ -81,7 +81,7 @@ function RegisterForm() {
         setError(firmErr.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : firmErr.message)
         return
       }
-      window.location.replace('/onboarding')
+      window.location.replace('/dashboard')
     }
   }
 

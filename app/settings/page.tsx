@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const { toast, show, hide } = useToast()
 
   const [email,     setEmail]     = useState('')
-  const [theme,     setTheme]     = useState<'dark'|'light'>('dark')
+  const [theme,     setTheme]     = useState<'dark'|'light'>('light')
   const [resetting, setResetting] = useState(false)
   const [saving,    setSaving]    = useState(false)
   const [resetMsg,  setResetMsg]  = useState('')
@@ -33,7 +33,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ''))
-    const t = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
+    const t = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(t)
     if (firm) {
       setColor(firm.primary_color || '#c9a84c')

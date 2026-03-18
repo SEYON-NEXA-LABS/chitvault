@@ -38,12 +38,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const supabase  = createClient()
   const { firm, role } = useFirm()
   const [userEmail, setUserEmail] = useState('')
-  const [theme,     setTheme]     = useState<'dark'|'light'>('dark')
+  const [theme,     setTheme]     = useState<'dark'|'light'>('light')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || ''))
-    const saved = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
+    const saved = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(saved)
     document.documentElement.classList.toggle('light', saved === 'light')
   }, [])

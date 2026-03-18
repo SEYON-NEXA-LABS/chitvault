@@ -4,13 +4,14 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
+import { DevCredentials } from '@/components/DevCredentials'
 
 interface FirmBranding {
   name: string; primary_color: string; logo_url: string | null
   tagline: string; font: string
 }
 
-type Tab = 'signin' | 'signup' | 'forgot'
+type Tab = 'signin' | 'forgot'
 
 function LoginForm() {
   const router        = useRouter()
@@ -28,28 +29,30 @@ function LoginForm() {
     tagline: 'Chit Fund Manager', font: 'DM Sans'
   })
 
+  // Sign in form
   const [siEmail, setSiEmail] = useState('')
   const [siPass,  setSiPass]  = useState('')
-  const [suName,  setSuName]  = useState('')
-  const [suEmail, setSuEmail] = useState('')
-  const [suPass,  setSuPass]  = useState('')
-  const [suPass2, setSuPass2] = useState('')
+
+  // Forgot password form
   const [fpEmail, setFpEmail] = useState('')
 
   // Load firm branding if slug param present
   useEffect(() => {
     async function loadBranding() {
       if (!firmSlug) return
-      const { data } = await supabase
-        .rpc('get_firm_branding', { p_slug: firmSlug })
-        .single()
-      if (data) {
-        setBranding({
-          name: data.name, primary_color: data.primary_color || '#c9a84c',
-          logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
-          font: data.font || 'DM Sans'
-        })
-        applyBranding(data.primary_color || '#c9a84c', data.font || 'DM Sans')
+      try {
+        const { data } = await supabase
+          .rpc('get_firm_branding', { p_slug: firmSlug }) as any
+        if (data) {
+          setBranding({
+            name: data.name, primary_color: data.primary_color || '#c9a84c',
+            logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
+            font: data.font || 'DM Sans'
+          })
+          applyBranding(data.primary_color || '#c9a84c', data.font || 'DM Sans')
+        }
+      } catch (err) {
+        // RPC may fail if firm doesn't exist, use defaults
       }
     }
     loadBranding()
@@ -59,31 +62,22 @@ function LoginForm() {
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
-    setLoading(false)
-    if (error) { setError('Incorrect email or password.'); return }
-    window.location.replace('/')
+    const { data, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
+    if (error) { setError('Incorrect email or password.'); setLoading(false); return }
+    if (!data.session) { setError('Login failed. Please try again.'); setLoading(false); return }
+    
+    setSuccess('Login successful! Redirecting to dashboard...')
+    
+    // Use window.location to do a hard navigation that triggers middleware properly
+    setTimeout(() => {
+      window.location.href = '/dashboard'
+    }, 300)
   }
 
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault(); setError('')
-    if (suPass !== suPass2) { setError('Passwords do not match.'); return }
-    if (suPass.length < 6)  { setError('Password must be at least 6 characters.'); return }
-    setLoading(true)
-    const { error } = await supabase.auth.signUp({
-      email: suEmail, password: suPass,
-      options: { data: { full_name: suName } }
-    })
-    setLoading(false)
-    if (error) { setError(error.message); return }
-    setSuccess('Account created! You can now sign in.')
-    setTimeout(() => setTab('signin'), 2000)
-  }
-
-  async function handleForgot(e: React.FormEvent) {
+  async function handleForgotPassword(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
     const { error } = await supabase.auth.resetPasswordForEmail(fpEmail, {
-      redirectTo: `${window.location.origin}/dashboard`
+      redirectTo: `${window.location.origin}/reset-password`
     })
     setLoading(false)
     if (error) { setError(error.message); return }
@@ -131,75 +125,56 @@ function LoginForm() {
         </div>
 
         <div style={sty.card}>
-          {/* Tab switcher */}
-          {tab !== 'forgot' && (
-            <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface2)', borderRadius: 10, marginBottom: 24 }}>
-              {(['signin','signup'] as Tab[]).map(t => (
-                <button key={t} onClick={() => { setTab(t); setError(''); setSuccess('') }}
-                  style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer',
-                    fontWeight: tab === t ? 700 : 400,
-                    background: tab === t ? clr : 'transparent',
-                    color: tab === t ? '#fff' : 'var(--text2)' }}>
-                  {t === 'signin' ? 'Sign In' : 'Sign Up'}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {error   && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {error}</div>}
-          {success && <div style={{ background:'var(--green-dim)', color:'var(--green)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✓ {success}</div>}
+          {/* Alerts */}
+          {error && <div style={{ padding: '12px 14px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          {success && <div style={{ padding: '12px 14px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>{success}</div>}
 
           {/* Sign In */}
           {tab === 'signin' && (
             <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div><label style={sty.lbl}>Email</label>
-                <input style={sty.inp} type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="you@example.com" required /></div>
-              <div><label style={sty.lbl}>Password</label>
-                <input style={sty.inp} type="password" value={siPass} onChange={e => setSiPass(e.target.value)} placeholder="Your password" required /></div>
-              <div style={{ textAlign: 'right', marginTop: -6 }}>
-                <button type="button" onClick={() => { setTab('forgot'); setError(''); setSuccess('') }}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: clr, cursor: 'pointer' }}>
-                  Forgot password?
-                </button>
+              <div>
+                <label style={sty.lbl}>Email</label>
+                <input style={sty.inp} type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="you@example.com" required />
               </div>
+              <div>
+                <label style={sty.lbl}>Password</label>
+                <input style={sty.inp} type="password" value={siPass} onChange={e => setSiPass(e.target.value)} placeholder="Your password" required />
+              </div>
+              <button type="button" onClick={() => setTab('forgot')}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: clr, cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                Forgot password?
+              </button>
               <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
+              <div style={{ textAlign: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text2)' }}>New company? </span>
+                <a href="/register" style={{ fontSize: 13, color: clr, textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}>
+                  Register here
+                </a>
+              </div>
             </form>
           )}
 
-          {/* Sign Up */}
-          {tab === 'signup' && (
-            <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div><label style={sty.lbl}>Full Name</label>
-                <input style={sty.inp} value={suName} onChange={e => setSuName(e.target.value)} placeholder="e.g. Ravi Kumar" /></div>
-              <div><label style={sty.lbl}>Email</label>
-                <input style={sty.inp} type="email" value={suEmail} onChange={e => setSuEmail(e.target.value)} placeholder="you@example.com" required /></div>
-              <div><label style={sty.lbl}>Password</label>
-                <input style={sty.inp} type="password" value={suPass} onChange={e => setSuPass(e.target.value)} placeholder="Min. 6 characters" required /></div>
-              <div><label style={sty.lbl}>Confirm Password</label>
-                <input style={sty.inp} type="password" value={suPass2} onChange={e => setSuPass2(e.target.value)} placeholder="Re-enter password" required /></div>
-              <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
-                {loading ? 'Creating...' : 'Create Account'}
-              </button>
-            </form>
-          )}
-
-          {/* Forgot */}
+          {/* Forgot Password */}
           {tab === 'forgot' && (
-            <form onSubmit={handleForgot} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>Enter your email and we'll send a reset link.</p>
-              <div><label style={sty.lbl}>Email</label>
-                <input style={sty.inp} type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="you@example.com" required /></div>
+            <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={sty.lbl}>Email</label>
+                <input style={sty.inp} type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="your email" required />
+              </div>
               <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
               <button type="button" onClick={() => { setTab('signin'); setError(''); setSuccess('') }}
-                style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                style={{ background: 'none', border: 'none', fontSize: 12, color: clr, cursor: 'pointer', textAlign: 'center', padding: 0 }}>
                 ← Back to Sign In
               </button>
             </form>
           )}
+
+          {/* Dev Credentials (development only) */}
+          <DevCredentials />
         </div>
 
         {/* Powered by */}
