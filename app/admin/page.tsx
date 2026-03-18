@@ -74,6 +74,28 @@ export default function AdminPage() {
     .filter(f => filter === 'all' || (filter === 'suspended' ? f.plan_status === 'suspended' : f.plan === filter))
     .filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()) || f.city?.toLowerCase().includes(search.toLowerCase()) || f.slug.includes(search.toLowerCase()))
 
+  const [createOpen, setCreateOpen] = useState(false)
+  const [creating, setCreating]   = useState(false)
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'#c9a84c', tagline:'Chit Fund Manager', font:'DM Sans' })
+  const [createErr, setCreateErr] = useState('')
+
+  async function handleCreate() {
+    if (!newFirm.name.trim()) { setCreateErr('Enter a business name.'); return }
+    setCreating(true); setCreateErr('')
+    const slug = newFirm.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')
+    const { error } = await supabase.rpc('admin_create_firm', {
+      p_name: newFirm.name, p_slug: slug, p_city: newFirm.city||null,
+      p_phone: newFirm.phone||null, p_plan: newFirm.plan,
+      p_primary_color: newFirm.primary_color,
+      p_tagline: newFirm.tagline, p_font: newFirm.font
+    })
+    setCreating(false)
+    if (error) { setCreateErr(error.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error.message); return }
+    setCreateOpen(false)
+    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'#c9a84c', tagline:'Chit Fund Manager', font:'DM Sans' })
+    load()
+  }
+
   const sty = {
     page:    { background: '#0d0f14', minHeight: '100vh', color: '#e8ecf5', fontFamily: 'sans-serif' },
     header:  { background: '#161921', borderBottom: '1px solid #2a3045', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } as React.CSSProperties,
@@ -124,7 +146,11 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: 13, color: '#505a70' }}>
+          <button onClick={() => setCreateOpen(true)}
+          style={{ marginLeft: 'auto', padding: '7px 16px', background: '#c9a84c', color: '#0d0f14', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          + Create Firm
+        </button>
+        <div style={{ fontSize: 13, color: '#505a70' }}>
             Showing {displayed.length} of {firms.length} firms
           </div>
         </div>
@@ -210,6 +236,61 @@ export default function AdminPage() {
         </div>
 
       </div>
+    {/* Create Firm Modal */}
+    {createOpen && (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+        onClick={e => e.target===e.currentTarget && setCreateOpen(false)}>
+        <div style={{ background:'#161921', border:'1px solid #2a3045', borderRadius:16, padding:28, width:'100%', maxWidth:480 }}>
+          <h2 style={{ fontSize:18, fontWeight:800, color:'#e8ecf5', marginBottom:20 }}>Create New Firm</h2>
+          {createErr && <div style={{ background:'#5c1e26', color:'#f66d7a', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {[
+              { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds' },
+              { lbl:'City',            key:'city', ph:'Coimbatore' },
+              { lbl:'Phone',           key:'phone', ph:'98765 43210' },
+              { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
+                <input style={{ width:'100%', padding:'9px 12px', background:'#1e2230', border:'1px solid #2a3045', borderRadius:8, color:'#e8ecf5', fontSize:14, outline:'none' }}
+                  value={(newFirm as any)[f.key]} onChange={e => setNewFirm(n=>({...n,[f.key]:e.target.value}))} placeholder={f.ph} />
+              </div>
+            ))}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div>
+                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Plan</label>
+                <select style={{ width:'100%', padding:'9px 12px', background:'#1e2230', border:'1px solid #2a3045', borderRadius:8, color:'#e8ecf5', fontSize:13, outline:'none' }}
+                  value={newFirm.plan} onChange={e => setNewFirm(n=>({...n,plan:e.target.value}))}>
+                  <option value="trial">Trial</option>
+                  <option value="basic">Basic</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Primary Colour</label>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <input type="color" value={newFirm.primary_color}
+                    onChange={e => setNewFirm(n=>({...n,primary_color:e.target.value}))}
+                    style={{ width:36, height:36, borderRadius:8, border:'none', cursor:'pointer', padding:2 }} />
+                  <span style={{ fontSize:12, fontFamily:'monospace', color:'#8892aa' }}>{newFirm.primary_color}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:10, marginTop:22 }}>
+            <button onClick={() => { setCreateOpen(false); setCreateErr('') }}
+              style={{ flex:1, padding:'11px 0', background:'#1e2230', color:'#8892aa', border:'1px solid #2a3045', borderRadius:8, fontSize:14, cursor:'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleCreate} disabled={creating}
+              style={{ flex:2, padding:'11px 0', background:'#c9a84c', color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:creating?0.7:1 }}>
+              {creating ? 'Creating...' : 'Create Firm'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </div>
   )
 }
