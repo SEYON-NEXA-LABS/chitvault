@@ -1,167 +1,294 @@
-# ChitVault — Next.js Edition
+# ChitVault SaaS
 
-Auction Chit Fund Management Software built with **Next.js 14**, **Supabase** and **TypeScript**.
+**Auction Chit Fund Management Software** — Multi-tenant SaaS built with Next.js 14, Supabase and TypeScript.
 
 ---
 
 ## Stack
 
-| Layer       | Technology               |
-|-------------|--------------------------|
-| Framework   | Next.js 14 (App Router)  |
-| Database    | Supabase (PostgreSQL)    |
-| Auth        | Supabase Auth            |
-| Styling     | Tailwind CSS + CSS Vars  |
-| Language    | TypeScript               |
-| Deployment  | Vercel (free)            |
+| Layer       | Technology                        |
+|-------------|-----------------------------------|
+| Framework   | Next.js 14 (App Router)           |
+| Database    | Supabase PostgreSQL                |
+| Auth        | Supabase Auth (email + password)  |
+| Styling     | Tailwind CSS + CSS Variables      |
+| Language    | TypeScript                        |
+| Deployment  | Vercel (free tier)                |
+| Desktop     | Electron (optional .exe build)    |
 
 ---
 
-## Local Setup (First Time)
+## How Multi-Tenancy Works
 
-### 1. Clone the repo
+Single domain. All firms log in at the same URL. Data is isolated by `firm_id` on every table, enforced at the database level via Supabase Row Level Security (RLS).
+
+```
+chitvault.app/login    → All firms log in here
+chitvault.app/register → New firm self-registration
+chitvault.app/admin    → Super admin (your panel)
+chitvault.app/dashboard → Each firm's private workspace
+```
+
+After login, middleware reads `profiles.firm_id` and routes the user to their own dashboard. Firm A can never see Firm B's data — enforced at the DB level, not just the UI.
+
+---
+
+## User Roles
+
+| Role       | Access |
+|------------|--------|
+| **Owner**  | Full access — create groups, add members, record auctions, manage team, settings |
+| **Staff**  | Limited — view all data, record payments and cash entries only |
+| **Superadmin** | Your master account — see all firms, change plans, suspend accounts |
+
+---
+
+## Pages
+
+| Route | Description | Who |
+|---|---|---|
+| `/` | Public landing page with pricing | Everyone |
+| `/register` | 2-step firm registration | New firms |
+| `/login` | Sign in / sign up / forgot password | All users |
+| `/onboarding` | Welcome wizard after registration | New owners |
+| `/dashboard` | Stats, recent auctions, group progress | All |
+| `/groups` | Create and manage chit groups | Owner |
+| `/members` | Members with ticket dots, status, actions | Owner / Staff |
+| `/auctions` | Record monthly auctions + auto dividend calc | Owner |
+| `/payments` | Payment matrix with partial payment support | Owner / Staff |
+| `/cashbook` | Daily denomination entry (₹2000, ₹500 … ₹1) | Owner / Staff |
+| `/collection` | Printable pending collection report | Owner / Staff |
+| `/reports` | Group and member summary reports | Owner / Staff |
+| `/team` | Invite staff, manage roles | Owner |
+| `/settings` | Account, theme, database info | Owner |
+| `/invite/[id]` | Staff invite acceptance page | Invited staff |
+| `/admin` | Super admin — all firms, plans, billing | Superadmin |
+
+---
+
+## Quick Start
+
 ```bash
+# 1. Clone
 git clone https://github.com/YOUR_USERNAME/chitvault.git
 cd chitvault
-```
 
-### 2. Install dependencies
-```bash
+# 2. Install
 npm install
-```
 
-### 3. Set up environment variables
-```bash
+# 3. Environment
 cp .env.example .env.local
-```
-Edit `.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-NEXT_PUBLIC_APP_NAME=ChitVault
-```
+# Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-### 4. Set up Supabase database
-- Go to [supabase.com](https://supabase.com) → SQL Editor
-- Run `supabase_schema.sql`
-- Run the migration SQL to add new columns if upgrading
+# 4. Database
+# Paste supabase_schema_saas.sql into Supabase → SQL Editor → Run
 
-### 5. Run development server
-```bash
+# 5. Dev server
 npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000)
-
----
-
-## Git Workflow (Daily Development)
-
-### Starting a new feature
-```bash
-git checkout -b feature/payment-reminders
-# ... make changes ...
-git add .
-git commit -m "feat: add WhatsApp payment reminders"
-git push origin feature/payment-reminders
-# Open Pull Request on GitHub
-```
-
-### Committing a fix
-```bash
-git add .
-git commit -m "fix: collection report excluding exited members"
-git push
-```
-
-### Commit message convention
-```
-feat:  new feature
-fix:   bug fix
-style: UI changes
-refactor: code cleanup
-docs:  documentation
+# Open http://localhost:3000
 ```
 
 ---
 
-## Deploy to Vercel (Free)
+## First-Time Superadmin Setup
 
-### One-time setup
-```bash
-npm install -g vercel
-vercel login
-vercel
+1. Register an account at `/register` (creates a firm — you can leave it as a test firm)
+2. In Supabase SQL Editor, set yourself as superadmin:
+```sql
+update profiles set role = 'superadmin' where id = '<your-user-id>';
+-- Find your id: select id, email from auth.users;
 ```
-
-### Per-client deployment
-```bash
-# Set env vars in Vercel dashboard for the project
-# Or via CLI:
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-vercel env add NEXT_PUBLIC_APP_NAME
-
-vercel --prod
-```
-
-Each client gets their own Vercel project + Supabase project.
-
-### Auto-deploy on push
-Connect your GitHub repo in Vercel dashboard → every push to `main` auto-deploys.
+3. Sign out and sign back in → you'll land at `/admin`
 
 ---
 
-## Per-Client Setup Process
+## Database Schema
 
-1. **Create Supabase project** for client → run `supabase_schema.sql`
-2. **Fork or duplicate** this repo on GitHub → name it `chitvault-clientname`
-3. **Create Vercel project** → link to the repo → add client's env vars
-4. **Set `NEXT_PUBLIC_APP_NAME`** to client's business name
-5. **Deploy** → share the `.vercel.app` URL with client
+Tables and what they do:
+
+```
+firms           → registered businesses (name, slug, plan, status, trial_ends)
+profiles        → auth users linked to firms + role (owner/staff/superadmin)
+groups          → chit groups (firm_id, chit_value, duration, monthly_contribution)
+members         → chit members (firm_id, group_id, ticket_no, status, contact_id)
+auctions        → monthly auctions (firm_id, group_id, month, winner_id, dividend)
+payments        → payment records (firm_id, partial support, balance_due, collected_by)
+denominations   → daily cash entries (firm_id, note_2000…coin_1, computed total)
+invites         → staff invite links (firm_id, email, role, expires_at)
+```
+
+**RLS rules (enforced at DB level):**
+- `groups / members / auctions` — Staff can SELECT only; INSERT/UPDATE/DELETE requires owner role
+- `payments / denominations` — Both owner and staff can INSERT
+- All tables filtered by `my_firm_id()` helper function automatically
+
+---
+
+## Key Features
+
+**Groups & Members**
+- Create chit groups with value, duration, monthly contribution
+- Add members across multiple groups (linked by `contact_id`)
+- Ticket transfer, foreman absorption, defaulter tracking
+
+**Auctions**
+- Record winner + bid amount per month
+- Auto-calculates discount, dividend per member
+- Eligible bidder list (excludes previous winners)
+
+**Payments — Partial Payment Support**
+- Payment matrix: ✓ green = full, `65%` gold = partial, number = unpaid
+- Click partial cell → history modal with all installments + progress bar
+- "Pay Balance ₹X" button in history modal
+- `payment_type` (full/partial), `balance_due`, `collected_by` tracked per entry
+
+**Daily Cash Book**
+- Staff enters denomination counts: ₹2000 × 5, ₹500 × 12 etc.
+- Computed `total` stored in DB (generated column)
+- Date range filter, expandable entries, printable
+
+**Collection Report**
+- Lists all pending and partial members with phone numbers
+- Partial months marked with `M3 ~` (tilde indicator)
+- Defaulters in separate section with notes
+
+**Team Management**
+- Owner invites staff via email
+- Invite link sent → staff clicks → creates account → joins firm automatically
+- 7-day invite expiry, revokable, role selectable (staff / owner)
+
+**Billing (Manual)**
+- Trial: 30 days free, 2 groups, 20 members
+- Basic: ₹2,000/yr, 10 groups, 200 members
+- Pro: ₹5,000/yr, unlimited
+- Admin panel: change plan with dropdown → reflected instantly
+- Suspend non-paying accounts → firm sees suspended screen
 
 ---
 
 ## Project Structure
 
 ```
-chitvault-next/
+chitvault-saas/
 ├── app/
-│   ├── login/          # Sign in / sign up / forgot password
-│   ├── dashboard/      # Main dashboard + shared layout
-│   ├── groups/         # Chit group management
-│   ├── members/        # Member management
-│   ├── auctions/       # Auction recording
-│   ├── payments/       # Payment matrix
-│   ├── reports/        # Summary reports
-│   ├── collection/     # Collection report (printable)
-│   └── settings/       # Account & appearance
+│   ├── page.tsx              → Public landing page
+│   ├── register/             → 2-step firm registration
+│   ├── login/                → Auth page
+│   ├── onboarding/           → Post-registration wizard
+│   ├── invite/[id]/          → Staff invite accept
+│   ├── admin/                → Superadmin dashboard
+│   ├── dashboard/            → Stats + layout (shared by all pages below)
+│   ├── groups/
+│   ├── members/
+│   ├── auctions/
+│   ├── payments/
+│   ├── cashbook/
+│   ├── collection/
+│   ├── reports/
+│   ├── team/
+│   └── settings/
 ├── components/
-│   └── ui/             # Reusable UI components
+│   └── ui/                   → Badge, Btn, Card, Modal, Table, Toast, etc.
+├── electron/
+│   ├── main.js               → Electron entry (starts Next.js server)
+│   ├── preload.js            → Secure renderer bridge
+│   ├── loading.html          → Splash screen
+│   ├── package.json          → electron-builder config
+│   ├── LICENSE.txt
+│   ├── ELECTRON_BUILD.md     → Desktop build guide
+│   └── build/icon.ico
 ├── lib/
-│   ├── supabase/       # Browser & server clients
-│   ├── hooks/          # useToast, etc.
-│   └── utils/          # fmt, fmtDate, helpers
-├── types/              # TypeScript interfaces
-├── middleware.ts        # Auth protection
-└── .env.example        # Environment template
+│   ├── firm/
+│   │   ├── context.tsx       → FirmProvider (firm + profile + role + can())
+│   │   ├── permissions.ts    → PERMISSIONS map + can() function
+│   │   └── useFirmId.ts      → Hook for firm_id
+│   ├── supabase/
+│   │   ├── client.ts         → Browser Supabase client
+│   │   └── server.ts         → Server Supabase client
+│   └── utils/index.ts        → fmt(), fmtDate(), APP_NAME
+├── types/index.ts            → All TypeScript interfaces
+├── middleware.ts             → Auth guard + firm check + admin guard
+├── supabase_schema_saas.sql  → Full DB schema with RLS
+├── DEPLOYMENT.md             → Vercel deploy + domain setup guide
+└── .env.example              → Environment variables template
 ```
 
 ---
 
-## Adding a New Feature
+## Git Workflow
 
-1. Create page in `app/feature-name/page.tsx`
-2. Add route to sidebar in `app/dashboard/layout.tsx`
-3. Add TypeScript types in `types/index.ts` if needed
-4. Commit and push
+```bash
+# New feature
+git checkout -b feat/sms-reminders
+# ... make changes ...
+git add .
+git commit -m "feat: add WhatsApp payment reminders"
+git push origin feat/sms-reminders
+# Open Pull Request on GitHub → merge to main → Vercel auto-deploys
+
+# Quick fix
+git add .
+git commit -m "fix: partial payment balance calculation"
+git push
+```
+
+**Commit convention:**
+- `feat:` — new feature
+- `fix:` — bug fix
+- `style:` — UI/CSS changes
+- `refactor:` — code restructure
+- `docs:` — documentation
+
+---
+
+## Deploy
+
+```bash
+npm install -g vercel
+vercel login
+vercel --prod
+```
+
+See `DEPLOYMENT.md` for full instructions including custom domain setup.
+
+---
+
+## Desktop App (Electron)
+
+```bash
+# Build Windows .exe
+npm run build:electron:win
+# Output: electron/dist/ChitVault Setup 2.0.0.exe
+
+# Test desktop app locally
+npm run dev          # Terminal 1
+npm run electron:dev # Terminal 2
+```
+
+See `electron/ELECTRON_BUILD.md` for full build guide.
+
+---
+
+## Adding a New Page
+
+1. Create `app/your-page/page.tsx`
+2. Create `app/your-page/layout.tsx` → `export { default } from '@/app/dashboard/layout'`
+3. Add to sidebar in `app/dashboard/layout.tsx` (NAV array)
+4. Add icon import from `lucide-react`
+5. Add TypeScript types to `types/index.ts` if needed
+6. Add RLS policy to `supabase_schema_saas.sql` if new table
 
 ---
 
 ## Useful Commands
 
 ```bash
-npm run dev          # Start dev server
-npm run build        # Build for production
-npm run type-check   # Check TypeScript errors
-npm run lint         # Run ESLint
+npm run dev              # Start development server
+npm run build            # Production build
+npm run start            # Run production build locally
+npm run type-check       # TypeScript checks
+npm run lint             # ESLint
+npm run build:electron   # Build Next.js in standalone mode (for Electron)
+npm run build:electron:win  # Full Windows .exe build
+npm run electron:dev     # Run Electron pointing at dev server
 ```
