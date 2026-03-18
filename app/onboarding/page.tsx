@@ -21,7 +21,7 @@ export default function OnboardingPage() {
       setFirm(f)
     }
     load()
-  }, [])
+  }, [router, supabase])
 
   const steps = [
     {

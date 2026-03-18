@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { fmtDate, fmt } from '@/lib/utils'
+import { fmtDate } from '@/lib/utils'
 import type { Firm } from '@/types'
-import { PLAN_LIMITS } from '@/types'
 
 interface FirmWithStats extends Firm {
   memberCount: number
@@ -27,9 +26,7 @@ export default function AdminPage() {
   const [search,  setSearch]  = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
 
-  useEffect(() => { load() }, [])
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     const { data: firmsData } = await supabase.from('firms').select('*').order('created_at', { ascending: false })
     if (!firmsData) { setLoading(false); return }
@@ -51,7 +48,9 @@ export default function AdminPage() {
       suspended: enriched.filter(f => f.plan_status === 'suspended').length,
     })
     setLoading(false)
-  }
+  }, [supabase])
+
+  useEffect(() => { load() }, [load])
 
   async function updatePlan(firmId: string, plan: string) {
     setUpdating(firmId)

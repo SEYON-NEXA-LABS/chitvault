@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Playfair_Display } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
+import { BrandingProvider } from '@/lib/branding/BrandingProvider'
 import './globals.css'
 
 const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['300','400','500','600'], variable: '--font-dm-sans' })
@@ -26,10 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${dmSans.variable} ${playfair.variable}`}
-        style={{ fontFamily: 'var(--font-dm-sans, DM Sans, sans-serif)' }}>
+      <body className={`${dmSans.variable} ${playfair.variable}`}>
         <FirmProvider>
-          {children}
+          <BrandingProvider>
+            {children}
+          </BrandingProvider>
         </FirmProvider>
       </body>
     </html>

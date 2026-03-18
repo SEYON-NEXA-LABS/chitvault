@@ -10,12 +10,12 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Plus, Trash2, MoreHorizontal, CreditCard, Info } from 'lucide-react'
+import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit } from 'lucide-react'
 import type { Group, Member, Auction, Payment } from '@/types'
 
 export default function MembersPage() {
   const supabase = createClient()
-  const { can } = useFirm()
+  const { firm, can } = useFirm()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -28,13 +28,14 @@ export default function MembersPage() {
   const [addOpen,     setAddOpen]     = useState(false)
   const [detailMember, setDetailMember] = useState<Member | null>(null)
   const [actionMember, setActionMember] = useState<Member | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [addTab, setAddTab] = useState<'new'|'existing'>('new')
+  const [payMember,    setPayMember]    = useState<Member | null>(null)
+  const [saving,       setSaving]       = useState(false)
+  const [addTab,       setAddTab]       = useState<'new'|'existing'>('new')
 
-  const [form, setForm] = useState({
-    name:'', phone:'', address:'', group_id:'', ticket_no:'',
-    existing_id: '', contact_id: ''
-  })
+  const [form, setForm] = useState({ name:'', phone:'', address:'', group_id:'', ticket_no:'', existing_id: '', contact_id: '' })
+  const [editForm, setEditForm] = useState<Partial<Member>>({ name:'', phone:'', address:'' })
+  const [payForm,  setPayForm]  = useState({ amount: '', payment_date: new Date().toISOString().substring(0, 10), mode: 'Cash', month: '' })
+  const [isEditing, setIsEditing] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -49,21 +50,22 @@ export default function MembersPage() {
     setAuctions(a.data || [])
     setPayments(p.data || [])
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { load() }, [load])
 
   const filtered = filter === 'all' ? members : members.filter(m => m.group_id === filter)
 
   function memberStats(m: Member) {
-    const gAucs       = auctions.filter(a => a.group_id === m.group_id)
-    const relevant    = m.exit_month ? gAucs.filter(a => a.month <= m.exit_month!) : gAucs
-    const mPays       = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id && p.status === 'paid')
-    const paidCount   = mPays.length
-    const pendingCount = relevant.length - paidCount
-    const totalPaid   = mPays.reduce((s, p) => s + Number(p.amount), 0)
-    const won         = auctions.some(a => a.winner_id === m.id && a.group_id === m.group_id)
-    return { relevant, mPays, paidCount, pendingCount, totalPaid, won }
+    const g         = groups.find(x => x.id === m.group_id)
+    const gAucs     = auctions.filter(a => a.group_id === m.group_id)
+    const relevant  = m.exit_month ? gAucs.filter(a => a.month <= m.exit_month!) : gAucs
+    const mPays     = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id)
+    const paidMonths = new Set(mPays.filter(p => p.status === 'paid').map(p => p.month))
+    const pending   = relevant.filter(a => !paidMonths.has(a.month))
+    const totalPaid = mPays.reduce((s, p) => s + Number(p.amount), 0)
+    const won       = auctions.some(a => a.winner_id === m.id && a.group_id === m.group_id)
+    return { g, relevant, mPays, paidCount: paidMonths.size, pending, pendingCount: pending.length, totalPaid, won }
   }
 
   function statusBadge(m: Member) {
@@ -78,14 +80,9 @@ export default function MembersPage() {
     let payload: any
     if (addTab === 'existing' && form.existing_id) {
       const src = members.find(m => m.id === +form.existing_id)
-      payload = {
-        name: src?.name, phone: src?.phone, address: src?.address,
-        group_id: +form.group_id, ticket_no: +form.ticket_no,
-        contact_id: src?.contact_id || src?.id
-      }
+      payload = { name: src?.name, phone: src?.phone, address: src?.address, group_id: +form.group_id, ticket_no: +form.ticket_no, contact_id: src?.contact_id || src?.id }
     } else {
-      payload = { name: form.name, phone: form.phone, address: form.address,
-        group_id: +form.group_id, ticket_no: +form.ticket_no }
+      payload = { name: form.name, phone: form.phone, address: form.address, group_id: +form.group_id, ticket_no: +form.ticket_no }
     }
     const { data: ins, error } = await supabase.from('members').insert(payload).select().single()
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
@@ -96,6 +93,51 @@ export default function MembersPage() {
     setForm({ name:'',phone:'',address:'',group_id:'',ticket_no:'',existing_id:'',contact_id:'' })
     load()
     setSaving(false)
+  }
+
+  async function updateMember() {
+    if (!editForm.id) return
+    setSaving(true)
+    const { error } = await supabase.from('members').update({ name: editForm.name, phone: editForm.phone, address: editForm.address }).eq('id', editForm.id)
+    if (error) { showToast(error.message, 'error'); setSaving(false); return }
+    showToast('Member details saved!')
+    setSaving(false); setIsEditing(false); setDetailMember(null); load()
+  }
+
+  async function savePay() {
+    if (!payMember || !payForm.month || !payForm.amount) { showToast('Missing details', 'error'); return }
+    setSaving(true)
+    const group = groups.find(g => g.id === payMember.group_id)
+    const amountDue = group?.amount || 0
+    const alreadyPaid = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id && p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0)
+    const balanceDue = Math.max(0, amountDue - alreadyPaid - (+payForm.amount || 0))
+    const isPartial = balanceDue > 0
+
+    const payload: Omit<Payment, 'id'|'created_at'> = {
+      firm_id: payMember.firm_id,
+      member_id: payMember.id,
+      group_id: payMember.group_id,
+      month: +payForm.month,
+      amount: +payForm.amount,
+      payment_date: payForm.payment_date,
+      mode: payForm.mode as any,
+      status: isPartial ? 'partial' : 'paid',
+      amount_due: amountDue,
+      balance_due: balanceDue,
+    }
+    const { error } = await supabase.from('payments').insert(payload)
+    if (error) { showToast(error.message, 'error'); setSaving(false); return }
+
+    // Update prior partials for this month to 'paid'
+    if (!isPartial) {
+      await supabase.from('payments')
+        .update({ status: 'paid', balance_due: 0 })
+        .eq('member_id', payMember.id)
+        .eq('group_id', payMember.group_id)
+        .eq('month', +payForm.month)
+    }
+    showToast('Payment recorded!')
+    setSaving(false); setPayMember(null); load()
   }
 
   async function del(id: number) {
@@ -119,13 +161,9 @@ export default function MembersPage() {
   const [newTransfer, setNewTransfer] = useState({ name:'', phone:'', address:'' })
 
   async function transferTicket() {
-    if (!actionMember || !exitMonth || !newTransfer.name) return
+    if (!actionMember || !exitMonth || !newTransfer.name || !firm) return
     await supabase.from('members').update({ status: 'exited', exit_month: +exitMonth }).eq('id', actionMember.id)
-    await supabase.from('members').insert({
-      name: newTransfer.name, phone: newTransfer.phone, address: newTransfer.address,
-      group_id: actionMember.group_id, ticket_no: actionMember.ticket_no,
-      status: 'active', firm_id: firmId!, transfer_from_id: actionMember.id
-    })
+    await supabase.from('members').insert({ name: newTransfer.name, phone: newTransfer.phone, address: newTransfer.address, group_id: actionMember.group_id, ticket_no: actionMember.ticket_no, status: 'active', firm_id: firm.id, transfer_from_id: actionMember.id })
     showToast(`Ticket #${actionMember.ticket_no} transferred.`); setActionMember(null); load()
   }
 
@@ -176,7 +214,7 @@ export default function MembersPage() {
                       <Td>
                         <div className="flex flex-wrap gap-0.5 max-w-[180px]">
                           {s.relevant.map(a => {
-                            const paid = s.mPays.some(p => p.month === a.month)
+                            const paid = !s.pending.some(p => p.month === a.month)
                             return (
                               <span key={a.month} title={`Month ${a.month}: ${paid ? 'Paid' : 'Pending'}`}
                                 className={`pmonth ${paid ? 'paid' : 'unpaid'}`}>
@@ -189,10 +227,10 @@ export default function MembersPage() {
                       <Td right><span style={{ color: 'var(--green)' }}>{fmt(s.totalPaid)}</span></Td>
                       <Td>
                         <div className="flex items-center gap-1">
-                          <Btn size="sm" variant="ghost" onClick={() => setDetailMember(m)}
+                          <Btn size="sm" variant="ghost" onClick={() => { setDetailMember(m); setEditForm(m); setIsEditing(false) }}
                             style={{ color: 'var(--blue)' }}><Info size={13}/></Btn>
                           {m.status !== 'exited' && can('memberActions') && <>
-                            <Btn size="sm" variant="green" onClick={() => setActionMember(m)} title="Record payment">
+                            <Btn size="sm" variant="green" onClick={() => setPayMember(m)} title="Record payment">
                               <CreditCard size={13}/>
                             </Btn>
                             <Btn size="sm" variant="ghost" onClick={() => setActionMember(m)}
@@ -271,8 +309,7 @@ export default function MembersPage() {
       {/* Member Actions Modal */}
       {actionMember && (
         <Modal open={!!actionMember} onClose={() => setActionMember(null)} title="Member Actions" size="lg">
-          <div className="p-3 rounded-lg mb-5 text-sm font-medium"
-            style={{ background: 'var(--surface2)' }}>
+          <div className="p-3 rounded-lg mb-5 text-sm font-medium" style={{ background: 'var(--surface2)' }}>
             {actionMember.name} · {groups.find(g => g.id === actionMember.group_id)?.name} · Ticket #{actionMember.ticket_no}
           </div>
           <div className="space-y-4">
@@ -322,8 +359,7 @@ export default function MembersPage() {
               <div className="font-semibold mb-1 text-sm">🏦 Foreman Absorbs Ticket</div>
               <div className="text-xs mb-3" style={{ color: 'var(--text2)' }}>Exit member. Foreman takes over for remaining months.</div>
               <Field label="Exit After Month">
-                <select className={inputClass} style={inputStyle} id="fa_exit"
-                  defaultValue="">
+                <select className={inputClass} style={inputStyle} id="fa_exit" defaultValue="">
                   <option value="">Select month</option>
                   {auctions.filter(a => a.group_id === actionMember.group_id).map(a =>
                     <option key={a.month} value={a.month}>Month {a.month}</option>)}
@@ -332,13 +368,11 @@ export default function MembersPage() {
               <Btn size="sm" className="mt-3"
                 style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}
                 onClick={async () => {
+                  if (!firm) return
                   const sel = document.getElementById('fa_exit') as HTMLSelectElement
                   const em  = +sel.value; if (!em) return
                   await supabase.from('members').update({ status: 'exited', exit_month: em }).eq('id', actionMember.id)
-                  await supabase.from('members').insert({
-                    name: 'Foreman', group_id: actionMember.group_id, ticket_no: actionMember.ticket_no,
-                    status: 'foreman', transfer_from_id: actionMember.id
-                  })
+                  await supabase.from('members').insert({ name: 'Foreman', group_id: actionMember.group_id, ticket_no: actionMember.ticket_no, status: 'foreman', transfer_from_id: actionMember.id, firm_id: firm.id })
                   showToast('Foreman absorbed ticket.'); setActionMember(null); load()
                 }}>
                 Foreman Takes Over
@@ -351,69 +385,138 @@ export default function MembersPage() {
         </Modal>
       )}
 
+      {/* Pay Modal */}
+      {payMember && (() => {
+        const m = payMember
+        const { g, pending, paidCount } = memberStats(m)
+        const amountDue = g?.amount || 0
+        const alreadyPaid = payments
+          .filter(p => p.member_id === m.id && p.group_id === m.group_id && p.month === +payForm.month)
+          .reduce((s, p) => s + Number(p.amount), 0)
+        const balance = Math.max(0, amountDue - alreadyPaid)
+
+        return (
+          <Modal open={!!payMember} onClose={() => setPayMember(null)} title="Record Payment">
+            <div className="p-3 rounded-xl mb-5 text-sm font-medium flex items-center justify-between"
+              style={{ background: 'var(--surface2)' }}>
+              <span>{m?.name} · {g?.name} · Ticket #{m?.ticket_no}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Month">
+                <select className={inputClass} style={inputStyle} value={payForm.month} onChange={e => setPayForm(f => ({...f, month: e.target.value}))}>
+                  <option value="">Select month</option>
+                  {pending.map(a => <option key={a.month} value={a.month}>Month {a.month}</option>)}
+                </select>
+              </Field>
+              <Field label={`Amount (Balance: ${fmt(balance)})`}>
+                <input className={inputClass} style={inputStyle} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} placeholder={String(balance)} />
+              </Field>
+              <Field label="Payment Date">
+                <input className={inputClass} style={inputStyle} type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({...f, payment_date: e.target.value}))} />
+              </Field>
+              <Field label="Mode">
+                <select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}>
+                  <option>Cash</option> <option>Bank Transfer</option> <option>UPI</option>
+                </select>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+              <Btn variant="secondary" onClick={() => setPayMember(null)}>Cancel</Btn>
+              <Btn variant="primary" loading={saving} onClick={savePay}>Record Payment</Btn>
+            </div>
+          </Modal>
+        )
+      })()}
+
       {/* Detail Modal */}
       {detailMember && (() => {
         const m = detailMember
-        const s = memberStats(m)
-        const g = groups.find(x => x.id === m.group_id)
+        const { g, won, relevant, mPays, paidCount, pendingCount, totalPaid, pending } = memberStats(m)
         const remaining = g ? g.duration - auctions.filter(a => a.group_id === m.group_id).length : 0
-        const pendingList = s.relevant.filter(a => !s.mPays.find(p => p.month === a.month))
         return (
-          <Modal open={!!detailMember} onClose={() => setDetailMember(null)} title={m.name} size="lg">
-            {/* Summary cards */}
-            <div className="grid grid-cols-4 gap-3 mb-5">
-              {[
-                { label: 'Paid', val: s.paidCount, unit: 'months', color: 'var(--green)' },
-                { label: 'Pending', val: s.pendingCount, unit: 'months', color: s.pendingCount > 0 ? 'var(--red)' : 'var(--green)' },
-                { label: 'Remaining', val: remaining, unit: 'months left', color: 'var(--blue)' },
-                { label: 'Total Paid', val: fmt(s.totalPaid), unit: '', color: 'var(--gold)' },
-              ].map(c => (
-                <div key={c.label} className="rounded-xl p-3 text-center" style={{ background: 'var(--surface2)' }}>
-                  <div className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text3)' }}>{c.label}</div>
-                  <div className="font-mono font-bold text-xl" style={{ color: c.color }}>{c.val}</div>
-                  {c.unit && <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>{c.unit}</div>}
-                </div>
-              ))}
-            </div>
-            {/* Info */}
-            <div className="flex gap-4 flex-wrap text-xs mb-4" style={{ color: 'var(--text2)' }}>
-              <span>📞 {m.phone||'—'}</span>
-              <span>🏠 {m.address||'—'}</span>
-              <span>🎟 #{m.ticket_no}</span>
-              <span>👥 {g?.name}</span>
-              {s.won && <Badge variant="gold">👑 Won</Badge>}
-            </div>
-            {/* Pending alert */}
-            {pendingList.length > 0 && (
-              <div className="p-3 rounded-lg mb-4 text-sm" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
-                ⚠ Pending months: {pendingList.map(a => `Month ${a.month}`).join(', ')}
+          <Modal open={!!detailMember} onClose={() => setDetailMember(null)} title={isEditing ? `Edit ${m.name}` : m.name} size="lg">
+            
+            {!isEditing && <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-4 gap-3 mb-5">
+                {[
+                  { label: 'Paid', val: paidCount, unit: 'months', color: 'var(--green)' },
+                  { label: 'Pending', val: pendingCount, unit: 'months', color: pendingCount > 0 ? 'var(--red)' : 'var(--green)' },
+                  { label: 'Remaining', val: remaining, unit: 'months left', color: 'var(--blue)' },
+                  { label: 'Total Paid', val: fmt(totalPaid), unit: '', color: 'var(--gold)' },
+                ].map(c => (
+                  <div key={c.label} className="rounded-xl p-3 text-center" style={{ background: 'var(--surface2)' }}>
+                    <div className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text3)' }}>{c.label}</div>
+                    <div className="font-mono font-bold text-xl" style={{ color: c.color }}>{c.val}</div>
+                    {c.unit && <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>{c.unit}</div>}
+                  </div>
+                ))}
+              </div>
+              {/* Info */}
+              <div className="flex gap-4 flex-wrap text-xs mb-4" style={{ color: 'var(--text2)' }}>
+                <span>📞 {m.phone||'—'}</span>
+                <span>🏠 {m.address||'—'}</span>
+                <span>🎟 #{m.ticket_no}</span>
+                <span>👥 {g?.name}</span>
+                {won && <Badge variant="gold">👑 Won</Badge>}
+              </div>
+            </>}
+
+            {isEditing && (
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Full Name">
+                  <input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} />
+                </Field>
+                <Field label="Phone">
+                  <input className={inputClass} style={inputStyle} value={editForm.phone || ''} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))} />
+                </Field>
+                <Field label="Address" className="col-span-2">
+                  <input className={inputClass} style={inputStyle} value={editForm.address || ''} onChange={e => setEditForm(f => ({...f, address: e.target.value}))} />
+                </Field>
               </div>
             )}
+
+            {/* Pending alert */}
+            {pending.length > 0 && !isEditing && (
+              <div className="p-3 rounded-lg mb-4 text-sm" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
+                ⚠ Pending months: {pending.map(a => `Month ${a.month}`).join(', ')}
+              </div>
+            )}
+
             {/* Payment rows */}
-            <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text2)' }}>Payment History</div>
-            <div className="max-h-64 overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-              <Table>
-                <thead><tr>{['Month','Date','Auction','Amount','Paid On','Mode','Status'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
-                <tbody>
-                  {s.relevant.map(a => {
-                    const p = s.mPays.find(x => x.month === a.month)
-                    return (
-                      <Tr key={a.month}>
-                        <Td><Badge variant="blue">M{a.month}</Badge></Td>
-                        <Td>{fmtDate(a.auction_date)}</Td>
-                        <Td>{a.winner_id === m.id ? <Badge variant="gold">👑 Won</Badge> : '—'}</Td>
-                        <Td right>{p ? fmt(p.amount) : '—'}</Td>
-                        <Td>{p ? fmtDate(p.payment_date) : '—'}</Td>
-                        <Td>{p ? <span className="text-xs" style={{ color: 'var(--text2)' }}>{p.mode}</span> : '—'}</Td>
-                        <Td>{p ? <Badge variant="green">✓ Paid</Badge> : <Badge variant="red">⚠ Pending</Badge>}</Td>
-                      </Tr>
-                    )
-                  })}
-                </tbody>
-              </Table>
-            </div>
+            {!isEditing && <>
+              <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text2)' }}>Payment History</div>
+              <div className="max-h-64 overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+                <Table>
+                  <thead><tr>{['Month','Date','Auction','Amount','Paid On','Mode','Status'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
+                  <tbody>
+                    {relevant.map(a => {
+                      const p = mPays.find(x => x.month === a.month)
+                      return (
+                        <Tr key={a.month}>
+                          <Td><Badge variant="blue">M{a.month}</Badge></Td>
+                          <Td>{fmtDate(a.auction_date)}</Td>
+                          <Td>{a.winner_id === m.id ? <Badge variant="gold">👑 Won</Badge> : '—'}</Td>
+                          <Td right>{p ? fmt(p.amount) : '—'}</Td>
+                          <Td>{p ? fmtDate(p.payment_date) : '—'}</Td>
+                          <Td>{p ? <span className="text-xs" style={{ color: 'var(--text2)' }}>{p.mode}</span> : '—'}</Td>
+                          <Td>{p ? <Badge variant="green">✓ Paid</Badge> : <Badge variant="red">⚠ Pending</Badge>}</Td>
+                        </Tr>
+                      )
+                    })}
+                  </tbody>
+                </Table>
+              </div>
+            </>}
+
             <div className="flex justify-end gap-3 mt-5 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-              <Btn variant="secondary" onClick={() => setDetailMember(null)}>Close</Btn>
+              {isEditing ? <>
+                <Btn variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Btn>
+                <Btn variant="primary" loading={saving} onClick={updateMember}>Save Changes</Btn>
+              </> : <>
+                <Btn variant="secondary" onClick={() => { setDetailMember(null); setIsEditing(false); }}>Close</Btn>
+                {can('editMember') && <Btn variant="primary" onClick={() => setIsEditing(true)}><Edit size={14}/> Edit</Btn>}
+              </>}
             </div>
           </Modal>
         )

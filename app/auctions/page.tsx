@@ -48,7 +48,7 @@ export default function AuctionsPage() {
     setAuctions(a.data || [])
     setCommissions(fc.data || [])
     setLoading(false)
-  }, [firm])
+  }, [firm, supabase])
 
   useEffect(() => { if (firm) load() }, [firm, load])
 

@@ -8,7 +8,7 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useFirm } from '@/lib/firm/context'
 import type { Group, Member, Auction, Payment } from '@/types'
-import { History, CreditCard } from 'lucide-react'
+import { CreditCard } from 'lucide-react'
 
 export default function PaymentsPage() {
   const supabase = createClient()
@@ -46,7 +46,7 @@ export default function PaymentsPage() {
     setAuctions(a.data || [])
     setPayments(p.data || [])
     setLoading(false)
-  }, [firm])
+  }, [firm, supabase])
 
   useEffect(() => { if (firm) load() }, [firm, load])
 
@@ -438,8 +438,10 @@ export default function PaymentsPage() {
               <Btn variant="secondary" onClick={() => setHistoryModal(null)}>Close</Btn>
               {!isFull && (
                 <Btn variant="primary" onClick={() => {
-                  setHistoryModal(null)
-                  openPay(historyModal.memberId, historyModal.groupId, historyModal.month)
+                  if (historyModal) {
+                    setHistoryModal(null)
+                    openPay(historyModal.memberId, historyModal.groupId, historyModal.month)
+                  }
                 }}>
                   <CreditCard size={13} /> Pay Balance {fmt(balance)}
                 </Btn>

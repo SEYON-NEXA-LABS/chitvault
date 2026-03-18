@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { fmt, fmtDate } from '@/lib/utils'
-import { StatCard, Card, Loading, Badge, ProgressBar } from '@/components/ui'
+import { StatCard, Card, Loading, Badge } from '@/components/ui'
 import type { Group, Member, Auction, Payment } from '@/types'
 
 export default function DashboardPage() {
@@ -29,7 +29,7 @@ export default function DashboardPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [supabase])
 
   if (loading) return <Loading />
 

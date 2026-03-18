@@ -51,7 +51,7 @@ export default function CashbookPage() {
       .order('entry_date', { ascending: false })
     setEntries(data || [])
     setLoading(false)
-  }, [firm, fromDate, toDate])
+  }, [firm, fromDate, toDate, supabase])
 
   useEffect(() => { if (firm) load() }, [firm, fromDate, toDate, load])
 

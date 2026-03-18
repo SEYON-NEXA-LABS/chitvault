@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, cn } from '@/lib/utils'
+import { fmt, fmtDate } from '@/lib/utils'
 import {
-  Btn, Badge, Card, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, ProgressBar
+  Btn, Badge, TableCard, Table, Th, Td, Tr,
+  Modal, Field, Loading, Empty, Toast, ProgressBar, Card
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -16,7 +16,7 @@ import type { Group, Auction, Payment } from '@/types'
 
 export default function GroupsPage() {
   const supabase = createClient()
-  const { can } = useFirm()
+  const { firm, can } = useFirm()
   const router = useRouter()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
@@ -46,7 +46,7 @@ export default function GroupsPage() {
     setAuctions(a.data || [])
     setPayments(p.data || [])
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { load() }, [load])
 
@@ -76,11 +76,12 @@ export default function GroupsPage() {
   }
 
   async function handleSave() {
+    if (!firm) return
     setSaving(true)
     const { error } = await supabase.from('groups').insert({
       name: form.name, chit_value: +form.chit_value, num_members: +form.num_members,
       duration: +form.duration, monthly_contribution: +form.monthly_contribution,
-      start_date: form.start_date || null, status: 'active', firm_id: firmId!
+      start_date: form.start_date || null, status: 'active', firm_id: firm.id
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
@@ -104,7 +105,8 @@ export default function GroupsPage() {
   }
 
   async function unarchive(id: number) {
-    await supabase.from('groups').update({ status: 'active', firm_id: firmId! }).eq('id', id)
+    if (!firm) return
+    await supabase.from('groups').update({ status: 'active', firm_id: firm.id }).eq('id', id)
     showToast('Group restored.'); loadArchived(); load()
   }
 
