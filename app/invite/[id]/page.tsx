@@ -51,9 +51,12 @@ export default function InvitePage() {
 
   async function acceptInvite(userId: string, inv: any) {
     // Update profile to join firm
-    await supabase.from('profiles').upsert({
-      id: userId, firm_id: inv.firm_id, role: inv.role
-    })
+    const { error: profErr } = await supabase.from('profiles').update({
+      firm_id: inv.firm_id, role: inv.role
+    }).eq('id', userId)
+    
+    if (profErr) { setError(profErr.message || 'Failed to join firm.'); return }
+    
     // Mark invite accepted
     await supabase.from('invites').update({ status: 'accepted' }).eq('id', inviteId)
     setState('success')

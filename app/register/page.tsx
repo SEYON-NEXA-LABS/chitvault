@@ -58,9 +58,11 @@ export default function RegisterPage() {
     if (firmErr || !firm) { setError(firmErr?.message || 'Failed to create firm.'); setLoading(false); return }
 
     // 3. Link profile to firm with owner role
-    await supabase.from('profiles').upsert({
-      id: userId, firm_id: firm.id, full_name: form.full_name, role: 'owner'
-    })
+    const { error: profileErr } = await supabase.from('profiles').update({
+      firm_id: firm.id, full_name: form.full_name, role: 'owner'
+    }).eq('id', userId)
+
+    if (profileErr) { setError(profileErr.message || 'Failed to link profile to firm.'); setLoading(false); return }
 
     setLoading(false)
     router.push('/onboarding')
