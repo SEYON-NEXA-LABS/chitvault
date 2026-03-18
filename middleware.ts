@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -21,24 +22,52 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
-  const isPublic = ['/login','/register'].some(p => pathname.startsWith(p))
-  const isAdmin  = pathname.startsWith('/admin')
-  const isOnboarding = pathname === '/onboarding'
 
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone(); url.pathname = '/login'
+  const isPublic     = ['/login', '/register', '/'].some(p => pathname === p)
+  const isAdmin      = pathname.startsWith('/admin')
+  const isOnboarding = pathname === '/onboarding'
+  const isInvite     = pathname.startsWith('/invite')
+
+  // Not logged in — allow public pages and invite links only
+  if (!user && !isPublic && !isInvite) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user && !isPublic && !isOnboarding) {
+  // Logged in on a public page — route to the right place
+  if (user && isPublic) {
     const { data: profile } = await supabase
-      .from('profiles').select('firm_id,role').eq('id', user.id).single()
+      .from('profiles').select('firm_id, role').eq('id', user.id).single()
+
+    if (profile?.role === 'superadmin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin'
+      return NextResponse.redirect(url)
+    }
+    if (!profile?.firm_id) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // Logged in, protected route — enforce admin guard + firm check
+  if (user && !isPublic && !isOnboarding && !isInvite) {
+    const { data: profile } = await supabase
+      .from('profiles').select('firm_id, role').eq('id', user.id).single()
+
     if (isAdmin && profile?.role !== 'superadmin') {
-      const url = request.nextUrl.clone(); url.pathname = '/dashboard'
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
     if (!profile?.firm_id && !isAdmin) {
-      const url = request.nextUrl.clone(); url.pathname = '/onboarding'
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
       return NextResponse.redirect(url)
     }
   }
@@ -47,5 +76,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|.*\\.png$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|.*\\.png$|.*\\.ico$).*)'],
 }
