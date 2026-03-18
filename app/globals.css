@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables — Dark Theme (default) ─────────────────── */
+:root {
+  --bg:         #0d0f14;
+  --surface:    #161921;
+  --surface2:   #1e2230;
+  --surface3:   #252a3a;
+  --border:     #2a3045;
+  --gold:       #c9a84c;
+  --gold-light: #e8c870;
+  --gold-dim:   #7a6230;
+  --green:      #3ecf8e;
+  --green-dim:  #1a5c3f;
+  --red:        #f66d7a;
+  --red-dim:    #5c1e26;
+  --blue:       #5b8af5;
+  --blue-dim:   #1e2f5c;
+  --text:       #e8ecf5;
+  --text2:      #8892aa;
+  --text3:      #505a70;
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* ── Light Theme ─────────────────────────────────────────── */
+.light {
+  --bg:         #f0f2f7;
+  --surface:    #ffffff;
+  --surface2:   #f5f6fa;
+  --surface3:   #e8eaf2;
+  --border:     #dde1ed;
+  --gold:       #a07828;
+  --gold-light: #c49a32;
+  --gold-dim:   #fdf3dc;
+  --green:      #1a8a5a;
+  --green-dim:  #e6f7f0;
+  --red:        #d63a4a;
+  --red-dim:    #fdedf0;
+  --blue:       #2d5fd4;
+  --blue-dim:   #e8effe;
+  --text:       #1a1e2e;
+  --text2:      #4a5168;
+  --text3:      #8892aa;
+  --shadow:     0 4px 24px rgba(0,0,0,0.10);
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Smooth theme transitions ─────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+button, a { transition: all 0.15s ease !important; }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ── Progress bar ─────────────────────────────────────────── */
+.progress-bar-wrap {
+  background: var(--surface3);
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* ── Spinner ─────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Shake animation ─────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-8px); }
+  40%, 80%  { transform: translateX(8px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+/* ── Month dot (payment matrix) ──────────────────────────── */
+.pmonth {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: default;
+}
+.pmonth.paid   { background: var(--green-dim); color: var(--green); }
+.pmonth.unpaid { background: var(--surface3);  color: var(--text3); }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+}
