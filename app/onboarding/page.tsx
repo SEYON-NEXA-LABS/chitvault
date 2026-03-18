@@ -90,7 +90,7 @@ export default function OnboardingPage() {
               <div style={{ fontSize: 13, color: '#8892aa', lineHeight: 2 }}>
                 <div>Business: <strong style={{ color: '#e8ecf5' }}>{firm.name}</strong></div>
                 <div>Plan: <strong style={{ color: '#e8ecf5' }}>Trial (30 days free)</strong></div>
-                <div>Your URL: <strong style={{ color: '#c9a84c' }}>{firm.slug}.chitvault.app</strong></div>
+                <div>Login URL: <strong style={{ color: '#c9a84c' }}>chitvault.app/login</strong></div>
               </div>
             </div>
           )}

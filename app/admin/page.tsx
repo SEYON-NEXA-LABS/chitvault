@@ -135,7 +135,7 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#1e2230' }}>
-                  {['Firm','Slug / URL','City','Groups','Members','Plan','Status','Invoice Ref','Trial Ends','Joined','Actions'].map(h => (
+                  {['Firm','City','Groups','Members','Plan','Status','Invoice Ref','Trial Ends','Joined','Actions'].map(h => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#505a70', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #2a3045', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -153,10 +153,7 @@ export default function AdminPage() {
                           {f.name}
                           <div style={{ fontSize: 11, color: '#505a70', marginTop: 2 }}>{f.phone}</div>
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <code style={{ color: '#c9a84c', fontSize: 12 }}>{f.slug}</code>
-                          <div style={{ fontSize: 11, color: '#505a70' }}>{f.slug}.chitvault.app</div>
-                        </td>
+
                         <td style={{ padding: '12px 14px', color: '#8892aa' }}>{f.city || '—'}</td>
                         <td style={{ padding: '12px 14px', fontWeight: 600, color: '#5b8af5' }}>{f.groupCount}</td>
                         <td style={{ padding: '12px 14px', fontWeight: 600, color: '#5b8af5' }}>{f.memberCount}</td>
@@ -191,13 +188,7 @@ export default function AdminPage() {
                           {fmtDate(f.created_at)}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              style={{ padding: '5px 10px', background: '#1e2f5c', color: '#5b8af5', border: '1px solid rgba(91,138,245,0.3)', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}
-                              onClick={() => window.open(`https://${f.slug}.chitvault.app`, '_blank')}>
-                              Visit
-                            </button>
-                          </div>
+                          <div style={{ fontSize: 11, color: '#505a70', fontFamily: 'monospace' }}>{f.slug}</div>
                         </td>
                       </tr>
                     ))

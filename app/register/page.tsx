@@ -107,11 +107,7 @@ export default function RegisterPage() {
                     onChange={e => setForm(f => ({...f, firm_name: e.target.value}))}
                     onKeyDown={e => e.key === 'Enter' && checkSlug()}
                     placeholder="e.g. Kumari Chit Funds" />
-                  {form.firm_name && (
-                    <div style={{ fontSize: 11, color: '#505a70', marginTop: 4 }}>
-                      Your app URL: <span style={{ color: '#c9a84c' }}>{slugify(form.firm_name)}.chitvault.app</span>
-                    </div>
-                  )}
+
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
