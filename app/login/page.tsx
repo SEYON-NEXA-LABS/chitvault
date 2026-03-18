@@ -37,8 +37,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
     setLoading(false)
     if (error) { setError(error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message); return }
-    router.push('/dashboard')
-    router.refresh()
+    // Let middleware decide destination (dashboard / onboarding / admin)
+    // based on profile.firm_id and role — just refresh to trigger middleware
+    window.location.replace('/')
   }
 
   async function handleSignUp(e: React.FormEvent) {
