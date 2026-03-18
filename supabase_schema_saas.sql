@@ -261,3 +261,64 @@ create policy "payments_update" on payments for update
   using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
 create policy "payments_delete" on payments for delete
   using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
+
+-- ── PAYMENTS TABLE — allow partial payments ───────────────────
+-- Drop old unique constraint, add new columns
+alter table payments
+  add column if not exists payment_type  text default 'full',   -- full | partial
+  add column if not exists amount_due    numeric default 0,      -- full amount expected for this month
+  add column if not exists balance_due   numeric default 0,      -- remaining after this payment
+  add column if not exists collected_by  uuid references auth.users(id) on delete set null;
+
+-- Remove the old unique constraint so multiple partial payments per month are allowed
+alter table payments
+  drop constraint if exists payments_firm_id_member_id_group_id_month_key,
+  drop constraint if exists payments_member_id_group_id_month_key;
+
+-- New index: still want fast lookup per member+month
+create index if not exists idx_payments_member_month
+  on payments(firm_id, member_id, group_id, month);
+
+-- ── DAILY DENOMINATION TABLE ──────────────────────────────────
+create table if not exists denominations (
+  id           bigint primary key generated always as identity,
+  firm_id      uuid not null references firms(id) on delete cascade,
+  entry_date   date not null default current_date,
+  collected_by uuid references auth.users(id) on delete set null,
+  -- Note denominations
+  note_2000    int default 0,
+  note_500     int default 0,
+  note_200     int default 0,
+  note_100     int default 0,
+  note_50      int default 0,
+  note_20      int default 0,
+  note_10      int default 0,
+  coin_5       int default 0,
+  coin_2       int default 0,
+  coin_1       int default 0,
+  -- Computed total (stored for fast query)
+  total        numeric generated always as (
+    note_2000*2000 + note_500*500 + note_200*200 + note_100*100 +
+    note_50*50 + note_20*20 + note_10*10 +
+    coin_5*5 + coin_2*2 + coin_1*1
+  ) stored,
+  notes        text,
+  created_at   timestamptz default now()
+);
+
+create index if not exists idx_denominations_firm_date
+  on denominations(firm_id, entry_date desc);
+
+alter table denominations enable row level security;
+grant all on denominations to authenticated;
+grant usage, select on sequence denominations_id_seq to authenticated;
+
+-- Both owner and staff can create denomination entries
+create policy "denom_select" on denominations for select
+  using (firm_id = my_firm_id() or is_superadmin());
+create policy "denom_insert" on denominations for insert
+  with check (firm_id = my_firm_id());
+create policy "denom_update" on denominations for update
+  using (firm_id = my_firm_id() and (collected_by = auth.uid() or is_firm_owner()));
+create policy "denom_delete" on denominations for delete
+  using (firm_id = my_firm_id() and is_firm_owner());

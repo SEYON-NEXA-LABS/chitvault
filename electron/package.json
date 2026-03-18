@@ -1,0 +1,86 @@
+{
+  "name": "chitvault-desktop",
+  "productName": "ChitVault",
+  "version": "2.0.0",
+  "description": "ChitVault — Auction Chit Fund Management Software",
+  "main": "main.js",
+  "private": true,
+  "author": {
+    "name": "Your Name",
+    "email": "info@chitvault.app"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "app.chitvault.desktop",
+    "productName": "ChitVault",
+    "copyright": "Copyright © 2026 ChitVault",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "loading.html",
+      "build/icon.*"
+    ],
+    "extraResources": [
+      {
+        "from": "../.next/standalone",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../.next/static",
+        "to": "server/.next/static",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../public",
+        "to": "server/public",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico",
+      "publisherName": "ChitVault"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ChitVault",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "license": "LICENSE.txt"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.finance"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Finance"
+    }
+  }
+}

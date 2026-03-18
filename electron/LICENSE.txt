@@ -1,0 +1,17 @@
+ChitVault Desktop — End User License Agreement
+
+Copyright © 2026 ChitVault. All rights reserved.
+
+1. LICENSE
+   A non-exclusive, non-transferable license to use this software for
+   your own chit fund business operations.
+
+2. RESTRICTIONS
+   Do not copy, distribute, or resell this software without permission.
+
+3. DATA
+   All data is stored in your own Supabase cloud database.
+   ChitVault has no access to your business data.
+
+4. SUPPORT
+   Contact: info@chitvault.app
