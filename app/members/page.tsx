@@ -18,14 +18,16 @@ export default function MembersPage() {
   const { firm, can } = useFirm()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
-  const [groups,   setGroups]   = useState<Group[]>([])
-  const [members,  setMembers]  = useState<Member[]>([])
-  const [auctions, setAuctions] = useState<Auction[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [filter,   setFilter]   = useState<number | 'all'>('all')
+  const [allGroups, setAllGroups] = useState<Group[]>([])
+  const [members,   setMembers]   = useState<Member[]>([])
+  const [auctions,  setAuctions]  = useState<Auction[]>([])
+  const [payments,  setPayments]  = useState<Payment[]>([])
+  const [loading,   setLoading]   = useState(true)
+  
+  const [view,   setView]   = useState<'active' | 'archived'>('active')
+  const [filter, setFilter] = useState<number | 'all'>('all')
 
-  const [addOpen,     setAddOpen]     = useState(false)
+  const [addOpen,      setAddOpen]      = useState(false)
   const [detailMember, setDetailMember] = useState<Member | null>(null)
   const [actionMember, setActionMember] = useState<Member | null>(null)
   const [payMember,    setPayMember]    = useState<Member | null>(null)
@@ -40,12 +42,12 @@ export default function MembersPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const [g, m, a, p] = await Promise.all([
-      supabase.from('groups').select('*').neq('status','archived').order('name'),
+      supabase.from('groups').select('*').order('name'),
       supabase.from('members').select('*').order('ticket_no'),
       supabase.from('auctions').select('*').order('month'),
       supabase.from('payments').select('*'),
     ])
-    setGroups(g.data || [])
+    setAllGroups(g.data || [])
     setMembers(m.data || [])
     setAuctions(a.data || [])
     setPayments(p.data || [])
@@ -54,10 +56,59 @@ export default function MembersPage() {
 
   useEffect(() => { load() }, [load])
 
-  const filtered = filter === 'all' ? members : members.filter(m => m.group_id === filter)
+  useEffect(() => {
+    // When payMember is set, initialize the form
+    if (payMember) {
+      const group = allGroups.find(g => g.id === payMember.group_id)
+      if (!group) return
+
+      const memberPayments = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id)
+
+      // Find all months that aren't fully paid
+      const allMonths = Array.from({ length: group.duration }, (_, i) => i + 1)
+      const payableMonths = allMonths.filter(month => {
+        const paidForMonth = memberPayments
+          .filter(p => p.month === month)
+          .reduce((sum, p) => sum + Number(p.amount), 0)
+        return paidForMonth < group.amount
+      })
+
+      // Default to the first payable month (which will be the first pending month)
+      const defaultMonth = payableMonths.length > 0 ? payableMonths[0] : null
+
+      if (defaultMonth) {
+        const paidForMonth = memberPayments
+          .filter(p => p.month === defaultMonth)
+          .reduce((sum, p) => sum + Number(p.amount), 0)
+        const balance = Math.max(0, group.amount - paidForMonth)
+
+        setPayForm({
+          month: String(defaultMonth),
+          amount: String(balance),
+          payment_date: new Date().toISOString().substring(0, 10),
+          mode: 'Cash',
+        })
+      } else {
+        // All payments are settled
+        showToast('All payments for this member are settled!', 'success')
+        setPayMember(null)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payMember])
+
+  function handleViewChange(newView: 'active' | 'archived') {
+    setView(newView)
+    setFilter('all')
+  }
+
+  const groups = allGroups.filter(g => view === 'active' ? g.status !== 'archived' : g.status === 'archived')
+  const groupIds = new Set(groups.map(g => g.id))
+  const membersInView = members.filter(m => groupIds.has(m.group_id))
+  const filtered = filter === 'all' ? membersInView : membersInView.filter(m => m.group_id === filter)
 
   function memberStats(m: Member) {
-    const g         = groups.find(x => x.id === m.group_id)
+    const g         = allGroups.find(x => x.id === m.group_id)
     const gAucs     = auctions.filter(a => a.group_id === m.group_id)
     const relevant  = m.exit_month ? gAucs.filter(a => a.month <= m.exit_month!) : gAucs
     const mPays     = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id)
@@ -107,7 +158,7 @@ export default function MembersPage() {
   async function savePay() {
     if (!payMember || !payForm.month || !payForm.amount) { showToast('Missing details', 'error'); return }
     setSaving(true)
-    const group = groups.find(g => g.id === payMember.group_id)
+    const group = allGroups.find(g => g.id === payMember.group_id)
     const amountDue = group?.amount || 0
     const alreadyPaid = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id && p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0)
     const balanceDue = Math.max(0, amountDue - alreadyPaid - (+payForm.amount || 0))
@@ -128,7 +179,6 @@ export default function MembersPage() {
     const { error } = await supabase.from('payments').insert(payload)
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
 
-    // Update prior partials for this month to 'paid'
     if (!isPartial) {
       await supabase.from('payments')
         .update({ status: 'paid', balance_due: 0 })
@@ -171,8 +221,12 @@ export default function MembersPage() {
 
   return (
     <div>
-      {/* Group filter chips */}
-      <div className="flex gap-2 flex-wrap mb-4">
+      <div className="flex gap-4 flex-wrap mb-4 border-b pb-3" style={{ borderColor: 'var(--border)' }}>
+        <Chip active={view === 'active'} onClick={() => handleViewChange('active')}>Active Groups</Chip>
+        <Chip active={view === 'archived'} onClick={() => handleViewChange('archived')}>Archived Groups</Chip>
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-4 mt-4">
         <Chip active={filter === 'all'} onClick={() => setFilter('all')}>All Groups</Chip>
         {groups.map(g => (
           <Chip key={g.id} active={filter === g.id} onClick={() => setFilter(g.id)}>{g.name}</Chip>
@@ -191,7 +245,7 @@ export default function MembersPage() {
               <tbody>
                 {filtered.map(m => {
                   const s = memberStats(m)
-                  const g = groups.find(x => x.id === m.group_id)
+                  const g = allGroups.find(x => x.id === m.group_id)
                   const replaced = members.find(x => x.transfer_from_id === m.id)
                   return (
                     <Tr key={m.id} style={{ opacity: m.status === 'exited' ? 0.65 : 1 }}>
@@ -247,7 +301,6 @@ export default function MembersPage() {
         }
       </TableCard>
 
-      {/* Add Member Modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Member">
         <div className="flex gap-1 p-1 rounded-xl mb-5" style={{ background: 'var(--surface2)' }}>
           {(['new','existing'] as const).map(t => (
@@ -260,7 +313,6 @@ export default function MembersPage() {
             </button>
           ))}
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           {addTab === 'existing' && (
             <Field label="Select Existing Person" className="col-span-2">
@@ -306,14 +358,12 @@ export default function MembersPage() {
         </div>
       </Modal>
 
-      {/* Member Actions Modal */}
       {actionMember && (
         <Modal open={!!actionMember} onClose={() => setActionMember(null)} title="Member Actions" size="lg">
           <div className="p-3 rounded-lg mb-5 text-sm font-medium" style={{ background: 'var(--surface2)' }}>
-            {actionMember.name} · {groups.find(g => g.id === actionMember.group_id)?.name} · Ticket #{actionMember.ticket_no}
+            {actionMember.name} · {allGroups.find(g => g.id === actionMember.group_id)?.name} · Ticket #{actionMember.ticket_no}
           </div>
           <div className="space-y-4">
-            {/* Transfer */}
             <div className="border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="font-semibold mb-1 text-sm">🔄 Transfer Ticket to New Member</div>
               <div className="text-xs mb-3" style={{ color: 'var(--text2)' }}>Member exits. New person takes over from a specific month.</div>
@@ -340,7 +390,6 @@ export default function MembersPage() {
               </div>
               <Btn variant="primary" size="sm" className="mt-3" onClick={transferTicket}>Transfer Ticket</Btn>
             </div>
-            {/* Defaulter */}
             <div className="border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="font-semibold mb-1 text-sm">⚠️ Mark as Defaulter</div>
               <div className="text-xs mb-3" style={{ color: 'var(--text2)' }}>Stays on record. Pending tracked as debt in collection report.</div>
@@ -354,7 +403,6 @@ export default function MembersPage() {
                   <Btn variant="secondary" size="sm" onClick={() => clearDefaulter(actionMember.id)}>Clear Status</Btn>}
               </div>
             </div>
-            {/* Foreman */}
             <div className="border rounded-xl p-4" style={{ borderColor: 'var(--border)' }}>
               <div className="font-semibold mb-1 text-sm">🏦 Foreman Absorbs Ticket</div>
               <div className="text-xs mb-3" style={{ color: 'var(--text2)' }}>Exit member. Foreman takes over for remaining months.</div>
@@ -385,27 +433,45 @@ export default function MembersPage() {
         </Modal>
       )}
 
-      {/* Pay Modal */}
       {payMember && (() => {
         const m = payMember
-        const { g, pending, paidCount } = memberStats(m)
-        const amountDue = g?.amount || 0
-        const alreadyPaid = payments
-          .filter(p => p.member_id === m.id && p.group_id === m.group_id && p.month === +payForm.month)
-          .reduce((s, p) => s + Number(p.amount), 0)
-        const balance = Math.max(0, amountDue - alreadyPaid)
+        const group = allGroups.find(g => g.id === m.group_id)
+        if (!group) return null
+
+        const memberPayments = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id)
+        
+        const allMonths = Array.from({ length: group.duration }, (_, i) => i + 1)
+        const payableMonths = allMonths.filter(month => {
+          const paidForMonth = memberPayments
+            .filter(p => p.month === month)
+            .reduce((sum, p) => sum + Number(p.amount), 0)
+          return paidForMonth < group.amount
+        })
+
+        const selectedMonth = +payForm.month
+        const alreadyPaid = memberPayments
+            .filter(p => p.month === selectedMonth)
+            .reduce((s, p) => s + Number(p.amount), 0)
+
+        const balance = Math.max(0, group.amount - alreadyPaid)
 
         return (
           <Modal open={!!payMember} onClose={() => setPayMember(null)} title="Record Payment">
             <div className="p-3 rounded-xl mb-5 text-sm font-medium flex items-center justify-between"
               style={{ background: 'var(--surface2)' }}>
-              <span>{m?.name} · {g?.name} · Ticket #{m?.ticket_no}</span>
+              <span>{m?.name} · {group?.name} · Ticket #{m?.ticket_no}</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Month">
-                <select className={inputClass} style={inputStyle} value={payForm.month} onChange={e => setPayForm(f => ({...f, month: e.target.value}))}>
+                <select className={inputClass} style={inputStyle} value={payForm.month}
+                  onChange={e => {
+                    const newMonth = +e.target.value
+                    const paidForMonth = memberPayments.filter(p => p.month === newMonth).reduce((s, p) => s + Number(p.amount), 0)
+                    const newBalance = Math.max(0, group.amount - paidForMonth)
+                    setPayForm(f => ({...f, month: e.target.value, amount: String(newBalance)})) 
+                  }}>
                   <option value="">Select month</option>
-                  {pending.map(a => <option key={a.month} value={a.month}>Month {a.month}</option>)}
+                  {payableMonths.map(month => <option key={month} value={month}>Month {month}</option>)}
                 </select>
               </Field>
               <Field label={`Amount (Balance: ${fmt(balance)})`}>
@@ -428,16 +494,13 @@ export default function MembersPage() {
         )
       })()}
 
-      {/* Detail Modal */}
       {detailMember && (() => {
         const m = detailMember
         const { g, won, relevant, mPays, paidCount, pendingCount, totalPaid, pending } = memberStats(m)
         const remaining = g ? g.duration - auctions.filter(a => a.group_id === m.group_id).length : 0
         return (
           <Modal open={!!detailMember} onClose={() => setDetailMember(null)} title={isEditing ? `Edit ${m.name}` : m.name} size="lg">
-            
             {!isEditing && <>
-              {/* Summary cards */}
               <div className="grid grid-cols-4 gap-3 mb-5">
                 {[
                   { label: 'Paid', val: paidCount, unit: 'months', color: 'var(--green)' },
@@ -452,7 +515,6 @@ export default function MembersPage() {
                   </div>
                 ))}
               </div>
-              {/* Info */}
               <div className="flex gap-4 flex-wrap text-xs mb-4" style={{ color: 'var(--text2)' }}>
                 <span>📞 {m.phone||'—'}</span>
                 <span>🏠 {m.address||'—'}</span>
@@ -476,14 +538,12 @@ export default function MembersPage() {
               </div>
             )}
 
-            {/* Pending alert */}
             {pending.length > 0 && !isEditing && (
               <div className="p-3 rounded-lg mb-4 text-sm" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
                 ⚠ Pending months: {pending.map(a => `Month ${a.month}`).join(', ')}
               </div>
             )}
 
-            {/* Payment rows */}
             {!isEditing && <>
               <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: 'var(--text2)' }}>Payment History</div>
               <div className="max-h-64 overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
