@@ -10,12 +10,10 @@ const playfair = Playfair_Display({ subsets: ['latin'], weight: ['600','700'], v
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
   description: 'Chit Fund Management Software',
-  manifest: '/manifest.json',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-152.png' },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#c9a84c',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,6 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#c9a84c" />
+        <link rel="manifest" href="/manifest.json" />
         {/* Google Fonts preconnect for fast dynamic font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
