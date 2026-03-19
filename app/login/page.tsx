@@ -64,16 +64,29 @@ function LoginForm() {
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
-    const { data, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
-    if (error) { setError('Incorrect email or password.'); setLoading(false); return }
-    if (!data.session) { setError('Login failed. Please try again.'); setLoading(false); return }
-    
-    setSuccess('Login successful! Redirecting to dashboard...')
-    
-    // Use window.location to do a hard navigation that triggers middleware properly
-    setTimeout(() => {
-      window.location.href = '/dashboard'
-    }, 300)
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
+    if (error || !user) { setError('Incorrect email or password.'); setLoading(false); return }
+
+    // Get user's profile to determine where to redirect
+    try {
+      const { data: profile } = await supabase
+        .from('profiles').select('firm_id, role').eq('id', user.id).single()
+
+      setSuccess('Login successful! Redirecting...')
+      
+      if (!profile) {
+        // This is a new user who hasn't completed onboarding
+        router.push('/onboarding')
+      } else if (profile.role === 'superadmin') {
+        router.push('/admin')
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (profileError) {
+      console.error('Error fetching profile:', profileError)
+      setError('Could not find user profile. Please contact support.')
+      setLoading(false)
+    }
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
