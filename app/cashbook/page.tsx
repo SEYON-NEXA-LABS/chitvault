@@ -42,16 +42,35 @@ export default function CashbookPage() {
   const load = useCallback(async () => {
     if (!firm) return
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('denominations')
       .select('*')
       .eq('firm_id', firm.id)
       .gte('entry_date', fromDate)
       .lte('entry_date', toDate)
       .order('entry_date', { ascending: false })
-    setEntries(data || [])
+    
+    if (error) {
+      show(error.message, 'error')
+      setEntries([])
+      setLoading(false)
+      return
+    }
+
+    // Defensively calculate total for each entry to prevent crashes if it's missing from DB
+    const entriesWithTotal = (data || []).map(e => {
+      const calculatedTotal = DENOMINATIONS.reduce((s, d) => {
+          const count = (e as any)[d.key] || 0;
+          return s + count * d.value;
+      }, 0);
+      // Use total from DB if it exists and is valid, otherwise use our calculation.
+      // This repairs any old entries that might be missing a total.
+      return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal };
+    });
+
+    setEntries(entriesWithTotal)
     setLoading(false)
-  }, [firm, fromDate, toDate, supabase])
+  }, [firm, fromDate, toDate, supabase, show])
 
   useEffect(() => { if (firm) load() }, [firm, fromDate, toDate, load])
 
@@ -76,6 +95,7 @@ export default function CashbookPage() {
       entry_date: entryDate,
       collected_by: user?.id || null,
       ...counts,
+      total: liveTotal, // FIX: Ensure total is saved with the entry
       notes: notes.trim() || null,
     })
     setSaving(false)
@@ -93,9 +113,9 @@ export default function CashbookPage() {
   }
 
   // Stats
-  const totalInRange = entries.reduce((s, e) => s + Number(e.total), 0)
+  const totalInRange = entries.reduce((s, e) => s + Number(e.total || 0), 0)
   const todayTotal   = entries.filter(e => e.entry_date === new Date().toISOString().split('T')[0])
-    .reduce((s, e) => s + Number(e.total), 0)
+    .reduce((s, e) => s + Number(e.total || 0), 0)
   const entryCount = entries.length
 
   if (loading) return <Loading />
@@ -160,7 +180,7 @@ export default function CashbookPage() {
                       ))}
                     </div>
                     <div className="font-mono font-bold text-base mr-3" style={{ color: 'var(--gold)' }}>
-                      {fmt(e.total)}
+                      {fmt(e.total || 0)}
                     </div>
                     {isExpanded ? <ChevronUp size={15} style={{ color: 'var(--text3)' }} /> : <ChevronDown size={15} style={{ color: 'var(--text3)' }} />}
                   </button>
@@ -232,11 +252,11 @@ export default function CashbookPage() {
                         <div>
                           {e.notes && <div className="text-sm" style={{ color: 'var(--text2)' }}>📝 {e.notes}</div>}
                           <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>
-                            Recorded {new Date(e.created_at).toLocaleString('en-IN')}
+                            {e.created_at ? `Recorded ${new Date(e.created_at).toLocaleString('en-IN')}` : ''}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-mono font-bold text-xl" style={{ color: 'var(--gold)' }}>{fmt(e.total)}</div>
+                          <div className="font-mono font-bold text-xl" style={{ color: 'var(--gold)' }}>{fmt(e.total || 0)}</div>
                           <Btn size="sm" variant="danger" onClick={() => del(e.id)}><Trash2 size={13} /></Btn>
                         </div>
                       </div>
