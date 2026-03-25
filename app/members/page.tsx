@@ -70,7 +70,7 @@ export default function MembersPage() {
         const paidForMonth = memberPayments
           .filter(p => p.month === month)
           .reduce((sum, p) => sum + Number(p.amount), 0)
-        return paidForMonth < group.amount
+        return paidForMonth < group.monthly_contribution
       })
 
       // Default to the first payable month (which will be the first pending month)
@@ -80,7 +80,7 @@ export default function MembersPage() {
         const paidForMonth = memberPayments
           .filter(p => p.month === defaultMonth)
           .reduce((sum, p) => sum + Number(p.amount), 0)
-        const balance = Math.max(0, group.amount - paidForMonth)
+        const balance = Math.max(0, group.monthly_contribution - paidForMonth)
 
         setPayForm({
           month: String(defaultMonth),
@@ -159,7 +159,7 @@ export default function MembersPage() {
     if (!payMember || !payForm.month || !payForm.amount) { showToast('Missing details', 'error'); return }
     setSaving(true)
     const group = allGroups.find(g => g.id === payMember.group_id)
-    const amountDue = group?.amount || 0
+    const amountDue = group?.monthly_contribution || 0
     const alreadyPaid = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id && p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0)
     const balanceDue = Math.max(0, amountDue - alreadyPaid - (+payForm.amount || 0))
     const isPartial = balanceDue > 0
@@ -175,6 +175,8 @@ export default function MembersPage() {
       status: isPartial ? 'partial' : 'paid',
       amount_due: amountDue,
       balance_due: balanceDue,
+      payment_type: isPartial ? 'partial' : 'full',
+      collected_by: null,
     }
     const { error } = await supabase.from('payments').insert(payload)
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
@@ -332,8 +334,8 @@ export default function MembersPage() {
                 onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Member name" />
             </Field>
             <Field label="Phone">
-              <input className={inputClass} style={inputStyle} value={form.phone}
-                onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="Mobile" />
+              <input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} pattern="[0-9]{10}" title="10-digit mobile number"
+                onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile (10 digits)" />
             </Field>
             <Field label="Address">
               <input className={inputClass} style={inputStyle} value={form.address}
@@ -380,8 +382,8 @@ export default function MembersPage() {
                     onChange={e => setNewTransfer(t => ({...t, name: e.target.value}))} placeholder="Full name" />
                 </Field>
                 <Field label="Phone">
-                  <input className={inputClass} style={inputStyle} value={newTransfer.phone}
-                    onChange={e => setNewTransfer(t => ({...t, phone: e.target.value}))} />
+                  <input className={inputClass} style={inputStyle} value={newTransfer.phone} type="tel" maxLength={10} pattern="[0-9]{10}" title="10-digit mobile number"
+                    onChange={e => setNewTransfer(t => ({...t, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" />
                 </Field>
                 <Field label="Address">
                   <input className={inputClass} style={inputStyle} value={newTransfer.address}
@@ -445,7 +447,7 @@ export default function MembersPage() {
           const paidForMonth = memberPayments
             .filter(p => p.month === month)
             .reduce((sum, p) => sum + Number(p.amount), 0)
-          return paidForMonth < group.amount
+          return paidForMonth < group.monthly_contribution
         })
 
         const selectedMonth = +payForm.month
@@ -453,7 +455,7 @@ export default function MembersPage() {
             .filter(p => p.month === selectedMonth)
             .reduce((s, p) => s + Number(p.amount), 0)
 
-        const balance = Math.max(0, group.amount - alreadyPaid)
+        const balance = Math.max(0, group.monthly_contribution - alreadyPaid)
 
         return (
           <Modal open={!!payMember} onClose={() => setPayMember(null)} title="Record Payment">
@@ -467,7 +469,7 @@ export default function MembersPage() {
                   onChange={e => {
                     const newMonth = +e.target.value
                     const paidForMonth = memberPayments.filter(p => p.month === newMonth).reduce((s, p) => s + Number(p.amount), 0)
-                    const newBalance = Math.max(0, group.amount - paidForMonth)
+                    const newBalance = Math.max(0, group.monthly_contribution - paidForMonth)
                     setPayForm(f => ({...f, month: e.target.value, amount: String(newBalance)})) 
                   }}>
                   <option value="">Select month</option>
@@ -530,7 +532,7 @@ export default function MembersPage() {
                   <input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} />
                 </Field>
                 <Field label="Phone">
-                  <input className={inputClass} style={inputStyle} value={editForm.phone || ''} onChange={e => setEditForm(f => ({...f, phone: e.target.value}))} />
+                  <input className={inputClass} style={inputStyle} value={editForm.phone || ''} type="tel" maxLength={10} pattern="[0-9]{10}" title="10-digit mobile number" onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" />
                 </Field>
                 <Field label="Address" className="col-span-2">
                   <input className={inputClass} style={inputStyle} value={editForm.address || ''} onChange={e => setEditForm(f => ({...f, address: e.target.value}))} />

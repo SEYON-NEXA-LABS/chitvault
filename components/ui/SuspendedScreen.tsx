@@ -20,7 +20,7 @@ export default function SuspendedScreen({ firm }: { firm: Firm }) {
           </div>
         </div>
         <p style={{ fontSize: 14, color: '#505a70' }}>
-          Contact: <a href="mailto:billing@chitvault.app" style={{ color: '#c9a84c' }}>billing@chitvault.app</a>
+          Contact: <a href="mailto:billing@chitvault.app" style={{ color: '#2563eb' }}>billing@chitvault.app</a>
         </p>
         <p style={{ fontSize: 12, color: '#505a70', marginTop: 8 }}>Your data is safe and will be restored on reactivation.</p>
       </div>

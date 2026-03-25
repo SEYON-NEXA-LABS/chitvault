@@ -6,6 +6,7 @@ export function useFirmId() {
   const supabase = createClient()
   const [firmId, setFirmId] = useState<string | null>(null)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return

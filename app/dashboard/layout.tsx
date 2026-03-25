@@ -26,11 +26,12 @@ const NAV = [
   { label: 'Manage', divider: true },
   { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
   { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },
+  { href: '/admin',      label: 'Platform Admin',    icon: Settings, superAdminOnly: true },
   { href: '/admin/branding', label: 'Branding',      icon: Palette, superAdminOnly: true },
 ]
 
 const planColor: Record<string, string> = {
-  trial: '#5b8af5', basic: '#c9a84c', pro: '#3ecf8e'
+  trial: '#5b8af5', basic: '#2563eb', pro: '#3ecf8e'
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || ''))
     const saved = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(saved)
-    document.documentElement.classList.toggle('light', saved === 'light')
+    document.documentElement.classList.toggle('dark', saved === 'dark')
     if (firm?.name) {
       document.title = firm.name
     }
@@ -76,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next); localStorage.setItem('theme', next)
-    document.documentElement.classList.toggle('light', next === 'light')
+    document.documentElement.classList.toggle('dark', next === 'dark')
   }
 
   const trialDaysLeft = firm?.trial_ends
@@ -119,16 +120,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <nav className="flex-1 overflow-y-auto px-3 py-3">
           {NAV.map((item, i) => {
+            if ('divider' in item && item.divider && role === 'superadmin') return null
             if ('divider' in item && item.divider) return (
               <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{item.label}</div>
             )
             if (!('href' in item)) return null
+            if (!(item as any).superAdminOnly && role === 'superadmin') return null
             if ((item as any).ownerOnly && !isOwner) return null
             if ((item as any).superAdminOnly && role !== 'superadmin') return null
             const Icon   = item.icon!
-            const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+            const href   = item.href as string;
+            const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
-              <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+              <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all"
                 style={active ? { background: 'rgba(201,168,76,0.12)', color: 'var(--gold)' } : { color: 'var(--text2)' }}>
                 <Icon size={15} />

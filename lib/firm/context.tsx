@@ -27,6 +27,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -56,7 +57,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
           const { data: f } = await supabase
             .from('firms').select('*').eq('id', newProf.firm_id).maybeSingle()
           setFirm(f)
-          if (f) applyBranding(f.primary_color || '#c9a84c', f.font || 'DM Sans')
+          if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'DM Sans')
         }
         setLoading(false)
         return
@@ -70,11 +71,12 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       const { data: f } = await supabase
         .from('firms').select('*').eq('id', prof.firm_id).maybeSingle()
       setFirm(f)
-      if (f) applyBranding(f.primary_color || '#c9a84c', f.font || 'DM Sans')
+      if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'DM Sans')
     }
     setLoading(false)
-  }, [])
+  }, [supabase])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [load])
 
   const role = profile?.role as UserRole | null ?? null

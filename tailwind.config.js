@@ -9,7 +9,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        gold:    { DEFAULT: '#c9a84c', light: '#e8c870', dim: '#7a6230' },
+        gold:    { DEFAULT: '#2563eb', light: '#e8c870', dim: '#7a6230' },
         surface: { DEFAULT: '#161921', 2: '#1e2230', 3: '#252a3a' },
       },
       fontFamily: {

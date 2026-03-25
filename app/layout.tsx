@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#c9a84c" />
+        <meta name="theme-color" content="#2563eb" />
         <link rel="manifest" href="/manifest.json" />
         {/* Google Fonts preconnect for fast dynamic font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

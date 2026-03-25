@@ -70,7 +70,7 @@ export default function OnboardingPage() {
         {/* Progress dots */}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 40 }}>
           {steps.map((_, i) => (
-            <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? '#c9a84c' : '#2a3045', transition: 'all 0.3s' }} />
+            <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? '#2563eb' : '#2a3045', transition: 'all 0.3s' }} />
           ))}
         </div>
 
@@ -86,17 +86,17 @@ export default function OnboardingPage() {
           {/* Trial info on first step */}
           {step === 0 && firm && (
             <div style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
-              <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 600, marginBottom: 8 }}>Your Account Details</div>
+              <div style={{ fontSize: 13, color: '#2563eb', fontWeight: 600, marginBottom: 8 }}>Your Account Details</div>
               <div style={{ fontSize: 13, color: '#8892aa', lineHeight: 2 }}>
                 <div>Business: <strong style={{ color: '#e8ecf5' }}>{firm.name}</strong></div>
                 <div>Plan: <strong style={{ color: '#e8ecf5' }}>Trial (30 days free)</strong></div>
-                <div>Login URL: <strong style={{ color: '#c9a84c' }}>chitvault.app/login</strong></div>
+                <div>Login URL: <strong style={{ color: '#2563eb' }}>chitvault.app/login</strong></div>
               </div>
             </div>
           )}
 
           <button onClick={next}
-            style={{ width: '100%', padding: '14px 0', background: '#c9a84c', color: '#0d0f14', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ width: '100%', padding: '14px 0', background: '#2563eb', color: '#0d0f14', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
             {current.action}
           </button>
 

@@ -21,9 +21,10 @@ create table if not exists firms (
   trial_ends  timestamptz default (now() + interval '30 days'),
   invoice_ref text,
   city        text,
-  phone           text,
+  address     text,
+  phone       text,
   -- Branding / white-label
-  primary_color   text default '#c9a84c',     -- hex colour
+  primary_color   text default '#2563eb',     -- hex colour
   logo_url        text,                        -- hosted image URL
   tagline         text default 'Chit Fund Manager',
   font            text default 'DM Sans',      -- Google Font name
@@ -34,11 +35,12 @@ create table if not exists firms (
 
 
 -- Migration: add branding columns if table already exists
-alter table firms add column if not exists primary_color  text default '#c9a84c';
+alter table firms add column if not exists primary_color  text default '#2563eb';
 alter table firms add column if not exists logo_url       text;
 alter table firms add column if not exists tagline        text default 'Chit Fund Manager';
 alter table firms add column if not exists font           text default 'DM Sans';
 alter table firms add column if not exists register_token text unique;
+alter table firms add column if not exists address        text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'firms_plan_chk') then
@@ -645,7 +647,7 @@ create or replace function public.admin_create_firm(
   p_city          text default null,
   p_phone         text default null,
   p_plan          text default 'trial',
-  p_primary_color text default '#c9a84c',
+  p_primary_color text default '#2563eb',
   p_tagline       text default 'Chit Fund Manager',
   p_font          text default 'DM Sans'
 )

@@ -25,8 +25,11 @@ export default function SettingsPage() {
   const [resetMsg,  setResetMsg]  = useState('')
 
   // Branding form state
-  const [color,      setColor]      = useState(firm?.primary_color || '#c9a84c')
-  const [customColor, setCustomColor] = useState(firm?.primary_color || '#c9a84c')
+  const [name,       setName]       = useState(firm?.name || '')
+  const [address,    setAddress]    = useState(firm?.address || '')
+  const [phone,      setPhone]      = useState(firm?.phone || '')
+  const [color,      setColor]      = useState(firm?.primary_color || '#2563eb')
+  const [customColor, setCustomColor] = useState(firm?.primary_color || '#2563eb')
   const [logoUrl,    setLogoUrl]    = useState(firm?.logo_url || '')
   const [tagline,    setTagline]    = useState(firm?.tagline || 'Chit Fund Manager')
   const [font,       setFont]       = useState(firm?.font || 'DM Sans')
@@ -37,8 +40,11 @@ export default function SettingsPage() {
     const t = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(t)
     if (firm) {
-      setColor(firm.primary_color || '#c9a84c')
-      setCustomColor(firm.primary_color || '#c9a84c')
+      setName(firm.name || '')
+      setAddress(firm.address || '')
+      setPhone(firm.phone || '')
+      setColor(firm.primary_color || '#2563eb')
+      setCustomColor(firm.primary_color || '#2563eb')
       setLogoUrl(firm.logo_url || '')
       setTagline(firm.tagline || 'Chit Fund Manager')
       setFont(firm.font || 'DM Sans')
@@ -49,7 +55,7 @@ export default function SettingsPage() {
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next); localStorage.setItem('theme', next)
-    document.documentElement.classList.toggle('light', next === 'light')
+    document.documentElement.classList.toggle('dark', next === 'dark')
   }
 
   function handleColorSelect(val: string) {
@@ -72,6 +78,9 @@ export default function SettingsPage() {
     if (!firm) return
     setSaving(true)
     const { error } = await supabase.from('firms').update({
+      name:          name.trim() || undefined,
+      address:       address.trim() || null,
+      phone:         phone.trim() || null,
       primary_color: color,
       logo_url:      logoUrl.trim() || null,
       tagline:       tagline.trim() || 'Chit Fund Manager',
@@ -113,6 +122,22 @@ export default function SettingsPage() {
             <Palette size={15} /> Branding & Appearance
           </div>
           <div className="p-5 space-y-5">
+
+            {/* Firm Identity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Firm Name</label>
+                <input className={inputClass} style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Acme Chits" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Firm Address</label>
+                <input className={inputClass} style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 123 Main St, Chennai" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Support Phone</label>
+                <input className={inputClass} style={inputStyle} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g,''))} maxLength={10} pattern={"[0-9]{10}"} placeholder="e.g. 9876543210" />
+              </div>
+            </div>
 
             {/* Logo */}
             <div>
