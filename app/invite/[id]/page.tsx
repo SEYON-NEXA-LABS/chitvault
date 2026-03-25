@@ -100,7 +100,7 @@ export default function InvitePage() {
     box:  { width: '100%', maxWidth: 420, background: '#161921', border: '1px solid #2a3045', borderRadius: 16, padding: 32 } as React.CSSProperties,
     inp:  { width: '100%', padding: '10px 14px', background: '#1e2230', border: '1px solid #2a3045', borderRadius: 8, color: '#e8ecf5', fontSize: 14, outline: 'none', marginTop: 4 } as React.CSSProperties,
     lbl:  { fontSize: 11, fontWeight: 600 as const, color: '#8892aa', textTransform: 'uppercase' as const, letterSpacing: 1 },
-    btn:  { width: '100%', padding: '12px 0', background: '#c9a84c', color: '#0d0f14', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 20 } as React.CSSProperties,
+    btn:  { width: '100%', padding: '12px 0', background: '#2563eb', color: '#0d0f14', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 20 } as React.CSSProperties,
   }
 
   // ── State screens ─────────────────────────────────────────
@@ -125,10 +125,10 @@ export default function InvitePage() {
   if (state === 'already_member') return (
     <div style={sty.page}><div style={{ ...sty.box, textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 14 }}>✅</div>
-      <h2 style={{ color: '#c9a84c', marginBottom: 8 }}>Already a Member</h2>
+      <h2 style={{ color: '#2563eb', marginBottom: 8 }}>Already a Member</h2>
       <p style={{ color: '#8892aa', fontSize: 14 }}>
         You&apos;re already part of a firm.{' '}
-        <a href="/dashboard" style={{ color: '#c9a84c' }}>Go to dashboard →</a>
+        <a href="/dashboard" style={{ color: '#2563eb' }}>Go to dashboard →</a>
       </p>
     </div></div>
   )
@@ -158,8 +158,8 @@ export default function InvitePage() {
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#e8ecf5', marginBottom: 6 }}>
             You&apos;re invited to join
           </h1>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#c9a84c' }}>{invite?.firm_name}</div>
-          <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 20, padding: '4px 14px', fontSize: 13, color: '#c9a84c' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#2563eb' }}>{invite?.firm_name}</div>
+          <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 20, padding: '4px 14px', fontSize: 13, color: '#2563eb' }}>
             {invite?.role === 'owner' ? '👑 Owner' : '👤 Staff'} Access
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function InvitePage() {
           <div style={{ display: 'flex', gap: 4, padding: 4, background: '#1e2230', borderRadius: 10, marginBottom: 24 }}>
             {(['signup','signin'] as const).map(t => (
               <button key={t} onClick={() => { setTab(t); setError('') }}
-                style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: tab === t ? 700 : 400, background: tab === t ? '#c9a84c' : 'transparent', color: tab === t ? '#0d0f14' : '#8892aa' }}>
+                style={{ flex: 1, padding: '8px 0', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: tab === t ? 700 : 400, background: tab === t ? '#2563eb' : 'transparent', color: tab === t ? '#0d0f14' : '#8892aa' }}>
                 {t === 'signup' ? 'New Account' : 'I have an account'}
               </button>
             ))}

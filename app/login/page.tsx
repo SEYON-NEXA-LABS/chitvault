@@ -5,7 +5,6 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
-import { DevCredentials } from '@/components/DevCredentials'
 
 interface FirmBranding {
   name: string; primary_color: string; logo_url: string | null
@@ -26,7 +25,7 @@ function LoginForm() {
   const [success,  setSuccess]  = useState('')
   const [branding, setBranding] = useState<FirmBranding>({
     name: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
-    primary_color: '#c9a84c', logo_url: null,
+    primary_color: '#2563eb', logo_url: null,
     tagline: 'Chit Fund Manager', font: 'DM Sans'
   })
 
@@ -46,18 +45,18 @@ function LoginForm() {
           .rpc('get_firm_branding', { p_slug: firmSlug }) as any
         if (data) {
           setBranding({
-            name: data.name, primary_color: data.primary_color || '#c9a84c',
+            name: data.name, primary_color: data.primary_color || '#2563eb',
             logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
             font: data.font || 'DM Sans'
           })
-          applyBranding(data.primary_color || '#c9a84c', data.font || 'DM Sans')
+          applyBranding(data.primary_color || '#2563eb', data.font || 'DM Sans')
         }
       } catch (err) {
         // RPC may fail if firm doesn't exist, use defaults
       }
     }
     loadBranding()
-    document.documentElement.classList.add('light')
+    document.documentElement.classList.remove('dark')
   }, [firmSlug, supabase])
 
   const clr = branding.primary_color
@@ -188,8 +187,6 @@ function LoginForm() {
             </form>
           )}
 
-          {/* Dev Credentials (development only) */}
-          <DevCredentials setemail={setSiEmail} setpass={setSiPass} />
         </div>
 
         {/* Powered by */}

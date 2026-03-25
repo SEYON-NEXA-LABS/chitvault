@@ -18,7 +18,7 @@ export const AVAILABLE_FONTS = [
 ]
 
 export const PRESET_COLORS = [
-  { label: 'Gold (Default)', value: '#c9a84c' },
+  { label: 'Gold (Default)', value: '#2563eb' },
   { label: 'Deep Blue',      value: '#2563eb' },
   { label: 'Emerald',        value: '#059669' },
   { label: 'Purple',         value: '#7c3aed' },
@@ -39,14 +39,14 @@ interface BrandingContext {
 }
 
 const Ctx = createContext<BrandingContext>({
-  color: '#c9a84c', name: 'ChitVault',
+  color: '#2563eb', name: 'ChitVault',
   tagline: 'Chit Fund Manager', font: 'DM Sans', logoUrl: null
 })
 
 export function BrandingProvider({ firm, children }: {
   firm: Firm | null; children: React.ReactNode
 }) {
-  const color   = firm?.primary_color || '#c9a84c'
+  const color   = firm?.primary_color || '#2563eb'
   const name    = firm?.name    || process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
   const tagline = firm?.tagline || 'Chit Fund Manager'
   const font    = firm?.font    || 'DM Sans'

@@ -94,12 +94,12 @@ export function Th({ children, right }: { children: React.ReactNode; right?: boo
   )
 }
 
-export function Td({ children, right, className }: {
-  children: React.ReactNode; right?: boolean; className?: string
+export function Td({ children, right, className, style, colSpan }: {
+  children: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number
 }) {
   return (
-    <td className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
-      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)' }}>
+    <td colSpan={colSpan} className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
+      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', ...style }}>
       {children}
     </td>
   )

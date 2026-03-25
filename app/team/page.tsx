@@ -27,7 +27,7 @@ interface Invite {
 }
 
 const roleIcon = (role: string) => ({
-  owner: <Crown size={13} style={{ color: '#c9a84c' }} />,
+  owner: <Crown size={13} style={{ color: '#2563eb' }} />,
   staff: <User size={13} style={{ color: '#5b8af5' }} />,
 }[role] || <User size={13} />)
 
@@ -81,6 +81,11 @@ export default function TeamPage() {
 
   async function sendInvite() {
     if (!firm || !inviteEmail.trim()) return
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!re.test(inviteEmail.trim())) {
+      show('Please enter a valid email address.', 'error')
+      return
+    }
     setSaving(true)
 
     // Check if already a member
@@ -294,7 +299,7 @@ export default function TeamPage() {
 
       {/* How to invite info */}
       <div className="p-4 rounded-xl border text-sm" style={{ background: 'rgba(91,138,245,0.06)', borderColor: 'rgba(91,138,245,0.2)', color: 'var(--blue)' }}>
-        <strong>How invites work:</strong> Click "Invite Staff" → enter their email → copy the invite link → send via WhatsApp or email. When they click the link, they create an account and automatically join your firm as Staff.
+        <strong>How invites work:</strong> Click &quot;Invite Staff&quot; → enter their email → copy the invite link → send via WhatsApp or email. When they click the link, they create an account and automatically join your firm as Staff.
       </div>
 
       {/* Invite modal */}

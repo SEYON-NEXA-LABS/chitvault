@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { useBranding, AVAILABLE_FONTS, PRESET_COLORS } from '@/lib/branding/context'
+import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS } from '@/lib/branding/context'
 import { useToast } from '@/lib/hooks/useToast'
 import { Btn, Card } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
@@ -21,13 +21,15 @@ interface Firm {
 export default function AdminBrandingPage() {
   const supabase = createClient()
   const { show } = useToast()
-  const { applyBranding } = useBranding()
 
   const [firms, setFirms] = useState<Firm[]>([])
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const [color, setColor] = useState('#c9a84c')
+  const [name, setName] = useState('')
+  const [address, setAddress] = useState('')
+  const [phone, setPhone] = useState('')
+  const [color, setColor] = useState('#2563eb')
   const [customColor, setCustomColor] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [tagline, setTagline] = useState('Chit Fund Manager')
@@ -50,40 +52,46 @@ export default function AdminBrandingPage() {
 
   useEffect(() => {
     if (selectedFirm) {
-      const { primary_color, logo_url, tagline, font } = selectedFirm
-      setColor(primary_color || '#c9a84c')
+      const { name, address, phone, primary_color, logo_url, tagline, font } = selectedFirm as any
+      setName(name || '')
+      setAddress(address || '')
+      setPhone(phone || '')
+      setColor(primary_color || '#2563eb')
       setCustomColor(primary_color || '')
       setLogoUrl(logo_url || '')
       setTagline(tagline || 'Chit Fund Manager')
       setFont(font || 'DM Sans')
-      applyBranding(primary_color || '#c9a84c', font || 'DM Sans')
+      applyBranding(primary_color || '#2563eb', font || 'DM Sans')
     } else {
       // Reset to default when no firm is selected
-      applyBranding('#c9a84c', 'DM Sans')
+      applyBranding('#2563eb', 'DM Sans')
     }
-  }, [selectedFirm, applyBranding])
+  }, [selectedFirm])
 
   const handleColorSelect = useCallback((val: string) => {
     if (val === 'custom') return
     setColor(val); setCustomColor(val)
     applyBranding(val, font) // live preview
-  }, [applyBranding, font]);
+  }, [font]);
 
   const handleCustomColor = useCallback((val: string) => {
     setCustomColor(val)
     setColor(val)
     applyBranding(val, font)
-  }, [applyBranding, font]);
+  }, [font]);
 
   const handleFontChange = useCallback((f: string) => {
     setFont(f)
     applyBranding(color, f)
-  }, [applyBranding, color]);
+  }, [color]);
 
   async function saveBranding() {
     if (!selectedFirm) return
     setSaving(true)
     const { error } = await supabase.from('firms').update({
+      name: name.trim() || undefined,
+      address: address.trim() || null,
+      phone: phone.trim() || null,
       primary_color: color,
       logo_url: logoUrl.trim() || null,
       tagline: tagline.trim() || 'Chit Fund Manager',
@@ -94,7 +102,7 @@ export default function AdminBrandingPage() {
       show(error.message, 'error')
       return
     }
-    show('Branding saved! ✓')
+    show('Identity & Branding saved! ✓')
     // Refresh the firms list to get the updated data
     const { data, error: fetchError } = await supabase.from('firms').select('*')
     if (!fetchError) {
@@ -132,9 +140,25 @@ export default function AdminBrandingPage() {
       {selectedFirm && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm">
-            <Palette size={15} /> Branding for {selectedFirm.name}
+            <Palette size={15} /> Identity & Branding for {selectedFirm.name}
           </div>
           <div className="p-5 space-y-5">
+
+            {/* Firm Identity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5">Firm Name</label>
+                <input className={inputClass} style={inputStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Acme Chits" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5">Firm Address</label>
+                <input className={inputClass} style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 123 Main St, Chennai" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5">Support Phone</label>
+                <input className={inputClass} style={inputStyle} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g,''))} maxLength={10} placeholder="e.g. 9876543210" />
+              </div>
+            </div>
 
             {/* Logo */}
             <div>

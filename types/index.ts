@@ -14,6 +14,7 @@ export interface Firm {
   trial_ends:     string | null
   invoice_ref:    string | null
   city:           string | null
+  address:        string | null
   phone:          string | null
   // Branding
   primary_color:  string | null
@@ -73,7 +74,7 @@ export interface Payment {
   payment_type: 'full' | 'partial'
   payment_date: string | null
   mode:         'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
-  status:       'paid' | 'pending'
+  status:       'paid' | 'pending' | 'partial'
   collected_by: string | null
   created_at:   string
 }

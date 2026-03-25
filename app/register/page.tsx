@@ -39,7 +39,7 @@ function RegisterForm() {
       if (!data) { setTokenValid(false); return }
       setTokenFirm(data)
       setTokenValid(true)
-      applyBranding(data.primary_color || '#c9a84c', 'DM Sans')
+      applyBranding(data.primary_color || '#2563eb', 'DM Sans')
     }
     validateToken()
   }, [token, supabase])
@@ -86,7 +86,7 @@ function RegisterForm() {
     }
   }
 
-  const clr = tokenFirm?.primary_color || '#c9a84c'
+  const clr = tokenFirm?.primary_color || '#2563eb'
   const inputSty = { background: '#1e2230', borderColor: '#2a3045', color: '#e8ecf5' } as React.CSSProperties
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-colors'
 

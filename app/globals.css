@@ -2,38 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS Variables — Dark Theme (default) ─────────────────── */
+/* ── CSS Variables — Light Theme (default) ─────────────────── */
 :root {
-  --bg:         #0d0f14;
-  --surface:    #161921;
-  --surface2:   #1e2230;
-  --surface3:   #252a3a;
-  --border:     #2a3045;
-  --gold:       #c9a84c;
-  --gold-light: #e8c870;
-  --gold-dim:   #7a6230;
-  --green:      #3ecf8e;
-  --green-dim:  #1a5c3f;
-  --red:        #f66d7a;
-  --red-dim:    #5c1e26;
-  --blue:       #5b8af5;
-  --blue-dim:   #1e2f5c;
-  --text:       #e8ecf5;
-  --text2:      #8892aa;
-  --text3:      #505a70;
-  --shadow:     0 4px 24px rgba(0,0,0,0.4);
-}
-
-/* ── Light Theme ─────────────────────────────────────────── */
-.light {
   --bg:         #f0f2f7;
   --surface:    #ffffff;
   --surface2:   #f5f6fa;
   --surface3:   #e8eaf2;
   --border:     #dde1ed;
-  --gold:       #a07828;
-  --gold-light: #c49a32;
-  --gold-dim:   #fdf3dc;
+  /* Replacing gold with blue scheme as default */
+  --gold:       #2563eb;
+  --gold-light: #60a5fa;
+  --gold-dim:   #e0e7ff;
   --green:      #1a8a5a;
   --green-dim:  #e6f7f0;
   --red:        #d63a4a;
@@ -44,6 +23,28 @@
   --text2:      #4a5168;
   --text3:      #8892aa;
   --shadow:     0 4px 24px rgba(0,0,0,0.10);
+}
+
+/* ── Dark Theme ─────────────────────────────────────────── */
+.dark {
+  --bg:         #0d0f14;
+  --surface:    #161921;
+  --surface2:   #1e2230;
+  --surface3:   #252a3a;
+  --border:     #2a3045;
+  --gold:       #3b82f6;
+  --gold-light: #60a5fa;
+  --gold-dim:   #1e3a8a;
+  --green:      #3ecf8e;
+  --green-dim:  #1a5c3f;
+  --red:        #f66d7a;
+  --red-dim:    #5c1e26;
+  --blue:       #5b8af5;
+  --blue-dim:   #1e2f5c;
+  --text:       #e8ecf5;
+  --text2:      #8892aa;
+  --text3:      #505a70;
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
 }
 
 /* ── Base ─────────────────────────────────────────────────── */

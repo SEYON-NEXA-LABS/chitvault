@@ -12,7 +12,7 @@ interface FirmWithStats extends Firm {
 }
 
 const planColor = (plan: string) => ({
-  trial: '#5b8af5', basic: '#c9a84c', pro: '#3ecf8e'
+  trial: '#5b8af5', basic: '#2563eb', pro: '#3ecf8e'
 }[plan] || '#8892aa')
 
 const statusColor = (s: string) => s === 'active' ? '#3ecf8e' : s === 'suspended' ? '#f66d7a' : '#8892aa'
@@ -75,11 +75,14 @@ export default function AdminPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'#c9a84c', tagline:'Chit Fund Manager', font:'DM Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
   const [createErr, setCreateErr] = useState('')
 
   async function handleCreate() {
     if (!newFirm.name.trim()) { setCreateErr('Enter a business name.'); return }
+    if (newFirm.phone && !/^[0-9]{10}$/.test(newFirm.phone.replace(/\D/g, ''))) {
+      setCreateErr('Phone number must be exactly 10 digits.'); return
+    }
     setCreating(true); setCreateErr('')
     const slug = newFirm.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')
     const { error } = await supabase.rpc('admin_create_firm', {
@@ -91,7 +94,7 @@ export default function AdminPage() {
     setCreating(false)
     if (error) { setCreateErr(error.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error.message); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'#c9a84c', tagline:'Chit Fund Manager', font:'DM Sans' })
+    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
     load()
   }
 
@@ -105,24 +108,15 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={sty.page}>
-      {/* Header */}
-      <div style={sty.header}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#c9a84c' }}>ChitVault Admin</div>
-          <div style={{ fontSize: 12, color: '#505a70' }}>Super Admin Dashboard</div>
-        </div>
-        <div style={{ fontSize: 13, color: '#505a70' }}>{new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}</div>
-      </div>
-
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
+    <>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 24 }}>
           {[
-            { label: 'Total Firms',  value: stats.total,     color: '#c9a84c' },
+            { label: 'Total Firms',  value: stats.total,     color: '#2563eb' },
             { label: 'Trial',        value: stats.trial,     color: '#5b8af5' },
-            { label: 'Basic',        value: stats.basic,     color: '#c9a84c' },
+            { label: 'Basic',        value: stats.basic,     color: '#2563eb' },
             { label: 'Pro',          value: stats.pro,       color: '#3ecf8e' },
             { label: 'Suspended',    value: stats.suspended, color: '#f66d7a' },
           ].map(s => (
@@ -140,15 +134,21 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: 6 }}>
             {(['all','trial','basic','pro','suspended'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${filter === f ? '#c9a84c' : '#2a3045'}`, background: filter === f ? 'rgba(201,168,76,0.15)' : 'transparent', color: filter === f ? '#c9a84c' : '#8892aa', fontSize: 12, cursor: 'pointer', fontWeight: filter === f ? 700 : 400 }}>
+                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${filter === f ? '#2563eb' : '#2a3045'}`, background: filter === f ? 'rgba(201,168,76,0.15)' : 'transparent', color: filter === f ? '#2563eb' : '#8892aa', fontSize: 12, cursor: 'pointer', fontWeight: filter === f ? 700 : 400 }}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
-          <button onClick={() => setCreateOpen(true)}
-          style={{ marginLeft: 'auto', padding: '7px 16px', background: '#c9a84c', color: '#0d0f14', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          + Create Firm
-        </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+            <button onClick={() => window.location.href = '/admin/branding'}
+              style={{ padding: '7px 16px', background: 'transparent', border: '1px solid #2a3045', color: '#8892aa', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              🎨 Branding
+            </button>
+            <button onClick={() => setCreateOpen(true)}
+              style={{ padding: '7px 16px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              + Create Firm
+            </button>
+          </div>
         <div style={{ fontSize: 13, color: '#505a70' }}>
             Showing {displayed.length} of {firms.length} firms
           </div>
@@ -225,9 +225,9 @@ export default function AdminPage() {
 
         {/* Quick guide */}
         <div style={{ marginTop: 20, ...sty.card }}>
-          <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: '#c9a84c' }}>📋 Manual Billing Guide</div>
+          <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: '#2563eb' }}>📋 Manual Billing Guide</div>
           <div style={{ fontSize: 13, color: '#8892aa', lineHeight: 1.8 }}>
-            <strong style={{ color: '#e8ecf5' }}>1. Trial ends</strong> → Change plan to <code style={{ color: '#c9a84c' }}>basic</code> or send invoice<br/>
+            <strong style={{ color: '#e8ecf5' }}>1. Trial ends</strong> → Change plan to <code style={{ color: '#2563eb' }}>basic</code> or send invoice<br/>
             <strong style={{ color: '#e8ecf5' }}>2. Payment received</strong> → Update plan, enter Invoice Ref (e.g. INV-2026-001)<br/>
             <strong style={{ color: '#e8ecf5' }}>3. Non-payment</strong> → Set status to <code style={{ color: '#f66d7a' }}>suspended</code> — firm sees suspended screen<br/>
             <strong style={{ color: '#e8ecf5' }}>4. Renewal</strong> → Set status back to <code style={{ color: '#3ecf8e' }}>active</code>, update invoice ref
@@ -282,14 +282,13 @@ export default function AdminPage() {
               Cancel
             </button>
             <button onClick={handleCreate} disabled={creating}
-              style={{ flex:2, padding:'11px 0', background:'#c9a84c', color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:creating?0.7:1 }}>
+              style={{ flex:2, padding:'11px 0', background:'#2563eb', color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:creating?0.7:1 }}>
               {creating ? 'Creating...' : 'Create Firm'}
             </button>
           </div>
         </div>
       </div>
     )}
-
-    </div>
+    </>
   )
 }
