@@ -97,12 +97,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Firm header */}
         <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 size={15} style={{ color: 'var(--gold)' }} />
-            <div className="font-bold text-sm truncate" style={{ color: 'var(--gold)' }}>
+          <Link href="/dashboard" className="flex items-center gap-2 mb-2.5 hover:opacity-80 transition-opacity overflow-hidden">
+            {firm?.logo_url ? (
+              <img src={firm.logo_url} alt="Logo" style={{ height: 20, width: 'auto', maxWidth: 110, objectFit: 'contain', flexShrink: 0, borderRadius: 2 }} />
+            ) : (
+              <Building2 size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+            )}
+            <div className="font-bold text-base truncate" style={{ color: 'var(--gold)' }}>
               {firm?.name || APP_NAME}
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             {firm && (
               <span className="text-xs px-2 py-0.5 rounded-full font-bold"

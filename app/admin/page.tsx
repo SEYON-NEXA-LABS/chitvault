@@ -12,10 +12,10 @@ interface FirmWithStats extends Firm {
 }
 
 const planColor = (plan: string) => ({
-  trial: '#5b8af5', basic: '#2563eb', pro: '#3ecf8e'
-}[plan] || '#8892aa')
+  trial: 'var(--blue)', basic: 'var(--blue)', pro: 'var(--green)'
+}[plan] || 'var(--text2)')
 
-const statusColor = (s: string) => s === 'active' ? '#3ecf8e' : s === 'suspended' ? '#f66d7a' : '#8892aa'
+const statusColor = (s: string) => s === 'active' ? 'var(--green)' : s === 'suspended' ? 'var(--red)' : 'var(--text2)'
 
 export default function AdminPage() {
   const supabase = createClient()
@@ -75,7 +75,7 @@ export default function AdminPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'var(--blue)', tagline:'Chit Fund Manager', font:'DM Sans' })
   const [createErr, setCreateErr] = useState('')
 
   async function handleCreate() {
@@ -94,17 +94,17 @@ export default function AdminPage() {
     setCreating(false)
     if (error) { setCreateErr(error.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error.message); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
+    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'var(--blue)', tagline:'Chit Fund Manager', font:'DM Sans' })
     load()
   }
 
   const sty = {
-    page:    { background: '#0d0f14', minHeight: '100vh', color: '#e8ecf5', fontFamily: 'sans-serif' },
-    header:  { background: '#161921', borderBottom: '1px solid #2a3045', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } as React.CSSProperties,
-    card:    { background: '#161921', border: '1px solid #2a3045', borderRadius: 12, padding: '18px 20px' },
+    page:    { background: 'var(--bg)', minHeight: '100vh', color: 'var(--text)', fontFamily: 'sans-serif' },
+    header:  { background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } as React.CSSProperties,
+    card:    { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 20px' },
     badge:   (color: string) => ({ display: 'inline-block', background: color + '22', color, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }),
-    select:  { background: '#1e2230', border: '1px solid #2a3045', borderRadius: 6, padding: '4px 8px', color: '#e8ecf5', fontSize: 12, outline: 'none' } as React.CSSProperties,
-    input:   { background: '#1e2230', border: '1px solid #2a3045', borderRadius: 6, padding: '6px 12px', color: '#e8ecf5', fontSize: 13, outline: 'none', width: '100%' } as React.CSSProperties,
+    select:  { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, outline: 'none' } as React.CSSProperties,
+    input:   { background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--text)', fontSize: 13, outline: 'none', width: '100%' } as React.CSSProperties,
   }
 
   return (
@@ -114,14 +114,14 @@ export default function AdminPage() {
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, marginBottom: 24 }}>
           {[
-            { label: 'Total Firms',  value: stats.total,     color: '#2563eb' },
-            { label: 'Trial',        value: stats.trial,     color: '#5b8af5' },
-            { label: 'Basic',        value: stats.basic,     color: '#2563eb' },
-            { label: 'Pro',          value: stats.pro,       color: '#3ecf8e' },
-            { label: 'Suspended',    value: stats.suspended, color: '#f66d7a' },
+            { label: 'Total Firms',  value: stats.total,     color: 'var(--blue)' },
+            { label: 'Trial',        value: stats.trial,     color: 'var(--blue)' },
+            { label: 'Basic',        value: stats.basic,     color: 'var(--blue)' },
+            { label: 'Pro',          value: stats.pro,       color: 'var(--green)' },
+            { label: 'Suspended',    value: stats.suspended, color: 'var(--red)' },
           ].map(s => (
             <div key={s.label} style={sty.card}>
-              <div style={{ fontSize: 11, color: '#505a70', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{s.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
             </div>
           ))}
@@ -134,22 +134,22 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: 6 }}>
             {(['all','trial','basic','pro','suspended'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${filter === f ? '#2563eb' : '#2a3045'}`, background: filter === f ? 'rgba(201,168,76,0.15)' : 'transparent', color: filter === f ? '#2563eb' : '#8892aa', fontSize: 12, cursor: 'pointer', fontWeight: filter === f ? 700 : 400 }}>
+                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${filter === f ? 'var(--blue)' : 'var(--border)'}`, background: filter === f ? 'var(--gold-dim)' : 'transparent', color: filter === f ? 'var(--blue)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: filter === f ? 700 : 400 }}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
             <button onClick={() => window.location.href = '/admin/branding'}
-              style={{ padding: '7px 16px', background: 'transparent', border: '1px solid #2a3045', color: '#8892aa', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '7px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               🎨 Branding
             </button>
             <button onClick={() => setCreateOpen(true)}
-              style={{ padding: '7px 16px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '7px 16px', background: 'var(--blue)', color: '#ffffff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               + Create Firm
             </button>
           </div>
-        <div style={{ fontSize: 13, color: '#505a70' }}>
+        <div style={{ fontSize: 13, color: 'var(--text3)' }}>
             Showing {displayed.length} of {firms.length} firms
           </div>
         </div>
@@ -159,29 +159,29 @@ export default function AdminPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: '#1e2230' }}>
+                <tr style={{ background: 'var(--surface2)' }}>
                   {['Firm','City','Groups','Members','Plan','Status','Invoice Ref','Trial Ends','Joined','Actions'].map(h => (
-                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: '#505a70', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #2a3045', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: 'var(--text3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading
-                  ? <tr><td colSpan={11} style={{ padding: 40, textAlign: 'center', color: '#505a70' }}>Loading...</td></tr>
+                  ? <tr><td colSpan={11} style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>Loading...</td></tr>
                   : displayed.length === 0
-                    ? <tr><td colSpan={11} style={{ padding: 40, textAlign: 'center', color: '#505a70' }}>No firms found</td></tr>
+                    ? <tr><td colSpan={11} style={{ padding: 40, textAlign: 'center', color: 'var(--text3)' }}>No firms found</td></tr>
                     : displayed.map(f => (
-                      <tr key={f.id} style={{ borderBottom: '1px solid #2a3045' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#1e2230')}
+                      <tr key={f.id} style={{ borderBottom: '1px solid var(--border)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                        <td style={{ padding: '12px 14px', fontWeight: 600, color: '#e8ecf5' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text)' }}>
                           {f.name}
-                          <div style={{ fontSize: 11, color: '#505a70', marginTop: 2 }}>{f.phone}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{f.phone}</div>
                         </td>
 
-                        <td style={{ padding: '12px 14px', color: '#8892aa' }}>{f.city || '—'}</td>
-                        <td style={{ padding: '12px 14px', fontWeight: 600, color: '#5b8af5' }}>{f.groupCount}</td>
-                        <td style={{ padding: '12px 14px', fontWeight: 600, color: '#5b8af5' }}>{f.memberCount}</td>
+                        <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{f.city || '—'}</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--blue)' }}>{f.groupCount}</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--blue)' }}>{f.memberCount}</td>
                         <td style={{ padding: '12px 14px' }}>
                           <select style={sty.select} value={f.plan}
                             disabled={updating === f.id}
@@ -206,14 +206,14 @@ export default function AdminPage() {
                             onBlur={e => updateInvoice(f.id, e.target.value)}
                             placeholder="INV-001" />
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#8892aa', fontSize: 12 }}>
+                        <td style={{ padding: '12px 14px', color: 'var(--text2)', fontSize: 12 }}>
                           {f.trial_ends ? fmtDate(f.trial_ends) : '—'}
                         </td>
-                        <td style={{ padding: '12px 14px', color: '#8892aa', fontSize: 12 }}>
+                        <td style={{ padding: '12px 14px', color: 'var(--text2)', fontSize: 12 }}>
                           {fmtDate(f.created_at)}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontSize: 11, color: '#505a70', fontFamily: 'monospace' }}>{f.slug}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>{f.slug}</div>
                         </td>
                       </tr>
                     ))
@@ -225,12 +225,12 @@ export default function AdminPage() {
 
         {/* Quick guide */}
         <div style={{ marginTop: 20, ...sty.card }}>
-          <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: '#2563eb' }}>📋 Manual Billing Guide</div>
-          <div style={{ fontSize: 13, color: '#8892aa', lineHeight: 1.8 }}>
-            <strong style={{ color: '#e8ecf5' }}>1. Trial ends</strong> → Change plan to <code style={{ color: '#2563eb' }}>basic</code> or send invoice<br/>
-            <strong style={{ color: '#e8ecf5' }}>2. Payment received</strong> → Update plan, enter Invoice Ref (e.g. INV-2026-001)<br/>
-            <strong style={{ color: '#e8ecf5' }}>3. Non-payment</strong> → Set status to <code style={{ color: '#f66d7a' }}>suspended</code> — firm sees suspended screen<br/>
-            <strong style={{ color: '#e8ecf5' }}>4. Renewal</strong> → Set status back to <code style={{ color: '#3ecf8e' }}>active</code>, update invoice ref
+          <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 14, color: 'var(--blue)' }}>📋 Manual Billing Guide</div>
+          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.8 }}>
+            <strong style={{ color: 'var(--text)' }}>1. Trial ends</strong> → Change plan to <code style={{ color: 'var(--blue)' }}>basic</code> or send invoice<br/>
+            <strong style={{ color: 'var(--text)' }}>2. Payment received</strong> → Update plan, enter Invoice Ref (e.g. INV-2026-001)<br/>
+            <strong style={{ color: 'var(--text)' }}>3. Non-payment</strong> → Set status to <code style={{ color: 'var(--red)' }}>suspended</code> — firm sees suspended screen<br/>
+            <strong style={{ color: 'var(--text)' }}>4. Renewal</strong> → Set status back to <code style={{ color: 'var(--green)' }}>active</code>, update invoice ref
           </div>
         </div>
 
@@ -239,9 +239,9 @@ export default function AdminPage() {
     {createOpen && (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
         onClick={e => e.target===e.currentTarget && setCreateOpen(false)}>
-        <div style={{ background:'#161921', border:'1px solid #2a3045', borderRadius:16, padding:28, width:'100%', maxWidth:480 }}>
-          <h2 style={{ fontSize:18, fontWeight:800, color:'#e8ecf5', marginBottom:20 }}>Create New Firm</h2>
-          {createErr && <div style={{ background:'#5c1e26', color:'#f66d7a', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:'100%', maxWidth:480 }}>
+          <h2 style={{ fontSize:18, fontWeight:800, color:'var(--text)', marginBottom:20 }}>Create New Firm</h2>
+          {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             {[
               { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds' },
@@ -250,15 +250,15 @@ export default function AdminPage() {
               { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager' },
             ].map(f => (
               <div key={f.key}>
-                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
-                <input style={{ width:'100%', padding:'9px 12px', background:'#1e2230', border:'1px solid #2a3045', borderRadius:8, color:'#e8ecf5', fontSize:14, outline:'none' }}
+                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
+                <input style={{ width:'100%', padding:'9px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:14, outline:'none' }}
                   value={(newFirm as any)[f.key]} onChange={e => setNewFirm(n=>({...n,[f.key]:e.target.value}))} placeholder={f.ph} />
               </div>
             ))}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
-                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Plan</label>
-                <select style={{ width:'100%', padding:'9px 12px', background:'#1e2230', border:'1px solid #2a3045', borderRadius:8, color:'#e8ecf5', fontSize:13, outline:'none' }}
+                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Plan</label>
+                <select style={{ width:'100%', padding:'9px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:13, outline:'none' }}
                   value={newFirm.plan} onChange={e => setNewFirm(n=>({...n,plan:e.target.value}))}>
                   <option value="trial">Trial</option>
                   <option value="basic">Basic</option>
@@ -266,23 +266,23 @@ export default function AdminPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Primary Colour</label>
+                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Primary Colour</label>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <input type="color" value={newFirm.primary_color}
                     onChange={e => setNewFirm(n=>({...n,primary_color:e.target.value}))}
                     style={{ width:36, height:36, borderRadius:8, border:'none', cursor:'pointer', padding:2 }} />
-                  <span style={{ fontSize:12, fontFamily:'monospace', color:'#8892aa' }}>{newFirm.primary_color}</span>
+                  <span style={{ fontSize:12, fontFamily:'monospace', color:'var(--text2)' }}>{newFirm.primary_color}</span>
                 </div>
               </div>
             </div>
           </div>
           <div style={{ display:'flex', gap:10, marginTop:22 }}>
             <button onClick={() => { setCreateOpen(false); setCreateErr('') }}
-              style={{ flex:1, padding:'11px 0', background:'#1e2230', color:'#8892aa', border:'1px solid #2a3045', borderRadius:8, fontSize:14, cursor:'pointer' }}>
+              style={{ flex:1, padding:'11px 0', background:'var(--surface2)', color:'var(--text2)', border:'1px solid var(--border)', borderRadius:8, fontSize:14, cursor:'pointer' }}>
               Cancel
             </button>
             <button onClick={handleCreate} disabled={creating}
-              style={{ flex:2, padding:'11px 0', background:'#2563eb', color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:creating?0.7:1 }}>
+              style={{ flex:2, padding:'11px 0', background:'var(--blue)', color:'#fff', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:creating?0.7:1 }}>
               {creating ? 'Creating...' : 'Create Firm'}
             </button>
           </div>

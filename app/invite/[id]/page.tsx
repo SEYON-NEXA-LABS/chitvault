@@ -43,9 +43,10 @@ export default function InvitePage() {
   useEffect(() => {
     async function check() {
       // Use the get_invite RPC — works for anon users too
-      const { data: inv, error: rpcErr } = await supabase
+      const { data: invData, error: rpcErr } = await supabase
         .rpc('get_invite', { invite_id: inviteId })
         .single()
+      const inv = invData as any as InviteInfo
 
       if (rpcErr || !inv) { setState('invalid'); return }
       if (inv.status === 'accepted') { setState('already_member'); return }

@@ -1,0 +1,9 @@
+app/invite/[id]/page.tsx(51,15): error TS2339: Property 'status' does not exist on type '{}'.
+app/invite/[id]/page.tsx(52,24): error TS2339: Property 'expires_at' does not exist on type '{}'.
+app/invite/[id]/page.tsx(54,17): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<InviteInfo | null>'.
+app/register/page.tsx(40,20): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<FirmByToken | null>'.
+app/register/page.tsx(42,26): error TS2339: Property 'primary_color' does not exist on type '{}'.
+lib/supabase/server.ts(13,16): error TS7006: Parameter 'toSet' implicitly has an 'any' type.
+lib/supabase/server.ts(14,34): error TS7031: Binding element 'name' implicitly has an 'any' type.
+lib/supabase/server.ts(14,40): error TS7031: Binding element 'value' implicitly has an 'any' type.
+lib/supabase/server.ts(14,47): error TS7031: Binding element 'options' implicitly has an 'any' type.
