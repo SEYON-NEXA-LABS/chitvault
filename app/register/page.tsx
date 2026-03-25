@@ -37,9 +37,10 @@ function RegisterForm() {
         .rpc('get_firm_by_register_token', { p_token: token })
         .single()
       if (!data) { setTokenValid(false); return }
-      setTokenFirm(data)
+      const firmData = data as any
+      setTokenFirm(firmData)
       setTokenValid(true)
-      applyBranding(data.primary_color || '#2563eb', 'DM Sans')
+      applyBranding(firmData.primary_color || '#2563eb', 'DM Sans')
     }
     validateToken()
   }, [token, supabase])

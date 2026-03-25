@@ -35,8 +35,47 @@ export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<string | null>(null)
   
   // Selections for specific reports
+  // Selections for specific reports
   const [selectedGroupId, setSelectedGroupId] = useState<string>('')
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
+
+  // Global Time Filter
+  const [timeFilter, setTimeFilter] = useState<string>('all')
+
+  const { filteredAuctions, filteredPayments, filteredCommissions } = useMemo(() => {
+    if (timeFilter === 'all') return { filteredAuctions: auctions, filteredPayments: payments, filteredCommissions: commissions }
+
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const currentMonth = today.getMonth() // 0-11
+    
+    // Financial year (Apr 1 to Mar 31)
+    const fyStartYear = currentMonth >= 3 ? currentYear : currentYear - 1
+    
+    let startD = new Date(fyStartYear, 3, 1) // Apr 1
+    let endD = new Date(fyStartYear + 1, 3, 0) // Mar 31
+
+    if (timeFilter === 'q1') { startD = new Date(fyStartYear, 3, 1); endD = new Date(fyStartYear, 6, 0) } // Apr-Jun
+    else if (timeFilter === 'q2') { startD = new Date(fyStartYear, 6, 1); endD = new Date(fyStartYear, 9, 0) } // Jul-Sep
+    else if (timeFilter === 'q3') { startD = new Date(fyStartYear, 9, 1); endD = new Date(fyStartYear, 12, 0) } // Oct-Dec
+    else if (timeFilter === 'q4') { startD = new Date(fyStartYear + 1, 0, 1); endD = new Date(fyStartYear + 1, 3, 0) } // Jan-Mar
+    else if (timeFilter === 'month') { startD = new Date(currentYear, currentMonth, 1); endD = new Date(currentYear, currentMonth + 1, 0) }
+    
+    const toLocalStr = (d: Date) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+    const s = toLocalStr(startD)
+    
+    // to include end day entirely:
+    endD.setDate(endD.getDate() + 1)
+    const e = toLocalStr(endD)
+
+    const isBetween = (d: string | null) => d ? ((d.substring(0, 10) >= s) && (d.substring(0, 10) < e)) : false
+
+    return {
+      filteredAuctions: auctions.filter(a => isBetween(a.auction_date || a.created_at)),
+      filteredPayments: payments.filter(p => isBetween(p.payment_date || p.created_at)),
+      filteredCommissions: commissions.filter(c => isBetween(c.created_at))
+    }
+  }, [auctions, payments, commissions, timeFilter])
 
   useEffect(() => {
     async function load() {
@@ -75,11 +114,11 @@ export default function ReportsPage() {
 
   const renderActiveReport = () => {
     switch (activeReport) {
-      case 'pnl': return <ReportPNL groups={groups} commissions={commissions} auctions={auctions} />
-      case 'cashflow': return <ReportCashFlow payments={payments} auctions={auctions} />
-      case 'dividend': return <ReportDividend groups={groups} auctions={auctions} />
-      case 'upcoming_pay': return <ReportUpcomingPay groups={groups} members={members} auctions={auctions} payments={payments} />
-      case 'auction_sched': return <ReportAuctionSched groups={groups} auctions={auctions} />
+      case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} auctions={filteredAuctions} />
+      case 'cashflow': return <ReportCashFlow payments={filteredPayments} auctions={filteredAuctions} />
+      case 'dividend': return <ReportDividend groups={groups} auctions={filteredAuctions} />
+      case 'upcoming_pay': return <ReportUpcomingPay groups={groups} members={members} auctions={filteredAuctions} payments={filteredPayments} />
+      case 'auction_sched': return <ReportAuctionSched groups={groups} auctions={filteredAuctions} />
       case 'group_ledger': return (
         <div>
            <Field label="Select Group" className="mb-4 max-w-sm">
@@ -88,7 +127,7 @@ export default function ReportsPage() {
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </Field>
-          {selectedGroupId && <ReportGroupLedger groupId={Number(selectedGroupId)} members={members} auctions={auctions} payments={payments} />}
+          {selectedGroupId && <ReportGroupLedger groupId={Number(selectedGroupId)} members={members} auctions={filteredAuctions} payments={filteredPayments} />}
         </div>
       )
       case 'member_history': return (
@@ -99,11 +138,11 @@ export default function ReportsPage() {
               {members.filter(m => m.status !== 'exited').map(m => <option key={m.id} value={m.id}>{m.name} ({groups.find(g=>g.id===m.group_id)?.name})</option>)}
             </select>
           </Field>
-          {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} groups={groups} payments={payments} auctions={auctions} />}
+          {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} groups={groups} payments={filteredPayments} auctions={filteredAuctions} />}
         </div>
       )
       case 'defaulters': return <ReportDefaulters members={members} groups={groups} />
-      case 'winners': return <ReportWinners auctions={auctions} groups={groups} members={members} />
+      case 'winners': return <ReportWinners auctions={filteredAuctions} groups={groups} members={members} />
       default: return null
     }
   }
@@ -121,7 +160,21 @@ export default function ReportsPage() {
       {/* Hub View */}
       {!activeReport && (
         <div className="printable">
-          <h1 className="text-2xl font-bold mb-6">Reports Hub</h1>
+          <div className="flex justify-between items-center mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+            <h1 className="text-2xl font-bold">Reports Hub</h1>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>Date Filter:</label>
+              <select className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 12px' }} value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)}>
+                <option value="all">All Time</option>
+                <option value="fy">Current Financial Year</option>
+                <option value="q1">Q1 (Apr - Jun)</option>
+                <option value="q2">Q2 (Jul - Sep)</option>
+                <option value="q3">Q3 (Oct - Dec)</option>
+                <option value="q4">Q4 (Jan - Mar)</option>
+                <option value="month">Current Month</option>
+              </select>
+            </div>
+          </div>
           {['Financial', 'Operational', 'Member-focused'].map(category => (
             <div key={category} className="mb-8">
               <h2 className="text-lg font-semibold mb-3 px-1 border-b pb-2" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -160,6 +213,11 @@ export default function ReportsPage() {
                </button>
                <h1 className="text-2xl font-bold flex items-center gap-2">
                  {REPORTS.find(r => r.id === activeReport)?.title}
+                 {timeFilter !== 'all' && (
+                   <span className="text-xs ml-2 px-2 py-1 rounded-lg bg-blue-100 text-blue-800 uppercase font-semibold">
+                     {timeFilter === 'fy' ? 'Financial Year' : timeFilter.toUpperCase()} FILTER APPLIED
+                   </span>
+                 )}
                </h1>
             </div>
             <Btn variant="secondary" onClick={() => window.print()}><Printer size={15}/> Print Report</Btn>

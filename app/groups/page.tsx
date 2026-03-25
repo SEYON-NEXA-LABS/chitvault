@@ -42,9 +42,9 @@ export default function GroupsPage() {
       supabase.from('auctions').select('group_id,month'),
       supabase.from('payments').select('group_id,status'),
     ])
-    setGroups(g.data || [])
-    setAuctions(a.data || [])
-    setPayments(p.data || [])
+    setGroups((g.data as any) || [])
+    setAuctions((a.data as any) || [])
+    setPayments((p.data as any) || [])
     setLoading(false)
   }, [supabase])
 
