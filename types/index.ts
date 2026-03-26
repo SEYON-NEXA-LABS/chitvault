@@ -40,7 +40,10 @@ export type MemberStatus = 'active' | 'exited' | 'defaulter' | 'foreman'
 export interface Group {
   id: number; firm_id: string; name: string; chit_value: number
   num_members: number; duration: number; monthly_contribution: number
-  start_date: string | null; status: GroupStatus; created_at: string
+  start_date: string | null; status: GroupStatus; 
+  auction_scheme: 'DIVIDEND'|'ACCUMULATION';
+  accumulated_surplus: number;
+  created_at: string
 }
 
 export interface Member {
@@ -53,7 +56,9 @@ export interface Member {
 export interface Auction {
   id: number; firm_id: string; group_id: number; month: number
   auction_date: string | null; winner_id: number | null
-  bid_amount: number; total_pot: number; dividend: number; created_at: string
+  bid_amount: number; total_pot: number; dividend: number;
+  net_payout?: number;
+  created_at: string
 }
 
 
@@ -114,7 +119,7 @@ export const DENOMINATIONS = [
 ] as const
 
 // ── Auction Rules (stored on Group) ──────────────────────────
-export type CommissionType = 'percent_of_chit' | 'percent_of_discount' | 'fixed_amount'
+export type CommissionType = 'percent_of_chit' | 'percent_of_discount' | 'percent_of_payout' | 'fixed_amount'
 export type DividendRule   = 'equal_split' | 'proportional'
 export type CommissionRecipient = 'foreman' | 'firm'
 
@@ -166,10 +171,12 @@ export interface AuctionCalculation {
   num_members:          number
   per_member_div:       number
   each_pays:            number
+  net_payout:           number // New field for whitelabel payout logic
 }
 
 export const COMMISSION_TYPE_LABELS: Record<CommissionType, string> = {
   percent_of_chit:     '% of Chit Value (per month)',
   percent_of_discount: '% of Discount (per auction)',
+  percent_of_payout:   '% of Payout Amount (deducted)',
   fixed_amount:        'Fixed Amount (per month)',
 }

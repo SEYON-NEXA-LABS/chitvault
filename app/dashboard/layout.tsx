@@ -9,7 +9,7 @@ import { APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle
 } from 'lucide-react'
 
 const NAV = [
@@ -18,11 +18,11 @@ const NAV = [
   { href: '/members',    label: 'Members',           icon: Users           },
   { label: 'Transactions', divider: true },
   { href: '/auctions',   label: 'Auctions',          icon: Gavel           },
+  { href: '/schemes',    label: 'Auction Schemes',   icon: HelpCircle      },
   { href: '/payments',   label: 'Payments',          icon: CreditCard      },
   { href: '/cashbook',   label: 'Daily Cash',         icon: BookOpen        },
   { href: '/reports',    label: 'Reports',           icon: BarChart3       },
   { href: '/collection', label: 'Collection Report', icon: ClipboardList   },
-  { href: '/settlement', label: 'Settlement Utility', icon: Calculator     },
   { label: 'Manage', divider: true },
   { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
   { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },

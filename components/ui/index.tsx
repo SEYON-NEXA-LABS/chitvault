@@ -54,7 +54,7 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
 }
 
 export function Card({ title, subtitle, children, className, style }: {
-  title?: string; subtitle?: string
+  title?: React.ReactNode; subtitle?: React.ReactNode
   children: React.ReactNode; className?: string; style?: React.CSSProperties
 }) {
   return (
@@ -130,7 +130,7 @@ export function Tr({ children, className, style }: {
 
 // ── Table Card (card + header + table) ────────────────────────────────────────
 export function TableCard({ title, subtitle, actions, children }: {
-  title: string; subtitle?: string
+  title: React.ReactNode; subtitle?: React.ReactNode
   actions?: React.ReactNode; children: React.ReactNode
 }) {
   return (

@@ -146,7 +146,7 @@ export default function AuctionsPage() {
           ? <Empty icon="🔨" text="No auctions recorded yet." />
           : <Table>
               <thead><tr>
-                {['Group','Month','Date','Winner','Bid','Discount','Commission','Per-Member Div','Each Pays','Action'].map(h => <Th key={h}>{h}</Th>)}
+                {['Group','Month','Date','Winner','Bid','To Surplus','Net Payout','Commission','Pays','Action'].map(h => <Th key={h}>{h}</Th>)}
               </tr></thead>
               <tbody>
                 {auctions.map(a => {
@@ -161,13 +161,17 @@ export default function AuctionsPage() {
                       <Td>{fmtDate(a.auction_date)}</Td>
                       <Td>👑 <span className="font-semibold">{w?.name || '—'}</span></Td>
                       <Td right>{fmt(a.bid_amount)}</Td>
-                      <Td right><span style={{ color: 'var(--red)' }}>−{fmt(disc)}</span></Td>
+                      <Td right>
+                         {g?.auction_scheme === 'ACCUMULATION' 
+                           ? <span style={{ color: 'var(--gold)' }}>+{fmt(Number(a.total_pot) - Number(a.bid_amount))}</span>
+                           : <span style={{ color: 'var(--text3)' }}>—</span>}
+                      </Td>
+                      <Td right className="font-bold text-green-600">{fmt(a.net_payout || a.bid_amount)}</Td>
                       <Td right>
                         {fc
-                          ? <span style={{ color: 'var(--gold)' }}>{fmt(fc.commission_amt)}</span>
+                          ? <span style={{ color: 'var(--red)' }}>{fmt(fc.commission_amt)}</span>
                           : <span style={{ color: 'var(--text3)' }}>—</span>}
                       </Td>
-                      <Td right><span style={{ color: 'var(--green)' }}>+{fmt(a.dividend)}</span></Td>
                       <Td right>
                         {g ? <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - Number(a.dividend))}</span> : '—'}
                       </Td>
@@ -308,12 +312,12 @@ export default function AuctionsPage() {
             </div>
             <div className="p-4 grid grid-cols-3 gap-3">
               {[
-                { label: 'Discount',        value: fmt(calc.discount),        color: 'var(--red)'   },
-                { label: 'Commission',       value: fmt(calc.commission_amt),  color: 'var(--gold)'  },
-                { label: 'Net Dividend Pool',value: fmt(calc.net_dividend),    color: 'var(--green)' },
-                { label: 'Per Member',       value: fmt(calc.per_member_div),  color: 'var(--green)' },
-                { label: 'Members Count',    value: String(calc.num_members),  color: 'var(--blue)'  },
-                { label: 'Each Member Pays', value: fmt(calc.each_pays),       color: 'var(--text)'  },
+                { label: 'Raw Payout',       value: fmt((calc.net_payout || 0) + (calc.commission_amt || 0)),  color: 'var(--text)'   },
+                { label: 'Firm Commission',  value: fmt(calc.commission_amt),  color: 'var(--red)'  },
+                { label: groupRules?.auction_scheme === 'ACCUMULATION' ? 'To Surplus Pool' : 'Net Dividend', value: fmt(groupRules?.auction_scheme === 'ACCUMULATION' ? calc.discount : calc.net_dividend), color: 'var(--gold)' },
+                { label: 'Net Payout',       value: fmt(calc.net_payout),      color: 'var(--green)' },
+                { label: 'Per Member Div',   value: fmt(calc.per_member_div),  color: 'var(--blue)'  },
+                { label: 'Total Members',    value: String(calc.num_members),  color: 'var(--text2)' },
               ].map(r => (
                 <div key={r.label} className="rounded-lg p-2.5" style={{ background: 'var(--surface2)' }}>
                   <div className="text-xs mb-0.5" style={{ color: 'var(--text3)' }}>{r.label}</div>
