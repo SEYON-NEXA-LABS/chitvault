@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
   description: 'Chit Fund Management Software',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-152.png' },
+  manifest: '/manifest.webmanifest'
 }
 
 export const viewport: Viewport = {
@@ -22,7 +23,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2563eb" />
-        <link rel="manifest" href="/manifest.json" />
         {/* Google Fonts preconnect for fast dynamic font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

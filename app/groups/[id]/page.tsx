@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate } from '@/lib/utils'
-import { Card, Loading, Badge, StatCard, Btn } from '@/components/ui'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft } from 'lucide-react'
+import { Card, Loading, Badge, StatCard, Btn, ProgressBar } from '@/components/ui'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator } from 'lucide-react'
 import type { Group, Auction, Member } from '@/types'
 
 export default function GroupLedgerPage() {
@@ -21,6 +21,7 @@ export default function GroupLedgerPage() {
   const [auctionHistory, setAuctionHistory] = useState<Auction[]>([])
   const [members,        setMembers]        = useState<Member[]>([])
   const [loading,        setLoading]        = useState(true)
+  const [selectedMember, setSelectedMember] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -62,7 +63,15 @@ export default function GroupLedgerPage() {
           </button>
           <div>
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50 mb-1">
-              <Gavel size={12} /> Group Ledger
+              <Gavel size={12} /> Group Ledger 
+              {group.auction_scheme && (
+                <>
+                  <span className="mx-2">•</span>
+                  <Badge variant={group.auction_scheme === 'ACCUMULATION' ? 'gold' : 'blue'}>
+                    {group.auction_scheme === 'ACCUMULATION' ? 'Surplus Accumulation' : 'Dividend Share'}
+                  </Badge>
+                </>
+              )}
             </div>
             <h1 className="text-2xl font-bold">{group.name}</h1>
           </div>
@@ -74,9 +83,31 @@ export default function GroupLedgerPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard label="Progress" value={`${monthsCompleted} / ${group.duration}`} sub="Months completed" color="blue" />
         <StatCard label="Members" value={group.num_members} sub="Total tickets" color="gold" />
-        <StatCard label="Total Dividends" value={fmt(totalDividends)} sub="Distributed to members" color="green" />
-        <StatCard label="Total Payouts" value={fmt(totalPayouts)} sub="Paid to winners" color="red" />
+        {group.auction_scheme === 'ACCUMULATION' ? (
+          <>
+            <StatCard label="Surplus Pool" value={fmt(group.accumulated_surplus)} sub="Accumulated savings" color="green" />
+            <StatCard label="Closure Target" value={fmt(group.chit_value)} sub="Closing early soon" color="red" />
+          </>
+        ) : (
+          <>
+            <StatCard label="Total Dividends" value={fmt(totalDividends)} sub="Distributed to members" color="green" />
+            <StatCard label="Total Payouts" value={fmt(totalPayouts)} sub="Paid to winners" color="red" />
+          </>
+        )}
       </div>
+
+      {group.auction_scheme === 'ACCUMULATION' && (
+        <Card className="p-4 border-[1.5px]" style={{ borderColor: 'var(--gold)', background: 'rgba(201,168,76,0.05)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold uppercase tracking-wide opacity-70">🚀 Early Closure Progress</span>
+            <span className="text-sm font-bold">{Math.round((Number(group.accumulated_surplus) / Number(group.chit_value)) * 100)}%</span>
+          </div>
+          <ProgressBar pct={Math.min(100, (Number(group.accumulated_surplus) / Number(group.chit_value)) * 100)} />
+          <p className="text-[10px] mt-2 opacity-60">
+            Once surplus reaches {fmt(group.chit_value)}, the firm can pay the last members from this pool and close the group early.
+          </p>
+        </Card>
+      )}
 
       {/* ── Auction History ─────────────────────────────── */}
       <Card title="Auction Ledger" subtitle="Month-by-month financial breakdown of all auctions">
@@ -87,7 +118,12 @@ export default function GroupLedgerPage() {
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Month</th>
                 <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Winner</th>
                 <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Bid Amount</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Dividend</th>
+                {group.auction_scheme === 'ACCUMULATION' ? (
+                   <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>To Surplus</th>
+                ) : (
+                   <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Dividend</th>
+                )}
+                <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Net Payout</th>
                 <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Each Pays</th>
               </tr>
             </thead>
@@ -112,8 +148,18 @@ export default function GroupLedgerPage() {
                        ) : '—'}
                     </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-bold text-red-500">{fmt(a.bid_amount)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--gold)' }} className="font-mono">{fmt(a.dividend)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-black text-green-500">{fmt(eachPays)}</td>
+                    {group.auction_scheme === 'ACCUMULATION' ? (
+                       <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--gold)' }} className="font-mono font-bold">+{fmt(Number(a.total_pot) - Number(a.bid_amount))}</td>
+                    ) : (
+                       <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--gold)' }} className="font-mono">{fmt(a.dividend)}</td>
+                    )}
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-black text-green-500">{fmt(a.net_payout || a.bid_amount)}</td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-semibold text-[var(--text2)]">
+                       {(() => {
+                          const monthlyDue = group.chit_value / group.duration
+                          return fmt(monthlyDue - Number(a.dividend))
+                       })()}
+                    </td>
                   </tr>
                 )
               })}
@@ -145,12 +191,74 @@ export default function GroupLedgerPage() {
             </div>
          </Card>
 
-         <Card title="Payment Status" subtitle="Group collection health">
-            <div className="p-5 flex flex-col items-center justify-center text-center">
-                <div className="text-3xl mb-2">📊</div>
-                <div className="text-sm font-semibold">Ledger View Active</div>
-                <p className="text-xs opacity-60 mt-1">This page provides a financial snapshot. For member-specific payments, visit the Payments section.</p>
-                <Btn variant="secondary" size="sm" className="mt-4" onClick={() => router.push('/payments')}>Go to Payments</Btn>
+         <Card title={
+           <div className="flex items-center gap-2">
+             <Calculator size={16} className="text-[var(--gold)]" />
+             Settlement Manager
+           </div>
+         } subtitle="Individual member account balance">
+            <div className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider opacity-50">Select Member to Settle</label>
+                    <select className="w-full bg-[var(--surface2)] border-[var(--border)] rounded-lg text-sm p-2"
+                      value={selectedMember || ''}
+                      onChange={e => setSelectedMember(Number(e.target.value))}>
+                      <option value="">Select a member...</option>
+                      {members.map(m => (
+                        <option key={m.id} value={m.id}>#{m.ticket_no} — {m.name}</option>
+                      ))}
+                    </select>
+                </div>
+
+                {selectedMember && (() => {
+                  const m = members.find(x => x.id === selectedMember)
+                  if (!m) return null
+                  const wonAuction = auctionHistory.find(a => a.winner_id === m.id)
+                  const totalDue = (group.chit_value / group.duration) * monthsCompleted
+                  const divs = auctionHistory.reduce((s, a) => s + Number(a.dividend), 0)
+                  const netDue = totalDue - divs
+                  
+                  return (
+                    <div className="bg-[var(--surface2)] p-4 rounded-xl border-l-[3px] border-l-[var(--gold)] space-y-3">
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="opacity-60">Status</span>
+                          {wonAuction ? <Badge variant="gold">Winner (Month {wonAuction.month})</Badge> : <Badge variant="blue">Non-Prized Member</Badge>}
+                       </div>
+
+                       <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between text-xs">
+                             <span className="opacity-50">Total Expected Pay:</span>
+                             <span className="font-mono">{fmt(totalDue)}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                             <span className="opacity-50">Dividends Received:</span>
+                             <span className="font-mono text-[var(--green)]">−{fmt(divs)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-bold pt-2 border-t mt-2" style={{ borderColor: 'var(--border)' }}>
+                             <span>Member's Contribution:</span>
+                             <span className="text-[var(--blue)]">{fmt(netDue)}</span>
+                          </div>
+                       </div>
+
+                       {wonAuction && (
+                         <div className="p-2.5 bg-green-500/10 rounded-lg space-y-1">
+                            <div className="flex justify-between text-xs">
+                               <span className="font-semibold text-green-700">Winner Payout:</span>
+                               <span className="font-mono font-bold text-green-700">{fmt(wonAuction.net_payout || wonAuction.bid_amount)}</span>
+                            </div>
+                         </div>
+                       )}
+
+                       {!wonAuction && group.auction_scheme === 'ACCUMULATION' && (
+                         <div className="p-2.5 bg-blue-500/10 rounded-lg">
+                            <p className="text-[10px] leading-relaxed text-blue-700 font-medium">
+                               This member will receive **{fmt(group.chit_value)}** once the surplus pool reaches {fmt(group.chit_value)}. 🚀
+                            </p>
+                         </div>
+                       )}
+                    </div>
+                  )
+                })()}
             </div>
          </Card>
       </div>

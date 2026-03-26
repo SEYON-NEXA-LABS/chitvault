@@ -32,7 +32,8 @@ export default function GroupsPage() {
 
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
-    monthly_contribution: '', start_date: ''
+    monthly_contribution: '', start_date: '',
+    auction_scheme: 'DIVIDEND' as 'DIVIDEND'|'ACCUMULATION'
   })
   const [saving, setSaving] = useState(false)
 
@@ -82,12 +83,16 @@ export default function GroupsPage() {
     const { error } = await supabase.from('groups').insert({
       name: form.name, chit_value: +form.chit_value, num_members: +form.num_members,
       duration: +form.duration, monthly_contribution: +form.monthly_contribution,
-      start_date: form.start_date || null, status: 'active', firm_id: firm.id
+      start_date: form.start_date || null, status: 'active', firm_id: firm.id,
+      auction_scheme: form.auction_scheme, accumulated_surplus: 0
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
     showToast('Group created!'); setAddOpen(false)
-    setForm({ name: '', chit_value: '', num_members: '', duration: '', monthly_contribution: '', start_date: '' })
+    setForm({ 
+      name: '', chit_value: '', num_members: '', duration: '', 
+      monthly_contribution: '', start_date: '', auction_scheme: 'DIVIDEND' 
+    })
     load()
   }
 
@@ -277,6 +282,18 @@ export default function GroupsPage() {
           <Field label="Start Date" className="col-span-2">
             <input className={inputClass} style={inputStyle} type="date" value={form.start_date}
               onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+          </Field>
+          <Field label="Auction Scheme" className="col-span-2">
+            <select className={inputClass} style={inputStyle} value={form.auction_scheme}
+              onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
+              <option value="DIVIDEND">Standard (Dividend Share)</option>
+              <option value="ACCUMULATION">Accumulation (Surplus Model)</option>
+            </select>
+            <p className="text-[10px] mt-1.5 leading-relaxed opacity-60">
+              {form.auction_scheme === 'DIVIDEND' 
+                ? "Standard: Bids are split among all members as a monthly dividend."
+                : "Accumulation: Bids are stored in a reserve to close the group several months early."}
+            </p>
           </Field>
         </div>
         <div className="flex justify-end gap-3 mt-6 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>

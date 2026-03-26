@@ -1,5 +1,4 @@
--- ============================================================
--- ChitVault SaaS — Multi-Tenant Schema (v1.2)
+-- ChitVault SaaS — Multi-Tenant Schema (v2.4 - Net Payout Persistence)
 -- Safe to run in Supabase SQL Editor (idempotent)
 -- ============================================================
 
@@ -25,6 +24,7 @@ create table if not exists firms (
   phone       text,
   -- Branding / white-label
   primary_color   text default '#2563eb',     -- hex colour
+  accent_color    text default '#1e40af',     -- hex colour (darker tint)
   logo_url        text,                        -- hosted image URL
   tagline         text default 'Chit Fund Manager',
   font            text default 'DM Sans',      -- Google Font name
@@ -36,6 +36,7 @@ create table if not exists firms (
 
 -- Migration: add branding columns if table already exists
 alter table firms add column if not exists primary_color  text default '#2563eb';
+alter table firms add column if not exists accent_color   text default '#1e40af';
 alter table firms add column if not exists logo_url       text;
 alter table firms add column if not exists tagline        text default 'Chit Fund Manager';
 alter table firms add column if not exists font           text default 'DM Sans';
@@ -91,9 +92,13 @@ create table if not exists groups (
   monthly_contribution numeric(12,2) not null,
   start_date           date,
   status               text default 'active',
+  -- Scheme Configuration
+  auction_scheme       text default 'DIVIDEND',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
+  accumulated_surplus  numeric(12,2) default 0.0,  -- Track saved bids for early closure
   created_at           timestamptz default now(),
   updated_at           timestamptz default now(),
   constraint groups_status_chk check (status in ('active','paused','closed')),
+  constraint groups_scheme_chk check (auction_scheme in ('DIVIDEND','ACCUMULATION')),
   constraint groups_nonneg_chk check (num_members > 0 and duration > 0 and chit_value >= 0 and monthly_contribution >= 0)
 );
 
@@ -107,6 +112,17 @@ drop trigger if exists set_groups_updated_at on groups;
 create trigger set_groups_updated_at
   before update on groups
   for each row execute procedure moddatetime(updated_at);
+
+-- Migration: add scheme columns if table already exists
+alter table groups add column if not exists auction_scheme       text default 'DIVIDEND';
+alter table groups add column if not exists accumulated_surplus  numeric(12,2) default 0.0;
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'groups_scheme_chk') then
+    alter table groups add constraint groups_scheme_chk
+      check (auction_scheme in ('DIVIDEND','ACCUMULATION'));
+  end if;
+end $$;
 
 -- 1.4 MEMBERS
 create table if not exists members (
@@ -156,11 +172,15 @@ create table if not exists auctions (
   bid_amount   numeric(12,2) not null,
   total_pot    numeric(12,2) not null,
   dividend     numeric(12,2) not null,
+  net_payout   numeric(12,2) default 0.0,
   created_at   timestamptz default now(),
   updated_at   timestamptz default now(),
   unique(firm_id, group_id, month),
   constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0)
 );
+
+-- Migration: add net_payout to auctions
+alter table auctions add column if not exists net_payout numeric(12,2) default 0.0;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'auctions_group_firm_fk') then
@@ -695,7 +715,7 @@ alter table groups
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'groups_commission_type_chk') then
     alter table groups add constraint groups_commission_type_chk
-      check (commission_type in ('percent_of_chit','percent_of_discount','fixed_amount'));
+      check (commission_type in ('percent_of_chit','percent_of_discount','percent_of_payout','fixed_amount'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'groups_commission_recipient_chk') then
     alter table groups add constraint groups_commission_recipient_chk
@@ -766,6 +786,8 @@ declare
   v_net_div    numeric(12,2);
   v_per_member numeric(12,2);
   v_num_members int;
+  v_raw_payout numeric(12,2);
+  v_net_payout numeric(12,2);
 begin
   select * into g from groups where id = p_group_id and firm_id = my_firm_id();
   if not found then raise exception 'Group not found'; end if;
@@ -789,26 +811,38 @@ begin
     raise exception 'Discount ₹% exceeds cap ₹% (% of chit value)', v_discount, v_cap, (g.discount_cap_pct * 100);
   end if;
 
+  -- Raw Payout logic (varies by scheme)
+  if g.auction_scheme = 'ACCUMULATION' then
+     v_raw_payout := g.chit_value - p_bid_amount; -- Winner gets pot minus bid
+  else
+     v_raw_payout := p_bid_amount; -- "Winning Bid" is what they take
+  end if;
+
   -- Calculate foreman commission
   case g.commission_type
     when 'percent_of_chit'     then v_commission := round(g.chit_value * g.commission_value / 100, 2);
     when 'percent_of_discount' then v_commission := round(v_discount    * g.commission_value / 100, 2);
+    when 'percent_of_payout'   then v_commission := round(v_raw_payout * g.commission_value / 100, 2);
     when 'fixed_amount'        then v_commission := g.commission_value;
     else v_commission := 0;
   end case;
 
-  -- Net dividend after commission
-  v_net_div := v_discount - v_commission;
-  if v_net_div < 0 then v_net_div := 0; end if;
+  v_net_payout := v_raw_payout - v_commission;
 
-  -- Count active members for per-member split
-  select count(*) into v_num_members
-  from members
-  where group_id = p_group_id and firm_id = my_firm_id()
-    and status in ('active','foreman');
+  -- Dividend logic
+  if g.auction_scheme = 'ACCUMULATION' then
+     v_net_div    := 0; -- No dividend, bids are saved in surplus pool
+     v_per_member := 0;
+  else
+     v_net_div := v_discount - v_commission;
+     if v_net_div < 0 then v_net_div := 0; end if;
 
-  v_num_members := greatest(v_num_members, 1); -- avoid divide by zero
-  v_per_member  := round(v_net_div / v_num_members, 2);
+     -- Count active members
+     select count(*) into v_num_members from members
+     where group_id = p_group_id and firm_id = my_firm_id() and status in ('active','foreman');
+     v_num_members := greatest(v_num_members, 1);
+     v_per_member  := round(v_net_div / v_num_members, 2);
+  end if;
 
   return jsonb_build_object(
     'chit_value',      g.chit_value,
@@ -824,7 +858,8 @@ begin
     'net_dividend',    v_net_div,
     'num_members',     v_num_members,
     'per_member_div',  v_per_member,
-    'each_pays',       g.monthly_contribution - v_per_member
+    'each_pays',       g.monthly_contribution - v_per_member,
+    'net_payout',      v_net_payout
   );
 end;
 $$;
@@ -864,10 +899,10 @@ begin
   v_calc := public.calculate_auction(p_group_id, p_bid_amount);
 
   -- Insert auction
-  insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend)
+  insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
   values (
     v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
-    p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric
+    p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric
   )
   returning id into v_auction_id;
 
@@ -890,6 +925,13 @@ begin
     p_foreman_member_id,
     p_notes
   );
+
+  -- IF ACCUMULATION scheme: Update group surplus pooled balance
+  if g.auction_scheme = 'ACCUMULATION' then
+     update groups 
+     set accumulated_surplus = accumulated_surplus + (g.chit_value - p_bid_amount)
+     where id = p_group_id;
+  end if;
 
   return v_calc || jsonb_build_object('auction_id', v_auction_id);
 end;
