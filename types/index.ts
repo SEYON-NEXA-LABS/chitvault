@@ -18,6 +18,7 @@ export interface Firm {
   phone:          string | null
   // Branding
   primary_color:  string | null
+  accent_color:   string | null
   logo_url:       string | null
   tagline:        string | null
   font:           string | null

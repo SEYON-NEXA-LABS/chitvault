@@ -9,14 +9,19 @@ import { Btn, Card, Badge, Toast } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { APP_NAME } from '@/lib/utils'
-import { Sun, Moon, LogOut, Key, Palette, Type, Image as ImageIcon, Link } from 'lucide-react'
+import { 
+  Sun, Moon, LogOut, Key, Palette, Type, Building, Building2, 
+  Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User 
+} from 'lucide-react'
 import Image from 'next/image'
 
 export default function SettingsPage() {
   const supabase = createClient()
   const router   = useRouter()
-  const { firm, refresh, can } = useFirm()
+  const { profile, role, firm, can, refresh } = useFirm()
   const { toast, show, hide } = useToast()
+
+  const isSuperAdmin = role === 'superadmin'
 
   const [email,     setEmail]     = useState('')
   const [theme,     setTheme]     = useState<'dark'|'light'>('light')
@@ -24,11 +29,17 @@ export default function SettingsPage() {
   const [saving,    setSaving]    = useState(false)
   const [resetMsg,  setResetMsg]  = useState('')
 
+  const [newPass,     setNewPass]     = useState('')
+  const [confirmPass, setConfirmPass] = useState('')
+  const [passLoading, setPassLoading] = useState(false)
+  const [passMsg,     setPassMsg]     = useState<{text:string, type:'success'|'error'}|null>(null)
+
   // Branding form state
   const [name,       setName]       = useState(firm?.name || '')
   const [address,    setAddress]    = useState(firm?.address || '')
   const [phone,      setPhone]      = useState(firm?.phone || '')
   const [color,      setColor]      = useState(firm?.primary_color || '#2563eb')
+  const [accentColor, setAccentColor] = useState(firm?.accent_color || '#1e40af')
   const [customColor, setCustomColor] = useState(firm?.primary_color || '#2563eb')
   const [logoUrl,    setLogoUrl]    = useState(firm?.logo_url || '')
   const [tagline,    setTagline]    = useState(firm?.tagline || 'Chit Fund Manager')
@@ -44,6 +55,7 @@ export default function SettingsPage() {
       setAddress(firm.address || '')
       setPhone(firm.phone || '')
       setColor(firm.primary_color || '#2563eb')
+      setAccentColor(firm.accent_color || '#1e40af')
       setCustomColor(firm.primary_color || '#2563eb')
       setLogoUrl(firm.logo_url || '')
       setTagline(firm.tagline || 'Chit Fund Manager')
@@ -61,17 +73,22 @@ export default function SettingsPage() {
   function handleColorSelect(val: string) {
     if (val === 'custom') return
     setColor(val); setCustomColor(val)
-    applyBranding(val, font) // live preview
+    applyBranding(val, font, accentColor)
   }
 
   function handleCustomColor(val: string) {
     setCustomColor(val); setColor(val)
-    applyBranding(val, font)
+    applyBranding(val, font, accentColor)
+  }
+
+  function handleAccentChange(val: string) {
+    setAccentColor(val)
+    applyBranding(color, font, val)
   }
 
   function handleFontChange(f: string) {
     setFont(f)
-    applyBranding(color, f) // live preview
+    applyBranding(color, f, accentColor)
   }
 
   async function saveBranding() {
@@ -82,6 +99,7 @@ export default function SettingsPage() {
       address:       address.trim() || null,
       phone:         phone.trim() || null,
       primary_color: color,
+      accent_color:  accentColor,
       logo_url:      logoUrl.trim() || null,
       tagline:       tagline.trim() || 'Chit Fund Manager',
       font,
@@ -109,21 +127,35 @@ export default function SettingsPage() {
     refresh()
   }
 
+  async function updatePassword() {
+    setPassMsg(null)
+    if (!newPass) return
+    if (newPass.length < 6) { setPassMsg({ text: 'Password must be at least 6 characters.', type: 'error' }); return }
+    if (newPass !== confirmPass) { setPassMsg({ text: 'Passwords do not match.', type: 'error' }); return }
+    
+    setPassLoading(true)
+    const { error } = await supabase.auth.updateUser({ password: newPass })
+    setPassLoading(false)
+    
+    if (error) { setPassMsg({ text: error.message, type: 'error' }); return }
+    
+    setPassMsg({ text: 'Password updated successfully! ✓', type: 'success' })
+    setNewPass(''); setConfirmPass('')
+  }
+
   const regLink = regToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?token=${regToken}` : null
 
   return (
     <div className="max-w-2xl space-y-4">
 
-      {/* ── Branding ─────────────────────────────────────── */}
+      {/* ── Firm Profile (Basic Info for Admin/Owner) ────────────────── */}
       {can('viewSettings') && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-            <Palette size={15} /> Branding & Appearance
+            <Building size={15} /> Firm Profile
           </div>
           <div className="p-5 space-y-5">
-
-            {/* Firm Identity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Firm Name</label>
@@ -138,6 +170,23 @@ export default function SettingsPage() {
                 <input className={inputClass} style={inputStyle} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g,''))} maxLength={10} pattern={"[0-9]{10}"} placeholder="e.g. 9876543210" />
               </div>
             </div>
+            <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <Btn variant="primary" loading={saving} onClick={saveBranding}>
+                Save Changes
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Branding (Superadmin Only) ─────────────────────────────────── */}
+      {can('viewSettings') && isSuperAdmin && (
+        <Card className="overflow-hidden">
+          <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+            <Palette size={15} /> Branding & Appearance
+          </div>
+          <div className="p-5 space-y-5">
 
             {/* Logo */}
             <div>
@@ -168,32 +217,59 @@ export default function SettingsPage() {
             </div>
 
             {/* Colour */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Palette size={13} /> Primary Colour
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {PRESET_COLORS.map(p => (
-                  p.value !== 'custom' ? (
-                    <button key={p.value} onClick={() => handleColorSelect(p.value)}
-                      title={p.label}
-                      style={{
-                        width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer',
-                        outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent',
-                        outlineOffset: 2, transition: 'outline 0.15s'
-                      }} />
-                  ) : null
-                ))}
-                {/* Custom colour picker */}
-                <div style={{ position: 'relative' }}>
-                  <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)}
-                    style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+              {/* Primary */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                  <Palette size={13} /> Primary Colour
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {PRESET_COLORS.map(p => (
+                    p.value !== 'custom' ? (
+                      <button key={p.value} onClick={() => handleColorSelect(p.value)}
+                        title={p.label}
+                        style={{
+                          width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer',
+                          outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent',
+                          outlineOffset: 2, transition: 'outline 0.15s'
+                        }} />
+                    ) : null
+                  ))}
+                  <div style={{ position: 'relative' }}>
+                    <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)}
+                      style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 20, height: 20, borderRadius: 5, background: color }} />
+                  <span className="text-xs font-mono opacity-60">{color}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: color }} />
-                <span className="text-sm font-mono" style={{ color: 'var(--text2)' }}>{color}</span>
-                <span className="text-xs" style={{ color: 'var(--text3)' }}>— Live preview active</span>
+
+              {/* Accent */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                  <Palette size={13} /> Accent Colour
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {['#1e40af', '#1d4ed8', '#0369a1', '#0e7490', '#c026d3', '#db2777', '#dc2626', '#d97706'].map(c => (
+                    <button key={c} onClick={() => handleAccentChange(c)}
+                      title="Preset"
+                      style={{
+                        width: 32, height: 32, borderRadius: 8, background: c, border: 'none', cursor: 'pointer',
+                        outline: accentColor === c ? `3px solid ${c}` : '3px solid transparent',
+                        outlineOffset: 2, transition: 'outline 0.15s'
+                      }} />
+                  ))}
+                  <div style={{ position: 'relative' }}>
+                    <input type="color" value={accentColor} onChange={e => handleAccentChange(e.target.value)}
+                      style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 20, height: 20, borderRadius: 5, background: accentColor }} />
+                  <span className="text-xs font-mono opacity-60">{accentColor}</span>
+                </div>
               </div>
             </div>
 
@@ -228,8 +304,8 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* ── Registration Link ─────────────────────────────── */}
-      {can('viewSettings') && (
+      {/* ── Registration Link (Superadmin Only) ─────────────────────────── */}
+      {can('viewSettings') && isSuperAdmin && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -266,34 +342,74 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* ── Account ───────────────────────────────────────── */}
-      <Card className="overflow-hidden">
-        <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          👤 Account
-        </div>
-        <div className="p-5 space-y-3">
-          <div className="flex justify-between py-2 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
-            <span style={{ color: 'var(--text2)' }}>Email</span>
-            <span className="font-semibold" style={{ color: 'var(--text)' }}>{email}</span>
+      {/* ── Account Security ───────────────────────────────────── */}
+      <Card title="👤 Account Settings" subtitle="Update your password and manage your session">
+        <div className="p-5 space-y-6">
+          
+          {/* Profile info */}
+          <div className="space-y-3">
+            <div className="flex justify-between py-2.5 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
+              <span className="opacity-60">Email Address</span>
+              <span className="font-semibold">{email}</span>
+            </div>
+            <div className="flex justify-between py-2.5 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
+              <span className="opacity-60">Status</span>
+              <Badge variant="green">Active Account ✓</Badge>
+            </div>
           </div>
-          <div className="flex justify-between py-2 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
-            <span style={{ color: 'var(--text2)' }}>Authentication</span>
-            <Badge variant="green">Supabase Auth ✓</Badge>
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            <Btn variant="secondary" loading={resetting} onClick={async () => {
-              setResetting(true)
-              const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/dashboard` })
-              setResetting(false)
-              setResetMsg(error ? '✗ ' + error.message : '✓ Reset link sent to ' + email)
-            }}>
-              <Key size={14} /> Send Password Reset
+
+          {/* Direct Password Update */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
+              <Key size={12} /> Change Password
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>New Password</label>
+                <input className={inputClass} style={inputStyle} type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Minimum 6 chars" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Confirm Password</label>
+                <input className={inputClass} style={inputStyle} type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Retype password" />
+              </div>
+            </div>
+
+            {passMsg && (
+              <p className="text-sm font-medium" style={{ color: passMsg.type === 'success' ? 'var(--green)' : 'var(--red)' }}>
+                {passMsg.type === 'success' ? '✓ ' : '✗ '}{passMsg.text}
+              </p>
+            )}
+
+            <Btn variant="primary" loading={passLoading} onClick={updatePassword} size="sm" disabled={!newPass}>
+              Update Password
             </Btn>
-            <Btn variant="danger" onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}>
-              <LogOut size={14} /> Sign Out
-            </Btn>
           </div>
-          {resetMsg && <p className="text-sm" style={{ color: resetMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{resetMsg}</p>}
+
+          <hr style={{ borderColor: 'var(--border)' }} />
+
+          {/* Session controls */}
+          <div className="space-y-4">
+             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
+               <ShieldCheck size={12} /> Privacy & Session
+             </div>
+             
+             <div className="flex flex-wrap items-center gap-3">
+                <Btn variant="secondary" size="sm" loading={resetting} onClick={async () => {
+                   setResetting(true)
+                   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/dashboard` })
+                   setResetting(false)
+                   setResetMsg(error ? '✗ ' + error.message : '✓ Reset link sent to ' + email)
+                }}>
+                   Send Recovery Email
+                </Btn>
+                <Btn variant="danger" size="sm" icon={LogOut} onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}>
+                   Sign Out Completely
+                </Btn>
+             </div>
+             {resetMsg && <p className="text-xs" style={{ color: resetMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{resetMsg}</p>}
+          </div>
+
         </div>
       </Card>
 
@@ -332,6 +448,29 @@ export default function SettingsPage() {
               <span className="font-medium text-xs font-mono truncate max-w-xs" style={{ color: 'var(--text)' }}>{v}</span>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* ── Danger Zone ──────────────────────────────────── */}
+      <Card title="⚠️ Danger Zone" subtitle="System reset actions">
+        <div className="p-5">
+          <div className="p-4 rounded-xl border flex items-center justify-between" 
+            style={{ background: 'var(--red-dim)', borderColor: 'var(--red)' }}>
+            <div>
+              <div className="text-sm font-bold" style={{ color: 'var(--red)' }}>Clear Local Cache & Hard Logout</div>
+              <p className="text-xs opacity-70 mt-0.5" style={{ color: 'var(--red)' }}>
+                This will wipe all local settings (theme, etc.) and sign you out completely.
+              </p>
+            </div>
+            <Btn variant="danger" size="sm" onClick={async () => {
+              if (!confirm('Are you sure you want to clear theme/cache and log out?')) return
+              localStorage.clear()
+              await supabase.auth.signOut()
+              router.push('/login')
+            }}>
+              Execute Reset
+            </Btn>
+          </div>
         </div>
       </Card>
 

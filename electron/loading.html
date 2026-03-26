@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       background: #0d0f14;
       color: #e8ecf5;
@@ -16,22 +22,46 @@
       gap: 20px;
       user-select: none;
     }
-    .logo { font-size: 28px; font-weight: 800; color: #2563eb; letter-spacing: 1px; }
-    .sub  { font-size: 13px; color: #505a70; text-transform: uppercase; letter-spacing: 2px; }
+
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      color: #2563eb;
+      letter-spacing: 1px;
+    }
+
+    .sub {
+      font-size: 13px;
+      color: #505a70;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
     .spinner {
-      width: 32px; height: 32px;
+      width: 32px;
+      height: 32px;
       border: 3px solid #2a3045;
       border-top-color: #2563eb;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .msg { font-size: 13px; color: #505a70; }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .msg {
+      font-size: 13px;
+      color: #505a70;
+    }
   </style>
 </head>
+
 <body>
-  <div class="logo">ChitVault</div>
-  <div class="sub">Chit Fund Manager</div>
+  <div class="logo">Seyon Chit Vault</div>
+  <div class="sub">Auction Chit Fund Software</div>
   <div class="spinner"></div>
   <div class="msg">Starting application...</div>
   <script>
@@ -41,4 +71,5 @@
     }, 3000)
   </script>
 </body>
+
 </html>

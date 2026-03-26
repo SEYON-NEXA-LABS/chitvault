@@ -244,15 +244,18 @@ export default function AdminPage() {
           {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             {[
-              { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds' },
-              { lbl:'City',            key:'city', ph:'Coimbatore' },
-              { lbl:'Phone',           key:'phone', ph:'98765 43210' },
-              { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager' },
+              { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds', type:'text' },
+              { lbl:'City',            key:'city', ph:'Coimbatore', type:'text' },
+              { lbl:'Phone',           key:'phone', ph:'98765 43210', type:'tel' },
+              { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager', type:'text' },
             ].map(f => (
               <div key={f.key}>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
+                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
                 <input style={{ width:'100%', padding:'9px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:14, outline:'none' }}
-                  value={(newFirm as any)[f.key]} onChange={e => setNewFirm(n=>({...n,[f.key]:e.target.value}))} placeholder={f.ph} />
+                  type={f.type} maxLength={f.key === 'phone' ? 10 : undefined}
+                  value={(newFirm as any)[f.key]} 
+                  onChange={e => setNewFirm(n=>({...n,[f.key]:f.key === 'phone' ? e.target.value.replace(/\D/g,'') : e.target.value}))} 
+                  placeholder={f.ph} />
               </div>
             ))}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>

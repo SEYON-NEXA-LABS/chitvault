@@ -6,10 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import type { Firm } from '@/types'
 
 export default function OnboardingPage() {
-  const router   = useRouter()
+  const router = useRouter()
   const supabase = createClient()
-  const [firm, setFirm]   = useState<Firm | null>(null)
-  const [step, setStep]   = useState(0)
+  const [firm, setFirm] = useState<Firm | null>(null)
+  const [step, setStep] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -26,7 +26,7 @@ export default function OnboardingPage() {
   const steps = [
     {
       icon: '🎉',
-      title: `Welcome to ChitVault!`,
+      title: `Welcome to Seyon Chit Vault!`,
       body: `Your account for ${firm?.name || 'your business'} is ready. You have a 30-day free trial to explore everything.`,
       action: 'Get Started →'
     },

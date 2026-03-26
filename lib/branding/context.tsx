@@ -32,6 +32,7 @@ export const PRESET_COLORS = [
 
 interface BrandingContext {
   color:   string
+  accent:  string
   name:    string
   tagline: string
   font:    string
@@ -39,7 +40,7 @@ interface BrandingContext {
 }
 
 const Ctx = createContext<BrandingContext>({
-  color: '#2563eb', name: 'ChitVault',
+  color: '#2563eb', accent: '#1e40af', name: 'Seyon Chit Vault',
   tagline: 'Chit Fund Manager', font: 'DM Sans', logoUrl: null
 })
 
@@ -47,17 +48,18 @@ export function BrandingProvider({ firm, children }: {
   firm: Firm | null; children: React.ReactNode
 }) {
   const color   = firm?.primary_color || '#2563eb'
-  const name    = firm?.name    || process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
+  const accent  = firm?.accent_color || '#1e40af'
+  const name    = firm?.name    || process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault'
   const tagline = firm?.tagline || 'Chit Fund Manager'
   const font    = firm?.font    || 'DM Sans'
   const logoUrl = firm?.logo_url || null
 
   useEffect(() => {
-    applyBranding(color, font)
-  }, [color, font])
+    applyBranding(color, font, accent)
+  }, [color, font, accent])
 
   return (
-    <Ctx.Provider value={{ color, name, tagline, font, logoUrl }}>
+    <Ctx.Provider value={{ color, accent, name, tagline, font, logoUrl }}>
       {children}
     </Ctx.Provider>
   )
@@ -66,7 +68,7 @@ export function BrandingProvider({ firm, children }: {
 export function useBranding() { return useContext(Ctx) }
 
 // Apply CSS variables + load Google Font dynamically
-export function applyBranding(color: string, font: string) {
+export function applyBranding(color: string, font: string, accent: string = '#1e40af') {
   const root = document.documentElement
 
   // Set primary colour and derived tints
@@ -74,6 +76,11 @@ export function applyBranding(color: string, font: string) {
   root.style.setProperty('--gold-light', lighten(color, 0.2))
   root.style.setProperty('--gold-dim',   alpha(color, 0.15))
   root.style.setProperty('--gold-border', alpha(color, 0.4))
+
+  // Set accent colour and derived tints
+  root.style.setProperty('--accent', accent)
+  root.style.setProperty('--accent-dim', alpha(accent, 0.15))
+  root.style.setProperty('--accent-border', alpha(accent, 0.4))
 
   // Load Google Font if not already loaded
   const fontId = `gfont-${font.replace(/\s+/g, '-').toLowerCase()}`

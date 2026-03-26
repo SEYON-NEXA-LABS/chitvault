@@ -9,7 +9,7 @@ import { APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator
 } from 'lucide-react'
 
 const NAV = [
@@ -20,9 +20,9 @@ const NAV = [
   { href: '/auctions',   label: 'Auctions',          icon: Gavel           },
   { href: '/payments',   label: 'Payments',          icon: CreditCard      },
   { href: '/cashbook',   label: 'Daily Cash',         icon: BookOpen        },
-  { label: 'Reports', divider: true },
   { href: '/reports',    label: 'Reports',           icon: BarChart3       },
   { href: '/collection', label: 'Collection Report', icon: ClipboardList   },
+  { href: '/settlement', label: 'Settlement Utility', icon: Calculator     },
   { label: 'Manage', divider: true },
   { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
   { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },
@@ -124,14 +124,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <nav className="flex-1 overflow-y-auto px-3 py-3">
           {NAV.map((item, i) => {
-            if ('divider' in item && item.divider && role === 'superadmin') return null
-            if ('divider' in item && item.divider) return (
-              <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{item.label}</div>
-            )
+            // Dividers
+            if ('divider' in item && item.divider) {
+              // Superadmins see all dividers, others only see if they have access to the items below
+              return (
+                <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{item.label}</div>
+              )
+            }
+
             if (!('href' in item)) return null
-            if (!(item as any).superAdminOnly && role === 'superadmin') return null
-            if ((item as any).ownerOnly && !isOwner) return null
-            if ((item as any).superAdminOnly && role !== 'superadmin') return null
+
+            const isSuper = role === 'superadmin'
+
+            // Visibility Logic
+            if (item.superAdminOnly && !isSuper) return null // Hide superadmin-only from others
+            if (item.ownerOnly && !isOwner && !isSuper) return null // Hide owner-only from staff (unless superadmin)
+
+            // Note: Superadmin sees everything, so we don't return null for them here
             const Icon   = item.icon!
             const href   = item.href as string;
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))

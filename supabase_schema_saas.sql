@@ -286,20 +286,20 @@ alter table invites       enable row level security;
 alter table denominations enable row level security;
 
 create or replace function my_firm_id()
-returns uuid language sql stable set search_path = public as $$
+returns uuid language sql stable security definer set search_path = public as $$
   select firm_id from profiles where id = auth.uid() order by created_at desc limit 1
 $$;
 
 create or replace function is_superadmin()
-returns boolean language sql stable set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
 $$;
 
 create or replace function is_firm_owner()
-returns boolean language sql stable set search_path = public as $$
+returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from profiles
-    where id = auth.uid() and firm_id = my_firm_id() and role in ('owner','superadmin')
+    where id = auth.uid() and (role = 'owner' or role = 'superadmin')
   )
 $$;
 
@@ -416,8 +416,8 @@ as $$
 declare
   v_firm_id uuid;
 begin
-  if auth.uid() is null then
-    raise exception 'Must be authenticated to register a firm';
+  if not is_superadmin() then
+    raise exception 'FORBIDDEN: Only platform superadmins can register new firms.';
   end if;
 
   -- Check slug available

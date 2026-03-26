@@ -28,8 +28,7 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
   const isPublic     = ['/login', '/register', '/'].some(p => pathname === p)
@@ -49,31 +48,26 @@ export async function updateSession(request: NextRequest) {
     const { data: profile } = await supabase
       .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
 
-    if (!profile) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
-
     if (profile?.role === 'superadmin') {
       return NextResponse.redirect(new URL('/admin', request.url))
     }
 
+    // Default to dashboard for authenticated users on public pages
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Logged in, protected route — enforce admin guard + firm check
+  // Logged in, protected route — enforce admin guard
   if (user && !isPublic && !isOnboarding && !isInvite) {
     const { data: profile } = await supabase
       .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
 
-    if (!profile) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
-
+    // Admin-only areas
     if (isAdmin && profile?.role !== 'superadmin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    if (!profile?.firm_id && !isAdmin) {
+    // If no profile or firm_id at all, only then force onboarding
+    if (!profile && !isAdmin) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
     }
   }

@@ -12,6 +12,7 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { Group, Auction, Payment } from '@/types'
 
 export default function GroupsPage() {
@@ -20,14 +21,14 @@ export default function GroupsPage() {
   const router = useRouter()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
-  const [groups,   setGroups]   = useState<Group[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
-  const [loading,  setLoading]  = useState(true)
+  const [loading, setLoading] = useState(true)
   const [archived, setArchived] = useState<Group[]>([])
   const [showArch, setShowArch] = useState(false)
   const [archLoading, setArchLoading] = useState(false)
-  const [addOpen,  setAddOpen]  = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
@@ -38,7 +39,7 @@ export default function GroupsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     const [g, a, p] = await Promise.all([
-      supabase.from('groups').select('*').neq('status','archived').order('id'),
+      supabase.from('groups').select('*').neq('status', 'archived').order('id'),
       supabase.from('auctions').select('group_id,month'),
       supabase.from('payments').select('group_id,status'),
     ])
@@ -51,10 +52,10 @@ export default function GroupsPage() {
   useEffect(() => { load() }, [load])
 
   function groupStats(g: Group) {
-    const done    = auctions.filter(a => a.group_id === g.id).length
-    const paid    = payments.filter(p => p.group_id === g.id && p.status === 'paid').length
+    const done = auctions.filter(a => a.group_id === g.id).length
+    const paid = payments.filter(p => p.group_id === g.id && p.status === 'paid').length
     const pending = Math.max(0, done * g.num_members - paid)
-    const pct     = Math.round(done / g.duration * 100)
+    const pct = Math.round(done / g.duration * 100)
     const isComplete = done >= g.duration && pending === 0
     let endDate = '—'
     if (g.start_date) {
@@ -65,12 +66,12 @@ export default function GroupsPage() {
     return { done, pending, pct, isComplete, endDate }
   }
 
-  const active    = groups.filter(g => { const s = groupStats(g); return !s.isComplete })
-  const completed = groups.filter(g => { const s = groupStats(g); return s.isComplete  })
+  const active = groups.filter(g => { const s = groupStats(g); return !s.isComplete })
+  const completed = groups.filter(g => { const s = groupStats(g); return s.isComplete })
 
   async function loadArchived() {
     setArchLoading(true)
-    const { data } = await supabase.from('groups').select('*').eq('status','archived').order('id')
+    const { data } = await supabase.from('groups').select('*').eq('status', 'archived').order('id')
     setArchived(data || [])
     setArchLoading(false)
   }
@@ -86,7 +87,7 @@ export default function GroupsPage() {
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
     showToast('Group created!'); setAddOpen(false)
-    setForm({ name:'',chit_value:'',num_members:'',duration:'',monthly_contribution:'',start_date:'' })
+    setForm({ name: '', chit_value: '', num_members: '', duration: '', monthly_contribution: '', start_date: '' })
     load()
   }
 
@@ -120,7 +121,7 @@ export default function GroupsPage() {
     <Table>
       <thead>
         <tr>
-          {['Group','Chit Value','Members','Monthly','Done','Progress','Status','End Date','Payments','Actions'].map(h => <Th key={h}>{h}</Th>)}
+          {['Group', 'Chit Value', 'Members', 'Monthly', 'Done', 'Progress', 'Status', 'End Date', 'Payments', 'Actions'].map(h => <Th key={h}>{h}</Th>)}
         </tr>
       </thead>
       <tbody>
@@ -128,7 +129,11 @@ export default function GroupsPage() {
           const s = groupStats(g)
           return (
             <Tr key={g.id}>
-              <Td><span className="font-semibold">{g.name}</span></Td>
+              <Td>
+                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--gold)] transition-colors">
+                  {g.name}
+                </Link>
+              </Td>
               <Td right>{fmt(g.chit_value)}</Td>
               <Td>{g.num_members}</Td>
               <Td right>{fmt(g.monthly_contribution)}</Td>
@@ -155,9 +160,9 @@ export default function GroupsPage() {
               <Td>
                 <div className="flex items-center gap-1.5">
                   {can('editGroup') && (
-                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/groups/${g.id}`)}
+                    <Btn size="sm" variant="ghost" icon={Settings2} onClick={() => router.push(`/groups/${g.id}/settings`)}
                       style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
-                      <Settings2 size={12} /> Rules
+                      View
                     </Btn>
                   )}
                   {showArchBtn && can('archiveGroup') && (
@@ -185,8 +190,8 @@ export default function GroupsPage() {
         actions={can('createGroup') ? <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> New Group</Btn> : undefined}>
         {active.length === 0
           ? <Empty icon="🏦" text="No active groups. Create your first group." action={
-              <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
-            } />
+            <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
+          } />
           : <GroupTable list={active} showArchBtn={false} />}
       </TableCard>
 
@@ -217,10 +222,10 @@ export default function GroupsPage() {
         </button>
         {showArch && (
           archLoading ? <Loading text="Loading archived groups..." /> :
-          archived.length === 0
-            ? <Empty icon="📦" text="No archived groups yet." />
-            : <Table>
-                <thead><tr>{['Group','Chit Value','Members','Months','Start Date','Actions'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
+            archived.length === 0
+              ? <Empty icon="📦" text="No archived groups yet." />
+              : <Table>
+                <thead><tr>{['Group', 'Chit Value', 'Members', 'Months', 'Start Date', 'Actions'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
                 <tbody>
                   {archived.map(g => (
                     <Tr key={g.id} style={{ opacity: 0.7 }}>
@@ -251,27 +256,27 @@ export default function GroupsPage() {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Group Name" className="col-span-2">
             <input className={inputClass} style={inputStyle} value={form.name}
-              onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Kumari Group A" />
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Kumari Group A" />
           </Field>
           <Field label="Chit Value (₹)">
             <input className={inputClass} style={inputStyle} type="number" value={form.chit_value}
-              onChange={e => setForm(f => ({...f, chit_value: e.target.value}))} placeholder="100000" />
+              onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" />
           </Field>
           <Field label="No. of Members">
             <input className={inputClass} style={inputStyle} type="number" value={form.num_members}
-              onChange={e => setForm(f => ({...f, num_members: e.target.value}))} placeholder="20" />
+              onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" />
           </Field>
           <Field label="Duration (months)">
             <input className={inputClass} style={inputStyle} type="number" value={form.duration}
-              onChange={e => setForm(f => ({...f, duration: e.target.value}))} placeholder="20" />
+              onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" />
           </Field>
           <Field label="Monthly Contribution (₹)">
             <input className={inputClass} style={inputStyle} type="number" value={form.monthly_contribution}
-              onChange={e => setForm(f => ({...f, monthly_contribution: e.target.value}))} placeholder="5000" />
+              onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" />
           </Field>
           <Field label="Start Date" className="col-span-2">
             <input className={inputClass} style={inputStyle} type="date" value={form.start_date}
-              onChange={e => setForm(f => ({...f, start_date: e.target.value}))} />
+              onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
           </Field>
         </div>
         <div className="flex justify-end gap-3 mt-6 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>

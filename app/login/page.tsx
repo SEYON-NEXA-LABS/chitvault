@@ -14,24 +14,24 @@ interface FirmBranding {
 type Tab = 'signin' | 'forgot'
 
 function LoginForm() {
-  const router        = useRouter()
-  const searchParams  = useSearchParams()
-  const supabase      = createClient()
-  const firmSlug      = searchParams.get('firm')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const supabase = createClient()
+  const firmSlug = searchParams.get('firm')
 
-  const [tab,      setTab]      = useState<Tab>('signin')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-  const [success,  setSuccess]  = useState('')
+  const [tab, setTab] = useState<Tab>('signin')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [branding, setBranding] = useState<FirmBranding>({
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
     primary_color: '#2563eb', logo_url: null,
     tagline: 'Chit Fund Manager', font: 'DM Sans'
   })
 
   // Sign in form
   const [siEmail, setSiEmail] = useState('')
-  const [siPass,  setSiPass]  = useState('')
+  const [siPass, setSiPass] = useState('')
 
   // Forgot password form
   const [fpEmail, setFpEmail] = useState('')
@@ -61,31 +61,41 @@ function LoginForm() {
 
   const clr = branding.primary_color
 
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault(); setError(''); setLoading(true)
-    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
-    if (error || !user) { setError('Incorrect email or password.'); setLoading(false); return }
-
-    // Get user's profile to determine where to redirect
+  async function handleRedirect(user: any) {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles').select('firm_id, role').eq('id', user.id).single()
 
-      setSuccess('Login successful! Redirecting...')
-      
+      if (profileErr && profileErr.code !== 'PGRST116') throw new Error(profileErr.message)
+
       if (!profile) {
-        // This is a new user who hasn't completed onboarding
         router.push('/onboarding')
       } else if (profile.role === 'superadmin') {
         router.push('/admin')
       } else {
         router.push('/dashboard')
       }
-    } catch (profileError) {
-      console.error('Error fetching profile:', profileError)
-      setError('Could not find user profile. Please contact support.')
-      setLoading(false)
+    } catch (err: any) {
+      console.error('Login redirect failure:', err)
+      router.push('/dashboard')
     }
+  }
+
+  // Auto-redirect if session exists
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) handleRedirect(user)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase.auth, router])
+
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault(); setError(''); setLoading(true)
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
+    if (error || !user) { setError('Incorrect email or password.'); setLoading(false); return }
+
+    setSuccess('Login successful! Redirecting...')
+    handleRedirect(user)
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
@@ -113,8 +123,10 @@ function LoginForm() {
       border: '1px solid var(--border)', borderRadius: 9, color: 'var(--text)',
       fontSize: 14, outline: 'none', transition: 'border-color 0.2s'
     } as React.CSSProperties,
-    lbl: { fontSize: 11, fontWeight: 600 as const, color: 'var(--text2)',
-           textTransform: 'uppercase' as const, letterSpacing: 1, display: 'block', marginBottom: 4 },
+    lbl: {
+      fontSize: 11, fontWeight: 600 as const, color: 'var(--text2)',
+      textTransform: 'uppercase' as const, letterSpacing: 1, display: 'block', marginBottom: 4
+    },
     btn: {
       width: '100%', padding: '12px 0', borderRadius: 9, border: 'none',
       fontSize: 15, fontWeight: 700 as const, cursor: 'pointer',
@@ -161,12 +173,6 @@ function LoginForm() {
               <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
-              <div style={{ textAlign: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>New company? </span>
-                <a href="/register" style={{ fontSize: 13, color: clr, textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}>
-                  Register here
-                </a>
-              </div>
             </form>
           )}
 
@@ -192,7 +198,7 @@ function LoginForm() {
         {/* Powered by */}
         {firmSlug && (
           <p style={{ textAlign: 'center', marginTop: 18, fontSize: 11, color: 'var(--text3)' }}>
-            Powered by ChitVault
+            Powered by Seyon Chit Vault
           </p>
         )}
       </div>

@@ -31,38 +31,17 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setLoading(false); return }
     
-    // Use maybeSingle() to avoid 406 when profile doesn't exist
-    const { data: prof, error: profError } = await supabase
-      .from('profiles').select('*').eq('id', user.id).maybeSingle()
-    
-    // If no profile exists, try to create one for dev firm
-    if (!prof && profError?.code === 'PGRST116') {
-      const { data: newProf, error: createError } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          firm_id: '7e92aa8b-ca5e-4e70-af7d-a4d166ba9a2c', // Dev firm from seed_dev_firm.sql
-          full_name: user.email?.split('@')[0] || 'User',
-          role: 'staff'
-        })
-        .select('*')
-        .maybeSingle()
-      
-      if (newProf) {
-        setProfile(newProf)
-        // Load firm if profile has firm_id
-        if (newProf.firm_id) {
-          const { data: f } = await supabase
-            .from('firms').select('*').eq('id', newProf.firm_id).maybeSingle()
-          setFirm(f)
-          if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'DM Sans')
-        }
-        setLoading(false)
-        return
-      }
+    if (!user) { 
+      setProfile(null)
+      setFirm(null)
+      setLoading(false)
+      return 
     }
+    
+    // Load profile
+    const { data: prof } = await supabase
+      .from('profiles').select('*').eq('id', user.id).maybeSingle()
     
     setProfile(prof)
     
@@ -72,12 +51,32 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
         .from('firms').select('*').eq('id', prof.firm_id).maybeSingle()
       setFirm(f)
       if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'DM Sans')
+    } else {
+      setFirm(null)
     }
+    
     setLoading(false)
   }, [supabase])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load() }, [load])
+  useEffect(() => { 
+    // Initial load
+    load()
+
+    // Listen for auth changes (Login/Logout/Refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+         load()
+      } else if (event === 'SIGNED_OUT') {
+         setProfile(null)
+         setFirm(null)
+         setLoading(false)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [load, supabase])
 
   const role = profile?.role as UserRole | null ?? null
 
