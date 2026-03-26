@@ -13,6 +13,7 @@ interface Firm {
   id: string
   name: string
   primary_color: string | null
+  accent_color: string | null
   logo_url: string | null
   tagline: string | null
   font: string | null
@@ -30,6 +31,7 @@ export default function AdminBrandingPage() {
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [color, setColor] = useState('#2563eb')
+  const [accentColor, setAccentColor] = useState('#1e40af')
   const [customColor, setCustomColor] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [tagline, setTagline] = useState('Chit Fund Manager')
@@ -52,38 +54,44 @@ export default function AdminBrandingPage() {
 
   useEffect(() => {
     if (selectedFirm) {
-      const { name, address, phone, primary_color, logo_url, tagline, font } = selectedFirm as any
+      const { name, address, phone, primary_color, accent_color, logo_url, tagline, font } = selectedFirm as any
       setName(name || '')
       setAddress(address || '')
       setPhone(phone || '')
       setColor(primary_color || '#2563eb')
+      setAccentColor(accent_color || '#1e40af')
       setCustomColor(primary_color || '')
       setLogoUrl(logo_url || '')
       setTagline(tagline || 'Chit Fund Manager')
       setFont(font || 'DM Sans')
-      applyBranding(primary_color || '#2563eb', font || 'DM Sans')
+      applyBranding(primary_color || '#2563eb', font || 'DM Sans', accent_color || '#1e40af')
     } else {
       // Reset to default when no firm is selected
-      applyBranding('#2563eb', 'DM Sans')
+      applyBranding('#2563eb', 'DM Sans', '#1e40af')
     }
   }, [selectedFirm])
 
   const handleColorSelect = useCallback((val: string) => {
     if (val === 'custom') return
     setColor(val); setCustomColor(val)
-    applyBranding(val, font) // live preview
-  }, [font]);
+    applyBranding(val, font, accentColor) // live preview
+  }, [font, accentColor]);
 
   const handleCustomColor = useCallback((val: string) => {
     setCustomColor(val)
     setColor(val)
-    applyBranding(val, font)
-  }, [font]);
+    applyBranding(val, font, accentColor)
+  }, [font, accentColor]);
+
+  const handleAccentChange = (val: string) => {
+    setAccentColor(val)
+    applyBranding(color, font, val)
+  }
 
   const handleFontChange = useCallback((f: string) => {
     setFont(f)
-    applyBranding(color, f)
-  }, [color]);
+    applyBranding(color, f, accentColor)
+  }, [color, accentColor]);
 
   async function saveBranding() {
     if (!selectedFirm) return
@@ -93,6 +101,7 @@ export default function AdminBrandingPage() {
       address: address.trim() || null,
       phone: phone.trim() || null,
       primary_color: color,
+      accent_color: accentColor,
       logo_url: logoUrl.trim() || null,
       tagline: tagline.trim() || 'Chit Fund Manager',
       font,
@@ -180,18 +189,36 @@ export default function AdminBrandingPage() {
             </div>
 
             {/* Colour */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                <Palette size={13} /> Primary Colour
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+              {/* Primary */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
+                  <Palette size={13} /> Primary Colour
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {PRESET_COLORS.map(p => (
+                    p.value !== 'custom' ? (
+                      <button key={p.value} onClick={() => handleColorSelect(p.value)} title={p.label} style={{ width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer', outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent', outlineOffset: 2, transition: 'outline 0.15s' }} />
+                    ) : null
+                  ))}
+                  <div style={{ position: 'relative' }}>
+                    <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {PRESET_COLORS.map(p => (
-                  p.value !== 'custom' ? (
-                    <button key={p.value} onClick={() => handleColorSelect(p.value)} title={p.label} style={{ width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer', outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent', outlineOffset: 2, transition: 'outline 0.15s' }} />
-                  ) : null
-                ))}
-                <div style={{ position: 'relative' }}>
-                  <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+
+              {/* Accent */}
+              <div>
+                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
+                  <Palette size={13} /> Accent Colour
+                </div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {['#1e40af', '#1d4ed8', '#0369a1', '#0e7490', '#c026d3', '#db2777', '#dc2626', '#d97706'].map(c => (
+                    <button key={c} onClick={() => handleAccentChange(c)} title="Preset" style={{ width: 32, height: 32, borderRadius: 8, background: c, border: 'none', cursor: 'pointer', outline: accentColor === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'outline 0.15s' }} />
+                  ))}
+                  <div style={{ position: 'relative' }}>
+                    <input type="color" value={accentColor} onChange={e => handleAccentChange(e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
+                  </div>
                 </div>
               </div>
             </div>

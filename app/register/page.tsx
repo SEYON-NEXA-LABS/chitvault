@@ -87,17 +87,32 @@ function RegisterForm() {
     }
   }
 
+  // Redirect if no token is present (firm registration is superadmin-only)
+  useEffect(() => {
+    if (!token && tokenValid !== null) {
+      router.replace('/login')
+    }
+  }, [token, tokenValid, router])
+
   const clr = tokenFirm?.primary_color || '#2563eb'
   const inputSty = { background: '#1e2230', borderColor: '#2a3045', color: '#e8ecf5' } as React.CSSProperties
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-colors'
 
+  // Loading state
+  if (tokenValid === null) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d0f14', color:'#505a70' }}>
+      Loading invitation...
+    </div>
+  )
+
   // Invalid token
-  if (token && tokenValid === false) return (
+  if (tokenValid === false) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d0f14' }}>
       <div style={{ textAlign:'center', maxWidth:380, padding:32, background:'#161921', border:'1px solid #2a3045', borderRadius:16 }}>
         <div style={{ fontSize:48, marginBottom:14 }}>❌</div>
         <h2 style={{ color:'#f66d7a', marginBottom:8 }}>Invalid Link</h2>
         <p style={{ color:'#8892aa', fontSize:14 }}>This registration link is invalid or has been revoked. Contact your firm admin.</p>
+        <Link href="/login" style={{ display:'inline-block', marginTop:20, color:clr, textDecoration:'none', fontWeight:600 }}>Back to Login</Link>
       </div>
     </div>
   )
@@ -113,127 +128,47 @@ function RegisterForm() {
               style={{ borderRadius:8, marginBottom:10, objectFit:'contain' }} />
           ) : <div style={{ fontSize:44, marginBottom:10 }}>🏦</div>}
           <div style={{ fontSize:22, fontWeight:800, color:clr }}>
-            {token && tokenFirm ? `Join ${tokenFirm.name}` : 'Create Your Account'}
+            Join {tokenFirm?.name || 'ChitVault'}
           </div>
           <div style={{ fontSize:13, color:'#505a70', marginTop:4 }}>
-            {token && tokenFirm ? 'Create your staff account' : '30-day free trial · No credit card'}
+            Create your staff account
           </div>
         </div>
-
-        {/* Progress — only for new firm (no token) */}
-        {!token && (
-          <div style={{ display:'flex', gap:8, marginBottom:28 }}>
-            {([1,2] as const).map(s => (
-              <div key={s} style={{ flex:1, height:4, borderRadius:2, background:step>=s ? clr : '#2a3045', transition:'background 0.3s' }} />
-            ))}
-          </div>
-        )}
 
         <div style={{ background:'#161921', border:'1px solid #2a3045', borderRadius:16, padding:28 }}>
           {error && (
             <div style={{ background:'#5c1e26', color:'#f66d7a', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:16 }}>✗ {error}</div>
           )}
 
-          {/* Token mode — single step */}
-          {token ? (
-            <div>
-              <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Create Your Account</div>
-              <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>
-                You&apos;re joining <strong style={{ color:clr }}>{tokenFirm?.name}</strong> as Staff.
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                {[
-                  { lbl:'Full Name', val:form.full_name, set:(v:string)=>setForm(f=>({...f,full_name:v})), ph:'Your name', type:'text' },
-                  { lbl:'Email',     val:form.email,     set:(v:string)=>setForm(f=>({...f,email:v})),     ph:'you@example.com', type:'email' },
-                  { lbl:'Password',  val:form.password,  set:(v:string)=>setForm(f=>({...f,password:v})),  ph:'Min. 6 characters', type:'password' },
-                  { lbl:'Confirm',   val:form.confirm,   set:(v:string)=>setForm(f=>({...f,confirm:v})),   ph:'Re-enter password', type:'password' },
-                ].map(f => (
-                  <div key={f.lbl}>
-                    <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
-                    <input className={inputCls} style={inputSty} type={f.type} value={f.val}
-                      onChange={e => f.set(e.target.value)} placeholder={f.ph} />
-                  </div>
-                ))}
-              </div>
-              <button onClick={handleRegister} disabled={loading}
-                style={{ marginTop:20, width:'100%', padding:'12px 0', background:clr, color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
-                {loading ? 'Creating account...' : 'Create Account & Join'}
-              </button>
+          <div>
+            <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Create Your Account</div>
+            <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>
+              You&apos;re joining <strong style={{ color:clr }}>{tokenFirm?.name}</strong> as Staff.
             </div>
-          ) : (
-            <>
-              {/* Step 1 */}
-              {step === 1 && (
-                <div>
-                  <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Your Business Details</div>
-                  <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>Step 1 of 2</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    <div>
-                      <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>Business Name *</label>
-                      <input className={inputCls} style={inputSty} value={form.firm_name}
-                        onChange={e => setForm(f=>({...f,firm_name:e.target.value}))}
-                        onKeyDown={e => e.key==='Enter' && setStep(2)} placeholder="e.g. Kumari Chit Funds" />
-                    </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                      <div>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>City</label>
-                        <input className={inputCls} style={inputSty} value={form.city} onChange={e=>setForm(f=>({...f,city:e.target.value}))} placeholder="Coimbatore" />
-                      </div>
-                      <div>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>Phone</label>
-                        <input className={inputCls} style={inputSty} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="98765 43210" />
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => { if (!form.firm_name.trim()) { setError('Enter business name.'); return }; setError(''); setStep(2) }}
-                    style={{ marginTop:22, width:'100%', padding:'12px 0', background:clr, color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer' }}>
-                    Continue →
-                  </button>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {[
+                { lbl:'Full Name', val:form.full_name, set:(v:string)=>setForm(f=>({...f,full_name:v})), ph:'Your name', type:'text' },
+                { lbl:'Email',     val:form.email,     set:(v:string)=>setForm(f=>({...f,email:v})),     ph:'you@example.com', type:'email' },
+                { lbl:'Password',  val:form.password,  set:(v:string)=>setForm(f=>({...f,password:v})),  ph:'Min. 6 characters', type:'password' },
+                { lbl:'Confirm',   val:form.confirm,   set:(v:string)=>setForm(f=>({...f,confirm:v})),   ph:'Re-enter password', type:'password' },
+              ].map(f => (
+                <div key={f.lbl}>
+                  <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
+                  <input className={inputCls} style={inputSty} type={f.type} value={f.val}
+                    onChange={e => f.set(e.target.value)} placeholder={f.ph} />
                 </div>
-              )}
-
-              {/* Step 2 */}
-              {step === 2 && (
-                <div>
-                  <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Create Your Login</div>
-                  <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>
-                    Step 2 of 2 — Admin account for <strong style={{ color:clr }}>{form.firm_name}</strong>
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    {[
-                      { lbl:'Full Name', val:form.full_name, set:(v:string)=>setForm(f=>({...f,full_name:v})), ph:'e.g. Ravi Kumar', type:'text' },
-                      { lbl:'Email',     val:form.email,     set:(v:string)=>setForm(f=>({...f,email:v})),     ph:'you@example.com', type:'email' },
-                      { lbl:'Password',  val:form.password,  set:(v:string)=>setForm(f=>({...f,password:v})),  ph:'Min. 6 characters', type:'password' },
-                      { lbl:'Confirm',   val:form.confirm,   set:(v:string)=>setForm(f=>({...f,confirm:v})),   ph:'Re-enter password', type:'password' },
-                    ].map(f => (
-                      <div key={f.lbl}>
-                        <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
-                        <input className={inputCls} style={inputSty} type={f.type} value={f.val}
-                          onChange={e=>f.set(e.target.value)} placeholder={f.ph} />
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display:'flex', gap:10, marginTop:22 }}>
-                    <button onClick={() => { setStep(1); setError('') }}
-                      style={{ flex:1, padding:'12px 0', background:'#1e2230', color:'#8892aa', border:'1px solid #2a3045', borderRadius:8, fontSize:14, cursor:'pointer' }}>
-                      ← Back
-                    </button>
-                    <button onClick={handleRegister} disabled={loading}
-                      style={{ flex:2, padding:'12px 0', background:clr, color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
-                      {loading ? 'Creating...' : 'Create Account'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+              ))}
+            </div>
+            <button onClick={handleRegister} disabled={loading}
+              style={{ marginTop:20, width:'100%', padding:'12px 0', background:clr, color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
+              {loading ? 'Creating account...' : 'Create Account & Join'}
+            </button>
+          </div>
         </div>
 
-        {!token && (
-          <p style={{ textAlign:'center', marginTop:18, fontSize:13, color:'#505a70' }}>
-            Already have an account? <Link href="/login" style={{ color:clr, textDecoration:'none' }}>Sign in</Link>
-          </p>
-        )}
+        <p style={{ textAlign:'center', marginTop:18, fontSize:13, color:'#505a70' }}>
+          Already have an account? <Link href="/login" style={{ color:clr, textDecoration:'none' }}>Sign in</Link>
+        </p>
       </div>
     </div>
   )

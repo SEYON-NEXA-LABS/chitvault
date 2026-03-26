@@ -1,31 +1,31 @@
 {
   "name": "chitvault-desktop",
-  "productName": "ChitVault",
+  "productName": "Seyon Chit Vault",
   "version": "1.0.0",
-  "description": "ChitVault — Auction Chit Fund Management Software",
+  "description": "Seyon Chit Vault — Auction Chit Fund Management Software",
   "main": "main.js",
   "private": true,
   "author": {
-    "name": "Your Name",
-    "email": "info@chitvault.app"
+    "name": "Seyon Nexa Labs",
+    "email": "seyonnexalabs@gmail.com"
   },
   "scripts": {
-    "start":       "electron .",
-    "build:win":   "electron-builder --win --x64",
-    "build:mac":   "electron-builder --mac",
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "electron":         "^41.0.3",
+    "electron": "^41.0.3",
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId":       "app.chitvault.desktop",
-    "productName": "ChitVault",
-    "copyright":   "Copyright © 2026 ChitVault",
+    "appId": "app.chitvault.desktop",
+    "productName": "Seyon Chit Vault",
+    "copyright": "Copyright © 2026 Seyon Chit Vault",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -39,40 +39,57 @@
     "extraResources": [
       {
         "from": "../.next/standalone",
-        "to":   "server",
-        "filter": ["**/*"]
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../.next/static",
-        "to":   "server/.next/static",
-        "filter": ["**/*"]
+        "to": "server/.next/static",
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../public",
-        "to":   "server/public",
-        "filter": ["**/*"]
+        "to": "server/public",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "ChitVault"
+      "publisherName": "Seyon Chit Vault"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ChitVault",
+      "shortcutName": "Seyon Chit Vault",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "license": "LICENSE.txt"
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "category": "public.app-category.finance"

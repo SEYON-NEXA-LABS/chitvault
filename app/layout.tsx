@@ -4,11 +4,11 @@ import { FirmProvider } from '@/lib/firm/context'
 import { BrandingProvider } from '@/lib/branding/BrandingProvider'
 import './globals.css'
 
-const dmSans   = DM_Sans({ subsets: ['latin'], weight: ['300','400','500','600'], variable: '--font-dm-sans' })
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['600','700'], variable: '--font-playfair' })
+const dmSans = DM_Sans({ subsets: ['latin'], weight: ['300', '400', '500', '600'], variable: '--font-dm-sans' })
+const playfair = Playfair_Display({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-playfair' })
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault',
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
   description: 'Chit Fund Management Software',
   icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-152.png' },
 }

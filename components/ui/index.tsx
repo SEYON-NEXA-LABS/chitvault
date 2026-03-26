@@ -28,9 +28,9 @@ export function Badge({ variant = 'gray', children, className }: {
 // ── Button ────────────────────────────────────────────────────────────────────
 type BtnVariant = 'primary' | 'secondary' | 'danger' | 'green' | 'ghost'
 
-export function Btn({ variant = 'secondary', size = 'md', loading, children, className, ...props }: {
+export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, children, className, ...props }: {
   variant?: BtnVariant; size?: 'sm' | 'md' | 'lg'
-  loading?: boolean; children: React.ReactNode; className?: string
+  icon?: any; loading?: boolean; children: React.ReactNode; className?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-3 text-base' }
@@ -43,19 +43,32 @@ export function Btn({ variant = 'secondary', size = 'md', loading, children, cla
   }
   return (
     <button className={cn(base, sizes[size], className)} style={styles[variant]} {...props}>
-      {loading ? <span className="spinner" /> : children}
+      {loading ? <span className="spinner" /> : (
+        <>
+          {Icon && <Icon size={size === 'sm' ? 14 : 16} />}
+          {children}
+        </>
+      )}
     </button>
   )
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
-export function Card({ children, className, style }: {
+export function Card({ title, subtitle, children, className, style }: {
+  title?: string; subtitle?: string
   children: React.ReactNode; className?: string; style?: React.CSSProperties
 }) {
   return (
     <div className={cn('rounded-2xl border', className)}
       style={{ background: 'var(--surface)', borderColor: 'var(--border)', ...style }}>
-      {children}
+      {(title || subtitle) && (
+        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          {title && <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>{title}</h3>}
+          {subtitle && <p className="text-xs opacity-60 mt-0.5" style={{ color: 'var(--text2)' }}>{subtitle}</p>}
+        </div>
+      )}
+      <div className={cn((title || subtitle) ? 'p-0' : 'p-0')}>
+        {children}
+      </div>
     </div>
   )
 }
