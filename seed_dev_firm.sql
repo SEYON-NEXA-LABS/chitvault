@@ -107,10 +107,10 @@ begin
 
   -- 3.3 Groups
   insert into public.groups
-      (firm_id, name, chit_value, num_members, duration, monthly_contribution, start_date, status)
+      (firm_id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, commission_type, commission_value)
   values
-      (f_dev, 'DEV-10x10L', 100000.00, 10, 10, 10000.00, (date_trunc('month', now()))::date, 'active'),
-      (f_dev, 'DEV-8x8L',    80000.00,  8,  8, 10000.00, (date_trunc('month', now()) - interval '1 month')::date, 'active')
+      (f_dev, 'DEV-10x10L', 100000.00, 10, 10, 10000.00, (date_trunc('month', now()))::date, 'active', 'DIVIDEND', 'percent_of_chit', 5.00),
+      (f_dev, 'DEV-8x8L',    80000.00,  8,  8, 10000.00, (date_trunc('month', now()) - interval '1 month')::date, 'active', 'DIVIDEND', 'percent_of_chit', 5.00)
   on conflict do nothing;
 
   select id into g_alpha from public.groups where firm_id=f_dev and name='DEV-10x10L';
@@ -139,12 +139,12 @@ begin
   select id into w2_beta  from public.members where group_id=g_beta  and ticket_no=2;
 
   insert into public.auctions
-    (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend)
+    (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
   values
-    (f_dev, g_alpha, 1, (date_trunc('month', now())::date + interval '10 days')::date, w1_alpha, 30000.00, 100000.00, 70000.00),
-    (f_dev, g_alpha, 2, (date_trunc('month', now())::date + interval '40 days')::date, w2_alpha, 20000.00, 100000.00, 80000.00),
-    (f_dev, g_beta,  1, (date_trunc('month', now())::date + interval '12 days')::date, w1_beta,  25000.00,  80000.00, 55000.00),
-    (f_dev, g_beta,  2, (date_trunc('month', now())::date + interval '42 days')::date, w2_beta,  15000.00,  80000.00, 65000.00)
+    (f_dev, g_alpha, 1, (date_trunc('month', now())::date + interval '10 days')::date, w1_alpha, 30000.00, 100000.00, 7000.00, 25000.00),
+    (f_dev, g_alpha, 2, (date_trunc('month', now())::date + interval '40 days')::date, w2_alpha, 20000.00, 100000.00, 8000.00, 15000.00),
+    (f_dev, g_beta,  1, (date_trunc('month', now())::date + interval '12 days')::date, w1_beta,  25000.00,  80000.00, 6875.00, 21000.00),
+    (f_dev, g_beta,  2, (date_trunc('month', now())::date + interval '42 days')::date, w2_beta,  15000.00,  80000.00, 8125.00, 11000.00)
   on conflict (firm_id, group_id, month) do nothing;
 
   -- 3.6 Payments (month 1)
@@ -184,15 +184,15 @@ begin
   if exists (select 1 from information_schema.tables where table_schema='public' and table_name='foreman_commissions') then
     insert into public.foreman_commissions
       (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount,
-       commission_type, commission_rate, commission_amt, net_dividend, per_member_div, paid_to, notes)
+       commission_type, commission_rate, commission_amt, net_dividend, per_member_div, paid_to, notes, created_by)
     select
       a.firm_id, a.group_id, a.id, a.month,
-      100000.00, a.bid_amount, a.bid_amount,
-      'percent_of_discount', 5.00,
-      round(a.bid_amount * 0.05, 2),
-      a.dividend - round(a.bid_amount * 0.05, 2),
-      round((a.dividend - round(a.bid_amount * 0.05, 2))/10.0, 2),
-      'foreman', 'seed demo'
+      100000.00, a.bid_amount, (100000.00 - a.bid_amount),
+      'percent_of_chit', 5.00,
+      5000.00,
+      (100000.00 - a.bid_amount - 5000.00),
+      round((100000.00 - a.bid_amount - 5000.00)/10.0, 2),
+      'foreman', 'seed demo', u_admin
     from public.auctions a
     where a.group_id = g_alpha and a.month = 1
     on conflict do nothing;

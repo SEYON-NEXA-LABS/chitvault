@@ -31,7 +31,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isPublic     = ['/login', '/register', '/'].some(p => pathname === p)
+  const isPublic     = ['/login', '/register', '/', '/reset-password'].some(p => pathname === p)
   const isAdmin      = pathname.startsWith('/admin')
   const isOnboarding = pathname === '/onboarding'
   const isInvite     = pathname.startsWith('/invite')

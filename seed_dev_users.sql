@@ -80,10 +80,10 @@ on conflict do nothing;
 
 -- ── 3. TEST GROUPS (insert first, then reference by ID) ────
 
-insert into groups (firm_id, name, chit_value, num_members, duration, monthly_contribution, start_date, status)
+insert into groups (firm_id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, commission_type, commission_value)
 values
-  ('10000000-0000-0000-0000-000000000001'::uuid, 'Test Group A', 100000, 12, 12, 8333.33, '2026-03-01', 'active'),
-  ('10000000-0000-0000-0000-000000000001'::uuid, 'Test Group B', 50000, 10, 10, 5000, '2026-02-01', 'active')
+  ('10000000-0000-0000-0000-000000000001'::uuid, 'Test Group A', 100000, 12, 12, 8333.33, '2026-03-01', 'active', 'DIVIDEND', 'percent_of_chit', 5.00),
+  ('10000000-0000-0000-0000-000000000001'::uuid, 'Test Group B', 50000, 10, 10, 5000, '2026-02-01', 'active', 'DIVIDEND', 'percent_of_chit', 5.00)
 on conflict do nothing;
 
 -- ── 4. TEST MEMBERS (reference groups by firm_id + order) ───
@@ -161,15 +161,15 @@ lateral (
 on conflict do nothing;
 
 -- Insert auctions with actual group and member (winner) IDs
-insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend)
+insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
 select
   f.firm_id, groups_list.group_id, a.month, a.auction_date, 
   (select id from members where firm_id = f.firm_id and ticket_no = a.winner_ticket and group_id = groups_list.group_id limit 1),
-  a.bid_amount, a.total_pot, a.dividend
+  a.bid_amount, a.total_pot, a.dividend, a.net_payout
 from (values
-  (1, 1, '2026-03-08'::date, 15000, 100000, 85000),
-  (2, 7, '2026-02-08'::date, 8000, 50000, 42000)
-) as a(group_position, winner_ticket, auction_date, bid_amount, total_pot, dividend),
+  (1, 1, '2026-03-08'::date, 15000, 100000, 7083, 10000),
+  (2, 7, '2026-02-08'::date, 8000, 50000, 4200, 5500)
+) as a(group_position, winner_ticket, auction_date, bid_amount, total_pot, dividend, net_payout),
 lateral (select '10000000-0000-0000-0000-000000000001'::uuid as firm_id) f,
 lateral (
   select id as group_id

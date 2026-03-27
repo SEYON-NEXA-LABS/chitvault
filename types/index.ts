@@ -24,6 +24,9 @@ export interface Firm {
   font:           string | null
   register_token: string | null
   created_at:     string
+  created_by:     string | null
+  updated_at:     string | null
+  updated_by:     string | null
 }
 
 export interface Profile {
@@ -32,6 +35,9 @@ export interface Profile {
   full_name: string | null
   role:      UserRole
   created_at: string
+  created_by: string | null
+  updated_at: string | null
+  updated_by: string | null
 }
 
 export type GroupStatus = 'active' | 'archived'
@@ -44,13 +50,22 @@ export interface Group {
   auction_scheme: 'DIVIDEND'|'ACCUMULATION';
   accumulated_surplus: number;
   created_at: string
+  created_by: string | null
+  updated_at: string | null
+  updated_by: string | null
+  firms?: { name: string }
 }
 
 export interface Member {
   id: number; firm_id: string; name: string; phone: string | null
   address: string | null; group_id: number; ticket_no: number
   status: MemberStatus; exit_month: number | null; transfer_from_id: number | null
-  contact_id: number | null; notes: string | null; created_at: string
+  contact_id: number | null; notes: string | null; 
+  created_at: string
+  created_by: string | null
+  updated_at: string | null
+  updated_by: string | null
+  firms?: { name: string }
 }
 
 export interface Auction {
@@ -153,6 +168,9 @@ export interface ForemanCommission {
   foreman_member_id:    number | null
   notes:                string | null
   created_at:           string
+  created_by:           string | null
+  updated_at:           string | null
+  updated_by:           string | null
 }
 
 // Result from calculate_auction RPC
