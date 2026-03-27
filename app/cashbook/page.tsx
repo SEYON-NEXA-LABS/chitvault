@@ -21,7 +21,7 @@ export default function CashbookPage() {
   const { firm } = useFirm()
   const { toast, show, hide } = useToast()
 
-   const [entries,  setEntries]  = useState<(Denomination & { profiles: { full_name: string } | null })[]>([])
+  const [entries,  setEntries]  = useState<Denomination[]>([])
   const [profiles, setProfiles] = useState<any[]>([])
   const [loading,  setLoading]  = useState(true)
   const [addOpen,  setAddOpen]  = useState(false)
@@ -46,12 +46,12 @@ export default function CashbookPage() {
     const [dRes, pRes] = await Promise.all([
       supabase
         .from('denominations')
-        .select('*, profiles:collected_by(full_name)')
+        .select('*')
         .eq('firm_id', firm.id)
         .gte('entry_date', fromDate)
         .lte('entry_date', toDate)
         .order('entry_date', { ascending: false }),
-      supabase.from('profiles').select('id, full_name').eq('firm_id', firm.id)
+      supabase.from('profiles').select('id, full_name, role').eq('firm_id', firm.id).order('full_name')
     ])
     
     if (dRes.error) {
@@ -99,7 +99,6 @@ export default function CashbookPage() {
       entry_date: entryDate,
       collected_by: staffId,
       ...counts,
-      total: liveTotal,
       notes: notes.trim() || null,
       created_by: userData.user?.id,
     })
@@ -191,10 +190,12 @@ export default function CashbookPage() {
                     <div className="font-mono font-bold text-base mr-3" style={{ color: 'var(--gold)' }}>
                       {fmt(e.total || 0)}
                     </div>
-                    {e.profiles && (
+                    {e.collected_by && (
                       <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-3" style={{ background: 'var(--blue-dim)', color: 'var(--blue)' }}>
                          <span className="text-[10px] font-bold uppercase opacity-60">Collected By:</span>
-                         <span className="text-xs font-semibold">{e.profiles.full_name}</span>
+                         <span className="text-xs font-semibold">
+                           {profiles.find(p => p.id === e.collected_by)?.full_name || 'Staff User'}
+                         </span>
                       </div>
                     )}
                     {isExpanded ? <ChevronUp size={15} style={{ color: 'var(--text3)' }} /> : <ChevronDown size={15} style={{ color: 'var(--text3)' }} />}
@@ -309,7 +310,9 @@ export default function CashbookPage() {
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}>
               <option value="">Select Staff...</option>
               {profiles.map(p => (
-                <option key={p.id} value={p.id}>{p.full_name || 'Staff User'}</option>
+                <option key={p.id} value={p.id}>
+                  {p.full_name || 'Staff User'} ({p.role === 'owner' ? 'Owner' : 'Staff'})
+                </option>
               ))}
             </select>
           </div>
