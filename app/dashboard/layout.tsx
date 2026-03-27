@@ -42,12 +42,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [userEmail, setUserEmail] = useState('')
   const [theme,     setTheme]     = useState<'dark'|'light'>('dark')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+  // Accessibility
+  const [fontSize,   setFontSize]   = useState(14)
+  const [monochrome, setMonochrome] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || ''))
-    const saved = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
-    setTheme(saved)
-    document.documentElement.classList.toggle('dark', saved === 'dark')
+    const savedTheme = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
+    setTheme(savedTheme)
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+
+    const savedSize = parseInt(localStorage.getItem('fontSize') || '14')
+    setFontSize(savedSize)
+    document.documentElement.style.setProperty('--font-size-base', `${savedSize}px`)
+
+    const savedMono = localStorage.getItem('monochrome') === 'true'
+    setMonochrome(savedMono)
+    document.documentElement.classList.toggle('grayscale-mode', savedMono)
+
     if (firm?.name) {
       document.title = firm.name
     }
@@ -78,6 +91,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next); localStorage.setItem('theme', next)
     document.documentElement.classList.toggle('dark', next === 'dark')
+  }
+
+  function adjustFont(delta: number) {
+    const next = Math.min(20, Math.max(12, fontSize + delta))
+    setFontSize(next)
+    localStorage.setItem('fontSize', String(next))
+    document.documentElement.style.setProperty('--font-size-base', `${next}px`)
+  }
+
+  function toggleMono() {
+    const next = !monochrome
+    setMonochrome(next)
+    localStorage.setItem('monochrome', String(next))
+    document.documentElement.classList.toggle('grayscale-mode', next)
   }
 
   const trialDaysLeft = firm?.trial_ends
@@ -147,7 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return (
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all"
-                style={active ? { background: 'rgba(201,168,76,0.12)', color: 'var(--gold)' } : { color: 'var(--text2)' }}>
+                style={active ? { background: 'var(--gold-dim)', color: 'var(--gold)' } : { color: 'var(--text2)' }}>
                 <Icon size={15} />
                 {item.label}
               </Link>
@@ -188,11 +215,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ⚠ Trial: {trialDaysLeft}d left
               </div>
             )}
-            <button onClick={toggleTheme}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs"
-              style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text2)', cursor: 'pointer' }}>
-              {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
-            </button>
+            <div className="flex items-center gap-1.5 p-1 rounded-full border" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+               {/* Monochrome */}
+               <button onClick={toggleMono} title="Monochrome Mode"
+                 className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors"
+                 style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
+                 <Palette size={13} />
+               </button>
+               <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+               {/* Font Size */}
+               <button onClick={() => adjustFont(-1)} title="Decrease Font"
+                 className="text-[10px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
+                 style={{ color: 'var(--text2)' }}>
+                 A-
+               </button>
+               <button onClick={() => adjustFont(1)} title="Increase Font"
+                 className="text-[12px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
+                 style={{ color: 'var(--text2)' }}>
+                 A+
+               </button>
+               <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+               {/* Theme */}
+               <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors" style={{ color: 'var(--text2)' }}>
+                 {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
+               </button>
+            </div>
           </div>
         </header>
         <main className="flex-1 p-5 overflow-auto">{children}</main>

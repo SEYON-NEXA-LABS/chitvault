@@ -4,47 +4,75 @@
 
 /* ── CSS Variables — Light Theme (default) ─────────────────── */
 :root {
-  --bg:         #f0f2f7;
-  --surface:    #ffffff;
-  --surface2:   #f5f6fa;
-  --surface3:   #e8eaf2;
-  --border:     #dde1ed;
-  /* Replacing gold with blue scheme as default */
-  --gold:       #2563eb;
-  --gold-light: #60a5fa;
-  --gold-dim:   #e0e7ff;
-  --green:      #1a8a5a;
-  --green-dim:  #e6f7f0;
-  --red:        #d63a4a;
-  --red-dim:    #fdedf0;
-  --blue:       #2d5fd4;
-  --blue-dim:   #e8effe;
-  --text:       #1a1e2e;
-  --text2:      #4a5168;
-  --text3:      #8892aa;
-  --shadow:     0 4px 24px rgba(0,0,0,0.10);
+  font-size: var(--font-size-base, 14px);
+
+  /* Backgrounds */
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface2: #f1f4f9;
+  --surface3: #e8ecf5;
+
+  /* Borders & dividers */
+  --border: #d6dbea;
+
+  /* Primary accent (Indigo / Azure hybrid) */
+  --gold: #3b5bcc;
+  --gold-light: #6d8df5;
+  --gold-dim: #e4e9ff;
+
+  /* Semantic colors */
+  --green: #1f9d68;
+  --green-dim: #e5f7ef;
+
+  --red: #e5484d;
+  --red-dim: #fdecee;
+
+  --blue: #2563eb;
+  --blue-dim: #eaeefe;
+
+  /* Text */
+  --text: #151a2d;
+  --text2: #4b5563;
+  --text3: #8b93a7;
+
+  /* Shadow */
+  --shadow: 0 8px 28px rgba(16, 24, 40, 0.08);
 }
+
 
 /* ── Dark Theme ─────────────────────────────────────────── */
 .dark {
-  --bg:         #0d0f14;
-  --surface:    #161921;
-  --surface2:   #1e2230;
-  --surface3:   #252a3a;
-  --border:     #2a3045;
-  --gold:       #3b82f6;
-  --gold-light: #60a5fa;
-  --gold-dim:   #1e3a8a;
-  --green:      #3ecf8e;
-  --green-dim:  #1a5c3f;
-  --red:        #f66d7a;
-  --red-dim:    #5c1e26;
-  --blue:       #5b8af5;
-  --blue-dim:   #1e2f5c;
-  --text:       #e8ecf5;
-  --text2:      #8892aa;
-  --text3:      #505a70;
-  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+  /* Backgrounds */
+  --bg: #0b0d12;
+  --surface: #141824;
+  --surface2: #1b2032;
+  --surface3: #242a3f;
+
+  /* Borders */
+  --border: #2b3350;
+
+  /* Primary accent */
+  --gold: #5b7cfa;
+  --gold-light: #8aa5ff;
+  --gold-dim: #1f2a5a;
+
+  /* Semantic colors */
+  --green: #3ecf9a;
+  --green-dim: #163c2b;
+
+  --red: #ff6b6b;
+  --red-dim: #4a1d23;
+
+  --blue: #6b8cff;
+  --blue-dim: #1b2a52;
+
+  /* Text */
+  --text: #ecf0ff;
+  --text2: #a4acc4;
+  --text3: #6b738c;
+
+  /* Shadow */
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
 
 /* ── Base ─────────────────────────────────────────────────── */
@@ -56,16 +84,35 @@ body {
 }
 
 /* ── Smooth theme transitions ─────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
 }
-button, a { transition: all 0.15s ease !important; }
+
+button,
+a {
+  transition: all 0.15s ease !important;
+}
 
 /* ── Scrollbar ────────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface2); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
 
 /* ── Progress bar ─────────────────────────────────────────── */
 .progress-bar-wrap {
@@ -74,6 +121,7 @@ button, a { transition: all 0.15s ease !important; }
   height: 6px;
   overflow: hidden;
 }
+
 .progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--gold), var(--gold-light));
@@ -82,10 +130,16 @@ button, a { transition: all 0.15s ease !important; }
 }
 
 /* ── Spinner ─────────────────────────────────────────────── */
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .spinner {
   display: inline-block;
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--border);
   border-top-color: var(--gold);
   border-radius: 50%;
@@ -94,15 +148,31 @@ button, a { transition: all 0.15s ease !important; }
 
 /* ── Shake animation ─────────────────────────────────────── */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60%  { transform: translateX(-8px); }
-  40%, 80%  { transform: translateX(8px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
 }
-.shake { animation: shake 0.4s ease; }
+
+.shake {
+  animation: shake 0.4s ease;
+}
 
 /* ── Month dot (payment matrix) ──────────────────────────── */
 .pmonth {
-  width: 28px; height: 28px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
@@ -111,10 +181,44 @@ button, a { transition: all 0.15s ease !important; }
   font-weight: 600;
   cursor: default;
 }
-.pmonth.paid   { background: var(--green-dim); color: var(--green); }
-.pmonth.unpaid { background: var(--surface3);  color: var(--text3); }
+
+.pmonth.paid {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+.pmonth.unpaid {
+  background: var(--surface3);
+  color: var(--text3);
+}
 
 @media print {
-  .no-print { display: none !important; }
-  body { background: white !important; }
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}
+
+/* ── Accessibility ───────────────────────────────────────── */
+.grayscale-mode {
+  filter: grayscale(100%) contrast(1.1);
+}
+
+.grayscale-mode * {
+  /* Ensure colors don't peek through */
+  border-color: var(--border) !important;
+}
+
+*:focus-visible {
+  outline: 3px solid var(--gold-dim);
+  outline-offset: 2px;
+}
+
+.card {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }

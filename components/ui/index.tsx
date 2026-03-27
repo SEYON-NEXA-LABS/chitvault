@@ -35,11 +35,11 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-3 text-base' }
   const styles: Record<BtnVariant, React.CSSProperties> = {
-    primary:   { background: 'var(--gold)',      color: '#0d0f14' },
+    primary:   { background: 'var(--gold)',      color: '#ffffff' },
     secondary: { background: 'var(--surface2)',  color: 'var(--text)', border: '1px solid var(--border)' },
     danger:    { background: 'var(--red-dim)',   color: 'var(--red)',  border: '1px solid rgba(246,109,122,0.3)' },
     green:     { background: 'var(--green-dim)', color: 'var(--green)', border: '1px solid rgba(62,207,142,0.3)' },
-    ghost:     { background: 'transparent',      color: 'var(--text2)' },
+    ghost:     { background: 'transparent',      color: 'var(--text)' },
   }
   return (
     <button className={cn(base, sizes[size], className)} style={styles[variant]} {...props}>

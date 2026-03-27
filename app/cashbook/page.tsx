@@ -21,17 +21,19 @@ export default function CashbookPage() {
   const { firm } = useFirm()
   const { toast, show, hide } = useToast()
 
-  const [entries,  setEntries]  = useState<Denomination[]>([])
+   const [entries,  setEntries]  = useState<(Denomination & { profiles: { full_name: string } | null })[]>([])
+  const [profiles, setProfiles] = useState<any[]>([])
   const [loading,  setLoading]  = useState(true)
   const [addOpen,  setAddOpen]  = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   // Form state
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0])
-  const [counts,    setCounts]    = useState<DenomCounts>(EMPTY_COUNTS())
-  const [notes,     setNotes]     = useState('')
-  const [liveTotal, setLiveTotal] = useState(0)
+  const [entryDate, setEntryDate]  = useState(new Date().toISOString().split('T')[0])
+  const [staffId,   setStaffId]    = useState<string | null>(null)
+  const [counts,    setCounts]     = useState<DenomCounts>(EMPTY_COUNTS())
+  const [notes,     setNotes]      = useState('')
+  const [liveTotal, setLiveTotal]  = useState(0)
 
   // Range filter
   const [fromDate, setFromDate] = useState(() => {
@@ -41,30 +43,31 @@ export default function CashbookPage() {
 
   const load = useCallback(async () => {
     if (!firm) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('denominations')
-      .select('*')
-      .eq('firm_id', firm.id)
-      .gte('entry_date', fromDate)
-      .lte('entry_date', toDate)
-      .order('entry_date', { ascending: false })
+    const [dRes, pRes] = await Promise.all([
+      supabase
+        .from('denominations')
+        .select('*, profiles:collected_by(full_name)')
+        .eq('firm_id', firm.id)
+        .gte('entry_date', fromDate)
+        .lte('entry_date', toDate)
+        .order('entry_date', { ascending: false }),
+      supabase.from('profiles').select('id, full_name').eq('firm_id', firm.id)
+    ])
     
-    if (error) {
-      show(error.message, 'error')
+    if (dRes.error) {
+      show(dRes.error.message, 'error')
       setEntries([])
       setLoading(false)
       return
     }
+    setProfiles(pRes.data || [])
 
     // Defensively calculate total for each entry to prevent crashes if it's missing from DB
-    const entriesWithTotal = (data || []).map(e => {
+    const entriesWithTotal = (dRes.data || []).map((e: any) => {
       const calculatedTotal = DENOMINATIONS.reduce((s, d) => {
-          const count = (e as any)[d.key] || 0;
+          const count = e[d.key] || 0;
           return s + count * d.value;
       }, 0);
-      // Use total from DB if it exists and is valid, otherwise use our calculation.
-      // This repairs any old entries that might be missing a total.
       return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal };
     });
 
@@ -89,14 +92,16 @@ export default function CashbookPage() {
     if (!firm) return
     if (liveTotal === 0) { show('Enter at least one denomination.', 'error'); return }
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    
+    const { data: userData } = await supabase.auth.getUser()
     const { error } = await supabase.from('denominations').insert({
       firm_id: firm.id,
       entry_date: entryDate,
-      collected_by: user?.id || null,
+      collected_by: staffId,
       ...counts,
-      total: liveTotal, // FIX: Ensure total is saved with the entry
+      total: liveTotal,
       notes: notes.trim() || null,
+      created_by: userData.user?.id,
     })
     setSaving(false)
     if (error) { show(error.message, 'error'); return }
@@ -148,7 +153,11 @@ export default function CashbookPage() {
           <Btn variant="secondary" size="sm" onClick={() => window.print()} className="no-print">
             <Printer size={13} /> Print
           </Btn>
-          <Btn variant="primary" size="sm" onClick={() => { setCounts(EMPTY_COUNTS()); setLiveTotal(0); setNotes(''); setAddOpen(true) }}>
+          <Btn variant="primary" size="sm" onClick={async () => { 
+            const { data } = await supabase.auth.getUser();
+            setStaffId(data.user?.id || null);
+            setCounts(EMPTY_COUNTS()); setLiveTotal(0); setNotes(''); setAddOpen(true) 
+          }}>
             <Plus size={13} /> New Entry
           </Btn>
         </div>
@@ -182,6 +191,12 @@ export default function CashbookPage() {
                     <div className="font-mono font-bold text-base mr-3" style={{ color: 'var(--gold)' }}>
                       {fmt(e.total || 0)}
                     </div>
+                    {e.profiles && (
+                      <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-3" style={{ background: 'var(--blue-dim)', color: 'var(--blue)' }}>
+                         <span className="text-[10px] font-bold uppercase opacity-60">Collected By:</span>
+                         <span className="text-xs font-semibold">{e.profiles.full_name}</span>
+                      </div>
+                    )}
                     {isExpanded ? <ChevronUp size={15} style={{ color: 'var(--text3)' }} /> : <ChevronDown size={15} style={{ color: 'var(--text3)' }} />}
                   </button>
 
@@ -280,11 +295,24 @@ export default function CashbookPage() {
 
       {/* Add Entry Modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Daily Cash Entry" size="lg">
-        <div className="mb-4">
-          <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Date</label>
-          <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-            className="px-3 py-2 rounded-lg border text-sm outline-none"
-            style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Date</label>
+            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
+              style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Collected By (Staff)</label>
+            <select value={staffId || ''} onChange={e => setStaffId(e.target.value || null)}
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
+              style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}>
+              <option value="">Select Staff...</option>
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>{p.full_name || 'Staff User'}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-5 mb-5">

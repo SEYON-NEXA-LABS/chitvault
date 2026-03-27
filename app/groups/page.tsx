@@ -10,14 +10,15 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Group, Auction, Payment } from '@/types'
 
 export default function GroupsPage() {
   const supabase = createClient()
-  const { firm, can } = useFirm()
+  const { firm, role, can } = useFirm()
+  const isSuper = role === 'superadmin'
   const router = useRouter()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
@@ -33,14 +34,14 @@ export default function GroupsPage() {
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
     monthly_contribution: '', start_date: '',
-    auction_scheme: 'DIVIDEND' as 'DIVIDEND'|'ACCUMULATION'
+    auction_scheme: 'DIVIDEND' as 'DIVIDEND' | 'ACCUMULATION'
   })
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     const [g, a, p] = await Promise.all([
-      supabase.from('groups').select('*').neq('status', 'archived').order('id'),
+      supabase.from('groups').select('*, firms(name)').neq('status', 'archived').order('id'),
       supabase.from('auctions').select('group_id,month'),
       supabase.from('payments').select('group_id,status'),
     ])
@@ -72,7 +73,7 @@ export default function GroupsPage() {
 
   async function loadArchived() {
     setArchLoading(true)
-    const { data } = await supabase.from('groups').select('*').eq('status', 'archived').order('id')
+    const { data } = await supabase.from('groups').select('*, firms(name)').eq('status', 'archived').order('id')
     setArchived(data || [])
     setArchLoading(false)
   }
@@ -80,25 +81,34 @@ export default function GroupsPage() {
   async function handleSave() {
     if (!firm) return
     setSaving(true)
+    const { data: userData } = await supabase.auth.getUser()
     const { error } = await supabase.from('groups').insert({
-      name: form.name, chit_value: +form.chit_value, num_members: +form.num_members,
-      duration: +form.duration, monthly_contribution: +form.monthly_contribution,
-      start_date: form.start_date || null, status: 'active', firm_id: firm.id,
-      auction_scheme: form.auction_scheme, accumulated_surplus: 0
+      name: form.name,
+      chit_value: +form.chit_value,
+      num_members: +form.num_members,
+      duration: +form.duration,
+      monthly_contribution: +form.monthly_contribution,
+      start_date: form.start_date || null,
+      status: 'active',
+      firm_id: firm.id,
+      auction_scheme: form.auction_scheme,
+      accumulated_surplus: 0,
+      created_by: userData.user?.id
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
     showToast('Group created!'); setAddOpen(false)
-    setForm({ 
-      name: '', chit_value: '', num_members: '', duration: '', 
-      monthly_contribution: '', start_date: '', auction_scheme: 'DIVIDEND' 
+    setForm({
+      name: '', chit_value: '', num_members: '', duration: '',
+      monthly_contribution: '', start_date: '', auction_scheme: 'DIVIDEND'
     })
     load()
   }
 
   async function archive(id: number) {
     if (!confirm('Archive this group?')) return
-    await supabase.from('groups').update({ status: 'archived' }).eq('id', id)
+    const { data: userData } = await supabase.auth.getUser()
+    await supabase.from('groups').update({ status: 'archived', updated_by: userData.user?.id, updated_at: new Date().toISOString() }).eq('id', id)
     showToast('Group archived. 📦'); load()
   }
 
@@ -106,13 +116,15 @@ export default function GroupsPage() {
     if (!confirm('Archive all completed groups?')) return
     const ids = completed.map(g => g.id)
     if (!ids.length) return
-    await supabase.from('groups').update({ status: 'archived' }).in('id', ids)
+    const { data: userData } = await supabase.auth.getUser()
+    await supabase.from('groups').update({ status: 'archived', updated_by: userData.user?.id, updated_at: new Date().toISOString() }).in('id', ids)
     showToast(`${ids.length} groups archived.`); load()
   }
 
   async function unarchive(id: number) {
     if (!firm) return
-    await supabase.from('groups').update({ status: 'active', firm_id: firm.id }).eq('id', id)
+    const { data: userData } = await supabase.auth.getUser()
+    await supabase.from('groups').update({ status: 'active', firm_id: firm.id, updated_by: userData.user?.id, updated_at: new Date().toISOString() }).eq('id', id)
     showToast('Group restored.'); loadArchived(); load()
   }
 
@@ -126,6 +138,7 @@ export default function GroupsPage() {
     <Table>
       <thead>
         <tr>
+          {isSuper && <Th>Firm</Th>}
           {['Group', 'Chit Value', 'Members', 'Monthly', 'Done', 'Progress', 'Status', 'End Date', 'Payments', 'Actions'].map(h => <Th key={h}>{h}</Th>)}
         </tr>
       </thead>
@@ -134,6 +147,7 @@ export default function GroupsPage() {
           const s = groupStats(g)
           return (
             <Tr key={g.id}>
+              {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
               <Td>
                 <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--gold)] transition-colors">
                   {g.name}
@@ -164,10 +178,14 @@ export default function GroupsPage() {
               </Td>
               <Td>
                 <div className="flex items-center gap-1.5">
+                  <Btn size="sm" variant="ghost" icon={Gavel} onClick={() => router.push(`/groups/${g.id}`)}
+                    style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
+                    View
+                  </Btn>
                   {can('editGroup') && (
                     <Btn size="sm" variant="ghost" icon={Settings2} onClick={() => router.push(`/groups/${g.id}/settings`)}
                       style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
-                      View
+                      Settings
                     </Btn>
                   )}
                   {showArchBtn && can('archiveGroup') && (
@@ -230,10 +248,11 @@ export default function GroupsPage() {
             archived.length === 0
               ? <Empty icon="📦" text="No archived groups yet." />
               : <Table>
-                <thead><tr>{['Group', 'Chit Value', 'Members', 'Months', 'Start Date', 'Actions'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
+                <thead><tr>{[...(isSuper ? ['Firm'] : []), 'Group', 'Chit Value', 'Members', 'Months', 'Start Date', 'Actions'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
                 <tbody>
                   {archived.map(g => (
                     <Tr key={g.id} style={{ opacity: 0.7 }}>
+                      {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
                       <Td><span className="font-semibold">{g.name}</span> <Badge variant="gray" className="ml-1 text-xs">Archived</Badge></Td>
                       <Td right>{fmt(g.chit_value)}</Td>
                       <Td>{g.num_members}</Td>
@@ -290,7 +309,7 @@ export default function GroupsPage() {
               <option value="ACCUMULATION">Accumulation (Surplus Model)</option>
             </select>
             <p className="text-[10px] mt-1.5 leading-relaxed opacity-60">
-              {form.auction_scheme === 'DIVIDEND' 
+              {form.auction_scheme === 'DIVIDEND'
                 ? "Standard: Bids are split among all members as a monthly dividend."
                 : "Accumulation: Bids are stored in a reserve to close the group several months early."}
             </p>

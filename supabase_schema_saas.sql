@@ -30,7 +30,9 @@ create table if not exists firms (
   font            text default 'DM Sans',      -- Google Font name
   register_token  text unique,                 -- private registration link token
   created_at      timestamptz default now(),
-  updated_at      timestamptz default now()
+  created_by      uuid references auth.users(id),
+  updated_at      timestamptz default now(),
+  updated_by      uuid references auth.users(id)
 );
 
 
@@ -66,7 +68,9 @@ create table if not exists profiles (
   full_name  text,
   role       text default 'staff',
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_by uuid references auth.users(id),
+  updated_at timestamptz default now(),
+  updated_by uuid references auth.users(id)
 );
 
 do $$ begin
@@ -96,7 +100,9 @@ create table if not exists groups (
   auction_scheme       text default 'DIVIDEND',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
   accumulated_surplus  numeric(12,2) default 0.0,  -- Track saved bids for early closure
   created_at           timestamptz default now(),
+  created_by           uuid references auth.users(id),
   updated_at           timestamptz default now(),
+  updated_by           uuid references auth.users(id),
   constraint groups_status_chk check (status in ('active','paused','closed')),
   constraint groups_scheme_chk check (auction_scheme in ('DIVIDEND','ACCUMULATION')),
   constraint groups_nonneg_chk check (num_members > 0 and duration > 0 and chit_value >= 0 and monthly_contribution >= 0)
@@ -136,10 +142,12 @@ create table if not exists members (
   status           text default 'active',
   exit_month       int,
   transfer_from_id bigint references members(id) on delete set null,
-  contact_id       bigint,
+  contact_id       bigint references members(id) on delete set null,
   notes            text,
   created_at       timestamptz default now(),
+  created_by       uuid references auth.users(id),
   updated_at       timestamptz default now(),
+  updated_by       uuid references auth.users(id),
   constraint members_status_chk check (status in ('active','transferred','exited'))
 );
 
@@ -174,7 +182,9 @@ create table if not exists auctions (
   dividend     numeric(12,2) not null,
   net_payout   numeric(12,2) default 0.0,
   created_at   timestamptz default now(),
+  created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
+  updated_by   uuid references auth.users(id),
   unique(firm_id, group_id, month),
   constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0)
 );
@@ -214,7 +224,9 @@ create table if not exists payments (
   balance_due  numeric(12,2) default 0,
   collected_by uuid references auth.users(id) on delete set null default auth.uid(),
   created_at   timestamptz default now(),
+  created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
+  updated_by   uuid references auth.users(id),
   constraint payments_amounts_nonneg_chk
     check (amount >= 0 and amount_due >= 0 and balance_due >= 0)
 );
@@ -275,7 +287,9 @@ create table if not exists denominations (
   ) stored,
   notes        text,
   created_at   timestamptz default now(),
-  updated_at   timestamptz default now()
+  created_by   uuid references auth.users(id),
+  updated_at   timestamptz default now(),
+  updated_by   uuid references auth.users(id)
 );
 
 drop trigger if exists set_denominations_updated_at on denominations;
@@ -747,6 +761,9 @@ create table if not exists foreman_commissions (
   foreman_member_id bigint references members(id) on delete set null,
   notes           text,
   created_at      timestamptz default now(),
+  created_by      uuid references auth.users(id),
+  updated_at      timestamptz default now(),
+  updated_by      uuid references auth.users(id),
   unique(firm_id, group_id, month)
 );
 

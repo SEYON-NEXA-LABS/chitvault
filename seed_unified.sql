@@ -1,4 +1,3 @@
-'''
 -- ====================================================================
 -- Unified Dev Seeding Script for ChitVault
 -- 
@@ -25,14 +24,14 @@ DECLARE
   admin_uuid uuid;
   manager_uuid uuid;
   staff_uuid uuid;
-  dev_firm_id int;
+  dev_firm_id uuid;
 BEGIN
 
   -- === 1. CREATE THE DEVELOPMENT FIRM ===
   -- Upsert the firm to avoid duplicates, and get its ID.
-  INSERT INTO public.firms (name)
-  VALUES ('Dev Firm')
-  ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+  INSERT INTO public.firms (name, slug, plan)
+  VALUES ('Dev Firm', 'dev-firm', 'trial')
+  ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
   RETURNING id INTO dev_firm_id;
 
   -- === 2. CREATE ADMIN USER AND PROFILE ===
@@ -40,7 +39,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@dev.chitvault.local') THEN
     -- Insert into auth.users and capture the generated UUID
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_token, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_sent_at, confirmed_at)
-    VALUES (current_setting('app.instance_id')::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'admin@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'admin@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
     RETURNING id INTO admin_uuid;
 
     -- Insert the corresponding identity for the user
@@ -52,14 +51,14 @@ BEGIN
   END IF;
 
   -- Upsert the profile, linking it to the auth user via the captured UUID
-  INSERT INTO public.profiles (id, firm_id, role, name)
+  INSERT INTO public.profiles (id, firm_id, role, full_name)
   VALUES (admin_uuid, dev_firm_id, 'owner', 'Admin Dev')
-  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, firm_id = EXCLUDED.firm_id;
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, full_name = EXCLUDED.full_name, firm_id = EXCLUDED.firm_id;
 
   -- === 3. CREATE MANAGER USER AND PROFILE ===
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'manager@dev.chitvault.local') THEN
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_token, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_sent_at, confirmed_at)
-    VALUES (current_setting('app.instance_id')::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'manager@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'manager@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
     RETURNING id INTO manager_uuid;
 
     INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
@@ -68,14 +67,14 @@ BEGIN
     SELECT id INTO manager_uuid FROM auth.users WHERE email = 'manager@dev.chitvault.local';
   END IF;
 
-  INSERT INTO public.profiles (id, firm_id, role, name)
+  INSERT INTO public.profiles (id, firm_id, role, full_name)
   VALUES (manager_uuid, dev_firm_id, 'owner', 'Manager Dev')
-  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, firm_id = EXCLUDED.firm_id;
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, full_name = EXCLUDED.full_name, firm_id = EXCLUDED.firm_id;
 
   -- === 4. CREATE STAFF USER AND PROFILE ===
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'staff@dev.chitvault.local') THEN
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, recovery_token, recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_sent_at, confirmed_at)
-    VALUES (current_setting('app.instance_id')::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'staff@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, gen_random_uuid(), 'authenticated', 'authenticated', 'staff@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '', NULL, NULL, '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', NULL, now()) 
     RETURNING id INTO staff_uuid;
 
     INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
@@ -84,11 +83,10 @@ BEGIN
     SELECT id INTO staff_uuid FROM auth.users WHERE email = 'staff@dev.chitvault.local';
   END IF;
 
-  INSERT INTO public.profiles (id, firm_id, role, name)
+  INSERT INTO public.profiles (id, firm_id, role, full_name)
   VALUES (staff_uuid, dev_firm_id, 'staff', 'Staff Dev')
-  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, firm_id = EXCLUDED.firm_id;
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, full_name = EXCLUDED.full_name, firm_id = EXCLUDED.firm_id;
 
   RAISE NOTICE 'Unified seeding complete! Dev users and profiles are synced.';
 
-END $$;
-'''
+END $$;
