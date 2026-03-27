@@ -16,7 +16,7 @@ if [ ! -f .env.local ]; then
   echo ""
   echo "✅ Created .env.local — fill in your Supabase credentials:"
   echo "   NEXT_PUBLIC_SUPABASE_URL=..."
-  echo "   NEXT_PUBLIC_SUPABASE_ANON_KEY=..."
+  echo "   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=..."
   echo ""
 fi
 

@@ -263,6 +263,7 @@ create table if not exists invites (
   created_at  timestamptz default now(),
   updated_at  timestamptz default now(),
   expires_at  timestamptz default (now() + interval '7 days'),
+  full_name   text,
   unique(firm_id, email)
 );
 
@@ -511,13 +512,14 @@ declare
   v_status text;
   v_email  text;
   v_user_email text;
+  v_full_name text;
 begin
   if auth.uid() is null then
     raise exception 'Must be authenticated';
   end if;
 
-  select firm_id, role, expires_at, status, email
-  into v_firm, v_role, v_expires, v_status, v_email
+  select firm_id, role, expires_at, status, email, full_name
+  into v_firm, v_role, v_expires, v_status, v_email, v_full_name
   from invites where id = invite_id;
 
   if not found then raise exception 'Invite not found'; end if;
@@ -531,10 +533,12 @@ begin
   end if;
 
   -- Create or link profile to the invited firm
-  insert into profiles (id, firm_id, role)
-  values (auth.uid(), v_firm, coalesce(v_role, 'staff'))
+  insert into profiles (id, firm_id, role, full_name)
+  values (auth.uid(), v_firm, coalesce(v_role, 'staff'), v_full_name)
   on conflict (id) do update
-  set firm_id = v_firm, role = coalesce(v_role, 'staff');
+  set firm_id   = v_firm, 
+      role      = coalesce(v_role, 'staff'),
+      full_name = coalesce(v_full_name, profiles.full_name);
 
   update invites set status = 'accepted' where id = invite_id;
 end;
@@ -547,10 +551,10 @@ drop function if exists public.get_invite(uuid);
 create or replace function public.get_invite(invite_id uuid)
 returns table (
   id uuid, firm_id uuid, email text, role text,
-  status text, expires_at timestamptz, firm_name text
+  status text, expires_at timestamptz, firm_name text, full_name text
 )
 language sql stable security definer set search_path = public as $$
-  select i.id, i.firm_id, i.email, i.role, i.status, i.expires_at, f.name as firm_name
+  select i.id, i.firm_id, i.email, i.role, i.status, i.expires_at, f.name as firm_name, i.full_name
   from invites i
   join firms f on f.id = i.firm_id
   where i.id = invite_id
@@ -678,6 +682,8 @@ grant execute on function public.join_firm_by_token(text, text) to authenticated
 create or replace function public.admin_create_firm(
   p_name          text,
   p_slug          text,
+  p_owner_id      uuid,
+  p_owner_name    text default null,
   p_city          text default null,
   p_phone         text default null,
   p_plan          text default 'trial',
@@ -697,14 +703,22 @@ begin
     raise exception 'SLUG_TAKEN';
   end if;
 
-  insert into firms (name, slug, city, phone, plan, primary_color, tagline, font)
-  values (p_name, p_slug, p_city, p_phone, p_plan, p_primary_color, p_tagline, p_font)
+  insert into firms (name, slug, owner_id, city, phone, plan, primary_color, tagline, font)
+  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_primary_color, p_tagline, p_font)
   returning id into v_firm_id;
+
+  -- Create or link profile immediately
+  insert into profiles (id, firm_id, role, full_name)
+  values (p_owner_id, v_firm_id, 'owner', p_owner_name)
+  on conflict (id) do update
+  set firm_id   = v_firm_id, 
+      role      = 'owner',
+      full_name = coalesce(p_owner_name, profiles.full_name);
 
   return v_firm_id;
 end;
 $$;
-grant execute on function public.admin_create_firm(text,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.admin_create_firm(text,text,uuid,text,text,text,text,text,text,text) to authenticated;
 
 -- ══════════════════════════════════════════════════════════════
 -- AUCTION RULES & FOREMAN COMMISSION (v1.3 additions)

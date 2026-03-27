@@ -2,27 +2,26 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  let supabaseResponse = NextResponse.next({
+    request,
   })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
-          response.cookies.set({ name, value: '', ...options })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
@@ -31,10 +30,10 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isPublic     = ['/login', '/register', '/', '/reset-password'].some(p => pathname === p)
-  const isAdmin      = pathname.startsWith('/admin')
+  const isPublic = ['/login', '/register', '/', '/reset-password'].some(p => pathname === p)
+  const isAdmin = pathname.startsWith('/admin')
   const isOnboarding = pathname === '/onboarding'
-  const isInvite     = pathname.startsWith('/invite')
+  const isInvite = pathname.startsWith('/invite')
 
   // Not logged in — allow public pages and invite links only
   if (!user && !isPublic && !isInvite) {
@@ -72,5 +71,5 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  return response
+  return supabaseResponse
 }

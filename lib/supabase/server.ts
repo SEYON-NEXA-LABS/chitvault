@@ -1,21 +1,40 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-// Used in Server Components, Route Handlers, Server Actions
-export function createClient() {
-  const cookieStore = cookies()
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+export const createClient = (cookieStore?: Awaited<ReturnType<typeof cookies>>) => {
+  // If no cookie store provided, try to get it from next/headers
+  if (!cookieStore) {
+    try {
+      cookieStore = cookies()
+    } catch (e) {
+      // Cookies not available (e.g. static build or metadata route)
+    }
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl!,
+    supabaseKey!,
     {
       cookies: {
-        getAll()         { return cookieStore.getAll() },
-        setAll(toSet: any[])    {
-          try { toSet.forEach(({ name, value, options }: any) =>
-            cookieStore.set(name, value, options)) }
-          catch { /* read-only context */ }
+        getAll() {
+          if (!cookieStore) return []
+          return typeof cookieStore.getAll === 'function' ? cookieStore.getAll() : []
+        },
+        setAll(cookiesToSet) {
+          try {
+            if (cookieStore && typeof cookieStore.set === 'function') {
+              cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+            }
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
         },
       },
-    }
-  )
-}
+    },
+  );
+};

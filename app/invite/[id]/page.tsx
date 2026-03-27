@@ -13,6 +13,7 @@ interface InviteInfo {
   status:    string
   expires_at: string
   firm_name: string
+  full_name: string | null
 }
 
 export default function InvitePage() {
@@ -53,6 +54,9 @@ export default function InvitePage() {
       if (new Date(inv.expires_at) < new Date()) { setState('expired'); return }
 
       setInvite(inv)
+      if (inv.full_name) {
+        setForm(f => ({ ...f, full_name: inv.full_name || '' }))
+      }
 
       // Check if already logged in
       const { data: { user } } = await supabase.auth.getUser()
