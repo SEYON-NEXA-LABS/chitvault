@@ -10,7 +10,7 @@
     "lint":               "next lint",
     "type-check":         "tsc --noEmit",
     "build:electron":     "cross-env ELECTRON_BUILD=1 next build",
-    "build:electron:win": "cross-env ELECTRON_BUILD=1 next build && cd electron && npm install && npm run build:win",
+    "build:electron:win": "cross-env ELECTRON_BUILD=1 next build && cd electron && npm install --no-audit --no-fund --silent && npm run build:win",
     "electron:dev":       "cross-env NODE_ENV=development electron electron/main.js"
   },
   "dependencies": {

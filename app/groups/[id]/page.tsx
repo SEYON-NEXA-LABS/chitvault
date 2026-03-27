@@ -235,7 +235,7 @@ export default function GroupLedgerPage() {
                              <span className="font-mono text-[var(--green)]">−{fmt(divs)}</span>
                           </div>
                           <div className="flex justify-between text-sm font-bold pt-2 border-t mt-2" style={{ borderColor: 'var(--border)' }}>
-                             <span>Member's Contribution:</span>
+                             <span>Member&apos;s Contribution:</span>
                              <span className="text-[var(--blue)]">{fmt(netDue)}</span>
                           </div>
                        </div>

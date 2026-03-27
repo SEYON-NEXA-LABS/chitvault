@@ -183,7 +183,7 @@ export default function SettlementPage() {
            </Card>
 
            <div className="p-4 rounded-xl border text-[11px] leading-relaxed opacity-80" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-             <strong>NOTE:</strong> The "Average Per Month" is calculated by dividing the total amount by 15 as per the handwritten chit settlement rule. The 14th-month balance is calculated as (Total - [Average x 14]).
+             <strong>NOTE:</strong> The &quot;Average Per Month&quot; is calculated by dividing the total amount by 15 as per the handwritten chit settlement rule. The 14th-month balance is calculated as (Total - [Average x 14]).
            </div>
         </div>
 

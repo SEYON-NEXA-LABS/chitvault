@@ -43,7 +43,7 @@ export default function SchemesGuidePage() {
            <Badge variant="blue" className="mb-4">Option A</Badge>
            <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
-             In this model, the "Discount" (bid amount) is divided equally among all members every month. 
+             In this model, the &quot;Discount&quot; (bid amount) is divided equally among all members every month. 
              Members pay less than their target installment, sharing the profit immediately.
            </p>
            
@@ -64,7 +64,7 @@ export default function SchemesGuidePage() {
            <Badge variant="gold" className="mb-4">Option B</Badge>
            <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
-             Everyone pays the **Full Amount** every month. The "Bid" is stored in a **Surplus Pool**. 
+             Everyone pays the **Full Amount** every month. The &quot;Bid&quot; is stored in a **Surplus Pool**. 
              When the pool is large enough, it pays for the final months automatically!
            </p>
 
