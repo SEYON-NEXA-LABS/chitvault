@@ -18,7 +18,7 @@ export function Badge({ variant = 'gray', children, className }: {
     gray:  { background: 'var(--surface3)',  color: 'var(--text2)' },
   }
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', className)}
+    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider', className)}
       style={styles[variant]}>
       {children}
     </span>
@@ -33,7 +33,7 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   icon?: any; loading?: boolean; children: React.ReactNode; className?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
-  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-3 text-base' }
+  const sizes = { sm: 'px-3 py-1.5 text-[13px]', md: 'px-4 py-2 text-[15px]', lg: 'px-5 py-3 text-base' }
   const styles: Record<BtnVariant, React.CSSProperties> = {
     primary:   { background: 'var(--gold)',      color: '#ffffff' },
     secondary: { background: 'var(--surface2)',  color: 'var(--text)', border: '1px solid var(--border)' },
@@ -196,7 +196,7 @@ export function Field({ label, error, children, className }: {
   )
 }
 
-export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-sm outline-none transition-colors focus:border-[var(--gold)]'
+export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--gold)] font-medium'
 export const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
 
 // ── Progress Bar ──────────────────────────────────────────────────────────────

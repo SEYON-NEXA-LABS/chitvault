@@ -8,12 +8,14 @@ export function useFirmId() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    const loadId = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
       setFirmId(data?.firm_id || null)
-    })
-  }, [])
+    }
+    loadId()
+  }, [supabase])
 
   return firmId
 }

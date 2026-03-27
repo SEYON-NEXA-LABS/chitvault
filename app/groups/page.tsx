@@ -98,41 +98,29 @@ export default function GroupsPage() {
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
-    showToast('Group created!'); setAddOpen(false)
-    setForm({
-      name: '', chit_value: '', num_members: '', duration: '',
-      monthly_contribution: '', start_date: '', auction_scheme: 'DIVIDEND'
-    })
-    load()
+    showToast('Group created!'); setAddOpen(false); load()
   }
 
   async function archive(id: number) {
-    if (!confirm('Archive this group?')) return
-    const { data: userData } = await supabase.auth.getUser()
-    await supabase.from('groups').update({ status: 'archived', updated_by: userData.user?.id, updated_at: new Date().toISOString() }).eq('id', id)
-    showToast('Group archived. 📦'); load()
+    if (!confirm('Archive this group? It will no longer show in active lists.')) return
+    const { error } = await supabase.from('groups').update({ status: 'archived' }).eq('id', id)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Group archived'); load() }
   }
 
   async function archiveAll() {
-    if (!confirm('Archive all completed groups?')) return
-    const ids = (completed as Group[]).map(g => g.id)
-    if (!ids.length) return
-    const { data: userData } = await supabase.auth.getUser()
-    await supabase.from('groups').update({ status: 'archived', updated_by: userData.user?.id, updated_at: new Date().toISOString() }).in('id', ids)
-    showToast(`${ids.length} groups archived.`); load()
-  }
-
-  async function unarchive(id: number) {
-    if (!firm) return
-    const { data: userData } = await supabase.auth.getUser()
-    await supabase.from('groups').update({ status: 'active', firm_id: firm.id, updated_by: userData.user?.id, updated_at: new Date().toISOString() }).eq('id', id)
-    showToast('Group restored.'); loadArchived(); load()
+    if (!confirm(`Archive all ${completed.length} completed groups?`)) return
+    const ids = completed.map(g => g.id)
+    const { error } = await supabase.from('groups').update({ status: 'archived' }).in('id', ids)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Groups archived'); load() }
   }
 
   async function del(id: number) {
-    if (!confirm('Permanently delete this group and all its data?')) return
-    await supabase.from('groups').delete().eq('id', id)
-    showToast('Deleted.'); load()
+    if (!confirm('EXTREME DANGER: Delete this group and ALL its members/auctions/payments forever?')) return
+    const { error } = await supabase.from('groups').delete().eq('id', id)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Group permanently deleted'); load() }
   }
 
   const GroupTable = ({ list, showArchBtn }: { list: Group[], showArchBtn: boolean }) => (
@@ -140,7 +128,15 @@ export default function GroupsPage() {
       <thead>
         <tr>
           {isSuper && <Th>Firm</Th>}
-          {['Group', 'Chit Value', 'Members', 'Monthly', 'Done', 'Progress', 'Status', 'End Date', 'Payments', 'Actions'].map(h => <Th key={h}>{h}</Th>)}
+          <Th>Group</Th>
+          <Th right>Value</Th>
+          <Th className="hidden sm:table-cell">Members</Th>
+          <Th right className="hidden md:table-cell">Monthly</Th>
+          <Th>Progress</Th>
+          <Th className="hidden lg:table-cell">Status</Th>
+          <Th className="hidden xl:table-cell">Ends</Th>
+          <Th className="hidden md:table-cell">Pending</Th>
+          <Th>Action</Th>
         </tr>
       </thead>
       <tbody>
@@ -155,24 +151,23 @@ export default function GroupsPage() {
                 </Link>
               </Td>
               <Td right>{fmt(g.chit_value)}</Td>
-              <Td>{g.num_members}</Td>
-              <Td right>{fmt(g.monthly_contribution)}</Td>
-              <Td>{s.done}/{g.duration}</Td>
+              <Td className="hidden sm:table-cell">{g.num_members}</Td>
+              <Td right className="hidden md:table-cell">{fmt(g.monthly_contribution)}</Td>
               <Td>
                 <div className="flex items-center gap-2">
-                  <ProgressBar pct={s.pct} />
-                  <span className="text-xs" style={{ color: 'var(--text3)' }}>{s.pct}%</span>
+                  <div className="hidden md:block w-20"><ProgressBar pct={s.pct} /></div>
+                  <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text2)' }}>{s.done}/{g.duration}</span>
                 </div>
               </Td>
-              <Td>
+              <Td className="hidden lg:table-cell">
                 {s.pct >= 100
                   ? <Badge variant="green">Completed ✓</Badge>
                   : s.done > 0
                     ? <Badge variant="blue">{g.duration - s.done} mo left</Badge>
                     : <Badge variant="gray">Not started</Badge>}
               </Td>
-              <Td>{s.endDate}</Td>
-              <Td>
+              <Td className="hidden xl:table-cell">{s.endDate}</Td>
+              <Td className="hidden md:table-cell">
                 {s.pending > 0
                   ? <Badge variant="red">{s.pending} pending</Badge>
                   : <Badge variant="green">All paid</Badge>}
@@ -183,12 +178,6 @@ export default function GroupsPage() {
                     style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
                     View
                   </Btn>
-                  {can('editGroup') && (
-                    <Btn size="sm" variant="ghost" icon={Settings2} onClick={() => router.push(`/groups/${g.id}/settings`)}
-                      style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
-                      Settings
-                    </Btn>
-                  )}
                   {showArchBtn && can('archiveGroup') && (
                     <Btn size="sm" variant="ghost" onClick={() => archive(g.id)}
                       style={{ color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.3)' }}>
@@ -208,7 +197,7 @@ export default function GroupsPage() {
   if (loading) return <Loading />
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Active */}
       <TableCard title={`Active Groups (${active.length})`}
         actions={can('createGroup') ? <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> New Group</Btn> : undefined}>
@@ -248,75 +237,26 @@ export default function GroupsPage() {
           archLoading ? <Loading text="Loading archived groups..." /> :
             archived.length === 0
               ? <Empty icon="📦" text="No archived groups yet." />
-              : <Table>
-                <thead><tr>{[...(isSuper ? ['Firm'] : []), 'Group', 'Chit Value', 'Members', 'Months', 'Start Date', 'Actions'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
-                <tbody>
-                  {archived.map(g => (
-                    <Tr key={g.id} style={{ opacity: 0.7 }}>
-                      {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
-                      <Td><span className="font-semibold">{g.name}</span> <Badge variant="gray" className="ml-1 text-xs">Archived</Badge></Td>
-                      <Td right>{fmt(g.chit_value)}</Td>
-                      <Td>{g.num_members}</Td>
-                      <Td>{g.duration}</Td>
-                      <Td>{fmtDate(g.start_date)}</Td>
-                      <Td>
-                        <div className="flex gap-1.5">
-                          <Btn size="sm" variant="secondary" onClick={() => unarchive(g.id)}>
-                            <RotateCcw size={12} /> Restore
-                          </Btn>
-                          <Btn size="sm" variant="danger" onClick={() => del(g.id)}>
-                            <Trash2 size={12} />
-                          </Btn>
-                        </div>
-                      </Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
+              : <div className="p-3"><GroupTable list={archived} showArchBtn={false} /></div>
         )}
       </Card>
 
-      {/* Add Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create New Chit Group">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Group Name" className="col-span-2">
-            <input className={inputClass} style={inputStyle} value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Kumari Group A" />
-          </Field>
-          <Field label="Chit Value (₹)">
-            <input className={inputClass} style={inputStyle} type="number" value={form.chit_value}
-              onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" />
-          </Field>
-          <Field label="No. of Members">
-            <input className={inputClass} style={inputStyle} type="number" value={form.num_members}
-              onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" />
-          </Field>
-          <Field label="Duration (months)">
-            <input className={inputClass} style={inputStyle} type="number" value={form.duration}
-              onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" />
-          </Field>
-          <Field label="Monthly Contribution (₹)">
-            <input className={inputClass} style={inputStyle} type="number" value={form.monthly_contribution}
-              onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" />
-          </Field>
-          <Field label="Start Date" className="col-span-2">
-            <input className={inputClass} style={inputStyle} type="date" value={form.start_date}
-              onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
-          </Field>
-          <Field label="Auction Scheme" className="col-span-2">
-            <select className={inputClass} style={inputStyle} value={form.auction_scheme}
-              onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
-              <option value="DIVIDEND">Standard (Dividend Share)</option>
-              <option value="ACCUMULATION">Accumulation (Surplus Model)</option>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Chit Group">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Group Name"><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SEP2026-A" /></Field>
+          <Field label="Total Chit Value (₹)"><input className={inputClass} style={inputStyle} value={form.chit_value} type="number" onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" /></Field>
+          <Field label="Auction Scheme">
+            <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
+              <option value="DIVIDEND">DIVIDEND (Monthly Dividend)</option>
+              <option value="ACCUMULATION">ACCUMULATION (Fixed Payout)</option>
             </select>
-            <p className="text-[10px] mt-1.5 leading-relaxed opacity-60">
-              {form.auction_scheme === 'DIVIDEND'
-                ? "Standard: Bids are split among all members as a monthly dividend."
-                : "Accumulation: Bids are stored in a reserve to close the group several months early."}
-            </p>
           </Field>
+          <Field label="Total Members"><input className={inputClass} style={inputStyle} value={form.num_members} type="number" onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" /></Field>
+          <Field label="Duration (Months)"><input className={inputClass} style={inputStyle} value={form.duration} type="number" onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" /></Field>
+          <Field label="Monthly Installment (₹)"><input className={inputClass} style={inputStyle} value={form.monthly_contribution} type="number" onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" /></Field>
+          <Field label="Start Date"><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></Field>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
           <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
           <Btn variant="primary" loading={saving} onClick={handleSave}>Create Group</Btn>
         </div>
