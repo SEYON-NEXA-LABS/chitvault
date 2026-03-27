@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate } from '@/lib/utils'
@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation'
 import type { Group, Member, Auction, AuctionCalculation, ForemanCommission } from '@/types'
 
 export default function AuctionsPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { firm, can } = useFirm()
   const { toast, show, hide } = useToast()
   const router = useRouter()
@@ -34,9 +34,9 @@ export default function AuctionsPage() {
   const [calcError,  setCalcError]  = useState('')
   const [groupRules, setGroupRules] = useState<any>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (isInitial = false) => {
     if (!firm) return
-    setLoading(true)
+    if (isInitial) setLoading(true)
     const [g, m, a, fc] = await Promise.all([
       supabase.from('groups').select('*').eq('firm_id', firm.id).neq('status','closed').order('name'),
       supabase.from('members').select('*').eq('firm_id', firm.id).in('status',['active','foreman']),
@@ -50,7 +50,7 @@ export default function AuctionsPage() {
     setLoading(false)
   }, [firm, supabase])
 
-  useEffect(() => { if (firm) load() }, [firm, load])
+  useEffect(() => { if (firm) load(true) }, [firm, load])
 
   // When group changes: load its rules + set next month + eligible members
   async function onGroupChange(groupId: string) {

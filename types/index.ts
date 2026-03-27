@@ -56,9 +56,22 @@ export interface Group {
   firms?: { name: string }
 }
 
+export interface Person {
+  id:         number
+  firm_id:    string
+  name:       string
+  nickname:   string | null
+  phone:      string | null
+  address:    string | null
+  created_at: string
+  created_by: string | null
+  updated_at: string | null
+  updated_by: string | null
+}
+
 export interface Member {
-  id: number; firm_id: string; name: string; phone: string | null
-  address: string | null; group_id: number; ticket_no: number
+  id: number; firm_id: string; person_id: number
+  group_id: number; ticket_no: number
   status: MemberStatus; exit_month: number | null; transfer_from_id: number | null
   contact_id: number | null; notes: string | null; 
   created_at: string
@@ -66,6 +79,7 @@ export interface Member {
   updated_at: string | null
   updated_by: string | null
   firms?: { name: string }
+  persons?: Person
 }
 
 export interface Auction {

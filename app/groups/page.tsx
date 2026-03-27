@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate } from '@/lib/utils'
@@ -16,7 +16,7 @@ import Link from 'next/link'
 import type { Group, Auction, Payment } from '@/types'
 
 export default function GroupsPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { firm, role, can } = useFirm()
   const isSuper = role === 'superadmin'
   const router = useRouter()
@@ -38,8 +38,8 @@ export default function GroupsPage() {
   })
   const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true)
     const [g, a, p] = await Promise.all([
       supabase.from('groups').select('*, firms(name)').neq('status', 'archived').order('id'),
       supabase.from('auctions').select('group_id,month'),
@@ -51,9 +51,9 @@ export default function GroupsPage() {
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(true) }, [load])
 
-  function groupStats(g: Group) {
+  const groupStats = useCallback((g: Group) => {
     const done = auctions.filter(a => a.group_id === g.id).length
     const paid = payments.filter(p => p.group_id === g.id && p.status === 'paid').length
     const pending = Math.max(0, done * g.num_members - paid)
@@ -66,10 +66,11 @@ export default function GroupsPage() {
       endDate = fmtDate(d.toISOString().split('T')[0])
     }
     return { done, pending, pct, isComplete, endDate }
-  }
+  }, [auctions, payments])
 
-  const active = groups.filter(g => { const s = groupStats(g); return !s.isComplete })
-  const completed = groups.filter(g => { const s = groupStats(g); return s.isComplete })
+  const active = useMemo(() => groups.filter(g => { const s = groupStats(g); return !s.isComplete }), [groups, groupStats])
+  const completed = useMemo(() => groups.filter(g => { const s = groupStats(g); return s.isComplete }), [groups, groupStats])
+
 
   async function loadArchived() {
     setArchLoading(true)
@@ -114,7 +115,7 @@ export default function GroupsPage() {
 
   async function archiveAll() {
     if (!confirm('Archive all completed groups?')) return
-    const ids = completed.map(g => g.id)
+    const ids = (completed as Group[]).map(g => g.id)
     if (!ids.length) return
     const { data: userData } = await supabase.auth.getUser()
     await supabase.from('groups').update({ status: 'archived', updated_by: userData.user?.id, updated_at: new Date().toISOString() }).in('id', ids)

@@ -130,15 +130,36 @@ do $$ begin
   end if;
 end $$;
 
--- 1.4 MEMBERS
-create table if not exists members (
+-- 1.3.5 PERSONS (Registry of unique individuals)
+create table if not exists persons (
   id               bigint primary key generated always as identity,
   firm_id          uuid not null references firms(id) on delete cascade,
   name             text not null,
+  nickname         text,
   phone            text,
   address          text,
+  created_at       timestamptz default now(),
+  created_by       uuid references auth.users(id),
+  updated_at       timestamptz default now(),
+  updated_by       uuid references auth.users(id)
+);
+
+do $$ begin
+  -- Drop the old constraint if it exists
+  alter table persons drop constraint if exists persons_firm_phone_unique;
+  
+  if not exists (select 1 from pg_constraint where conname = 'persons_firm_identity_unique') then
+    alter table persons add constraint persons_firm_identity_unique unique (firm_id, name, phone);
+  end if;
+end $$;
+
+-- 1.4 MEMBERS (Chit group enrollments / Tickets)
+create table if not exists members (
+  id               bigint primary key generated always as identity,
+  firm_id          uuid not null references firms(id) on delete cascade,
+  person_id        bigint references persons(id) on delete cascade,
   group_id         bigint references groups(id) on delete cascade,
-  ticket_no        int not null,
+  ticket_no        int,
   status           text default 'active',
   exit_month       int,
   transfer_from_id bigint references members(id) on delete set null,
@@ -148,7 +169,7 @@ create table if not exists members (
   created_by       uuid references auth.users(id),
   updated_at       timestamptz default now(),
   updated_by       uuid references auth.users(id),
-  constraint members_status_chk check (status in ('active','transferred','exited'))
+  constraint members_status_chk check (status in ('active','transferred','exited','defaulter','foreman'))
 );
 
 do $$ begin
@@ -341,7 +362,7 @@ $$;
 -- Drop all existing policies
 do $pol$ declare r record; begin
   for r in select schemaname, tablename, policyname from pg_policies
-    where tablename in ('firms','profiles','groups','members','auctions','payments','invites','denominations','foreman_commissions')
+    where tablename in ('firms','profiles','groups','persons','members','auctions','payments','invites','denominations','foreman_commissions')
   loop
     execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
   end loop;
@@ -371,6 +392,17 @@ create policy groups_insert on groups for insert
 create policy groups_update on groups for update
   using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
 create policy groups_delete on groups for delete
+  using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
+
+-- PERSONS: owner+staff manage
+alter table persons enable row level security;
+create policy persons_select on persons for select
+  using (firm_id = my_firm_id() or is_superadmin());
+create policy persons_insert on persons for insert
+  with check (firm_id = my_firm_id() or is_superadmin());
+create policy persons_update on persons for update
+  using (firm_id = my_firm_id() or is_superadmin());
+create policy persons_delete on persons for delete
   using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
 
 -- MEMBERS: owner write, staff read
@@ -425,7 +457,7 @@ create policy denom_delete on denominations for delete
 
 -- GRANTS
 grant usage, select on all sequences in schema public to authenticated;
-grant all on firms, profiles, groups, members, auctions, payments, invites, denominations to authenticated;
+grant all on firms, profiles, groups, persons, members, auctions, payments, invites, denominations to authenticated;
 
 -- ── 4. AUTH TRIGGER: DISABLED ──────────────────────────────
 -- DISABLED: Profiles must be created with firm_id (NOT NULL).
