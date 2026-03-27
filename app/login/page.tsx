@@ -61,7 +61,7 @@ function LoginForm() {
 
   const clr = branding.primary_color
 
-  async function handleRedirect(user: any) {
+  async function handleRedirect(user: { id: string }) {
     try {
       const { data: profile, error: profileErr } = await supabase
         .from('profiles').select('firm_id, role').eq('id', user.id).single()
@@ -83,9 +83,11 @@ function LoginForm() {
 
   // Auto-redirect if session exists
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) handleRedirect(user)
-    })
+    async function checkUser() {
+      const { data } = await supabase.auth.getUser()
+      if (data?.user) handleRedirect(data.user)
+    }
+    checkUser()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase.auth, router])
 

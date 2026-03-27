@@ -25,6 +25,7 @@ export default function GroupLedgerPage() {
   const [commissions,    setCommissions]    = useState<ForemanCommission[]>([])
   const [loading,        setLoading]        = useState(true)
   const [selectedMember, setSelectedMember] = useState<number | null>(null)
+  const [showAdv,        setShowAdv]        = useState(false)
   
   const { toast, show: showToast, hide: hideToast } = useToast()
   const [addOpen, setAddOpen] = useState(false)
@@ -97,58 +98,56 @@ export default function GroupLedgerPage() {
     }
 
     const usedTickets = new Set(members.map(m => m.ticket_no))
-    const toInsert = []
-    let nextTicket = +form.ticket_no || 1
-
+    const insertPayload = []
+    let currentTicket = +form.ticket_no
     for (let i = 0; i < count; i++) {
-        while(usedTickets.has(nextTicket)) nextTicket++
-        toInsert.push({
-            person_id,
-            group_id: groupId,
-            firm_id: firm.id,
-            ticket_no: nextTicket,
-            created_by: userData.user?.id
-        })
-        usedTickets.add(nextTicket)
+       while(usedTickets.has(currentTicket)) currentTicket++
+       insertPayload.push({
+          firm_id: firm.id,
+          group_id: group.id,
+          person_id: person_id,
+          ticket_no: currentTicket,
+          status: 'active',
+          created_by: userData.user?.id
+       })
+       usedTickets.add(currentTicket)
     }
 
-    const { error } = await supabase.from('members').insert(toInsert)
-    if (error) { showToast(error.message, 'error'); setSaving(false); return }
+    const { error: mErr } = await supabase.from('members').insert(insertPayload)
     
-    showToast(`${count > 1 ? count + ' tickets' : 'Member'} added successfully!`)
-    setAddOpen(false)
-    setForm({ name: '', nickname: '', phone: '', address: '', ticket_no: '', person_id: '', tickets: '1' })
-    load()
     setSaving(false)
+    if (mErr) { showToast(mErr.message, 'error'); return }
+    showToast('Member(s) added successfully!', 'success'); setAddOpen(false); load()
   }
 
   async function deleteMember(id: number) {
-    if (!confirm('Remove this member from the group?')) return
-    const { error } = await supabase.from('members').delete().eq('id', id)
-    if (error) showToast(error.message, 'error')
-    else { showToast('Member removed.'); load() }
+     if(!confirm('Are you sure?')) return
+     const { error } = await supabase.from('members').delete().eq('id', id)
+     if(error) showToast(error.message, 'error')
+     else { showToast('Removed!', 'success'); load() }
   }
 
   if (loading || !group) return <Loading />
 
-  // Financial aggregates
-  const totalMonths = group.duration
+  const totalDividends = auctionHistory.reduce((s, a) => s + Number(a.dividend || 0), 0)
+  const totalPayouts   = auctionHistory.reduce((s, a) => s + Number(a.net_payout || 0), 0)
+  const totalComm      = commissions.reduce((s, c) => s + Number(c.commission_amt || 0), 0)
   const monthsCompleted = auctionHistory.length
-  const totalPayouts = auctionHistory.reduce((s, a) => s + Number(a.net_payout || 0), 0)
-  const totalDividends = auctionHistory.reduce((s, a) => s + (Number(a.dividend || 0) * group.num_members), 0)
-  const totalComm = commissions.reduce((s, c) => s + Number(c.commission_amt || 0), 0)
+  const totalMonths     = group.duration
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <button onClick={() => router.push('/groups')} className="flex items-center gap-1 text-xs font-bold text-[var(--gold)] hover:opacity-70 mb-2">
-            <ArrowLeft size={14} /> BACK TO GROUPS
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/groups')} className="p-2.5 rounded-xl hover:bg-[var(--surface2)] transition-colors border" style={{ borderColor: 'var(--border)' }}>
+             <ArrowLeft size={20} />
           </button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black text-[var(--text)]">{group.name}</h1>
-            <Badge variant={group.status === 'active' ? 'green' : 'gray'}>{group.status}</Badge>
-            {group.auction_scheme === 'ACCUMULATION' && <Badge variant="blue">Accumulation Scheme</Badge>}
+          <div>
+            <h1 className="text-xl md:text-3xl font-black text-[var(--text)]">{group.name}</h1>
+            <div className="flex gap-2 mt-1">
+              <Badge variant={group.status === 'active' ? 'green' : 'gray'}>{group.status}</Badge>
+              {group.auction_scheme === 'ACCUMULATION' && <Badge variant="blue">Accumulation</Badge>}
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -159,66 +158,60 @@ export default function GroupLedgerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <StatCard label="Progress" value={`${monthsCompleted} / ${totalMonths}`} sub="Months completed" color="blue" />
-        <StatCard label="Members" value={`${members.length} / ${group.num_members}`} sub={`${group.num_members - members.length} vacant slots`} color="gold" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+        <StatCard label="Progress" value={`${monthsCompleted}/${totalMonths}`} color="blue" />
+        <StatCard label="Vacant" value={group.num_members - members.length} color="gold" />
         {group.auction_scheme === 'ACCUMULATION' ? (
           <>
-            <StatCard label="Surplus Pool" value={fmt(group.accumulated_surplus)} sub="Accumulated savings" color="green" />
-            <StatCard label="Closure Target" value={fmt(group.chit_value)} sub="Closing early soon" color="red" />
+            <StatCard label="Pool" value={fmt(group.accumulated_surplus)} color="green" />
+            <StatCard label="Target" value={fmt(group.chit_value)} color="red" />
           </>
         ) : (
           <>
-            <StatCard label="Total Dividends" value={fmt(totalDividends)} sub="Distributed" color="green" />
-            <StatCard label="Total Payouts" value={fmt(totalPayouts)} sub="Paid to winners" color="red" />
+            <StatCard label="Dividends" value={fmt(totalDividends)} color="green" />
+            <StatCard label="Payouts" value={fmt(totalPayouts)} color="red" />
           </>
         )}
-        <StatCard label="Total Commission" value={fmt(totalComm)} sub="Firm earnings" color="blue" />
+        <StatCard label="Earnings" value={fmt(totalComm)} color="blue" />
       </div>
 
-      <Card title="Auction Ledger" subtitle="Breakdown of all previous auctions">
+      <Card title="Auction Ledger">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
-                <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Month</th>
-                <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Winner</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Bid Amount</th>
-                {group.auction_scheme === 'ACCUMULATION' ? (
-                   <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>To Surplus</th>
-                ) : (
-                   <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Dividend</th>
-                )}
-                <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Net Payout</th>
-                <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Each Pays</th>
+                <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Month</th>
+                <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Winner</th>
+                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Bid</th>
+                <th className="hidden md:table-cell" style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Div/Surplus</th>
+                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Payout</th>
+                <th className="hidden sm:table-cell" style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Each Pays</th>
               </tr>
             </thead>
             <tbody>
               {auctionHistory.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 opacity-50 italic">No auctions held yet.</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 opacity-50 italic">No auctions held yet.</td></tr>
               ) : auctionHistory.map((a) => {
                 const winner = members.find(m => m.id === a.winner_id)
                 const monthlyDue = group.chit_value / group.duration
                 const eachPays = monthlyDue - Number(a.dividend || 0)
                 return (
                   <tr key={a.id} className="border-b last:border-0 hover:bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-                    <td style={{ padding: '12px 14px' }}><Badge variant="gray" className="font-mono font-bold">Month {a.month}</Badge></td>
-                    <td style={{ padding: '12px 14px' }} className="font-medium">
+                    <td style={{ padding: '12px 10px' }}><Badge variant="gray" className="font-mono text-[10px]">M{a.month}</Badge></td>
+                    <td style={{ padding: '12px 10px' }}>
                        {winner ? (
-                         <div className="flex items-center gap-2">
-                            <span className="text-sm">👑 {winner.persons?.name} {winner.persons?.nickname && `(${winner.persons.nickname})`}</span>
-                            <span className="text-[10px] opacity-40">#{winner.ticket_no}</span>
+                         <div className="flex flex-col">
+                            <span className="text-xs font-bold truncate max-w-[80px] md:max-w-full">{winner.persons?.name}</span>
+                            <span className="text-[9px] opacity-40 italic">Ticket #{winner.ticket_no}</span>
                          </div>
                        ) : '—'}
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-bold text-red-500">{fmt(a.bid_amount)}</td>
-                    {group.auction_scheme === 'ACCUMULATION' ? (
-                       <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--gold)' }} className="font-mono font-bold">+{fmt(Number(a.total_pot || 0) - Number(a.bid_amount || 0))}</td>
-                    ) : (
-                       <td style={{ padding: '12px 14px', textAlign: 'right', color: 'var(--gold)' }} className="font-mono">{fmt(a.dividend)}</td>
-                    )}
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-black text-green-500">{fmt(a.net_payout || a.bid_amount)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }} className="font-mono font-bold">{fmt(eachPays)}</td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-bold text-red-500">{fmt(a.bid_amount)}</td>
+                    <td className="hidden md:table-cell font-mono text-right" style={{ padding: '12px 10px', color: 'var(--gold)' }}>
+                       {group.auction_scheme === 'ACCUMULATION' ? `+${fmt(Number(a.total_pot || 0) - Number(a.bid_amount || 0))}` : fmt(a.dividend)}
+                    </td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-black text-green-500">{fmt(a.net_payout || a.bid_amount)}</td>
+                    <td className="hidden sm:table-cell font-mono font-bold text-right" style={{ padding: '12px 10px' }}>{fmt(eachPays)}</td>
                   </tr>
                 )
               })}
@@ -229,19 +222,19 @@ export default function GroupLedgerPage() {
 
       <Card title="Member List" subtitle={`${members.length} enrollments`}>
         <Table>
-          <thead><Tr><Th>Ticket</Th><Th>Name</Th><Th>Phone</Th><Th>Status</Th><Th right>Actions</Th></Tr></thead>
+          <thead><tr><Th>#</Th><Th>Name</Th><Th className="hidden md:table-cell">Phone</Th><Th className="hidden sm:table-cell">Status</Th><Th right>Actions</Th></tr></thead>
           <tbody>
             {members.length === 0 ? (
               <Tr><Td colSpan={5} className="text-center py-12 opacity-50 italic">No members yet.</Td></Tr>
             ) : members.map((m) => (
               <Tr key={m.id}>
-                <Td><Badge variant="gray" className="font-mono font-bold">#{m.ticket_no}</Badge></Td>
-                <Td className="font-semibold">
-                  {m.persons?.name} {m.persons?.nickname && <span className="text-xs opacity-50 ml-1">({m.persons.nickname})</span>}
-                  {auctionHistory.some(a => a.winner_id === m.id) && ' 👑'}
+                <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
+                <Td className="font-semibold text-xs md:text-sm">
+                  {m.persons?.name}
+                  {auctionHistory.some(a => a.winner_id === m.id) && <span className="ml-1" title="Won previously">👑</span>}
                 </Td>
-                <Td className="text-xs font-mono">{m.persons?.phone || '—'}</Td>
-                <Td>{m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}</Td>
+                <Td className="hidden md:table-cell text-xs font-mono">{m.persons?.phone || '—'}</Td>
+                <Td className="hidden sm:table-cell">{m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}</Td>
                 <Td right>
                    <div className="flex justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => setSelectedMember(m.id)} icon={Info}>Details</Btn>
@@ -254,44 +247,61 @@ export default function GroupLedgerPage() {
         </Table>
       </Card>
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member">
-        <div className="flex gap-1 p-1 rounded-xl mb-5 bg-[var(--surface2)]">
-          {(['new','existing'] as const).map(t => (
-            <button key={t} type="button" onClick={() => setAddTab(t)} className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all", addTab === t ? 'bg-[var(--gold)] text-white shadow-sm' : 'text-[var(--text3)]')}>
-              {t === 'new' ? 'New Person' : 'From Registry'}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          {addTab === 'existing' ? (
-            <Field label="Select from Registry" className="col-span-2">
-              <select className={inputClass} style={inputStyle} value={form.person_id} onChange={e => setForm(f => ({...f, person_id: e.target.value}))}>
-                <option value="">— Choose Person —</option>
-                {allPersons.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} {p.nickname ? `(${p.nickname})` : ''} — {p.phone || 'No phone'}</option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            <>
-              <Field label="Full Name"><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
-              <Field label="Nickname"><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
-              <Field label="Phone"><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="10 digits" /></Field>
-              <Field label="Address"><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
-            </>
-          )}
-
-          <div className="col-span-2 grid grid-cols-2 gap-4 pt-4 border-t mt-2" style={{ borderColor: 'var(--border)' }}>
-             <Field label="Target Ticket #"><input className={inputClass} style={inputStyle} type="number" value={form.ticket_no} onChange={e => setForm(f => ({...f, ticket_no: e.target.value}))} placeholder="Next available" /></Field>
-             <Field label="No. of Tickets"><input className={inputClass} style={inputStyle} type="number" min="1" max={group.num_members - members.length} value={form.tickets} onChange={e => setForm(f => ({...f, tickets: e.target.value}))} /></Field>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-          <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
-          <Btn variant="primary" loading={saving} onClick={handleAddMember}>Add {+form.tickets > 1 ? `${form.tickets} Tickets` : 'Member'}</Btn>
-        </div>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Group Enrollment" size="lg">
+         <div className="flex gap-1 mb-5 bg-[var(--surface2)] p-1 rounded-xl">
+            <button onClick={() => setAddTab('new')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", addTab === 'new' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>New Person</button>
+            <button onClick={() => setAddTab('existing')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", addTab === 'existing' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>From Registry</button>
+         </div>
+         <div className="grid grid-cols-2 gap-4">
+            {addTab === 'existing' ? (
+                <Field label="Search Registry" className="col-span-2">
+                   <select className={inputClass} style={inputStyle} value={form.person_id} onChange={e => setForm(f => ({ ...f, person_id: e.target.value }))}>
+                      <option value="">Select a person...</option>
+                      {allPersons.map(p => <option key={p.id} value={p.id}>{p.name} {p.phone && `(${p.phone})`}</option>)}
+                   </select>
+                </Field>
+            ) : (
+                <>
+                  <Field label="Full Name"><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></Field>
+                  <Field label="Nickname"><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} /></Field>
+                  <Field label="Phone"><input className={inputClass} style={inputStyle} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></Field>
+                  <Field label="Address"><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></Field>
+                </>
+            )}
+            <Field label="Start Ticket #"><input className={inputClass} style={inputStyle} type="number" value={form.ticket_no} onChange={e => setForm(f => ({ ...f, ticket_no: e.target.value }))} /></Field>
+            <Field label="No. of Tickets"><input className={inputClass} style={inputStyle} type="number" value={form.tickets} onChange={e => setForm(f => ({ ...f, tickets: e.target.value }))} /></Field>
+         </div>
+         <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+            <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
+            <Btn variant="primary" loading={saving} onClick={handleAddMember}>Enroll Member</Btn>
+         </div>
       </Modal>
+
+      {selectedMember && (() => {
+        const m = members.find(x => x.id === selectedMember)
+        if (!m) return null
+        return (
+          <Modal open={!!selectedMember} onClose={() => setSelectedMember(null)} title="Member Details">
+             <div className="space-y-4">
+                <div className="bg-[var(--surface2)] p-4 rounded-2xl flex items-center gap-4">
+                   <div className="w-12 h-12 rounded-full bg-[var(--gold)] flex items-center justify-center text-white text-xl font-bold">{m.persons?.name.charAt(0)}</div>
+                   <div>
+                      <div className="font-bold text-lg">{m.persons?.name}</div>
+                      <div className="text-xs opacity-50">Ticket #{m.ticket_no} · {m.status}</div>
+                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                   <div className="p-3 border rounded-xl" style={{borderColor:'var(--border)'}}><div className="opacity-40 mb-1 uppercase tracking-tighter">Phone</div><div className="font-bold">{m.persons?.phone || '—'}</div></div>
+                   <div className="p-3 border rounded-xl" style={{borderColor:'var(--border)'}}><div className="opacity-40 mb-1 uppercase tracking-tighter">Joined</div><div className="font-bold">{fmtDate(m.created_at)}</div></div>
+                </div>
+                <p className="text-[10px] opacity-40 px-1 italic">Address: {m.persons?.address || 'Not provided'}</p>
+             </div>
+             <div className="flex justify-end mt-6">
+                <Btn variant="secondary" onClick={() => setSelectedMember(null)}>Close</Btn>
+             </div>
+          </Modal>
+        )
+      })()}
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>

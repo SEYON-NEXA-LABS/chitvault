@@ -49,12 +49,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [monochrome, setMonochrome] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserEmail(data.user?.email || ''))
+    supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
     const savedTheme = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
     setTheme(savedTheme)
     document.documentElement.classList.toggle('dark', savedTheme === 'dark')
 
-    const savedSize = parseInt(localStorage.getItem('fontSize') || '14')
+    const savedSize = parseInt(localStorage.getItem('fontSize') || '16')
     setFontSize(savedSize)
     document.documentElement.style.setProperty('--font-size-base', `${savedSize}px`)
 
@@ -243,7 +243,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-        <main className="flex-1 p-5 overflow-auto">{children}</main>
+        <main className="flex-1 p-5 pb-24 overflow-auto">{children}</main>
+
+        {/* Mobile Bottom Nav */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 py-2.5 flex items-center justify-around shadow-lg"
+          style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)' }}>
+          {[
+            { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+            { href: '/groups',    icon: UsersRound,      label: 'Groups' },
+            { href: '/members',   icon: Users,           label: 'Members' },
+            { href: '/payments',  icon: CreditCard,      label: 'Pay' },
+          ].map(item => {
+            const active = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 px-3 py-1.5 transition-all"
+                style={{ color: active ? 'var(--gold)' : 'var(--text3)' }}>
+                <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </div>
   )

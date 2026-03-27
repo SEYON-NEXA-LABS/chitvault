@@ -18,7 +18,7 @@ export default function DashboardPage() {
     async function load() {
       const [g, m, a, p] = await Promise.all([
         supabase.from('groups').select('*').neq('status','archived'),
-        supabase.from('members').select('*'),
+        supabase.from('members').select('*, persons(*)'),
         supabase.from('auctions').select('*').order('id', { ascending: false }).limit(6),
         supabase.from('payments').select('*').eq('status','paid'),
       ])
@@ -79,7 +79,7 @@ export default function DashboardPage() {
                           <Badge variant="blue">M{a.month}</Badge>
                         </td>
                         <td className="px-4 py-3" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
-                          👑 {w?.name || '—'}
+                          👑 {w?.persons?.name || '—'}
                         </td>
                         <td className="px-4 py-3 font-mono" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
                           {fmt(a.bid_amount)}

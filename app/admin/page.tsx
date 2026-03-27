@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { registerFirm } from './actions'
@@ -36,12 +36,12 @@ function AdminDashboard() {
   const [search,  setSearch]  = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const { data: firmsData } = await supabase.from('firms').select('*').order('created_at', { ascending: false })
     if (!firmsData) { setLoading(false); return }
 
-    const enriched = await Promise.all(firmsData.map(async f => {
+    const enriched = await Promise.all(firmsData.map(async (f: Firm) => {
       const [{ count: gCount }, { count: mCount }] = await Promise.all([
         supabase.from('groups').select('*', { count: 'exact', head: true }).eq('firm_id', f.id),
         supabase.from('members').select('*', { count: 'exact', head: true }).eq('firm_id', f.id),
@@ -49,7 +49,7 @@ function AdminDashboard() {
       return { ...f, groupCount: gCount || 0, memberCount: mCount || 0, ownerEmail: '' }
     }))
 
-    setFirms(enriched)
+    setFirms(enriched as any)
     setStats({
       total:     enriched.length,
       trial:     enriched.filter(f => f.plan === 'trial').length,
@@ -58,9 +58,9 @@ function AdminDashboard() {
       suspended: enriched.filter(f => f.plan_status === 'suspended').length,
     })
     setLoading(false)
-  }
+  }, [supabase])
 
-  useEffect(() => { load() }, []) // Removed [load] dependency as load is not memoized
+  useEffect(() => { load() }, [load])
 
   const searchParams = useSearchParams()
   useEffect(() => {

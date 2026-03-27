@@ -47,7 +47,11 @@ export default function SettingsPage() {
   const [regToken,   setRegToken]   = useState(firm?.register_token || '')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email || ''))
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser()
+      setEmail(data.user?.email || '')
+    }
+    loadUser()
     const t = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
     setTheme(t)
     if (firm) {

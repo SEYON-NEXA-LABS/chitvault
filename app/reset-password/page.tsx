@@ -19,12 +19,14 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     // Check if the user is authenticated (which happens automatically via the email recovery link)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       if (session) setIsValidSession(true)
-    })
+    }
+    checkSession()
     
     // Also listen for auth state changes just in case it loads slowly
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === 'PASSWORD_RECOVERY' || session) {
         setIsValidSession(true)
       }

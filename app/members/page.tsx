@@ -232,7 +232,7 @@ export default function MembersPage() {
      if (!firm) return
      setSaving(true)
      // This would now need to create a NEW person or find existing then link to a NEW member
-     showToast('Transfer needs Person selection/creation logic. Coming soon.', 'info')
+     showToast('Transfer needs Person selection/creation logic. Coming soon.', 'success')
      setSaving(false)
   }
 
@@ -263,7 +263,12 @@ export default function MembersPage() {
           <Table>
             <thead><tr>
               {isSuper && <Th>Firm</Th>}
-              {['Person','Phone','Active Tickets','Past Tickets','Total Paid','Actions'].map(h => <Th key={h} right={h === 'Total Paid'}>{h}</Th>)}
+              <Th>Person</Th>
+              <Th className="hidden md:table-cell">Phone</Th>
+              <Th className="hidden sm:table-cell">Active</Th>
+              <Th className="hidden lg:table-cell">Past</Th>
+              <Th right>Total Paid</Th>
+              <Th>Action</Th>
             </tr></thead>
             <tbody>
               {filteredPeople.map(c => (
@@ -273,12 +278,12 @@ export default function MembersPage() {
                     <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--gold)] ml-1">({c.nickname})</span>}</div>
                     <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
                   </Td>
-                  <Td className="font-mono text-xs">{c.phone || '—'}</Td>
-                  <Td>
-                    {c.activeCount > 0 ? <Badge variant="blue"><UserCheck size={10} className="mr-1"/> {c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
+                  <Td className="hidden md:table-cell font-mono text-xs">{c.phone || '—'}</Td>
+                  <Td className="hidden sm:table-cell">
+                    {c.activeCount > 0 ? <Badge variant="blue">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
                   </Td>
-                  <Td>
-                    {c.pastCount > 0 ? <Badge variant="gray"><History size={10} className="mr-1"/> {c.pastCount} Past</Badge> : <span className="text-xs opacity-30">None</span>}
+                  <Td className="hidden lg:table-cell">
+                    {c.pastCount > 0 ? <Badge variant="gray">{c.pastCount} Past</Badge> : <span className="text-xs opacity-30">None</span>}
                   </Td>
                   <Td right className="font-bold text-[var(--green)]">{fmt(c.totalPaid)}</Td>
                   <Td>
@@ -299,14 +304,20 @@ export default function MembersPage() {
                 <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} tickets enrolled`}
                   actions={isSuper && <Badge variant="gold">Owned by: {g.firms?.name}</Badge>}>
                   <Table>
-                     <thead><tr>{['Ticket','Name','Phone','Status','Action'].map(h => <Th key={h}>{h}</Th>)}</tr></thead>
-                     <tbody>
+                      <thead><tr>
+                        <Th>Ticket</Th>
+                        <Th>Name</Th>
+                        <Th className="hidden md:table-cell">Phone</Th>
+                        <Th className="hidden sm:table-cell">Status</Th>
+                        <Th>Action</Th>
+                      </tr></thead>
+                      <tbody>
                         {gMembers.map(m => (
                           <Tr key={m.id}>
                             <Td className="font-mono font-bold">#{m.ticket_no}</Td>
                             <Td className="font-semibold">{m.persons?.name} {m.persons?.nickname && <span className="text-[var(--gold)] ml-1 opacity-70">({m.persons.nickname})</span>}</Td>
-                            <Td className="text-xs">{m.persons?.phone}</Td>
-                            <Td>
+                            <Td className="hidden md:table-cell text-xs">{m.persons?.phone}</Td>
+                            <Td className="hidden sm:table-cell">
                                {m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}
                             </Td>
                             <Td>
@@ -323,7 +334,7 @@ export default function MembersPage() {
                             </Td>
                           </Tr>
                         ))}
-                     </tbody>
+                      </tbody>
                   </Table>
                 </TableCard>
               )
@@ -388,7 +399,7 @@ export default function MembersPage() {
           <Modal open={!!detailContact} onClose={() => setDetailContact(null)} title={isEditing ? `Edit: ${c.name}` : `${c.name} Profile`} size="lg">
             {!isEditing ? (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="bg-[var(--surface2)] p-4 rounded-2xl">
                       <div className="flex items-center gap-3 mb-4">
                          <div className="w-12 h-12 rounded-full bg-[var(--gold)] flex items-center justify-center text-white text-xl font-bold">{c.name.charAt(0)}</div>
@@ -418,7 +429,7 @@ export default function MembersPage() {
                 </div>
               </div>
             ) : (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Name"><input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></Field>
                   <Field label="Nickname"><input className={inputClass} style={inputStyle} value={editForm.nickname} onChange={e => setEditForm(f => ({...f, nickname: e.target.value}))} /></Field>
                   <Field label="Phone"><input className={inputClass} style={inputStyle} value={editForm.phone} type="tel" maxLength={10} onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} /></Field>

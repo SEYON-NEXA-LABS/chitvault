@@ -4,7 +4,7 @@
 
 /* ── CSS Variables — Light Theme (default) ─────────────────── */
 :root {
-  font-size: var(--font-size-base, 14px);
+  font-size: var(--font-size-base, 16px);
 
   /* Backgrounds */
   --bg: #f5f7fb;
@@ -36,7 +36,7 @@
   --text3: #8b93a7;
 
   /* Shadow */
-  --shadow: 0 8px 28px rgba(16, 24, 40, 0.08);
+  --shadow: 0 4px 12px -2px rgba(16, 24, 40, 0.04), 0 2px 4px -1px rgba(16, 24, 40, 0.02);
 }
 
 
@@ -221,4 +221,20 @@ a {
   background: var(--surface);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(8px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(180%) !important;
+}
+
+.dark .glass {
+  background: rgba(20, 24, 36, 0.7) !important;
+}
+
+@media (max-width: 768px) {
+  .p-5 { padding: 1.25rem 1rem !important; }
+  .px-5 { padding-left: 1rem !important; padding-right: 1rem !important; }
 }

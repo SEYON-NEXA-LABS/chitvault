@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate } from '@/lib/utils'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
@@ -34,12 +35,9 @@ export default function ReportsPage() {
 
   const [activeReport, setActiveReport] = useState<string | null>(null)
   
-  // Selections for specific reports
-  // Selections for specific reports
   const [selectedGroupId, setSelectedGroupId] = useState<string>('')
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
 
-  // Global Time Filter
   const [timeFilter, setTimeFilter] = useState<string>('all')
 
   const { filteredAuctions, filteredPayments, filteredCommissions } = useMemo(() => {
@@ -47,24 +45,22 @@ export default function ReportsPage() {
 
     const today = new Date()
     const currentYear = today.getFullYear()
-    const currentMonth = today.getMonth() // 0-11
+    const currentMonth = today.getMonth() 
     
-    // Financial year (Apr 1 to Mar 31)
     const fyStartYear = currentMonth >= 3 ? currentYear : currentYear - 1
     
     let startD = new Date(fyStartYear, 3, 1) // Apr 1
     let endD = new Date(fyStartYear + 1, 3, 0) // Mar 31
 
-    if (timeFilter === 'q1') { startD = new Date(fyStartYear, 3, 1); endD = new Date(fyStartYear, 6, 0) } // Apr-Jun
-    else if (timeFilter === 'q2') { startD = new Date(fyStartYear, 6, 1); endD = new Date(fyStartYear, 9, 0) } // Jul-Sep
-    else if (timeFilter === 'q3') { startD = new Date(fyStartYear, 9, 1); endD = new Date(fyStartYear, 12, 0) } // Oct-Dec
-    else if (timeFilter === 'q4') { startD = new Date(fyStartYear + 1, 0, 1); endD = new Date(fyStartYear + 1, 3, 0) } // Jan-Mar
+    if (timeFilter === 'q1') { startD = new Date(fyStartYear, 3, 1); endD = new Date(fyStartYear, 6, 0) } 
+    else if (timeFilter === 'q2') { startD = new Date(fyStartYear, 6, 1); endD = new Date(fyStartYear, 9, 0) } 
+    else if (timeFilter === 'q3') { startD = new Date(fyStartYear, 9, 1); endD = new Date(fyStartYear, 12, 0) } 
+    else if (timeFilter === 'q4') { startD = new Date(fyStartYear + 1, 0, 1); endD = new Date(fyStartYear + 1, 3, 0) } 
     else if (timeFilter === 'month') { startD = new Date(currentYear, currentMonth, 1); endD = new Date(currentYear, currentMonth + 1, 0) }
     
     const toLocalStr = (d: Date) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
     const s = toLocalStr(startD)
     
-    // to include end day entirely:
     endD.setDate(endD.getDate() + 1)
     const e = toLocalStr(endD)
 
@@ -135,7 +131,7 @@ export default function ReportsPage() {
            <Field label="Select Member" className="mb-4 max-w-sm">
             <select className={inputClass} style={inputStyle} value={selectedMemberId} onChange={(e) => setSelectedMemberId(e.target.value)}>
               <option value="">-- Choose Member --</option>
-              {members.filter(m => m.status !== 'exited').map(m => <option key={m.id} value={m.id}>{m.name} ({groups.find(g=>g.id===m.group_id)?.name})</option>)}
+              {members.filter(m => m.status !== 'exited').map(m => <option key={m.id} value={m.id}>{m.persons?.name} ({groups.find(g=>g.id===m.group_id)?.name})</option>)}
             </select>
           </Field>
           {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} groups={groups} payments={filteredPayments} auctions={filteredAuctions} />}
@@ -233,7 +229,7 @@ export default function ReportsPage() {
 
 function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commissions: ForemanCommission[], auctions: Auction[] }) {
   const totalIncome = commissions.reduce((s, c) => s + Number(c.commission_amt), 0)
-  const totalDividends = auctions.reduce((s, a) => s + Number(a.dividend), 0) // Tracked as member benefits/expenses
+  const totalDividends = auctions.reduce((s, a) => s + Number(a.dividend), 0) 
   
   return (
     <>
@@ -278,7 +274,6 @@ function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions:
       </div>
       <div className="p-4 rounded-xl border mb-5 text-sm" style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
         Cash flow represents the liquid money collected from members versus the money paid out to auction winners. 
-        A negative cash flow may indicate pending collections that need urgent attention.
       </div>
     </>
   )
@@ -310,7 +305,6 @@ function ReportDividend({ groups, auctions }: { groups: Group[], auctions: Aucti
 }
 
 function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
-  // Reuse the outstanding logic but formatted as Upcoming/Pending
   const outstandingReport = members.map((member: Member) => {
     const group = groups.find((g: Group) => g.id === member.group_id)
     if (!group || group.status === 'archived' || !['active', 'defaulter'].includes(member.status)) return null
@@ -351,8 +345,8 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
           {outstandingReport.map((item: any) => (
             <Tr key={item.member.id}>
               <Td>
-                <div className="font-semibold">{item.member.name}</div>
-                <div className="text-xs text-gray-500">{item.member.phone || 'No phone'}</div>
+                <div className="font-semibold">{item.member.persons?.name || 'Unknown'}</div>
+                <div className="text-xs text-gray-500">{item.member.persons?.phone || 'No phone'}</div>
               </Td>
               <Td>{item.group.name}</Td>
               <Td>{item.pendingMonths.map((m: number) => <Badge key={m} variant="red" className="mr-1">M{m}</Badge>)}</Td>
@@ -412,7 +406,7 @@ function ReportGroupLedger({ groupId, members, auctions, payments }: { groupId: 
             return (
               <Tr key={auc.month}>
                 <Td><Badge variant="gray">Month {auc.month}</Badge></Td>
-                <Td>{w ? `👑 ${w.name}` : '—'}</Td>
+                <Td>{w ? `👑 ${w.persons?.name || 'Member'}` : '—'}</Td>
                 <Td right style={{ color: 'var(--red)' }}>{fmt(auc.bid_amount)}</Td>
                 <Td right style={{ color: 'var(--gold)' }}>{fmt(auc.dividend)}</Td>
                 <Td right style={{ color: 'var(--green)' }}>{fmt(monthPayments)}</Td>
@@ -466,10 +460,10 @@ function ReportDefaulters({ members, groups }: { members: Member[], groups: Grou
             return (
               <Tr key={m.id}>
                 <Td className="font-semibold" style={{ color: 'var(--red)' }}>
-                  {m.name} <Badge variant="red" className="ml-1">Defaulter</Badge>
+                  {m.persons?.name || 'Member'} <Badge variant="red" className="ml-1">Defaulter</Badge>
                 </Td>
                 <Td>{g?.name} (#{m.ticket_no})</Td>
-                <Td>{m.phone || '—'}</Td>
+                <Td>{m.persons?.phone || '—'}</Td>
                 <Td className="text-xs max-w-[200px] truncate">{m.notes || '—'}</Td>
               </Tr>
             )
@@ -495,7 +489,7 @@ function ReportWinners({ auctions, groups, members }: { auctions: Auction[], gro
             return (
               <Tr key={a.id}>
                 <Td>{fmtDate(a.created_at)}</Td>
-                <Td className="font-semibold">👑 {m?.name || 'Unknown'}</Td>
+                <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
                 <Td>{g?.name}</Td>
                 <Td><Badge variant="gold">M{a.month}</Badge></Td>
                 <Td right style={{ color: 'var(--red)' }}>{fmt(a.bid_amount)}</Td>
