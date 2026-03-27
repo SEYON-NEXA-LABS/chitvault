@@ -27,6 +27,7 @@ const NAV = [
   { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
   { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },
   { href: '/admin',      label: 'Platform Admin',    icon: Settings, superAdminOnly: true },
+  { href: '/admin?create=true', label: 'Register Firm', icon: Building2, superAdminOnly: true },
   { href: '/admin/branding', label: 'Branding',      icon: Palette, superAdminOnly: true },
 ]
 
@@ -144,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Role badge */}
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
               style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--blue-dim)', color: isOwner ? 'var(--gold)' : 'var(--blue)' }}>
-              {role === 'superadmin' ? '👑 Superadmin' : (isOwner ? '👑 Owner' : '👤 Staff')}
+              {role === 'superadmin' ? '👑 Superadmin' : (isOwner ? '👑 Firm Admin' : '👤 Staff')}
             </span>
           </div>
         </div>

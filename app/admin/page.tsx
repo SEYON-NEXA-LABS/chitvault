@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { registerFirm } from './actions'
 import { fmtDate } from '@/lib/utils'
 import type { Firm } from '@/types'
 
@@ -18,6 +20,14 @@ const planColor = (plan: string) => ({
 const statusColor = (s: string) => s === 'active' ? 'var(--green)' : s === 'suspended' ? 'var(--red)' : 'var(--text2)'
 
 export default function AdminPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, color: 'var(--text3)' }}>Loading Admin...</div>}>
+      <AdminDashboard />
+    </Suspense>
+  )
+}
+
+function AdminDashboard() {
   const supabase = createClient()
   const [firms,   setFirms]   = useState<FirmWithStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +36,7 @@ export default function AdminPage() {
   const [search,  setSearch]  = useState('')
   const [updating, setUpdating] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = async () => {
     setLoading(true)
     const { data: firmsData } = await supabase.from('firms').select('*').order('created_at', { ascending: false })
     if (!firmsData) { setLoading(false); return }
@@ -48,9 +58,16 @@ export default function AdminPage() {
       suspended: enriched.filter(f => f.plan_status === 'suspended').length,
     })
     setLoading(false)
-  }, [supabase])
+  }
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, []) // Removed [load] dependency as load is not memoized
+
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setCreateOpen(true)
+    }
+  }, [searchParams])
 
   async function updatePlan(firmId: string, plan: string) {
     setUpdating(firmId)
@@ -75,26 +92,29 @@ export default function AdminPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', plan:'trial', primary_color:'var(--blue)', tagline:'Chit Fund Manager', font:'DM Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
   const [createErr, setCreateErr] = useState('')
 
   async function handleCreate() {
     if (!newFirm.name.trim()) { setCreateErr('Enter a business name.'); return }
+    if (!newFirm.owner_email.trim()) { setCreateErr('Enter an owner email.'); return }
+    if (!newFirm.owner_pass.trim()) { setCreateErr('Enter a password for the owner.'); return }
+    if (newFirm.owner_pass.length < 6) { setCreateErr('Password must be at least 6 characters.'); return }
     if (newFirm.phone && !/^[0-9]{10}$/.test(newFirm.phone.replace(/\D/g, ''))) {
       setCreateErr('Phone number must be exactly 10 digits.'); return
     }
     setCreating(true); setCreateErr('')
     const slug = newFirm.name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')
-    const { error } = await supabase.rpc('admin_create_firm', {
-      p_name: newFirm.name, p_slug: slug, p_city: newFirm.city||null,
-      p_phone: newFirm.phone||null, p_plan: newFirm.plan,
-      p_primary_color: newFirm.primary_color,
-      p_tagline: newFirm.tagline, p_font: newFirm.font
+    
+    const { success, error } = await registerFirm({
+      ...newFirm,
+      slug
     })
+
     setCreating(false)
-    if (error) { setCreateErr(error.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error.message); return }
+    if (error) { setCreateErr(error === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', plan:'trial', primary_color:'var(--blue)', tagline:'Chit Fund Manager', font:'DM Sans' })
+    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
     load()
   }
 
@@ -244,10 +264,13 @@ export default function AdminPage() {
           {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             {[
-              { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds', type:'text' },
-              { lbl:'City',            key:'city', ph:'Coimbatore', type:'text' },
-              { lbl:'Phone',           key:'phone', ph:'98765 43210', type:'tel' },
-              { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager', type:'text' },
+               { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds', type:'text' },
+               { lbl:'Owner Name',      key:'owner_name', ph:'Owner Full Name', type:'text' },
+               { lbl:'Owner Email *',    key:'owner_email', ph:'admin@firm.com', type:'email' },
+               { lbl:'Set Password *',   key:'owner_pass', ph:'••••••', type:'password' },
+               { lbl:'City',            key:'city', ph:'Coimbatore', type:'text' },
+               { lbl:'Phone',           key:'phone', ph:'98765 43210', type:'tel' },
+               { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager', type:'text' },
             ].map(f => (
               <div key={f.key}>
                 <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>

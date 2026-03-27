@@ -16,9 +16,9 @@ function RegisterForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const supabase     = createClient()
-  const token        = searchParams.get('token')   // ?token=xxx for staff self-reg
+  const token        = searchParams.get('token')
 
-  const [step,        setStep]        = useState<1|2>(1)
+  const [step,        setStep]        = useState<1|2>(token ? 2 : 1)
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
   const [tokenFirm,   setTokenFirm]   = useState<FirmByToken | null>(null)
@@ -29,13 +29,10 @@ function RegisterForm() {
     full_name: '', email: '', password: '', confirm: ''
   })
 
-  // If token present, validate it and load firm branding
   useEffect(() => {
     async function validateToken() {
-      if (!token) { setTokenValid(true); return }  // no token = admin-mode (superadmin creates firms)
-      const { data } = await supabase
-        .rpc('get_firm_by_register_token', { p_token: token })
-        .single()
+      if (!token) { setTokenValid(true); return }
+      const { data } = await supabase.rpc('get_firm_by_register_token', { p_token: token }).single()
       if (!data) { setTokenValid(false); return }
       const firmData = data as any
       setTokenFirm(firmData)
@@ -51,123 +48,128 @@ function RegisterForm() {
 
   async function handleRegister() {
     setError(''); setLoading(true)
+    if (!form.full_name) { setError('Please enter your name.'); setLoading(false); return }
     if (!form.email || !form.password) { setError('Enter email and password.'); setLoading(false); return }
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return }
     if (form.password !== form.confirm) { setError('Passwords do not match.'); setLoading(false); return }
 
-    // 1. Sign up
+    // 1. Sign up user
     const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: form.email.trim(), password: form.password,
+      email: form.email.trim(), 
+      password: form.password,
       options: { data: { full_name: form.full_name.trim() } }
     })
-    if (authErr || !authData.user) { setError(authErr?.message || 'Sign up failed.'); setLoading(false); return }
+    
+    if (authErr || !authData.user) { 
+      setError(authErr?.message || 'Sign up failed.'); 
+      setLoading(false); 
+      return 
+    }
 
+    // 2. Firm Setup
     if (token && tokenFirm) {
-      // Token-based: link user to existing firm as staff
-      // Use accept-like approach via a direct profile update RPC
       const { error: rpcErr } = await supabase.rpc('join_firm_by_token', {
         p_token: token, p_full_name: form.full_name.trim() || null
       })
-      setLoading(false)
-      if (rpcErr) { setError(rpcErr.message); return }
-      window.location.replace('/dashboard')
+      if (rpcErr) { setError(rpcErr.message); setLoading(false); return }
     } else {
-      // Normal: create new firm
       const { error: firmErr } = await supabase.rpc('register_firm', {
-        p_name: form.firm_name.trim(), p_slug: slugify(form.firm_name),
-        p_city: form.city.trim() || null, p_phone: form.phone.trim() || null,
+        p_name: form.firm_name.trim(), 
+        p_slug: slugify(form.firm_name),
+        p_city: form.city.trim() || null, 
+        p_phone: form.phone.trim() || null,
         p_full_name: form.full_name.trim() || null
       })
-      setLoading(false)
       if (firmErr) {
         setError(firmErr.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : firmErr.message)
-        return
+        setLoading(false); return
       }
-      window.location.replace('/dashboard')
     }
+
+    setLoading(false)
+    window.location.replace('/dashboard')
   }
 
-  // Redirect if no token is present (firm registration is superadmin-only)
-  useEffect(() => {
-    if (!token && tokenValid !== null) {
-      router.replace('/login')
-    }
-  }, [token, tokenValid, router])
+  const clr = tokenFirm?.primary_color || '#c9a84c'
+  const inputSty = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' } as React.CSSProperties
+  const inputCls = 'w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-colors focus:border-[var(--gold)]'
 
-  const clr = tokenFirm?.primary_color || '#2563eb'
-  const inputSty = { background: '#1e2230', borderColor: '#2a3045', color: '#e8ecf5' } as React.CSSProperties
-  const inputCls = 'w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-colors'
+  if (tokenValid === null) return <div className="min-h-screen flex items-center justify-center bg-[#0d0f14] text-gray-500">Loading...</div>
+  
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0d0f14] p-6 text-center">
+        <div className="max-w-md">
+          <div className="text-5xl mb-6">🔒</div>
+          <h1 className="text-2xl font-bold text-white mb-4">Registration is Invite-Only</h1>
+          <p className="text-gray-400 mb-8">
+            New firms must be registered through the platform administrator. 
+            If you already have an account, please sign in.
+          </p>
+          <Link href="/login" className="px-8 py-3 bg-[var(--gold)] text-black font-bold rounded-xl hover:scale-105 transition-transform inline-block">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
-  // Loading state
-  if (tokenValid === null) return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d0f14', color:'#505a70' }}>
-      Loading invitation...
-    </div>
-  )
-
-  // Invalid token
   if (tokenValid === false) return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d0f14' }}>
-      <div style={{ textAlign:'center', maxWidth:380, padding:32, background:'#161921', border:'1px solid #2a3045', borderRadius:16 }}>
-        <div style={{ fontSize:48, marginBottom:14 }}>❌</div>
-        <h2 style={{ color:'#f66d7a', marginBottom:8 }}>Invalid Link</h2>
-        <p style={{ color:'#8892aa', fontSize:14 }}>This registration link is invalid or has been revoked. Contact your firm admin.</p>
-        <Link href="/login" style={{ display:'inline-block', marginTop:20, color:clr, textDecoration:'none', fontWeight:600 }}>Back to Login</Link>
+    <div className="min-h-screen flex items-center justify-center bg-[#0d0f14] p-6">
+      <div className="text-center max-w-sm p-10 bg-[#161921] border border-[#2a3045] rounded-2xl shadow-2xl">
+        <div className="text-5xl mb-6">❌</div>
+        <h2 className="text-[#f66d7a] text-xl font-bold mb-3">Invalid Link</h2>
+        <p className="text-gray-400 text-sm leading-relaxed">This invitation has expired or is no longer valid.</p>
+        <Link href="/login" className="inline-block mt-8 font-bold text-[var(--gold)] hover:underline">Back to Login</Link>
       </div>
     </div>
   )
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:20, background:'#0d0f14' }}>
-      <div style={{ width:'100%', maxWidth:460 }}>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#0d0f14]">
+      <div className="w-full max-w-[480px]">
+        <div className="text-center mb-10">
+          <div className="text-4xl mb-4">🏦</div>
+          <h1 className="text-2xl font-black text-white tracking-tight">
+            Join {tokenFirm?.name}
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm">
+            Setup your access to the firm dashboard
+          </p>
+        </div>
 
-        {/* Header */}
-        <div style={{ textAlign:'center', marginBottom:28 }}>
-          {tokenFirm?.logo_url ? (
-            <Image src={tokenFirm.logo_url} alt={tokenFirm.name} width={192} height={48}
-              style={{ borderRadius:8, marginBottom:10, objectFit:'contain' }} />
-          ) : <div style={{ fontSize:44, marginBottom:10 }}>🏦</div>}
-          <div style={{ fontSize:22, fontWeight:800, color:clr }}>
-            Join {tokenFirm?.name || 'ChitVault'}
-          </div>
-          <div style={{ fontSize:13, color:'#505a70', marginTop:4 }}>
-            Create your staff account
+        <div className="bg-[#161921] border border-[#2a3045] rounded-3xl shadow-2xl p-8 lg:p-10">
+          {error && <div className="mb-6 bg-red-900/40 text-red-400 p-4 rounded-xl text-sm border border-red-800/50">✗ {error}</div>}
+
+          <div className="space-y-5">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-2">Full Name</label>
+              <input className={inputCls} style={inputSty} value={form.full_name} onChange={e => setForm(f=>({...f, full_name: e.target.value}))} placeholder="Your Name" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-2">Corporate Email</label>
+              <input className={inputCls} style={inputSty} type="email" value={form.email} onChange={e => setForm(f=>({...f, email: e.target.value}))} placeholder="name@firm.com" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-2">Password</label>
+                <input className={inputCls} style={inputSty} type="password" value={form.password} onChange={e => setForm(f=>({...f, password: e.target.value}))} placeholder="••••••" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 block mb-2">Confirm</label>
+                <input className={inputCls} style={inputSty} type="password" value={form.confirm} onChange={e => setForm(f=>({...f, confirm: e.target.value}))} placeholder="••••••" />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <button onClick={handleRegister} disabled={loading} className="flex-1 py-4 bg-[var(--gold)] text-black font-black rounded-xl hover:scale-[1.02] active:scale-100 transition-all shadow-lg shadow-yellow-600/10 disabled:opacity-50">
+                {loading ? 'Creating...' : 'Join Firm'}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div style={{ background:'#161921', border:'1px solid #2a3045', borderRadius:16, padding:28 }}>
-          {error && (
-            <div style={{ background:'#5c1e26', color:'#f66d7a', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:16 }}>✗ {error}</div>
-          )}
-
-          <div>
-            <div style={{ fontWeight:700, fontSize:16, marginBottom:4, color:'#e8ecf5' }}>Create Your Account</div>
-            <div style={{ fontSize:13, color:'#8892aa', marginBottom:20 }}>
-              You&apos;re joining <strong style={{ color:clr }}>{tokenFirm?.name}</strong> as Staff.
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              {[
-                { lbl:'Full Name', val:form.full_name, set:(v:string)=>setForm(f=>({...f,full_name:v})), ph:'Your name', type:'text' },
-                { lbl:'Email',     val:form.email,     set:(v:string)=>setForm(f=>({...f,email:v})),     ph:'you@example.com', type:'email' },
-                { lbl:'Password',  val:form.password,  set:(v:string)=>setForm(f=>({...f,password:v})),  ph:'Min. 6 characters', type:'password' },
-                { lbl:'Confirm',   val:form.confirm,   set:(v:string)=>setForm(f=>({...f,confirm:v})),   ph:'Re-enter password', type:'password' },
-              ].map(f => (
-                <div key={f.lbl}>
-                  <label style={{ fontSize:11, fontWeight:600, color:'#8892aa', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
-                  <input className={inputCls} style={inputSty} type={f.type} value={f.val}
-                    onChange={e => f.set(e.target.value)} placeholder={f.ph} />
-                </div>
-              ))}
-            </div>
-            <button onClick={handleRegister} disabled={loading}
-              style={{ marginTop:20, width:'100%', padding:'12px 0', background:clr, color:'#0d0f14', border:'none', borderRadius:8, fontSize:15, fontWeight:700, cursor:'pointer', opacity:loading?0.7:1 }}>
-              {loading ? 'Creating account...' : 'Create Account & Join'}
-            </button>
-          </div>
-        </div>
-
-        <p style={{ textAlign:'center', marginTop:18, fontSize:13, color:'#505a70' }}>
-          Already have an account? <Link href="/login" style={{ color:clr, textDecoration:'none' }}>Sign in</Link>
+        <p className="text-center mt-8 text-sm text-gray-600">
+          Already have an account? <Link href="/login" className="text-[var(--gold)] font-bold hover:underline">Sign in</Link>
         </p>
       </div>
     </div>
@@ -176,7 +178,7 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0d0f14', color:'#505a70' }}>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#0d0f14] text-gray-500">Loading...</div>}>
       <RegisterForm />
     </Suspense>
   )
