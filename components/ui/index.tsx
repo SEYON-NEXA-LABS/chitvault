@@ -97,10 +97,10 @@ export function Table({ children, className }: { children: React.ReactNode; clas
   )
 }
 
-export function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
+export function Th({ children, right, className }: { children: React.ReactNode; right?: boolean; className?: string }) {
   return (
     <th className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wide text-left whitespace-nowrap',
-      right && 'text-right')}
+      right && 'text-right', className)}
       style={{ background: 'var(--surface2)', color: 'var(--text3)', borderBottom: '1px solid var(--border)' }}>
       {children}
     </th>
