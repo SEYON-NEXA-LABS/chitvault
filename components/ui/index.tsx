@@ -267,3 +267,4 @@ export function Chip({ active, onClick, children }: {
     </button>
   )
 }
+export * from './PinOverlay'

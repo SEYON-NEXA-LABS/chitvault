@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react'
@@ -24,6 +25,14 @@ const REPORTS = [
 ]
 
 export default function ReportsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ReportsPageContent />
+    </Suspense>
+  )
+}
+
+function ReportsPageContent() {
   const supabase = createClient()
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
@@ -73,6 +82,13 @@ export default function ReportsPage() {
     }
   }, [auctions, payments, commissions, timeFilter])
 
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const type = searchParams.get('type')
+    if (type) setActiveReport(type)
+  }, [searchParams])
+
   useEffect(() => {
     async function load() {
       try {
@@ -80,7 +96,7 @@ export default function ReportsPage() {
         setError(null)
         const [g, m, a, p, c] = await Promise.all([
           supabase.from('groups').select('*').order('name'),
-          supabase.from('members').select('*').order('name'),
+          supabase.from('members').select('*, persons(*)'),
           supabase.from('auctions').select('*').order('month', { ascending: false }),
           supabase.from('payments').select('*').order('created_at', { ascending: false }),
           supabase.from('foreman_commissions').select('*')
@@ -92,7 +108,10 @@ export default function ReportsPage() {
         if (p.error) throw new Error(`Failed to load payments: ${p.error.message}`)
 
         setGroups(g.data as Group[] || [])
-        setMembers(m.data as Member[] || [])
+        const sortedMembers = (m.data as Member[] || []).sort((a, b) => 
+          (a.persons?.name || '').localeCompare(b.persons?.name || '')
+        )
+        setMembers(sortedMembers)
         setAuctions(a.data as Auction[] || [])
         setPayments(p.data as Payment[] || [])
         setCommissions(c.data as ForemanCommission[] || [])
@@ -123,7 +142,7 @@ export default function ReportsPage() {
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </Field>
-          {selectedGroupId && <ReportGroupLedger groupId={Number(selectedGroupId)} members={members} auctions={filteredAuctions} payments={filteredPayments} />}
+          {selectedGroupId && <ReportGroupLedger groups={groups} groupId={Number(selectedGroupId)} members={members} auctions={filteredAuctions} payments={filteredPayments} />}
         </div>
       )
       case 'member_history': return (
@@ -134,7 +153,7 @@ export default function ReportsPage() {
               {members.filter(m => m.status !== 'exited').map(m => <option key={m.id} value={m.id}>{m.persons?.name} ({groups.find(g=>g.id===m.group_id)?.name})</option>)}
             </select>
           </Field>
-          {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} groups={groups} payments={filteredPayments} auctions={filteredAuctions} />}
+          {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} members={members} groups={groups} payments={filteredPayments} auctions={filteredAuctions} />}
         </div>
       )
       case 'defaulters': return <ReportDefaulters members={members} groups={groups} />
@@ -305,52 +324,84 @@ function ReportDividend({ groups, auctions }: { groups: Group[], auctions: Aucti
 }
 
 function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
-  const outstandingReport = members.map((member: Member) => {
+  // 1. Calculate balances for each membership (member)
+  const balances = members.map((member: Member) => {
     const group = groups.find((g: Group) => g.id === member.group_id)
-    if (!group || group.status === 'archived' || !['active', 'defaulter'].includes(member.status)) return null
+    if (!group || group.status === 'archived' || !['active', 'defaulter', 'foreman'].includes(member.status)) return null
 
     const groupAuctions = auctions.filter((a: Auction) => a.group_id === member.group_id)
-    if (groupAuctions.length === 0) return null
-
+    const currentMonth = Math.min(group.duration, groupAuctions.length + 1)
+    
     const memberPayments = payments.filter((p: Payment) => p.member_id === member.id)
-    let totalOutstanding = 0
-    const pendingMonths: number[] = []
+    let mOutstanding = 0
+    const mPending: any[] = []
 
-    for (const auction of groupAuctions) {
-      const month = auction.month
-      const paymentsForMonth = memberPayments.filter((p: Payment) => p.month === month).reduce((sum: number, p: Payment) => sum + Number(p.amount), 0)
-      const dueForMonth = Number(group.monthly_contribution) - Number(auction.dividend)
-      const outstandingForMonth = dueForMonth - paymentsForMonth
+    for (let month = 1; month <= currentMonth; month++) {
+      const auc = groupAuctions.find((a: Auction) => a.month === month)
+      const dividend = auc ? Number(auc.dividend || 0) : 0
+      const due = Number(group.monthly_contribution) - dividend
+      const paid = memberPayments.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0)
+      const bal = Math.max(0, due - paid)
 
-      if (outstandingForMonth > 0.01) {
-        totalOutstanding += outstandingForMonth
-        pendingMonths.push(month)
+      if (bal > 0.01) {
+        mOutstanding += bal
+        mPending.push({ month, amount: bal })
       }
     }
 
-    if (totalOutstanding > 0) {
-      return { member, group, pendingMonths, totalOutstanding }
-    }
+    if (mOutstanding > 0) return { member, group, mOutstanding, mPending }
     return null
-  }).filter(Boolean).sort((a: any, b: any) => b.totalOutstanding - a.totalOutstanding)
-  
-  const totalDue = outstandingReport.reduce((s: number, i: any) => s + i.totalOutstanding, 0)
+  }).filter(Boolean)
+
+  // 2. Group by Person
+  const personMap = new Map<number, any>()
+  balances.forEach((item: any) => {
+    const pId = item.member.person_id
+    if (!personMap.has(pId)) {
+      personMap.set(pId, { person: item.member.persons, total: 0, items: [] })
+    }
+    const pData = personMap.get(pId)
+    pData.total += item.mOutstanding
+    pData.items.push(item)
+  })
+
+  const personReport = Array.from(personMap.values()).sort((a, b) => b.total - a.total)
+  const grandTotal = personReport.reduce((s, p) => s + p.total, 0)
 
   return (
-    <TableCard title="Upcoming & Pending Payments" subtitle={fmt(totalDue) + " total outstanding"}>
+    <TableCard title="Consolidated Pending Collections (By Person)" subtitle={fmt(grandTotal) + " total collection needed"}>
       <Table>
-        <thead><tr><Th>Member</Th><Th>Group</Th><Th>Pending Months</Th><Th right>Amount Due</Th></tr></thead>
+        <thead><tr><Th>Person / Contact</Th><Th>Group Breakdown</Th><Th right>Total Outstanding</Th></tr></thead>
         <tbody>
-          {outstandingReport.length === 0 && <Tr><Td colSpan={4} className="text-center py-5">All current payments are clear.</Td></Tr>}
-          {outstandingReport.map((item: any) => (
-            <Tr key={item.member.id}>
+          {personReport.length === 0 && <Tr><Td colSpan={3} className="text-center py-5">All collections are up to date! ✅</Td></Tr>}
+          {personReport.map((pData: any) => (
+            <Tr key={pData.person.id}>
               <Td>
-                <div className="font-semibold">{item.member.persons?.name || 'Unknown'}</div>
-                <div className="text-xs text-gray-500">{item.member.persons?.phone || 'No phone'}</div>
+                <div className="font-bold text-lg">{pData.person.name}</div>
+                <div className="text-xs opacity-50 flex items-center gap-2">
+                   <span className="font-mono font-bold text-[var(--blue)]">{pData.person.phone}</span>
+                   {pData.person.address && <span className="truncate max-w-[150px]">· {pData.person.address}</span>}
+                </div>
               </Td>
-              <Td>{item.group.name}</Td>
-              <Td>{item.pendingMonths.map((m: number) => <Badge key={m} variant="red" className="mr-1">M{m}</Badge>)}</Td>
-              <Td right style={{ color: 'var(--red)' }} className="font-semibold">{fmt(item.totalOutstanding)}</Td>
+              <Td>
+                <div className="space-y-2">
+                  {pData.items.map((item: any) => (
+                    <div key={item.member.id} className="text-[11px] flex justify-between gap-10 bg-[var(--surface2)] p-1.5 rounded-lg">
+                      <span>
+                        <span className="font-bold">{item.group.name}</span>
+                        <span className="mx-2 opacity-30">|</span>
+                        {item.mPending.map((m: any) => (
+                           <Badge key={m.month} variant="gray" className="mr-0.5 text-[8px]">{fmtMonth(m.month, item.group.start_date)}</Badge>
+                        ))}
+                      </span>
+                      <span className="font-mono font-bold opacity-70">{fmt(item.mOutstanding)}</span>
+                    </div>
+                  ))}
+                </div>
+              </Td>
+              <Td right>
+                <div className="text-xl font-black text-[var(--red)]">{fmt(pData.total)}</div>
+              </Td>
             </Tr>
           ))}
         </tbody>
@@ -377,7 +428,7 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
                 <Td>{g.duration} Months</Td>
                 <Td>{completed}</Td>
                 <Td>
-                  {!isCompleted ? <span className="font-bold">Month {completed + 1}</span> : '—'}
+                  {!isCompleted ? <span className="font-bold">{fmtMonth(completed + 1, g.start_date)}</span> : '—'}
                 </Td>
                 <Td>
                   {isCompleted ? <Badge variant="green">Finished</Badge> : <Badge variant="blue">Ongoing</Badge>}
@@ -391,7 +442,7 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
   )
 }
 
-function ReportGroupLedger({ groupId, members, auctions, payments }: { groupId: number, members: Member[], auctions: Auction[], payments: Payment[] }) {
+function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { groups: Group[], groupId: number, members: Member[], auctions: Auction[], payments: Payment[] }) {
   const grpAuctions = auctions.filter(a => a.group_id === groupId).sort((a,b) => a.month - b.month)
   const grpPayments = payments.filter(p => p.group_id === groupId && p.status === 'paid')
   
@@ -405,7 +456,7 @@ function ReportGroupLedger({ groupId, members, auctions, payments }: { groupId: 
             const monthPayments = grpPayments.filter(p => p.month === auc.month).reduce((s,p) => s + Number(p.amount), 0)
             return (
               <Tr key={auc.month}>
-                <Td><Badge variant="gray">Month {auc.month}</Badge></Td>
+                <Td><Badge variant="gray">{fmtMonth(auc.month, groups.find(gx=>gx.id===groupId)?.start_date)}</Badge></Td>
                 <Td>{w ? `👑 ${w.persons?.name || 'Member'}` : '—'}</Td>
                 <Td right style={{ color: 'var(--red)' }}>{fmt(auc.bid_amount)}</Td>
                 <Td right style={{ color: 'var(--gold)' }}>{fmt(auc.dividend)}</Td>
@@ -420,30 +471,53 @@ function ReportGroupLedger({ groupId, members, auctions, payments }: { groupId: 
   )
 }
 
-function ReportMemberHistory({ memberId, groups, payments, auctions }: { memberId: number, groups: Group[], payments: Payment[], auctions: Auction[] }) {
+function ReportMemberHistory({ memberId, members, groups, payments, auctions }: { memberId: number, members: Member[], groups: Group[], payments: Payment[], auctions: Auction[] }) {
+  const member = members.find(m => m.id === memberId)
+  const group = groups.find(g => g.id === member?.group_id)
   const memPayments = payments.filter(p => p.member_id === memberId).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   
+  const totalPaid = memPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const groupAuctions = auctions.filter(a => a.group_id === group?.id)
+  const currentMonth = groupAuctions.length > 0 ? Math.max(...groupAuctions.map(a => a.month)) : 0
+  
+  let totalDue = 0
+  for (let m = 1; m <= currentMonth; m++) {
+    const auc = groupAuctions.find(a => a.month === m)
+    const dividend = auc ? Number(auc.dividend || 0) : 0
+    totalDue += (Number(group?.monthly_contribution || 0) - dividend)
+  }
+
+  const balance = totalDue - totalPaid
+
   return (
-    <TableCard title="Member Payment History">
-      <Table>
-        <thead><tr><Th>Date</Th><Th>Group</Th><Th>For Month</Th><Th>Mode</Th><Th right>Amount Paid</Th></tr></thead>
-        <tbody>
-          {memPayments.map(p => {
-             const g = groups.find(x => x.id === p.group_id)
-             return (
-               <Tr key={p.id}>
-                 <Td>{fmtDate(p.created_at)}</Td>
-                 <Td>{g?.name}</Td>
-                 <Td>M{p.month}</Td>
-                 <Td><Badge variant="blue">{p.mode}</Badge></Td>
-                 <Td right className="font-semibold" style={{ color: 'var(--green)' }}>{fmt(p.amount)}</Td>
-               </Tr>
-             )
-          })}
-          {memPayments.length === 0 && <Tr><Td colSpan={5} className="text-center py-5">No payments found for this member.</Td></Tr>}
-        </tbody>
-      </Table>
-    </TableCard>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard label="Total Dues (to date)" value={fmt(totalDue)} color="blue" />
+        <StatCard label="Total Paid" value={fmt(totalPaid)} color="green" />
+        <StatCard label="Net Outstanding" value={fmt(balance)} color={balance > 0.01 ? 'red' : 'green'} />
+      </div>
+
+      <TableCard title="Detailed Payment Log">
+        <Table>
+          <thead><tr><Th>Date</Th><Th>Group</Th><Th>For Month</Th><Th>Mode</Th><Th right>Amount Paid</Th></tr></thead>
+          <tbody>
+            {memPayments.map(p => {
+               const g = groups.find(x => x.id === p.group_id)
+               return (
+                 <Tr key={p.id}>
+                   <Td>{fmtDate(p.created_at)}</Td>
+                   <Td>{g?.name}</Td>
+                   <Td>{fmtMonth(p.month, g?.start_date)}</Td>
+                   <Td><Badge variant="blue">{p.mode}</Badge></Td>
+                   <Td right className="font-semibold" style={{ color: 'var(--green)' }}>{fmt(p.amount)}</Td>
+                 </Tr>
+               )
+            })}
+            {memPayments.length === 0 && <Tr><Td colSpan={5} className="text-center py-5">No payments found for this member.</Td></Tr>}
+          </tbody>
+        </Table>
+      </TableCard>
+    </div>
   )
 }
 
@@ -491,7 +565,7 @@ function ReportWinners({ auctions, groups, members }: { auctions: Auction[], gro
                 <Td>{fmtDate(a.created_at)}</Td>
                 <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
                 <Td>{g?.name}</Td>
-                <Td><Badge variant="gold">M{a.month}</Badge></Td>
+                <Td><Badge variant="gold">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
                 <Td right style={{ color: 'var(--red)' }}>{fmt(a.bid_amount)}</Td>
               </Tr>
             )

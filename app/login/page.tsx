@@ -5,9 +5,12 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
+import { getTheme } from '@/lib/branding/themes'
+import { usePwa } from '@/lib/pwa/context'
+import { Download } from 'lucide-react'
 
 interface FirmBranding {
-  name: string; primary_color: string; logo_url: string | null
+  name: string; theme_id: string; logo_url: string | null
   tagline: string; font: string
 }
 
@@ -18,6 +21,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const firmSlug = searchParams.get('firm')
+  const { install, isInstallable } = usePwa()
 
   const [tab, setTab] = useState<Tab>('signin')
   const [loading, setLoading] = useState(false)
@@ -25,8 +29,8 @@ function LoginForm() {
   const [success, setSuccess] = useState('')
   const [branding, setBranding] = useState<FirmBranding>({
     name: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
-    primary_color: '#2563eb', logo_url: null,
-    tagline: 'Chit Fund Manager', font: 'DM Sans'
+    theme_id: 'theme1', logo_url: null,
+    tagline: 'Chit Fund Manager', font: 'Noto Sans'
   })
 
   // Sign in form
@@ -45,11 +49,12 @@ function LoginForm() {
           .rpc('get_firm_branding', { p_slug: firmSlug }) as any
         if (data) {
           setBranding({
-            name: data.name, primary_color: data.primary_color || '#2563eb',
+            name: data.name, theme_id: data.theme_id || 'theme1',
             logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
-            font: data.font || 'DM Sans'
+            font: data.font || 'Noto Sans'
           })
-          applyBranding(data.primary_color || '#2563eb', data.font || 'DM Sans')
+          const theme = getTheme(data.theme_id)
+          applyBranding(theme.primary, data.font || 'Noto Sans', theme.accent, theme.bg)
         }
       } catch (err) {
         // RPC may fail if firm doesn't exist, use defaults
@@ -59,7 +64,8 @@ function LoginForm() {
     document.documentElement.classList.remove('dark')
   }, [firmSlug, supabase])
 
-  const clr = branding.primary_color
+  const theme = getTheme(branding.theme_id)
+  const clr = theme.primary
 
   async function handleRedirect(user: { id: string }) {
     try {
@@ -113,7 +119,7 @@ function LoginForm() {
   const sty = {
     page: {
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, background: 'var(--bg)'
+      padding: 20, background: theme.bg || 'var(--bg)'
     } as React.CSSProperties,
     card: {
       width: '100%', maxWidth: 400, background: 'var(--surface)',
@@ -143,8 +149,9 @@ function LoginForm() {
         {/* Logo / branding */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           {branding.logo_url ? (
-            <Image src={branding.logo_url} alt={branding.name} width={224} height={56}
-              style={{ marginBottom: 12, borderRadius: 10, objectFit: 'contain' }} />
+            <div className="relative w-56 h-14 mx-auto mb-3 bg-white/50 rounded-xl p-2 flex items-center justify-center overflow-hidden">
+               <img src={branding.logo_url} alt={branding.name} className="max-w-full max-h-full object-contain" />
+            </div>
           ) : (
             <div style={{ fontSize: 48, marginBottom: 8 }}>🏦</div>
           )}
@@ -197,12 +204,25 @@ function LoginForm() {
 
         </div>
 
-        {/* Powered by */}
-        {firmSlug && (
-          <p style={{ textAlign: 'center', marginTop: 18, fontSize: 11, color: 'var(--text3)' }}>
-            Powered by Seyon Chit Vault
-          </p>
-        )}
+        {/* Powered by / Install app */}
+        <div style={{ textAlign: 'center', marginTop: 18 }}>
+          {isInstallable && (
+            <button onClick={install}
+              style={{ 
+                background: 'rgba(201,168,76,0.1)', color: clr, border: `1px solid ${clr}44`,
+                padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700, 
+                display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 12
+              }}>
+              <Download size={14} /> Install ChitVault App
+            </button>
+          )}
+
+          {firmSlug && (
+            <p style={{ fontSize: 11, color: 'var(--text3)' }}>
+              Powered by Seyon Chit Vault
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

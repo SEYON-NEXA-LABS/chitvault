@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, fmtDate } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { StatCard, Card, Loading, Badge } from '@/components/ui'
 import type { Group, Member, Auction, Payment } from '@/types'
 
@@ -19,7 +20,7 @@ export default function DashboardPage() {
       const [g, m, a, p] = await Promise.all([
         supabase.from('groups').select('*').neq('status','archived'),
         supabase.from('members').select('*, persons(*)'),
-        supabase.from('auctions').select('*').order('id', { ascending: false }).limit(6),
+        supabase.from('auctions').select('*').order('id', { ascending: false }),
         supabase.from('payments').select('*').eq('status','paid'),
       ])
       setGroups(g.data || [])
@@ -31,20 +32,54 @@ export default function DashboardPage() {
     load()
   }, [supabase])
 
-  if (loading) return <Loading />
+  const stats = useMemo(() => {
+    const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
+    
+    // 1. Today's Collections
+    const today = new Date().toISOString().split('T')[0]
+    const todayColl = payments.filter(p => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0)
 
-  const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0)
-  const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
+    // 2. Pending Collections (logic similar to ReportUpcomingPay)
+    const totalPending = members.reduce((sum, member) => {
+      const group = groups.find(g => g.id === member.group_id)
+      if (!group || !['active', 'defaulter', 'foreman'].includes(member.status)) return sum
+      
+      const gAucs = auctions.filter(a => a.group_id === member.group_id)
+      const currentMonth = Math.min(group.duration, gAucs.length + 1)
+      const mPays = payments.filter(p => p.member_id === member.id && p.group_id === group.id)
+      
+      let pending = 0
+      for (let month = 1; month <= currentMonth; month++) {
+        const auc = gAucs.find(a => a.month === month)
+        const div = auc ? Number(auc.dividend || 0) : 0
+        const due = Number(group.monthly_contribution) - div
+        const paid = mPays.filter(p => p.month === month).reduce((s, p) => s + Number(p.amount), 0)
+        pending += Math.max(0, due - paid)
+      }
+      return sum + pending
+    }, 0)
+
+    // 3. Defaulter Count
+    const defaulters = members.filter(m => m.status === 'defaulter').length
+
+    return { totalChitValue, todayColl, totalPending, defaulters }
+  }, [groups, members, auctions, payments])
+
+  if (loading) return <Loading />
 
   return (
     <div className="space-y-6">
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Active Groups"    value={groups.length}   sub={`Total value ${fmt(totalChitValue)}`} color="gold" />
-        <StatCard label="Total Members"    value={members.length}  sub="Across all groups"  color="blue"  />
-        <StatCard label="Total Collected"  value={fmt(totalCollected)} sub="All payments" color="green" />
-        <StatCard label="Total Auctions"   value={auctions.length} sub="Showing last 6"     color="gold"  />
+        <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="gold" />
+        <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="green" />
+        <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
+          <StatCard label="Total Pending" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="red" />
+        </Link>
+        <Link href="/reports?type=defaulters" className="block transition-transform hover:scale-[1.02]">
+          <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="blue" />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -76,7 +111,7 @@ export default function DashboardPage() {
                           {g?.name || `Group #${a.group_id}`}
                         </td>
                         <td className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                          <Badge variant="blue">M{a.month}</Badge>
+                          <Badge variant="blue">{fmtMonth(a.month, g?.start_date)}</Badge>
                         </td>
                         <td className="px-4 py-3" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
                           👑 {w?.persons?.name || '—'}

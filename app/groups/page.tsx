@@ -34,7 +34,7 @@ export default function GroupsPage() {
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
     monthly_contribution: '', start_date: '',
-    auction_scheme: 'DIVIDEND' as 'DIVIDEND' | 'ACCUMULATION'
+    auction_scheme: 'ACCUMULATION' as 'DIVIDEND' | 'ACCUMULATION'
   })
   const [saving, setSaving] = useState(false)
 
@@ -247,8 +247,8 @@ export default function GroupsPage() {
           <Field label="Total Chit Value (₹)"><input className={inputClass} style={inputStyle} value={form.chit_value} type="number" onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" /></Field>
           <Field label="Auction Scheme">
             <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
-              <option value="DIVIDEND">DIVIDEND (Monthly Dividend)</option>
-              <option value="ACCUMULATION">ACCUMULATION (Fixed Payout)</option>
+              <option value="ACCUMULATION">SURPLUS MODEL (Fixed Payout)</option>
+              <option value="DIVIDEND">DIVIDEND MODEL (Coming Soon)</option>
             </select>
           </Field>
           <Field label="Total Members"><input className={inputClass} style={inputStyle} value={form.num_members} type="number" onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" /></Field>

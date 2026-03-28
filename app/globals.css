@@ -7,7 +7,7 @@
   font-size: var(--font-size-base, 16px);
 
   /* Backgrounds */
-  --bg: #f5f7fb;
+  --bg: var(--bg-firm, #f5f7fb);
   --surface: #ffffff;
   --surface2: #f1f4f9;
   --surface3: #e8ecf5;
@@ -79,7 +79,7 @@
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Noto Sans', 'Noto Sans Tamil', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

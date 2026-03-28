@@ -22,7 +22,7 @@ export async function registerFirm(params: {
   city?: string;
   phone?: string;
   plan: string;
-  primary_color: string;
+  theme_id: string;
   tagline: string;
   font: string;
 }) {
@@ -72,7 +72,7 @@ export async function registerFirm(params: {
     p_city: params.city || null,
     p_phone: params.phone || null,
     p_plan: params.plan,
-    p_primary_color: params.primary_color,
+    p_theme_id: params.theme_id,
     p_tagline: params.tagline,
     p_font: params.font
   })
@@ -85,4 +85,26 @@ export async function registerFirm(params: {
 
   revalidatePath('/admin')
   return { success: true, firmId }
+}
+
+export async function updateFirmTheme(firmId: string, themeId: string) {
+  const supabase = createServerClient(cookies())
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
+  
+  if (profile?.role !== 'superadmin') {
+    return { error: 'Access denied' }
+  }
+
+  const { error } = await supabase.from('firms').update({ 
+    theme_id: themeId,
+    // When a theme is selected, we clear custom colors to let the theme take over
+    primary_color: null,
+    accent_color: null
+  }).eq('id', firmId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
 }

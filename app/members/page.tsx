@@ -16,6 +16,7 @@ import type { Group, Member, Auction, Payment, Person } from '@/types'
 interface Contact extends Person {
   tickets: Member[];
   totalPaid: number;
+  totalBalance: number;
   activeCount: number;
   pastCount: number;
 }
@@ -66,7 +67,7 @@ export default function MembersPage() {
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { load(true) }, [load])
+  useEffect(() => { if (firm) load(true) }, [load])
 
   useEffect(() => {
     if (payMember) {
@@ -112,18 +113,37 @@ export default function MembersPage() {
        }).length
        
        const totalPaid = payments
-         .filter(pay => pMembers.some(m => m.id === pay.member_id) && pay.status === 'paid')
+         .filter(pay => pMembers.some(m => m.id === pay.member_id))
          .reduce((s, pay) => s + Number(pay.amount), 0)
+
+       // Consolidated Balance Calculation
+       let totalBalance = 0;
+       pMembers.forEach(m => {
+          const group = allGroups.find(g => g.id === m.group_id);
+          if (!group || group.status === 'archived') return;
+          const gAucs = auctions.filter(a => a.group_id === group.id);
+          const mPays = payments.filter(pay => pay.member_id === m.id && pay.group_id === group.id);
+          const currentMonth = Math.min(group.duration, gAucs.length + 1);
+          
+          for (let month = 1; month <= currentMonth; month++) {
+            const auc = gAucs.find(a => a.month === month);
+            const dividend = auc ? Number(auc.dividend || 0) : 0;
+            const amountDue = Number(group.monthly_contribution) - dividend;
+            const amountPaid = mPays.filter(pay => pay.month === month).reduce((s, p) => s + Number(p.amount), 0);
+            totalBalance += Math.max(0, amountDue - amountPaid);
+          }
+       });
 
        return {
          ...p,
          tickets: pMembers,
          totalPaid,
+         totalBalance,
          activeCount,
          pastCount
        } as Contact
     })
-  }, [persons, members, allGroups, payments])
+  }, [persons, members, allGroups, payments, auctions])
 
   const filteredPeople = contacts.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -266,9 +286,8 @@ export default function MembersPage() {
               <Th>Person</Th>
               <Th className="hidden md:table-cell">Phone</Th>
               <Th className="hidden sm:table-cell">Active</Th>
-              <Th className="hidden lg:table-cell">Past</Th>
-              <Th right>Total Paid</Th>
-              <Th>Action</Th>
+              <Th>Total Balance</Th>
+              <Th right>Action</Th>
             </tr></thead>
             <tbody>
               {filteredPeople.map(c => (
@@ -282,11 +301,13 @@ export default function MembersPage() {
                   <Td className="hidden sm:table-cell">
                     {c.activeCount > 0 ? <Badge variant="blue">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
                   </Td>
-                  <Td className="hidden lg:table-cell">
-                    {c.pastCount > 0 ? <Badge variant="gray">{c.pastCount} Past</Badge> : <span className="text-xs opacity-30">None</span>}
-                  </Td>
-                  <Td right className="font-bold text-[var(--green)]">{fmt(c.totalPaid)}</Td>
                   <Td>
+                     <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--red)]" : "text-[var(--green)]")}>
+                        {fmt(c.totalBalance)}
+                     </div>
+                     {c.totalPaid > 0 && <div className="text-[9px] opacity-40">Paid: {fmt(c.totalPaid)}</div>}
+                  </Td>
+                  <Td right>
                     <div className="flex gap-1.5 justify-end">
                       <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--blue)' }}>Profile</Btn>
                     </div>
@@ -324,9 +345,9 @@ export default function MembersPage() {
                                <div className="flex gap-1">
                                   <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>Pay</Btn>
                                   <Btn size="sm" variant="ghost" icon={Info} onClick={() => { 
-                                     const p = persons.find(x => x.id === m.person_id)
+                                     const p = contacts.find(x => x.id === m.person_id)
                                      if(p) {
-                                        setDetailContact({ ...p, tickets: members.filter(x => x.person_id === p.id), totalPaid: 0, activeCount: 0, pastCount: 0 })
+                                        setDetailContact(p)
                                         setEditForm({ name: p.name, nickname: p.nickname||'', phone: p.phone||'', address: p.address||'' })
                                      }
                                   }}>Profile</Btn>
