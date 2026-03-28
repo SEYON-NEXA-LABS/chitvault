@@ -6,10 +6,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
+import { getTheme } from '@/lib/branding/themes'
 
 interface FirmByToken {
   id: string; name: string; slug: string
-  primary_color: string; logo_url: string | null; tagline: string
+  theme_id: string; logo_url: string | null; tagline: string
 }
 
 function RegisterForm() {
@@ -37,7 +38,9 @@ function RegisterForm() {
       const firmData = data as any
       setTokenFirm(firmData)
       setTokenValid(true)
-      applyBranding(firmData.primary_color || '#2563eb', 'DM Sans')
+      
+      const theme = getTheme(firmData.theme_id)
+      applyBranding(theme.primary, 'Noto Sans', theme.accent, theme.bg)
     }
     validateToken()
   }, [token, supabase])
@@ -73,12 +76,13 @@ function RegisterForm() {
       })
       if (rpcErr) { setError(rpcErr.message); setLoading(false); return }
     } else {
-      const { error: firmErr } = await supabase.rpc('register_firm', {
+      const { error: firmErr } = await supabase.rpc('admin_create_firm', {
         p_name: form.firm_name.trim(), 
         p_slug: slugify(form.firm_name),
         p_city: form.city.trim() || null, 
         p_phone: form.phone.trim() || null,
-        p_full_name: form.full_name.trim() || null
+        p_owner_id: authData.user.id,
+        p_owner_name: form.full_name.trim() || null
       })
       if (firmErr) {
         setError(firmErr.message === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : firmErr.message)
@@ -90,7 +94,7 @@ function RegisterForm() {
     window.location.replace('/dashboard')
   }
 
-  const clr = tokenFirm?.primary_color || '#c9a84c'
+  const clr = tokenFirm?.theme_id ? getTheme(tokenFirm.theme_id).primary : '#c9a84c'
   const inputSty = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' } as React.CSSProperties
   const inputCls = 'w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-colors focus:border-[var(--gold)]'
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
 import { Card, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -197,7 +197,7 @@ export default function GroupLedgerPage() {
                 const eachPays = monthlyDue - Number(a.dividend || 0)
                 return (
                   <tr key={a.id} className="border-b last:border-0 hover:bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-                    <td style={{ padding: '12px 10px' }}><Badge variant="gray" className="font-mono text-[10px]">M{a.month}</Badge></td>
+                    <td style={{ padding: '12px 10px' }}><Badge variant="gray" className="font-mono text-[10px]">{fmtMonth(a.month, group.start_date)}</Badge></td>
                     <td style={{ padding: '12px 10px' }}>
                        {winner ? (
                          <div className="flex flex-col">

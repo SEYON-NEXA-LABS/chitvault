@@ -11,8 +11,10 @@ import { useToast } from '@/lib/hooks/useToast'
 import { APP_NAME } from '@/lib/utils'
 import { 
   Sun, Moon, LogOut, Key, Palette, Type, Building, Building2, 
-  Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User 
+  Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
+  Lock, LockKeyhole
 } from 'lucide-react'
+import { usePinLock } from '@/lib/lock/context'
 import Image from 'next/image'
 
 export default function SettingsPage() {
@@ -20,6 +22,7 @@ export default function SettingsPage() {
   const router   = useRouter()
   const { profile, role, firm, can, refresh } = useFirm()
   const { toast, show, hide } = useToast()
+  const { isElectron, hasPin, setPin, lock } = usePinLock()
 
   const isSuperAdmin = role === 'superadmin'
 
@@ -34,6 +37,9 @@ export default function SettingsPage() {
   const [passLoading, setPassLoading] = useState(false)
   const [passMsg,     setPassMsg]     = useState<{text:string, type:'success'|'error'}|null>(null)
 
+  const [pinInput,   setPinInput]   = useState('')
+  const [pinChange,  setPinChange]  = useState(false)
+
   // Branding form state
   const [name,       setName]       = useState(firm?.name || '')
   const [address,    setAddress]    = useState(firm?.address || '')
@@ -43,7 +49,7 @@ export default function SettingsPage() {
   const [customColor, setCustomColor] = useState(firm?.primary_color || '#2563eb')
   const [logoUrl,    setLogoUrl]    = useState(firm?.logo_url || '')
   const [tagline,    setTagline]    = useState(firm?.tagline || 'Chit Fund Manager')
-  const [font,       setFont]       = useState(firm?.font || 'DM Sans')
+  const [font,       setFont]       = useState(firm?.font || 'Noto Sans')
   const [regToken,   setRegToken]   = useState(firm?.register_token || '')
 
   useEffect(() => {
@@ -63,7 +69,7 @@ export default function SettingsPage() {
       setCustomColor(firm.primary_color || '#2563eb')
       setLogoUrl(firm.logo_url || '')
       setTagline(firm.tagline || 'Chit Fund Manager')
-      setFont(firm.font || 'DM Sans')
+      setFont(firm.font || 'Noto Sans')
       setRegToken(firm.register_token || '')
     }
   }, [firm, supabase.auth])
@@ -392,6 +398,61 @@ export default function SettingsPage() {
 
           <hr style={{ borderColor: 'var(--border)' }} />
 
+          {/* App PIN Lock (Web & Desktop) */}
+          <hr style={{ borderColor: 'var(--border)' }} />
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
+              <Lock size={12} /> App PIN Lock
+            </div>
+            
+            <div className="flex items-center justify-between bg-[var(--surface2)] p-4 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <div className="text-sm font-semibold">Requirement PIN on Startup</div>
+                <p className="text-xs opacity-60">Secure your session with a 4-6 digit code.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasPin ? (
+                  <Badge variant="green">Enabled ✓</Badge>
+                ) : (
+                  <Badge variant="gray">Disabled</Badge>
+                )}
+              </div>
+            </div>
+
+            {!pinChange && hasPin && (
+              <div className="flex gap-2">
+                <Btn variant="secondary" size="sm" onClick={() => setPinChange(true)}>Change PIN</Btn>
+                <Btn variant="secondary" size="sm" onClick={() => { setPin(null); show('PIN Disabled') }}>Disable PIN</Btn>
+                <Btn variant="primary" size="sm" onClick={lock}>Lock Now</Btn>
+              </div>
+            )}
+
+            {(pinChange || !hasPin) && (
+              <div className="space-y-3 p-4 bg-gold/5 rounded-xl border border-gold/20">
+                <label className="text-xs font-bold text-gold uppercase tracking-wider block">Set New 4-6 Digit PIN</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="password" 
+                    maxLength={6} 
+                    className={inputClass} 
+                    style={{ ...inputStyle, width: 120, letterSpacing: 8, textAlign: 'center' }} 
+                    value={pinInput}
+                    onChange={e => setPinInput(e.target.value.replace(/\D/g,''))}
+                    placeholder="••••••"
+                  />
+                  <Btn variant="primary" size="sm" disabled={pinInput.length < 4} onClick={() => {
+                    setPin(pinInput)
+                    setPinInput('')
+                    setPinChange(false)
+                    show('PIN Saved Successfully!')
+                  }}>Save PIN</Btn>
+                  {hasPin && <Btn variant="secondary" size="sm" onClick={() => { setPinChange(false); setPinInput('') }}>Cancel</Btn>}
+                </div>
+              </div>
+            )}
+            <hr style={{ borderColor: 'var(--border)' }} />
+          </div>
+
           {/* Session controls */}
           <div className="space-y-4">
              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
@@ -436,7 +497,7 @@ export default function SettingsPage() {
       {/* ── App Info ──────────────────────────────────────── */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          <span style={{fontFamily: "'DM Sans', sans-serif"}}>{APP_NAME} Info</span>
+          <span style={{fontFamily: "'Noto Sans', sans-serif"}}>{APP_NAME} Info</span>
         </div>
         <div className="p-5 space-y-0">
           {[

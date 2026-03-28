@@ -23,8 +23,9 @@ create table if not exists firms (
   address     text,
   phone       text,
   -- Branding / white-label
-  primary_color   text default '#2563eb',     -- hex colour
-  accent_color    text default '#1e40af',     -- hex colour (darker tint)
+  primary_color   text default '#2563eb',     -- hex colour (DEPRECATED in favor of themes)
+  accent_color    text default '#1e40af',     -- hex colour (DEPRECATED in favor of themes)
+  theme_id        text default 'theme1',      -- id from THEMES list in frontend
   logo_url        text,                        -- hosted image URL
   tagline         text default 'Chit Fund Manager',
   font            text default 'DM Sans',      -- Google Font name
@@ -39,6 +40,7 @@ create table if not exists firms (
 -- Migration: add branding columns if table already exists
 alter table firms add column if not exists primary_color  text default '#2563eb';
 alter table firms add column if not exists accent_color   text default '#1e40af';
+alter table firms add column if not exists theme_id       text default 'theme1';
 alter table firms add column if not exists logo_url       text;
 alter table firms add column if not exists tagline        text default 'Chit Fund Manager';
 alter table firms add column if not exists font           text default 'DM Sans';
@@ -97,7 +99,7 @@ create table if not exists groups (
   start_date           date,
   status               text default 'active',
   -- Scheme Configuration
-  auction_scheme       text default 'DIVIDEND',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
+  auction_scheme       text default 'ACCUMULATION',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
   accumulated_surplus  numeric(12,2) default 0.0,  -- Track saved bids for early closure
   created_at           timestamptz default now(),
   created_by           uuid references auth.users(id),
@@ -120,7 +122,7 @@ create trigger set_groups_updated_at
   for each row execute procedure moddatetime(updated_at);
 
 -- Migration: add scheme columns if table already exists
-alter table groups add column if not exists auction_scheme       text default 'DIVIDEND';
+alter table groups add column if not exists auction_scheme       text default 'ACCUMULATION';
 alter table groups add column if not exists accumulated_surplus  numeric(12,2) default 0.0;
 
 do $$ begin
@@ -244,6 +246,7 @@ create table if not exists payments (
   amount_due   numeric(12,2) default 0,
   balance_due  numeric(12,2) default 0,
   collected_by uuid references auth.users(id) on delete set null default auth.uid(),
+  note         text,
   created_at   timestamptz default now(),
   created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
@@ -256,6 +259,9 @@ create table if not exists payments (
 alter table payments
   drop constraint if exists payments_firm_id_member_id_group_id_month_key,
   drop constraint if exists payments_member_id_group_id_month_key;
+
+-- Migration: add note to payments
+alter table payments add column if not exists note text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'payments_group_firm_fk') then
@@ -514,20 +520,20 @@ grant execute on function public.register_firm(text,text,text,text,text) to auth
 -- Public RPC: get firm branding by slug (for login page)
 create or replace function public.get_firm_branding(p_slug text)
 returns table (
-  name text, primary_color text, logo_url text,
+  name text, theme_id text, logo_url text,
   tagline text, font text, plan_status text
 )
 language sql stable security definer set search_path = public as $$
-  select name, primary_color, logo_url, tagline, font, plan_status
+  select name, theme_id, logo_url, tagline, font, plan_status
   from firms where slug = p_slug
 $$;
 grant execute on function public.get_firm_branding(text) to anon, authenticated;
 
 -- Public RPC: validate register token
 create or replace function public.get_firm_by_register_token(p_token text)
-returns table (id uuid, name text, slug text, primary_color text, logo_url text, tagline text)
+returns table (id uuid, name text, slug text, theme_id text, logo_url text, tagline text)
 language sql stable security definer set search_path = public as $$
-  select id, name, slug, primary_color, logo_url, tagline
+  select id, name, slug, theme_id, logo_url, tagline
   from firms where register_token = p_token
 $$;
 grant execute on function public.get_firm_by_register_token(text) to anon, authenticated;
@@ -719,7 +725,7 @@ create or replace function public.admin_create_firm(
   p_city          text default null,
   p_phone         text default null,
   p_plan          text default 'trial',
-  p_primary_color text default '#2563eb',
+  p_theme_id      text default 'theme1',
   p_tagline       text default 'Chit Fund Manager',
   p_font          text default 'DM Sans'
 )
@@ -730,13 +736,13 @@ begin
   if not exists (select 1 from profiles where id = auth.uid() and role = 'superadmin') then
     raise exception 'Superadmin access required';
   end if;
-
+bash
   if exists (select 1 from firms where slug = p_slug) then
     raise exception 'SLUG_TAKEN';
   end if;
 
-  insert into firms (name, slug, owner_id, city, phone, plan, primary_color, tagline, font)
-  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_primary_color, p_tagline, p_font)
+  insert into firms (name, slug, owner_id, city, phone, plan, theme_id, tagline, font)
+  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_theme_id, p_tagline, p_font)
   returning id into v_firm_id;
 
   -- Create or link profile immediately
@@ -992,7 +998,7 @@ begin
   -- IF ACCUMULATION scheme: Update group surplus pooled balance
   if g.auction_scheme = 'ACCUMULATION' then
      update groups 
-     set accumulated_surplus = accumulated_surplus + (g.chit_value - p_bid_amount)
+     set accumulated_surplus = accumulated_surplus + p_bid_amount
      where id = p_group_id;
   end if;
 

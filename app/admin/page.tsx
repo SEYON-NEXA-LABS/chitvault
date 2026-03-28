@@ -3,8 +3,9 @@
 import { useEffect, useState, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { registerFirm } from './actions'
+import { registerFirm, updateFirmTheme } from './actions'
 import { fmtDate } from '@/lib/utils'
+import { THEMES, getTheme } from '@/lib/branding/themes'
 import type { Firm } from '@/types'
 
 interface FirmWithStats extends Firm {
@@ -86,13 +87,21 @@ function AdminDashboard() {
     load()
   }
 
+  async function handleThemeChange(firmId: string, themeId: string) {
+    setUpdating(firmId)
+    const { error } = await updateFirmTheme(firmId, themeId)
+    if (error) alert(error)
+    await load()
+    setUpdating(null)
+  }
+
   const displayed = firms
     .filter(f => filter === 'all' || (filter === 'suspended' ? f.plan_status === 'suspended' : f.plan === filter))
     .filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()) || f.city?.toLowerCase().includes(search.toLowerCase()) || f.slug.includes(search.toLowerCase()))
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', theme_id:'theme1', tagline:'Chit Fund Manager', font:'Noto Sans' })
   const [createErr, setCreateErr] = useState('')
 
   async function handleCreate() {
@@ -114,7 +123,7 @@ function AdminDashboard() {
     setCreating(false)
     if (error) { setCreateErr(error === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', primary_color:'#2563eb', tagline:'Chit Fund Manager', font:'DM Sans' })
+    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', theme_id:'theme1', tagline:'Chit Fund Manager', font:'Noto Sans' })
     load()
   }
 
@@ -180,7 +189,7 @@ function AdminDashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface2)' }}>
-                  {['Firm','City','Groups','Members','Plan','Status','Invoice Ref','Trial Ends','Joined','Actions'].map(h => (
+                  {['Firm','City','Groups','Members','Plan','Status','Theme','Invoice Ref','Trial Ends','Joined'].map(h => (
                     <th key={h} style={{ padding: '12px 14px', textAlign: 'left', color: 'var(--text3)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -221,7 +230,24 @@ function AdminDashboard() {
                           </select>
                         </td>
                         <td style={{ padding: '12px 14px' }}>
-                          <input style={{ ...sty.input, width: 110 }}
+                          <select style={{ ...sty.select, padding: '4px' }} value={f.theme_id || 'theme1'}
+                            disabled={updating === f.id}
+                            onChange={e => handleThemeChange(f.id, e.target.value)}>
+                            {THEMES.map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                          <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
+                            {THEMES.find(t => t.id === (f.theme_id || 'theme1'))?.primary && (
+                              <>
+                                <div style={{ width: 12, height: 12, borderRadius: 2, background: THEMES.find(t => t.id === (f.theme_id || 'theme1'))?.primary }} />
+                                <div style={{ width: 12, height: 12, borderRadius: 2, background: THEMES.find(t => t.id === (f.theme_id || 'theme1'))?.accent }} />
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <input style={{ ...sty.input, width: 90 }}
                             defaultValue={f.invoice_ref || ''}
                             onBlur={e => updateInvoice(f.id, e.target.value)}
                             placeholder="INV-001" />
@@ -231,9 +257,6 @@ function AdminDashboard() {
                         </td>
                         <td style={{ padding: '12px 14px', color: 'var(--text2)', fontSize: 12 }}>
                           {fmtDate(f.created_at)}
-                        </td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'monospace' }}>{f.slug}</div>
                         </td>
                       </tr>
                     ))
@@ -259,31 +282,55 @@ function AdminDashboard() {
     {createOpen && (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
         onClick={e => e.target===e.currentTarget && setCreateOpen(false)}>
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:'100%', maxWidth:480 }}>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:'100%', maxWidth:540 }}>
           <h2 style={{ fontSize:18, fontWeight:800, color:'var(--text)', marginBottom:20 }}>Create New Firm</h2>
           {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:14 }}>✗ {createErr}</div>}
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {[
-               { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds', type:'text' },
-               { lbl:'Owner Name',      key:'owner_name', ph:'Owner Full Name', type:'text' },
-               { lbl:'Owner Email *',    key:'owner_email', ph:'admin@firm.com', type:'email' },
-               { lbl:'Set Password *',   key:'owner_pass', ph:'••••••', type:'password' },
-               { lbl:'City',            key:'city', ph:'Coimbatore', type:'text' },
-               { lbl:'Phone',           key:'phone', ph:'98765 43210', type:'tel' },
-               { lbl:'Tagline',         key:'tagline', ph:'Chit Fund Manager', type:'text' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
-                <input style={{ width:'100%', padding:'9px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:14, outline:'none' }}
-                  type={f.type} maxLength={f.key === 'phone' ? 10 : undefined}
-                  value={(newFirm as any)[f.key]} 
-                  onChange={e => setNewFirm(n=>({...n,[f.key]:f.key === 'phone' ? e.target.value.replace(/\D/g,'') : e.target.value}))} 
-                  placeholder={f.ph} />
+          <div style={{ display:'flex', gap:24 }}>
+            <div style={{ flex: 1, display:'flex', flexDirection:'column', gap:12 }}>
+              {[
+                { lbl:'Business Name *', key:'name', ph:'e.g. Kumari Chit Funds', type:'text' },
+                { lbl:'Owner Name',      key:'owner_name', ph:'Owner Full Name', type:'text' },
+                { lbl:'Owner Email *',    key:'owner_email', ph:'admin@firm.com', type:'email' },
+                { lbl:'Set Password *',   key:'owner_pass', ph:'••••••', type:'password' },
+                { lbl:'City',            key:'city', ph:'Coimbatore', type:'text' },
+                { lbl:'Phone',           key:'phone', ph:'98765 43210', type:'tel' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ fontSize:10, fontWeight:600, color:'var(--text2)', textTransform:'uppercase' as const, letterSpacing:1, display:'block', marginBottom:4 }}>{f.lbl}</label>
+                  <input style={{ width:'100%', padding:'7px 10px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:13, outline:'none' }}
+                    type={f.type} maxLength={f.key === 'phone' ? 10 : undefined}
+                    value={(newFirm as any)[f.key]} 
+                    onChange={e => setNewFirm(n=>({...n,[f.key]:f.key === 'phone' ? e.target.value.replace(/\D/g,'') : e.target.value}))} 
+                    placeholder={f.ph} />
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize:10, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:10 }}>Select Theme</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {THEMES.map(t => (
+                  <button key={t.id} 
+                    onClick={() => setNewFirm(n => ({ ...n, theme_id: t.id }))}
+                    style={{ 
+                      padding: 10, borderRadius: 10, border: `2px solid ${newFirm.theme_id === t.id ? 'var(--blue)' : 'var(--border)'}`, 
+                      background: t.bg, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+                      display: 'flex', flexDirection: 'column', gap: 6, position: 'relative'
+                    }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#333' }}>{t.name}</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <div style={{ width: 14, height: 14, borderRadius: 4, background: t.primary }} />
+                      <div style={{ width: 14, height: 14, borderRadius: 4, background: t.accent }} />
+                    </div>
+                    {newFirm.theme_id === t.id && (
+                      <div style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, background: 'var(--blue)', borderRadius: '50%' }} />
+                    )}
+                  </button>
+                ))}
               </div>
-            ))}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Plan</label>
+              
+              <div style={{ marginTop: 20 }}>
+                <label style={{ fontSize:10, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Plan</label>
                 <select style={{ width:'100%', padding:'9px 12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, color:'var(--text)', fontSize:13, outline:'none' }}
                   value={newFirm.plan} onChange={e => setNewFirm(n=>({...n,plan:e.target.value}))}>
                   <option value="trial">Trial</option>
@@ -291,17 +338,9 @@ function AdminDashboard() {
                   <option value="pro">Pro</option>
                 </select>
               </div>
-              <div>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:4 }}>Primary Colour</label>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <input type="color" value={newFirm.primary_color}
-                    onChange={e => setNewFirm(n=>({...n,primary_color:e.target.value}))}
-                    style={{ width:36, height:36, borderRadius:8, border:'none', cursor:'pointer', padding:2 }} />
-                  <span style={{ fontSize:12, fontFamily:'monospace', color:'var(--text2)' }}>{newFirm.primary_color}</span>
-                </div>
-              </div>
             </div>
           </div>
+          
           <div style={{ display:'flex', gap:10, marginTop:22 }}>
             <button onClick={() => { setCreateOpen(false); setCreateErr('') }}
               style={{ flex:1, padding:'11px 0', background:'var(--surface2)', color:'var(--text2)', border:'1px solid var(--border)', borderRadius:8, fontSize:14, cursor:'pointer' }}>

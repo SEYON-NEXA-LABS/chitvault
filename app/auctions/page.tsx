@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { Btn, Badge, TableCard, Table, Th, Td, Tr, Modal, Field, Loading, Empty, Toast, StatCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -143,13 +143,13 @@ export default function AuctionsPage() {
                   return (
                     <Tr key={a.id}>
                       <Td><span className="font-semibold">{g?.name || `#${a.group_id}`}</span></Td>
-                      <Td><Badge variant="blue">M{a.month}</Badge></Td>
+                      <Td><Badge variant="blue">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
                       <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
                       <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
                       <Td right>{fmt(a.bid_amount)}</Td>
                       <Td right className="hidden lg:table-cell">
                          {g?.auction_scheme === 'ACCUMULATION' 
-                           ? <span style={{ color: 'var(--gold)' }}>+{fmt(Number(a.total_pot) - Number(a.bid_amount))}</span>
+                           ? <span style={{ color: 'var(--gold)' }}>+{fmt(a.bid_amount)}</span>
                            : <span style={{ color: 'var(--text3)' }}>—</span>}
                       </Td>
                       <Td right className="font-bold text-green-600">{fmt(a.net_payout || a.bid_amount)}</Td>
@@ -187,7 +187,7 @@ export default function AuctionsPage() {
                 return (
                   <Tr key={fc.id}>
                     <Td>{g?.name || '—'}</Td>
-                    <Td><Badge variant="blue">M{fc.month}</Badge></Td>
+                    <Td><Badge variant="blue">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
                     <Td right>{fmt(fc.chit_value)}</Td>
                     <Td right>{fmt(fc.bid_amount)}</Td>
                     <Td right><span style={{ color: 'var(--red)' }}>{fmt(fc.discount)}</span></Td>
@@ -220,7 +220,7 @@ export default function AuctionsPage() {
               <option value="">Select group</option>
               {groups.map(g => {
                 const done = auctions.filter(a => a.group_id === g.id).length
-                return <option key={g.id} value={g.id}>{g.name} — Month {done+1}</option>
+                return <option key={g.id} value={g.id}>{g.name} — {fmtMonth(done+1, g.start_date)}</option>
               })}
             </select>
           </Field>

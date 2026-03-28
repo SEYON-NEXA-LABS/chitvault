@@ -9,26 +9,29 @@ import { APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock
 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
+import { usePinLock } from '@/lib/lock/context'
+import { usePwa } from '@/lib/pwa/context'
 
 const NAV = [
-  { href: '/dashboard',  label: 'Dashboard',        icon: LayoutDashboard },
-  { href: '/groups',     label: 'Chit Groups',       icon: UsersRound      },
-  { href: '/members',    label: 'Members',           icon: Users           },
-  { label: 'Transactions', divider: true },
-  { href: '/auctions',   label: 'Auctions',          icon: Gavel           },
-  { href: '/schemes',    label: 'Auction Schemes',   icon: HelpCircle      },
-  { href: '/payments',   label: 'Payments',          icon: CreditCard      },
-  { href: '/cashbook',   label: 'Daily Cash',         icon: BookOpen        },
-  { href: '/reports',    label: 'Reports',           icon: BarChart3       },
-  { href: '/collection', label: 'Collection Report', icon: ClipboardList   },
-  { label: 'Manage', divider: true },
-  { href: '/team',       label: 'Team',              icon: UserCog, ownerOnly: true },
-  { href: '/settings',   label: 'Settings',          icon: Settings, ownerOnly: true },
-  { href: '/admin',      label: 'Platform Admin',    icon: Settings, superAdminOnly: true },
+  { href: '/dashboard', label: 'nav_dashboard', icon: LayoutDashboard },
+  { href: '/groups', label: 'nav_groups', icon: UsersRound },
+  { href: '/members', label: 'nav_members', icon: Users },
+  { label: 'nav_transactions', divider: true },
+  { href: '/auctions', label: 'nav_auctions', icon: Gavel },
+  { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
+  { href: '/payments', label: 'nav_payments', icon: CreditCard },
+  { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
+  { href: '/reports', label: 'nav_reports', icon: BarChart3 },
+  { href: '/collection', label: 'nav_collection', icon: ClipboardList },
+  { label: 'nav_manage', divider: true },
+  { href: '/team', label: 'nav_team', icon: UserCog, ownerOnly: true },
+  { href: '/settings', label: 'nav_settings', icon: Settings, ownerOnly: true },
+  { href: '/admin', label: 'Platform Admin', icon: Settings, superAdminOnly: true },
   { href: '/admin?create=true', label: 'Register Firm', icon: Building2, superAdminOnly: true },
-  { href: '/admin/branding', label: 'Branding',      icon: Palette, superAdminOnly: true },
+  { href: '/admin/branding', label: 'Branding', icon: Palette, superAdminOnly: true },
 ]
 
 const planColor: Record<string, string> = {
@@ -36,21 +39,24 @@ const planColor: Record<string, string> = {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const pathname  = usePathname()
-  const router    = useRouter()
-  const supabase  = createClient()
-  const { firm, role } = useFirm()
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+  const { role, firm } = useFirm()
+  const isOwner = role === 'owner' || role === 'superadmin'
+  const { lang, setLang, t } = useI18n()
+  const { isLocked, lock, hasPin, isElectron } = usePinLock()
+  const { install, isInstallable } = usePwa()
+
   const [userEmail, setUserEmail] = useState('')
-  const [theme,     setTheme]     = useState<'dark'|'light'>('dark')
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  // Accessibility
-  const [fontSize,   setFontSize]   = useState(14)
+  const [fontSize, setFontSize] = useState(14)
   const [monochrome, setMonochrome] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
-    const savedTheme = (localStorage.getItem('theme') || 'dark') as 'dark'|'light'
+    const savedTheme = (localStorage.getItem('theme') || 'dark') as 'dark' | 'light'
     setTheme(savedTheme)
     document.documentElement.classList.toggle('dark', savedTheme === 'dark')
 
@@ -112,8 +118,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? Math.max(0, Math.ceil((new Date(firm.trial_ends).getTime() - Date.now()) / 86400000))
     : null
 
-  const isOwner = role === 'owner' || role === 'superadmin'
-
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -154,9 +158,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {NAV.map((item, i) => {
             // Dividers
             if ('divider' in item && item.divider) {
-              // Superadmins see all dividers, others only see if they have access to the items below
               return (
-                <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{item.label}</div>
+                <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{t(item.label)}</div>
               )
             }
 
@@ -169,30 +172,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             if (item.ownerOnly && !isOwner && !isSuper) return null // Hide owner-only from staff (unless superadmin)
 
             // Note: Superadmin sees everything, so we don't return null for them here
-            const Icon   = item.icon!
-            const href   = item.href as string;
+            const Icon = item.icon!
+            const href = item.href as string;
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all"
                 style={active ? { background: 'var(--gold-dim)', color: 'var(--gold)' } : { color: 'var(--text2)' }}>
                 <Icon size={15} />
-                {item.label}
+                {t(item.label)}
               </Link>
             )
           })}
         </nav>
 
-        <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="text-xs mb-0.5" style={{ color: 'var(--text3)' }}>Signed in as</div>
-          <div className="text-xs font-medium truncate mb-2" style={{ color: 'var(--text)' }}>{userEmail}</div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs" style={{ color: 'var(--text3)' }}>v2.0</span>
-            <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-              className="flex items-center gap-1 text-xs font-medium"
-              style={{ color: 'var(--red)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              <LogOut size={11} /> Sign Out
+        {isInstallable && (
+          <div className="px-3 pb-3">
+            <button onClick={install}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
+              style={{ background: 'var(--gold)', color: 'white', boxShadow: '0 4px 12px var(--gold-border)' }}>
+              <Download size={15} />
+              Install App
             </button>
+          </div>
+        )}
+
+        <div className="mt-auto border-t p-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
+              style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid var(--gold-border)' }}>
+              {userEmail ? userEmail.substring(0, 2).toUpperCase() : '??'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-bold uppercase tracking-wider opacity-40 mb-0.5">{role === 'superadmin' ? 'Platform' : (isOwner ? 'Manager' : 'Staff')}</div>
+              <div className="text-[12px] font-bold uppercase truncate" style={{ color: 'var(--text)' }}>
+                {userEmail}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+              {hasPin && (
+                <button onClick={lock}
+                  title="Lock Session"
+                  className="p-1.5 rounded-lg hover:bg-[var(--gold-dim)] hover:text-[var(--gold)] shrink-0"
+                  style={{ color: 'var(--text3)' }}>
+                  <Lock size={14} />
+                </button>
+              )}
+              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+                title={t('sign_out')}
+                className="p-1.5 rounded-lg hover:bg-[var(--red-dim)] hover:text-[var(--red)] shrink-0"
+                style={{ color: 'var(--text3)' }}>
+                <LogOut size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between px-2">
+            <span className="text-[12px] font-bold tracking-widest opacity-30">{process.env.NEXT_PUBLIC_APP_NAME} - {process.env.NEXT_PUBLIC_APP_VERSION}</span>
+            {isInstallable && (
+              <button onClick={install} className="text-[12px] font-bold text-[var(--gold)] hover:underline">
+                INSTALL APP
+              </button>
+            )}
           </div>
         </div>
       </aside>
@@ -206,7 +246,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu size={20} />
             </button>
             <h1 className="font-display text-lg" style={{ color: 'var(--text)' }}>
-              {NAV.find(n => 'href' in n && n.href === pathname)?.label || firm?.name || APP_NAME}
+              {t(NAV.find(n => 'href' in n && n.href === pathname)?.label || '') || firm?.name || APP_NAME}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -217,29 +257,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <div className="flex items-center gap-1.5 p-1 rounded-full border" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-               {/* Monochrome */}
-               <button onClick={toggleMono} title="Monochrome Mode"
-                 className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors"
-                 style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
-                 <Palette size={13} />
-               </button>
-               <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-               {/* Font Size */}
-               <button onClick={() => adjustFont(-1)} title="Decrease Font"
-                 className="text-[10px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
-                 style={{ color: 'var(--text2)' }}>
-                 A-
-               </button>
-               <button onClick={() => adjustFont(1)} title="Increase Font"
-                 className="text-[12px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
-                 style={{ color: 'var(--text2)' }}>
-                 A+
-               </button>
-               <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-               {/* Theme */}
-               <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors" style={{ color: 'var(--text2)' }}>
-                 {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
-               </button>
+              {/* Monochrome */}
+              <button onClick={toggleMono} title="Monochrome Mode"
+                className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors"
+                style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
+                <Palette size={13} />
+              </button>
+              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+              {/* Font Size */}
+              <button onClick={() => adjustFont(-1)} title="Decrease Font"
+                className="text-[10px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
+                style={{ color: 'var(--text2)' }}>
+                A-
+              </button>
+              <button onClick={() => adjustFont(1)} title="Increase Font"
+                className="text-[12px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
+                style={{ color: 'var(--text2)' }}>
+                A+
+              </button>
+              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+              {/* Language Switch */}
+              <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
+                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
+                <Languages size={12} />
+                {lang === 'en' ? 'தமிழ்' : 'EN'}
+              </button>
+              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+              {/* Theme */}
+              <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors" style={{ color: 'var(--text2)' }}>
+                {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
+              </button>
             </div>
           </div>
         </header>
@@ -249,17 +297,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 py-2.5 flex items-center justify-around shadow-lg"
           style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)' }}>
           {[
-            { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-            { href: '/groups',    icon: UsersRound,      label: 'Groups' },
-            { href: '/members',   icon: Users,           label: 'Members' },
-            { href: '/payments',  icon: CreditCard,      label: 'Pay' },
+            { href: '/dashboard', icon: LayoutDashboard, label: 'nav_dashboard' },
+            { href: '/groups', icon: UsersRound, label: 'nav_groups' },
+            { href: '/members', icon: Users, label: 'nav_members' },
+            { href: '/payments', icon: CreditCard, label: 'nav_payments' },
           ].map(item => {
             const active = pathname === item.href
             return (
               <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 px-3 py-1.5 transition-all"
                 style={{ color: active ? 'var(--gold)' : 'var(--text3)' }}>
                 <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{t(item.label)}</span>
               </Link>
             )
           })}

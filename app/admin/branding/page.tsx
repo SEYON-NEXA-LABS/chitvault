@@ -3,21 +3,29 @@
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS } from '@/lib/branding/context'
+import { applyBranding } from '@/lib/branding/context'
 import { useToast } from '@/lib/hooks/useToast'
 import { Btn, Card } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { Palette, Type, Image as ImageIcon } from 'lucide-react'
+import { THEMES, getTheme } from '@/lib/branding/themes'
 
 interface Firm {
   id: string
   name: string
   primary_color: string | null
   accent_color: string | null
+  theme_id: string | null
   logo_url: string | null
   tagline: string | null
   font: string | null
 }
+
+const AVAILABLE_FONTS = [
+  { label: 'Noto Sans (Best Support)', value: 'Noto Sans' },
+  { label: 'Mukta Malar',             value: 'Mukta Malar' },
+  { label: 'Hind Madurai',            value: 'Hind Madurai' },
+]
 
 export default function AdminBrandingPage() {
   const supabase = createClient()
@@ -30,12 +38,10 @@ export default function AdminBrandingPage() {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
-  const [color, setColor] = useState('#2563eb')
-  const [accentColor, setAccentColor] = useState('#1e40af')
-  const [customColor, setCustomColor] = useState('')
+  const [themeId, setThemeId] = useState('theme1')
   const [logoUrl, setLogoUrl] = useState('')
   const [tagline, setTagline] = useState('Chit Fund Manager')
-  const [font, setFont] = useState('DM Sans')
+  const [font, setFont] = useState('Noto Sans')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -54,44 +60,40 @@ export default function AdminBrandingPage() {
 
   useEffect(() => {
     if (selectedFirm) {
-      const { name, address, phone, primary_color, accent_color, logo_url, tagline, font } = selectedFirm as any
+      const { name, address, phone, theme_id, logo_url, tagline, font, primary_color, accent_color } = selectedFirm as any
+      const theme = getTheme(theme_id)
+      
       setName(name || '')
       setAddress(address || '')
       setPhone(phone || '')
-      setColor(primary_color || '#2563eb')
-      setAccentColor(accent_color || '#1e40af')
-      setCustomColor(primary_color || '')
+      setThemeId(theme_id || 'theme1')
       setLogoUrl(logo_url || '')
       setTagline(tagline || 'Chit Fund Manager')
-      setFont(font || 'DM Sans')
-      applyBranding(primary_color || '#2563eb', font || 'DM Sans', accent_color || '#1e40af')
+      setFont(font || 'Noto Sans')
+      
+      applyBranding(
+        primary_color || theme.primary, 
+        font || 'Noto Sans', 
+        accent_color || theme.accent,
+        theme.bg
+      )
     } else {
-      // Reset to default when no firm is selected
-      applyBranding('#2563eb', 'DM Sans', '#1e40af')
+      const def = getTheme('theme1')
+      applyBranding(def.primary, 'Noto Sans', def.accent, def.bg)
     }
   }, [selectedFirm])
 
-  const handleColorSelect = useCallback((val: string) => {
-    if (val === 'custom') return
-    setColor(val); setCustomColor(val)
-    applyBranding(val, font, accentColor) // live preview
-  }, [font, accentColor]);
-
-  const handleCustomColor = useCallback((val: string) => {
-    setCustomColor(val)
-    setColor(val)
-    applyBranding(val, font, accentColor)
-  }, [font, accentColor]);
-
-  const handleAccentChange = (val: string) => {
-    setAccentColor(val)
-    applyBranding(color, font, val)
-  }
+  const handleThemeChange = useCallback((id: string) => {
+    setThemeId(id)
+    const t = getTheme(id)
+    applyBranding(t.primary, font, t.accent, t.bg) // live preview
+  }, [font]);
 
   const handleFontChange = useCallback((f: string) => {
     setFont(f)
-    applyBranding(color, f, accentColor)
-  }, [color, accentColor]);
+    const t = getTheme(themeId)
+    applyBranding(t.primary, f, t.accent, t.bg)
+  }, [themeId]);
 
   async function saveBranding() {
     if (!selectedFirm) return
@@ -100,8 +102,10 @@ export default function AdminBrandingPage() {
       name: name.trim() || undefined,
       address: address.trim() || null,
       phone: phone.trim() || null,
-      primary_color: color,
-      accent_color: accentColor,
+      theme_id: themeId,
+      // Clear legacy custom colors when theme is set
+      primary_color: null,
+      accent_color: null,
       logo_url: logoUrl.trim() || null,
       tagline: tagline.trim() || 'Chit Fund Manager',
       font,
@@ -176,7 +180,9 @@ export default function AdminBrandingPage() {
               </div>
               <div className="flex gap-3 items-center">
                 {logoUrl && (
-                  <Image src={logoUrl} alt="Firm logo" width={140} height={44} style={{ borderRadius: 8, border: '1px solid var(--border)', objectFit: 'contain', background: '#fff', padding: 4 }} />
+                  <div className="relative w-32 h-12 bg-white rounded-lg border p-1 border-gray-100 flex items-center justify-center overflow-hidden">
+                     <img src={logoUrl} alt="Firm logo" className="max-w-full max-h-full object-contain" />
+                  </div>
                 )}
                 <input className={inputClass} style={inputStyle} value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://your-logo.png" />
               </div>
@@ -188,38 +194,24 @@ export default function AdminBrandingPage() {
               <input className={inputClass} style={inputStyle} value={tagline} onChange={e => setTagline(e.target.value)} placeholder="e.g. Trusted Chit Fund Manager" />
             </div>
 
-            {/* Colour */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-              {/* Primary */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                  <Palette size={13} /> Primary Colour
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {PRESET_COLORS.map(p => (
-                    p.value !== 'custom' ? (
-                      <button key={p.value} onClick={() => handleColorSelect(p.value)} title={p.label} style={{ width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer', outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent', outlineOffset: 2, transition: 'outline 0.15s' }} />
-                    ) : null
-                  ))}
-                  <div style={{ position: 'relative' }}>
-                    <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
-                  </div>
-                </div>
+            {/* Theme Selection */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
+                <Palette size={13} /> Select Predefined Theme
               </div>
-
-              {/* Accent */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                  <Palette size={13} /> Accent Colour
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {['#1e40af', '#1d4ed8', '#0369a1', '#0e7490', '#c026d3', '#db2777', '#dc2626', '#d97706'].map(c => (
-                    <button key={c} onClick={() => handleAccentChange(c)} title="Preset" style={{ width: 32, height: 32, borderRadius: 8, background: c, border: 'none', cursor: 'pointer', outline: accentColor === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'outline 0.15s' }} />
-                  ))}
-                  <div style={{ position: 'relative' }}>
-                    <input type="color" value={accentColor} onChange={e => handleAccentChange(e.target.value)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
-                  </div>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {THEMES.map(t => (
+                  <button key={t.id} 
+                    onClick={() => handleThemeChange(t.id)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${themeId === t.id ? 'border-blue-500 shadow-sm' : 'border-gray-100'}`}
+                    style={{ background: t.bg }}>
+                    <div className="text-[10px] font-bold text-gray-800 mb-2 truncate">{t.name}</div>
+                    <div className="flex gap-1.5">
+                      <div className="w-5 h-5 rounded-md" style={{ background: t.primary }} />
+                      <div className="w-5 h-5 rounded-md" style={{ background: t.accent }} />
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -230,7 +222,7 @@ export default function AdminBrandingPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_FONTS.map(f => (
-                  <button key={f.value} onClick={() => handleFontChange(f.value)} className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all" style={{ fontFamily: `'${f.value}', sans-serif`, borderColor: font === f.value ? color : 'var(--border)', background: font === f.value ? `${color}15` : 'var(--surface2)', color: font === f.value ? color : 'var(--text2)', fontWeight: font === f.value ? 700 : 400 }}>
+                  <button key={f.value} onClick={() => handleFontChange(f.value)} className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all" style={{ fontFamily: `'${f.value}', sans-serif`, borderColor: font === f.value ? 'var(--blue)' : 'var(--border)', background: font === f.value ? 'var(--blue-dim)' : 'var(--surface2)', color: font === f.value ? 'var(--blue)' : 'var(--text2)', fontWeight: font === f.value ? 700 : 400 }}>
                     {f.label}
                   </button>
                 ))}
@@ -239,7 +231,7 @@ export default function AdminBrandingPage() {
 
             <div className="flex justify-end pt-2 border-t">
               <Btn variant="primary" loading={saving} onClick={saveBranding}>
-                Save Branding
+                Save Branding & Theme
               </Btn>
             </div>
           </div>

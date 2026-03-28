@@ -1,16 +1,19 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Playfair_Display } from 'next/font/google'
+import { Noto_Sans, Noto_Sans_Tamil } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
 import { BrandingProvider } from '@/lib/branding/BrandingProvider'
+import { I18nProvider } from '@/lib/i18n/context'
+import { PinLockProvider } from '@/lib/lock/context'
+import { PwaProvider } from '@/lib/pwa/context'
 import './globals.css'
 
-const dmSans = DM_Sans({ subsets: ['latin'], weight: ['300', '400', '500', '600'], variable: '--font-dm-sans' })
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-playfair' })
+const noto = Noto_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-noto' })
+const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '600', '700'], variable: '--font-noto-tamil' })
 
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
   description: 'Chit Fund Management Software',
-  icons: { icon: '/icons/icon-32.png', apple: '/icons/icon-152.png' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-512.png' },
   manifest: '/manifest.webmanifest'
 }
 
@@ -29,12 +32,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${dmSans.variable} ${playfair.variable}`}>
+      <body className={`${noto.variable} ${notoTamil.variable}`}>
         <FirmProvider>
           <BrandingProvider>
-            {children}
+            <I18nProvider>
+              <PinLockProvider>
+                <PwaProvider>
+                  {children}
+                </PwaProvider>
+              </PinLockProvider>
+            </I18nProvider>
           </BrandingProvider>
         </FirmProvider>
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js');
+            });
+          }
+        `}} />
       </body>
     </html>
   )
