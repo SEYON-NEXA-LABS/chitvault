@@ -7,7 +7,7 @@ import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
-import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react'
+import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock } from 'lucide-react'
 import type { Group, Member, Auction, Payment, ForemanCommission } from '@/types'
 
 const REPORTS = [
@@ -22,6 +22,9 @@ const REPORTS = [
   { id: 'member_history', category: 'Member-focused', title: 'Member Payment History', desc: 'Complete payment history for a specific member', icon: Users },
   { id: 'defaulters', category: 'Member-focused', title: 'Defaulter Analysis', desc: 'High-risk members with defaults', icon: AlertTriangle },
   { id: 'winners', category: 'Member-focused', title: 'Auction Winners', desc: 'Comprehensive list of won auctions', icon: CheckCircle },
+  
+  { id: 'reconciliation', category: 'Audit & Control', title: 'Daily Cash Reconciliation', desc: 'Compare member payments with cashbook entries', icon: FileText },
+  { id: 'activity', category: 'Audit & Control', title: 'System Activity Log', desc: 'Secure audit trail of all actions', icon: History },
 ]
 
 export default function ReportsPage() {
@@ -39,6 +42,9 @@ function ReportsPageContent() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [commissions, setCommissions] = useState<ForemanCommission[]>([])
+  const [denominations, setDenominations] = useState<any[]>([])
+  const [activityLogs, setActivityLogs] = useState<any[]>([])
+  const [profiles,     setProfiles]    = useState<any[]>([])
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState<string | null>(null)
 
@@ -94,27 +100,27 @@ function ReportsPageContent() {
       try {
         setLoading(true)
         setError(null)
-        const [g, m, a, p, c] = await Promise.all([
+        const res = await Promise.all([
           supabase.from('groups').select('*').order('name'),
           supabase.from('members').select('*, persons(*)'),
           supabase.from('auctions').select('*').order('month', { ascending: false }),
-          supabase.from('payments').select('*').order('created_at', { ascending: false }),
-          supabase.from('foreman_commissions').select('*')
+          supabase.from('payments').select('*').order('payment_date', { ascending: false }),
+          supabase.from('foreman_commissions').select('*').order('month'),
+          supabase.from('denominations').select('*').order('entry_date', { ascending: false }),
+          supabase.from('activity_logs').select('*').order('created_at', { ascending: false }),
+          supabase.from('profiles').select('id, full_name'),
         ])
 
-        if (g.error) throw new Error(`Failed to load groups: ${g.error.message}`)
-        if (m.error) throw new Error(`Failed to load members: ${m.error.message}`)
-        if (a.error) throw new Error(`Failed to load auctions: ${a.error.message}`)
-        if (p.error) throw new Error(`Failed to load payments: ${p.error.message}`)
+        res.forEach((r, i) => { if (r.error) throw new Error(`Query ${i} failed: ${r.error.message}`) })
 
-        setGroups(g.data as Group[] || [])
-        const sortedMembers = (m.data as Member[] || []).sort((a, b) => 
-          (a.persons?.name || '').localeCompare(b.persons?.name || '')
-        )
-        setMembers(sortedMembers)
-        setAuctions(a.data as Auction[] || [])
-        setPayments(p.data as Payment[] || [])
-        setCommissions(c.data as ForemanCommission[] || [])
+        setGroups(res[0].data as Group[] || [])
+        setMembers((res[1].data as Member[] || []).sort((a, b) => (a.persons?.name || '').localeCompare(b.persons?.name || '')))
+        setAuctions(res[2].data as Auction[] || [])
+        setPayments(res[3].data as Payment[] || [])
+        setCommissions(res[4].data as ForemanCommission[] || [])
+        setDenominations(res[5].data || [])
+        setActivityLogs(res[6].data || [])
+        setProfiles(res[7].data || [])
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -129,6 +135,8 @@ function ReportsPageContent() {
 
   const renderActiveReport = () => {
     switch (activeReport) {
+      case 'reconciliation': return <ReportReconciliation payments={payments} denominations={denominations} />
+      case 'activity': return <ReportActivityLog logs={activityLogs} profiles={profiles} />
       case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} auctions={filteredAuctions} />
       case 'cashflow': return <ReportCashFlow payments={filteredPayments} auctions={filteredAuctions} />
       case 'dividend': return <ReportDividend groups={groups} auctions={filteredAuctions} />
@@ -279,8 +287,7 @@ function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commiss
 }
 
 function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions: Auction[] }) {
-  const paidPayments = payments.filter(p => p.status === 'paid')
-  const totalCollected = paidPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0)
   const totalPaidOut = auctions.reduce((s, a) => s + Number(a.bid_amount), 0)
   const netFlow = totalCollected - totalPaidOut
 
@@ -333,21 +340,25 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
     const currentMonth = Math.min(group.duration, groupAuctions.length + 1)
     
     const memberPayments = payments.filter((p: Payment) => p.member_id === member.id)
-    let mOutstanding = 0
+    let mTotalDue = 0
     const mPending: any[] = []
 
     for (let month = 1; month <= currentMonth; month++) {
-      const auc = groupAuctions.find((a: Auction) => a.month === month)
-      const dividend = auc ? Number(auc.dividend || 0) : 0
+      const prevMonthAuc = groupAuctions.find((a: Auction) => a.month === month - 1)
+      const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
       const due = Number(group.monthly_contribution) - dividend
       const paid = memberPayments.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0)
+      
+      mTotalDue += due
       const bal = Math.max(0, due - paid)
 
       if (bal > 0.01) {
-        mOutstanding += bal
         mPending.push({ month, amount: bal })
       }
     }
+
+    const mTotalPaid = memberPayments.reduce((s: number, p: Payment) => s + Number(p.amount), 0)
+    const mOutstanding = Math.max(0, mTotalDue - mTotalPaid)
 
     if (mOutstanding > 0) return { member, group, mOutstanding, mPending }
     return null
@@ -444,7 +455,7 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
 
 function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { groups: Group[], groupId: number, members: Member[], auctions: Auction[], payments: Payment[] }) {
   const grpAuctions = auctions.filter(a => a.group_id === groupId).sort((a,b) => a.month - b.month)
-  const grpPayments = payments.filter(p => p.group_id === groupId && p.status === 'paid')
+  const grpPayments = payments.filter(p => p.group_id === groupId)
   
   return (
     <TableCard title="Group Ledger (Summary per month)">
@@ -482,8 +493,8 @@ function ReportMemberHistory({ memberId, members, groups, payments, auctions }: 
   
   let totalDue = 0
   for (let m = 1; m <= currentMonth; m++) {
-    const auc = groupAuctions.find(a => a.month === m)
-    const dividend = auc ? Number(auc.dividend || 0) : 0
+    const prevMonthAuc = groupAuctions.find(a => a.month === m - 1)
+    const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
     totalDue += (Number(group?.monthly_contribution || 0) - dividend)
   }
 
@@ -570,6 +581,116 @@ function ReportWinners({ auctions, groups, members }: { auctions: Auction[], gro
               </Tr>
             )
           })}
+        </tbody>
+      </Table>
+    </TableCard>
+  )
+}
+
+function ReportReconciliation({ payments, denominations }: { payments: Payment[], denominations: any[] }) {
+  const reconData = useMemo(() => {
+    const dates = Array.from(new Set([
+      ...payments.map(p => p.payment_date),
+      ...denominations.map(d => d.entry_date)
+    ].filter(Boolean) as string[]))
+
+    return dates
+      .sort((a, b) => b.localeCompare(a))
+      .map(date => {
+        const ledgerTotal = payments
+          .filter(p => p.payment_date === date)
+          .reduce((s, p) => s + Number(p.amount), 0)
+        const cashbookTotal = denominations
+          .filter(d => d.entry_date === date)
+          .reduce((s, d) => s + Number(d.total), 0)
+        return { date, ledgerTotal, cashbookTotal, diff: ledgerTotal - cashbookTotal }
+      })
+  }, [payments, denominations])
+
+  const totalLedger = reconData.reduce((s, r) => s + r.ledgerTotal, 0)
+  const totalCash = reconData.reduce((s, r) => s + r.cashbookTotal, 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard label="Total Ledger (Accounting)" value={fmt(totalLedger)} color="blue" />
+        <StatCard label="Total Cashbook (Physical)" value={fmt(totalCash)} color="gold" />
+      </div>
+
+      <TableCard title="Daily Reconciliation" subtitle="Verification of member receipts vs physical cash">
+        <Table>
+          <thead><tr>
+            <Th>Date</Th>
+            <Th right>Ledger Total (A)</Th>
+            <Th right>Cashbook Total (B)</Th>
+            <Th right>Difference (A-B)</Th>
+            <Th>Status</Th>
+          </tr></thead>
+          <tbody>
+            {reconData.map(r => (
+              <Tr key={r.date}>
+                <Td>{fmtDate(r.date)}</Td>
+                <Td right className="font-mono">{fmt(r.ledgerTotal)}</Td>
+                <Td right className="font-mono">{fmt(r.cashbookTotal)}</Td>
+                <Td right className={`font-mono font-bold ${Math.abs(r.diff) > 0.1 ? 'text-red-500' : 'text-green-500'}`}>
+                  {r.diff > 0 ? '+' : ''}{fmt(r.diff)}
+                </Td>
+                <Td>
+                  {Math.abs(r.diff) < 0.1 
+                    ? <Badge variant="green">Matched ✓</Badge>
+                    : <Badge variant="red">Discrepancy ✗</Badge>}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      </TableCard>
+    </div>
+  )
+}
+
+function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] }) {
+  return (
+    <TableCard title="System Activity Log" subtitle="Audit trail of critical system actions">
+      <Table>
+        <thead><tr>
+          <Th>Timestamp</Th>
+          <Th>User</Th>
+          <Th>Action</Th>
+          <Th>Reference</Th>
+          <Th>Details</Th>
+        </tr></thead>
+        <tbody>
+          {logs.length === 0 ? (
+            <Tr><Td colSpan={5} className="text-center py-5">No activity recorded yet.</Td></Tr>
+          ) : logs.map(l => (
+            <Tr key={l.id}>
+              <Td className="text-[10px] whitespace-nowrap">
+                <div className="flex items-center gap-1 opacity-60">
+                  <Clock size={10} />
+                  {new Date(l.created_at).toLocaleString()}
+                </div>
+              </Td>
+              <Td>
+                <div className="font-bold text-xs">
+                  {profiles.find(p => p.id === l.user_id)?.full_name || 'System / Auto'}
+                </div>
+              </Td>
+              <Td>
+                <Badge variant={l.action.includes('DELETED') ? 'red' : 'blue'} className="text-[9px]">
+                  {l.action}
+                </Badge>
+              </Td>
+              <Td className="text-[10px] opacity-40 font-mono">
+                {l.entity_type} {l.entity_id ? `#${l.entity_id}` : ''}
+              </Td>
+              <Td className="text-xs">
+                <div className="max-w-[300px] truncate opacity-80">
+                  {l.metadata ? JSON.stringify(l.metadata) : '—'}
+                </div>
+              </Td>
+            </Tr>
+          ))}
         </tbody>
       </Table>
     </TableCard>

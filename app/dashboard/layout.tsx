@@ -123,7 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <aside className={cn(
-        'fixed top-0 left-0 bottom-0 z-50 w-60 flex flex-col transition-transform duration-300 border-r',
+        'fixed top-0 left-0 bottom-0 z-50 w-60 flex flex-col transition-transform duration-300 border-r no-print',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
 
@@ -238,7 +238,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex-1 flex flex-col lg:ml-60">
-        <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 border-b"
+        <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 border-b no-print"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3">
             <button className="lg:hidden" onClick={() => setSidebarOpen(true)}
@@ -294,7 +294,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 p-5 pb-24 overflow-auto">{children}</main>
 
         {/* Mobile Bottom Nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 py-2.5 flex items-center justify-around shadow-lg"
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 py-2.5 flex items-center justify-around shadow-lg no-print"
           style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)' }}>
           {[
             { href: '/dashboard', icon: LayoutDashboard, label: 'nav_dashboard' },

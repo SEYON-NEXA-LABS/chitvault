@@ -14,6 +14,12 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
 
   useEffect(() => {
+    // 1. Check if it was already caught by layout script
+    if ((window as any).deferredPrompt) {
+      setDeferredPrompt((window as any).deferredPrompt)
+    }
+
+    // 2. Also listen for any future events
     const handler = (e: any) => {
       e.preventDefault()
       setDeferredPrompt(e)

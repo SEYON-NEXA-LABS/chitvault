@@ -69,7 +69,7 @@ export default function CollectionPage() {
       
       const mDues: any[] = [];
       for (let month = 1; month <= currentMonth; month++) {
-        const auc = gAucs.find(a => a.month === month);
+        const auc = gAucs.find(a => a.month === month - 1);
         const dividend = auc ? Number(auc.dividend || 0) : 0;
         const amountDue = Number(g.monthly_contribution) - dividend;
         const amountPaid = gPays.filter(p => p.month === month).reduce((s, p) => s + Number(p.amount), 0);
@@ -80,7 +80,7 @@ export default function CollectionPage() {
       }
 
       const totalBalance = mDues.reduce((s, d) => s + d.balance, 0);
-      return totalBalance > 0.01 ? { member: m, person: m.persons, dues: mDues, totalBalance } : null;
+      return totalBalance > 0.01 ? { member: m, person: m.persons, group: g, dues: mDues, totalBalance } : null;
     }).filter(Boolean);
 
     // 2. Group by Person

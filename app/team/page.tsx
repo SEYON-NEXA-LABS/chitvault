@@ -7,6 +7,7 @@ import { fmtDate } from '@/lib/utils'
 import { Btn, Card, Badge, Loading, Toast, Modal, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
+import { logActivity } from '@/lib/utils/logger'
 import { UserPlus, Trash2, Shield, User, Crown, Mail } from 'lucide-react'
 
 interface TeamMember {
@@ -116,6 +117,9 @@ export default function TeamPage() {
     if (error) { show(error.message, 'error'); return }
 
     show(`Invite sent to ${inviteEmail}`)
+    
+    // Log Activity
+    await logActivity(firm.id, 'STAFF_ADDED', 'invite', inviteEmail, { role: inviteRole })
     setInviteOpen(false)
     setInviteEmail('')
     load()
@@ -124,20 +128,26 @@ export default function TeamPage() {
   async function revokeInvite(id: string) {
     if (!confirm('Revoke this invite?')) return
     await supabase.from('invites').delete().eq('id', id)
-    show('Invite revoked.'); load()
+    show('Invite revoked.')
+    if (firm) await logActivity(firm.id, 'SETTING_UPDATED', 'invite', id, { action: 'revoke' })
+    load()
   }
 
   async function changeRole(memberId: string, newRole: string) {
     if (memberId === currentUserId) { show("You can't change your own role.", 'error'); return }
     await supabase.from('profiles').update({ role: newRole }).eq('id', memberId)
-    show('Role updated.'); load()
+    show('Role updated.')
+    if (firm) await logActivity(firm.id, 'STAFF_ADDED', 'profile', memberId, { new_role: newRole })
+    load()
   }
 
   async function removeMember(memberId: string) {
     if (memberId === currentUserId) { show("You can't remove yourself.", 'error'); return }
     if (!confirm('Remove this staff member from your firm?')) return
     await supabase.from('profiles').update({ firm_id: null, role: 'staff' }).eq('id', memberId)
-    show('Member removed.'); load()
+    show('Member removed.')
+    if (firm) await logActivity(firm.id, 'STAFF_REMOVED', 'profile', memberId)
+    load()
   }
 
   // Copy invite link

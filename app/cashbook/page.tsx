@@ -9,6 +9,7 @@ import { useToast } from '@/lib/hooks/useToast'
 import { DENOMINATIONS } from '@/types'
 import type { Denomination } from '@/types'
 import { Printer, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { logActivity } from '@/lib/utils/logger'
 
 type DenomKey = typeof DENOMINATIONS[number]['key']
 type DenomCounts = Record<DenomKey, number>
@@ -105,6 +106,10 @@ export default function CashbookPage() {
     setSaving(false)
     if (error) { show(error.message, 'error'); return }
     show('Cash entry saved! ✓')
+    
+    // Log Activity
+    await logActivity(firm.id, 'CASH_ENTRY_SAVED', 'denominations', null, { date: entryDate, total: liveTotal })
+
     setAddOpen(false)
     setCounts(EMPTY_COUNTS()); setNotes(''); setLiveTotal(0)
     load()
@@ -113,7 +118,9 @@ export default function CashbookPage() {
   async function del(id: number) {
     if (!confirm('Delete this cash entry?')) return
     await supabase.from('denominations').delete().eq('id', id)
-    show('Deleted.'); load()
+    show('Deleted.')
+    if (firm) await logActivity(firm.id, 'CASH_ENTRY_DELETED', 'denominations', id)
+    load()
   }
 
   // Stats

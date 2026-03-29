@@ -14,6 +14,7 @@ import {
   Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
   Lock, LockKeyhole
 } from 'lucide-react'
+import { logActivity } from '@/lib/utils/logger'
 import { usePinLock } from '@/lib/lock/context'
 import Image from 'next/image'
 
@@ -117,6 +118,7 @@ export default function SettingsPage() {
     setSaving(false)
     if (error) { show(error.message, 'error'); return }
     show('Branding saved! ✓')
+    await logActivity(firm.id, 'SETTING_UPDATED', 'firm', firm.id, { field: 'branding' })
     refresh()
   }
 
@@ -126,6 +128,7 @@ export default function SettingsPage() {
     await supabase.from('firms').update({ register_token: token }).eq('id', firm.id)
     setRegToken(token)
     show('Registration link generated!')
+    await logActivity(firm.id, 'SETTING_UPDATED', 'firm', firm.id, { field: 'register_token', action: 'generate' })
     refresh()
   }
 
@@ -134,6 +137,7 @@ export default function SettingsPage() {
     await supabase.from('firms').update({ register_token: null }).eq('id', firm.id)
     setRegToken('')
     show('Link revoked.')
+    await logActivity(firm.id, 'SETTING_UPDATED', 'firm', firm.id, { field: 'register_token', action: 'revoke' })
     refresh()
   }
 
