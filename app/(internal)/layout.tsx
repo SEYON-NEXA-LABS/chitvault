@@ -21,7 +21,6 @@ const NAV = [
   { href: '/members', label: 'nav_members', icon: Users },
   { label: 'nav_transactions', divider: true },
   { href: '/auctions', label: 'nav_auctions', icon: Gavel },
-  { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
   { href: '/payments', label: 'nav_payments', icon: CreditCard },
   { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
   { href: '/reports', label: 'nav_reports', icon: BarChart3 },
@@ -29,6 +28,8 @@ const NAV = [
   { label: 'nav_manage', divider: true },
   { href: '/team', label: 'nav_team', icon: UserCog, ownerOnly: true },
   { href: '/settings', label: 'nav_settings', icon: Settings, ownerOnly: true },
+  { label: 'nav_help', divider: true },
+  { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
   { href: '/admin', label: 'Platform Admin', icon: Settings, superAdminOnly: true },
   { href: '/admin?create=true', label: 'Register Firm', icon: Building2, superAdminOnly: true },
   { href: '/admin/branding', label: 'Branding', icon: Palette, superAdminOnly: true },
@@ -291,11 +292,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-        <main className="flex-1 p-5 pb-24 overflow-auto">{children}</main>
+        <main className="flex-1 p-5 overflow-auto" style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }}>{children}</main>
 
         {/* Mobile Bottom Nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 py-2.5 flex items-center justify-around shadow-lg no-print"
-          style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)' }}>
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 pt-2.5 flex items-center justify-around shadow-lg no-print"
+          style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))' }}>
           {[
             { href: '/dashboard', icon: LayoutDashboard, label: 'nav_dashboard' },
             { href: '/groups', icon: UsersRound, label: 'nav_groups' },
