@@ -51,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.deferredPrompt = e;
           });
 
-          if ('serviceWorker' in navigator) {
+          if ('serviceWorker' in navigator && ${process.env.NODE_ENV === 'production' ? 'true' : 'false'}) {
             window.addEventListener('load', function() {
               navigator.serviceWorker.register('/sw.js');
             });
