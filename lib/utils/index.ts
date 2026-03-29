@@ -50,4 +50,4 @@ export function fmtMonth(m: number, start?: string | null): string {
 }
 
 // App name from env
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault'

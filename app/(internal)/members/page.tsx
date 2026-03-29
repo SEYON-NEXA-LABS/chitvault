@@ -12,7 +12,10 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
-import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
+import { downloadCSV } from '@/lib/utils/csv'
+import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin, Download, Upload, FileSpreadsheet } from 'lucide-react'
+import { CSVImportModal } from '@/components/ui'
 
 interface Contact extends Person {
   tickets: Member[];
@@ -26,6 +29,7 @@ export default function MembersPage() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can } = useFirm()
   const isSuper = role === 'superadmin'
+  const { t } = useI18n()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
   const [allGroups, setAllGroups] = useState<Group[]>([])
@@ -50,6 +54,7 @@ export default function MembersPage() {
   const [editForm, setEditForm] = useState({ name:'', nickname: '', phone:'', address:'' })
   const [payForm,  setPayForm]  = useState({ amount: '', payment_date: new Date().toISOString().substring(0, 10), mode: 'Cash', month: '' })
   const [isEditing, setIsEditing] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -189,6 +194,49 @@ export default function MembersPage() {
     setSaving(false)
   }
 
+  const isOwner = role === 'owner' || role === 'superadmin'
+
+  const handleExport = () => {
+    if (!isOwner && !isSuper) return
+    const data = filteredPeople.map(p => ({
+      ID: p.id,
+      Name: p.name,
+      Nickname: p.nickname || '',
+      Phone: p.phone || '',
+      Address: p.address || '',
+      'Active Tickets': p.activeCount,
+      'Total Paid': p.totalPaid,
+      'Balance Due': p.totalBalance
+    }))
+    downloadCSV(data, 'people_directory')
+  }
+
+  const handleImport = async (data: any[]) => {
+    if (!firm) return
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    const payload = data.map(row => ({
+      firm_id: firm.id,
+      name: (row.Name || row.name)?.trim(),
+      nickname: (row.Nickname || row.nickname)?.trim() || null,
+      phone: (row.Phone || row.phone)?.toString()?.replace(/\D/g,'') || null,
+      address: (row.Address || row.address)?.trim() || null,
+      created_by: user?.id,
+      updated_by: user?.id,
+      updated_at: new Date().toISOString()
+    }))
+
+    const { error } = await supabase.from('persons').upsert(payload, {
+      onConflict: 'firm_id,name,phone',
+    })
+    
+    if (error) showToast(error.message, 'error')
+    else {
+      showToast(`Successfully imported ${data.length} persons!`, 'success')
+      load()
+    }
+  }
+
   async function updateContact() {
     if (!detailContact) return
     setSaving(true)
@@ -318,21 +366,29 @@ export default function MembersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap bg-[var(--surface)] p-2 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border)' }}>
-         <div className="flex gap-1">
-            <button onClick={() => setView('people')} 
-               className={cn("px-5 py-2 rounded-xl text-sm font-bold transition-all", view === 'people' ? 'bg-[var(--gold)] text-white shadow-md' : 'text-[var(--text3)] hover:text-[var(--text2)]')}>
-               People Directory
-            </button>
-            <button onClick={() => setView('groups')} 
-               className={cn("px-5 py-2 rounded-xl text-sm font-bold transition-all", view === 'groups' ? 'bg-[var(--gold)] text-white shadow-md' : 'text-[var(--text3)] hover:text-[var(--text2)]')}>
-               By Groups
-            </button>
+         <div className="flex items-center gap-4 px-2">
+            <h1 className="text-2xl font-black text-[var(--text)]">{t('member_directory')}</h1>
+            <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+               <Chip active={view === 'people'} onClick={() => setView('people')}>{t('all_people')}</Chip>
+               <Chip active={view === 'groups'} onClick={() => setView('groups')}>{t('by_groups')}</Chip>
+            </div>
          </div>
-         <div className="flex-1 max-w-sm relative">
-            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} placeholder="Search name or phone..." value={search} onChange={e => setSearch(e.target.value)} />
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30"><User size={18}/></span>
+         <div className="flex flex-1 gap-2 items-center justify-end px-2">
+            <div className="flex-1 max-w-sm relative">
+               <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
+                placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
+               <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
+            </div>
+            <div className="flex gap-2">
+               {isOwner && (
+                  <>
+                     <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>
+                     <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload} title={t('import_people')}>Import</Btn>
+                  </>
+               )}
+               {can('addMember') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('register_person')}</Btn>}
+            </div>
          </div>
-         {can('addMember') && <Btn variant="primary" onClick={() => setAddOpen(true)} icon={Plus}>Register Person</Btn>}
       </div>
 
       {view === 'people' ? (
@@ -340,10 +396,10 @@ export default function MembersPage() {
           <Table>
             <thead><tr>
               {isSuper && <Th>Firm</Th>}
-              <Th>Person</Th>
-              <Th className="hidden md:table-cell">Phone</Th>
-              <Th className="hidden sm:table-cell">Active</Th>
-              <Th>Total Balance</Th>
+              <Th>{t('register_person')}</Th>
+              <Th className="hidden md:table-cell">{t('phone')}</Th>
+              <Th className="hidden sm:table-cell">{t('active_tickets')}</Th>
+              <Th>{t('total_outstanding')}</Th>
               <Th right>Action</Th>
             </tr></thead>
             <tbody>
@@ -384,9 +440,9 @@ export default function MembersPage() {
                   <Table>
                       <thead><tr>
                         <Th>Ticket</Th>
-                        <Th>Name</Th>
-                        <Th className="hidden md:table-cell">Phone</Th>
-                        <Th className="hidden sm:table-cell">Status</Th>
+                        <Th>{t('register_person')}</Th>
+                        <Th className="hidden md:table-cell">{t('phone')}</Th>
+                        <Th className="hidden sm:table-cell">{t('group_status')}</Th>
                         <Th>Action</Th>
                       </tr></thead>
                       <tbody>
@@ -400,11 +456,11 @@ export default function MembersPage() {
                             </Td>
                             <Td>
                                <div className="flex gap-1">
-                                  <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>Pay</Btn>
+                                  <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>{t('record_payment')}</Btn>
                                   <Btn size="sm" variant="ghost" icon={Info} onClick={() => { 
-                                     const p = contacts.find(x => x.id === m.person_id)
+                                     const p = persons.find(x => x.id === m.person_id)
                                      if(p) {
-                                        setDetailContact(p)
+                                        setDetailContact({ ...p, tickets: [], totalPaid: 0, totalBalance: 0, activeCount: 0, pastCount: 0 })
                                         setEditForm({ name: p.name, nickname: p.nickname||'', phone: p.phone||'', address: p.address||'' })
                                      }
                                   }}>Profile</Btn>
@@ -420,15 +476,12 @@ export default function MembersPage() {
         </div>
       )}
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Register New Person">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('register_person')}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Full Name"><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
-          <Field label="Nickname (Alias)"><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
-          <Field label="Phone"><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
-          <Field label="Address"><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
-          <div className="col-span-2 mt-4 p-3 rounded-xl text-[11px] opacity-60 leading-relaxed border border-dashed text-center" style={{ borderColor: 'var(--border)' }}>
-            This registers the person in the master Registry. Use the Group Enrollment form to assign tickets.
-          </div>
+          <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
+          <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
+          <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
+          <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
         </div>
         <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
           <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
@@ -449,23 +502,23 @@ export default function MembersPage() {
         const balance = Math.max(0, group.monthly_contribution - mPayments.filter(p => p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0))
 
         return (
-          <Modal open={!!payMember} onClose={() => setPayMember(null)} title="Record Payment">
+          <Modal open={!!payMember} onClose={() => setPayMember(null)} title={t('record_payment')}>
             <div className="p-3 rounded-xl mb-5 text-sm font-medium bg-[var(--surface2)]">
               {m.persons?.name} · {group.name} · Ticket #{m.ticket_no}
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Month">
+              <Field label={t('auction_month')}>
                 <select className={inputClass} style={inputStyle} value={payForm.month} onChange={e => setPayForm(f => ({...f, month: e.target.value}))}>
                   {payableMonths.map(month => <option key={month} value={month}>Month {month}</option>)}
                 </select>
               </Field>
-              <Field label={`Amount (${fmt(balance)} due)`}><input className={inputClass} style={inputStyle} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
-              <Field label="Date"><input className={inputClass} style={inputStyle} type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({...f, payment_date: e.target.value}))} /></Field>
+              <Field label={`${t('payout')} (${fmt(balance)} due)`}><input className={inputClass} style={inputStyle} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
+              <Field label={t('date')}><input className={inputClass} style={inputStyle} type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({...f, payment_date: e.target.value}))} /></Field>
               <Field label="Mode"><select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}><option>Cash</option><option>Bank Transfer</option><option>UPI</option></select></Field>
             </div>
             <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
               <Btn variant="secondary" onClick={() => setPayMember(null)}>Cancel</Btn>
-              <Btn variant="primary" loading={saving} onClick={savePay}>Record Payment</Btn>
+              <Btn variant="primary" loading={saving} onClick={savePay}>{t('record_payment')}</Btn>
             </div>
           </Modal>
         )
@@ -491,7 +544,7 @@ export default function MembersPage() {
                    </div>
                 </div>
                 <div className="space-y-3">
-                   <div className="text-xs font-bold uppercase tracking-wider opacity-50">Active Tickets</div>
+                   <div className="text-xs font-bold uppercase tracking-wider opacity-50">{t('active_tickets')}</div>
                    <div className="grid gap-2">
                       {c.tickets.map(m => {
                          const g = allGroups.find(x => x.id === m.group_id)
@@ -499,7 +552,7 @@ export default function MembersPage() {
                          return (
                             <div key={m.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
                                <div className="flex items-center gap-3"><UserCheck size={16} className="text-[var(--blue)]"/><div><div className="font-bold text-sm">{g.name} <span className="opacity-40 ml-1">#{m.ticket_no}</span></div></div></div>
-                               <Btn size="sm" variant="ghost" onClick={() => { setPayMember(m); setDetailContact(null) }}>Pay</Btn>
+                               <Btn size="sm" variant="ghost" onClick={() => { setPayMember(m); setDetailContact(null) }}>{t('record_payment')}</Btn>
                             </div>
                          )
                       })}
@@ -508,10 +561,10 @@ export default function MembersPage() {
               </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label="Name"><input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></Field>
-                  <Field label="Nickname"><input className={inputClass} style={inputStyle} value={editForm.nickname} onChange={e => setEditForm(f => ({...f, nickname: e.target.value}))} /></Field>
-                  <Field label="Phone"><input className={inputClass} style={inputStyle} value={editForm.phone} type="tel" maxLength={10} onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} /></Field>
-                  <Field label="Address"><input className={inputClass} style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({...f, address: e.target.value}))} /></Field>
+                  <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></Field>
+                  <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={editForm.nickname} onChange={e => setEditForm(f => ({...f, nickname: e.target.value}))} /></Field>
+                  <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={editForm.phone} type="tel" maxLength={10} onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} /></Field>
+                  <Field label={t('address')}><input className={inputClass} style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({...f, address: e.target.value}))} /></Field>
                 </div>
             )}
             <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
@@ -524,6 +577,14 @@ export default function MembersPage() {
           </Modal>
         )
       })()}
+
+      <CSVImportModal 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        onImport={handleImport} 
+        title={t('import_people')} 
+        requiredFields={['Name']} 
+      />
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>

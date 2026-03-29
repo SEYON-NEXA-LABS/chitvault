@@ -33,7 +33,45 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     print: 'Print',
     new_group: 'New Group',
     add_member: 'Add Member',
-    record_payment: 'Record Payment'
+    record_payment: 'Record Payment',
+
+    // Members
+    member_directory: 'Member Directory',
+    all_people: 'All People',
+    by_groups: 'By Groups',
+    register_person: 'Register Person',
+    import_people: 'Import People',
+    export_people: 'Export People',
+    phone: 'Phone',
+    address: 'Address',
+    nickname: 'Nickname',
+    active_tickets: 'Active Tickets',
+    member_history: 'Member Payment History',
+    member_since: 'Member Since',
+
+    // Groups
+    active_groups: 'Active Groups',
+    chit_value: 'Chit Value',
+    monthly_contribution: 'Monthly Pay',
+    duration: 'Duration',
+    total_members: 'Total Members',
+    group_status: 'Status',
+    scheme: 'Scheme',
+    new_group_desc: 'Set up a new chit group',
+    start_date: 'Start Date',
+
+    // Auctions
+    auction_ledger: 'Auction Ledger',
+    auction_month: 'Auction Month',
+    bid_amount: 'Bid Amount',
+    bid_percentage: 'Bid %',
+    winner: 'Winner',
+    net_payout: 'Net Payout',
+    record_auction: 'Record Auction',
+    auction_history: 'Auction History',
+    winning_bid: 'Winning Bid (₹)',
+    payout_amt: 'Payout Amount',
+    per_member_div: 'Per Member Div'
   },
   ta: {
     // Sidebar
@@ -67,6 +105,44 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     print: 'அச்சிடுக',
     new_group: 'புதிய குழு',
     add_member: 'உறுப்பினர் சேர்க்க',
-    record_payment: 'பணம் செலுத்த'
+    record_payment: 'பணம் செலுத்த',
+
+    // Members
+    member_directory: 'உறுப்பினர்கள் பட்டியல்',
+    all_people: 'அனைத்து நபர்கள்',
+    by_groups: 'குழுவாரியாக',
+    register_person: 'நபர் பதிவு',
+    import_people: 'உறுப்பினர்கள் இறக்குமதி',
+    export_people: 'உறுப்பினர்கள் ஏற்றுமதி',
+    phone: 'தொலைபேசி',
+    address: 'முகவரி',
+    nickname: 'சிறு பெயர்',
+    active_tickets: 'நேரடி சீட்டுகள்',
+    member_history: 'உறுப்பினர் தவனைகள்',
+    member_since: 'உறுப்பினரான தேதி',
+
+    // Groups
+    active_groups: 'நேரடி குழுக்கள்',
+    chit_value: 'சீட்டு மதிப்பு',
+    monthly_contribution: 'மாத சந்தா',
+    duration: 'தவணைகள்',
+    total_members: 'மொத்த உறுப்பினர்கள்',
+    group_status: 'நிலை',
+    scheme: 'முறை',
+    new_group_desc: 'புதிய சீட்டு குழுவை உருவாக்கவும்',
+    start_date: 'ஆரம்ப தேதி',
+
+    // Auctions
+    auction_ledger: 'ஏலப் பட்டியல்',
+    auction_month: 'ஏல மாதம்',
+    bid_amount: 'ஏலத் தொகை',
+    bid_percentage: 'ஏலச் சதவீதம்',
+    winner: 'வெற்றியாளர்',
+    net_payout: 'நிகரப் தொகை',
+    record_auction: 'ஏலம் பதிவு',
+    auction_history: 'ஏல வரலாறு',
+    winning_bid: 'ஏலத் தொகை (₹)',
+    payout_amt: 'பட்டுவாடா தொகை',
+    per_member_div: 'நபர் தள்ளுபடி'
   }
 };

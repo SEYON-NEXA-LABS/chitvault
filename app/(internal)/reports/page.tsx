@@ -5,27 +5,13 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
+import { downloadCSV } from '@/lib/utils/csv'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
-import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock } from 'lucide-react'
+import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 import type { Group, Member, Auction, Payment, ForemanCommission } from '@/types'
 
-const REPORTS = [
-  { id: 'pnl', category: 'Financial', title: 'Profit & Loss (P&L)', desc: 'Summary of income versus expenses', icon: DollarSign },
-  { id: 'cashflow', category: 'Financial', title: 'Cash Flow Analysis', desc: 'Movement of money in and out', icon: TrendingUp },
-  { id: 'dividend', category: 'Financial', title: 'Dividend Performance', desc: 'Average dividend trends by group', icon: DollarSign },
-  
-  { id: 'upcoming_pay', category: 'Operational', title: 'Upcoming & Pending Payments', desc: 'Pending collections for auction cycles', icon: Calendar },
-  { id: 'auction_sched', category: 'Operational', title: 'Auction Schedule', desc: 'Upcoming auctions for all active groups', icon: Calendar },
-  { id: 'group_ledger', category: 'Operational', title: 'Group Ledger', desc: 'Detailed transaction history for a single group', icon: FileText },
-  
-  { id: 'member_history', category: 'Member-focused', title: 'Member Payment History', desc: 'Complete payment history for a specific member', icon: Users },
-  { id: 'defaulters', category: 'Member-focused', title: 'Defaulter Analysis', desc: 'High-risk members with defaults', icon: AlertTriangle },
-  { id: 'winners', category: 'Member-focused', title: 'Auction Winners', desc: 'Comprehensive list of won auctions', icon: CheckCircle },
-  
-  { id: 'reconciliation', category: 'Audit & Control', title: 'Daily Cash Reconciliation', desc: 'Compare member payments with cashbook entries', icon: FileText },
-  { id: 'activity', category: 'Audit & Control', title: 'System Activity Log', desc: 'Secure audit trail of all actions', icon: History },
-]
 
 export default function ReportsPage() {
   return (
@@ -37,6 +23,25 @@ export default function ReportsPage() {
 
 function ReportsPageContent() {
   const supabase = createClient()
+  const { firm, role } = useFirm()
+  const { t } = useI18n()
+  
+  const REPORTS = useMemo(() => [
+    { id: 'pnl', category: 'Financial', title: t('report_pnl') || 'Profit & Loss (P&L)', desc: 'Summary of income versus expenses', icon: DollarSign },
+    { id: 'cashflow', category: 'Financial', title: 'Cash Flow Analysis', desc: 'Movement of money in and out', icon: TrendingUp },
+    { id: 'dividend', category: 'Financial', title: 'Dividend Performance', desc: 'Average dividend trends by group', icon: DollarSign },
+    
+    { id: 'upcoming_pay', category: 'Operational', title: t('upcoming_payments') || 'Upcoming & Pending Payments', desc: 'Pending collections for auction cycles', icon: Calendar },
+    { id: 'auction_sched', category: 'Operational', title: 'Auction Schedule', desc: 'Upcoming auctions for all active groups', icon: Calendar },
+    { id: 'group_ledger', category: 'Operational', title: 'Group Ledger', desc: 'Detailed transaction history for a single group', icon: FileText },
+    
+    { id: 'member_history', category: 'Member-focused', title: 'Member Payment History', desc: 'Complete payment history for a specific member', icon: Users },
+    { id: 'defaulters', category: 'Member-focused', title: 'Defaulter Analysis', desc: 'High-risk members with defaults', icon: AlertTriangle },
+    { id: 'winners', category: 'Member-focused', title: 'Auction Winners', desc: 'Comprehensive list of won auctions', icon: CheckCircle },
+    
+    { id: 'reconciliation', category: 'Audit & Control', title: 'Daily Cash Reconciliation', desc: 'Compare member payments with cashbook entries', icon: FileText },
+    { id: 'activity', category: 'Audit & Control', title: 'System Activity Log', desc: 'Secure audit trail of all actions', icon: History },
+  ], [t])
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -128,7 +133,71 @@ function ReportsPageContent() {
       }
     }
     load()
-  }, [supabase])
+  }, [supabase, firm, searchParams])
+
+  const handleExportCSV = () => {
+    if (!activeReport) return
+    let csvData: any[] = []
+    const reportTitle = REPORTS.find(r => r.id === activeReport)?.title || 'report'
+
+    switch(activeReport) {
+      case 'pnl':
+        csvData = [
+          { Category: 'Income', Description: 'Foreman Commissions', Amount: filteredCommissions.reduce((sum, c) => sum + Number(c.commission_amt), 0) },
+          { Category: 'Expense', Description: 'Operational Costs (Est)', Amount: 0 },
+          { Category: 'Net Profit', Description: 'Total Surplus', Amount: filteredCommissions.reduce((sum, c) => sum + Number(c.commission_amt), 0) }
+        ]
+        break
+      case 'winners':
+        csvData = filteredAuctions.map(a => {
+          const g = groups.find(x => x.id === a.group_id)
+          const w = members.find(x => x.id === a.winner_id)
+          return {
+            Month: a.month,
+            Group: g?.name,
+            Winner: w?.persons?.name,
+            'Bid Amount': a.bid_amount,
+            Dividend: a.dividend,
+            Payout: a.net_payout,
+            'Auction Date': a.auction_date || '—'
+          }
+        })
+        break
+      case 'defaulters':
+        csvData = members.filter(m => {
+          const g = groups.find(x => x.id === m.group_id)
+          if (!g) return false
+          const paid = filteredPayments.filter(p => p.member_id === m.id).reduce((sum, p) => sum + Number(p.amount), 0)
+          const expected = (g.monthly_contribution * Math.min(g.duration, 5)) // Simplified logic for demo
+          return paid < expected
+        }).map(m => {
+          const g = groups.find(x => x.id === m.group_id)
+          return {
+            Member: m.persons?.name,
+            Phone: m.persons?.phone,
+            Group: g?.name,
+            'Ticket No': m.ticket_no,
+            Status: m.status
+          }
+        })
+        break
+      case 'activity':
+        csvData = activityLogs.map(l => ({
+          Time: new Date(l.created_at).toLocaleString(),
+          User: profiles.find(p => p.id === l.user_id)?.full_name || 'System',
+          Action: l.action,
+          Entity: l.entity_type,
+          Details: JSON.stringify(l.metadata)
+        }))
+        break
+    }
+
+    if (csvData.length > 0) {
+      downloadCSV(csvData, reportTitle.toLowerCase().replace(/\s+/g, '_'))
+    } else {
+      alert('This report is currently not exportable or has no data.')
+    }
+  }
 
   if (loading) return <Loading />
   if (error) return <div className="p-4 rounded-lg bg-red-100 text-red-700">Error: {error}</div>
@@ -184,11 +253,11 @@ function ReportsPageContent() {
       {!activeReport && (
         <div className="printable">
           <div className="flex justify-between items-center mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
-            <h1 className="text-2xl font-bold">Reports Hub</h1>
+            <h1 className="text-2xl font-bold">{t('reports_hub')}</h1>
             <div className="flex items-center gap-3">
-              <label className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>Date Filter:</label>
+              <label className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>{t('date_filter')}:</label>
               <select className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 12px' }} value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)}>
-                <option value="all">All Time</option>
+                <option value="all">{t('all_time')}</option>
                 <option value="fy">Current Financial Year</option>
                 <option value="q1">Q1 (Apr - Jun)</option>
                 <option value="q2">Q2 (Jul - Sep)</option>
@@ -243,7 +312,10 @@ function ReportsPageContent() {
                  )}
                </h1>
             </div>
-            <Btn variant="secondary" onClick={() => window.print()}><Printer size={15}/> Print Report</Btn>
+            <div className="flex items-center gap-2">
+                <Btn variant="secondary" onClick={handleExportCSV} icon={FileSpreadsheet} title="Export to CSV">CSV</Btn>
+                <Btn variant="secondary" onClick={() => window.print()} icon={Printer} title="Print Report">Print</Btn>
+             </div>
           </div>
           {renderActiveReport()}
         </div>

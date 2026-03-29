@@ -10,7 +10,9 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel } from 'lucide-react'
+import { downloadCSV } from '@/lib/utils/csv'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Group, Auction, Payment } from '@/types'
@@ -19,6 +21,8 @@ export default function GroupsPage() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can } = useFirm()
   const isSuper = role === 'superadmin'
+  const isOwner = role === 'owner' || role === 'superadmin'
+  const { t } = useI18n()
   const router = useRouter()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
@@ -99,6 +103,27 @@ export default function GroupsPage() {
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
     showToast('Group created!'); setAddOpen(false); load()
+  }
+
+  const handleExport = () => {
+    if (!isOwner) return
+    const data = groups.map(g => {
+      const s = groupStats(g)
+      return {
+        ID: g.id,
+        'Group Name': g.name,
+        'Chit Value': g.chit_value,
+        'Capacity': g.num_members,
+        'Duration': g.duration,
+        'Monthly Pay': g.monthly_contribution,
+        'Start Date': g.start_date || '—',
+        'Scheme': g.auction_scheme,
+        'Status': g.status,
+        'Progress': `${s.done}/${g.duration}`,
+        'End Date': s.endDate
+      }
+    })
+    downloadCSV(data, 'groups_list')
   }
 
   async function archive(id: number) {
@@ -199,8 +224,15 @@ export default function GroupsPage() {
   return (
     <div className="space-y-6">
       {/* Active */}
-      <TableCard title={`Active Groups (${active.length})`}
-        actions={can('createGroup') ? <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> New Group</Btn> : undefined}>
+      <TableCard title={
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-black text-[var(--text)]">{t('active_groups')}</h1>
+          <div className="flex gap-2">
+            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
+            {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('new_group')}</Btn>}
+          </div>
+        </div>
+      }>
         {active.length === 0
           ? <Empty icon="🏦" text="No active groups. Create your first group." action={
             <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
