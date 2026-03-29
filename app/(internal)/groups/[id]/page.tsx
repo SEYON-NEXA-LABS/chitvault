@@ -1,21 +1,26 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
-import { Card, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
+import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone } from 'lucide-react'
+import { downloadCSV } from '@/lib/utils/csv'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
+import { CSVImportModal } from '@/components/ui'
 import type { Group, Auction, Member, ForemanCommission, Person } from '@/types'
 
 export default function GroupLedgerPage() {
   const params   = useParams()
   const router   = useRouter()
-  const supabase = createClient()
-  const { firm } = useFirm()
+  const supabase = useMemo(() => createClient(), [])
+  const { firm, role, can } = useFirm()
+  const { t } = useI18n()
+  const isOwner = role === 'owner' || role === 'superadmin'
 
   const groupId = Number(params.id)
 
@@ -33,6 +38,7 @@ export default function GroupLedgerPage() {
   const [addTab, setAddTab] = useState<'new'|'existing'>('new')
   const [form, setForm] = useState({ name: '', nickname: '', phone: '', address: '', ticket_no: '', person_id: '', tickets: '1' })
   const [allPersons, setAllPersons] = useState<Person[]>([])
+  const [importOpen, setImportOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!firm) return
@@ -120,6 +126,64 @@ export default function GroupLedgerPage() {
     showToast('Member(s) added successfully!', 'success'); setAddOpen(false); load()
   }
 
+  const handleExport = () => {
+    const data = members.map(m => ({
+      'Ticket No': m.ticket_no,
+      'Name': m.persons?.name,
+      'Phone': m.persons?.phone || '',
+      'Status': m.status
+    }))
+    downloadCSV(data, `${group?.name}_members`)
+  }
+
+  const handleImport = async (csvData: any[]) => {
+    if (!firm || !group) return
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    // 1. Bulk Upsert Persons
+    const personPayload = csvData.map(row => ({
+      firm_id: firm.id,
+      name: (row.Name || row.name)?.trim(),
+      phone: (row.Phone || row.phone)?.toString()?.replace(/\D/g,'') || null,
+      created_by: user?.id
+    })).filter(p => p.name)
+
+    const { data: pData, error: pErr } = await supabase.from('persons')
+      .upsert(personPayload, { onConflict: 'firm_id,name,phone' })
+      .select()
+
+    if (pErr) { showToast(pErr.message, 'error'); return }
+
+    // 2. Map Name+Phone to ID for member insertion
+    const pMap = new Map(pData.map((p: Person) => [`${p.name}|${p.phone || ''}`, p.id]))
+
+    // 3. Bulk Insert Members
+    const memberPayload = csvData.map(row => {
+      const name = (row.Name || row.name)?.trim()
+      const phone = (row.Phone || row.phone)?.toString()?.replace(/\D/g,'') || null
+      const personId = pMap.get(`${name}|${phone}`)
+      if (!personId) return null
+
+      return {
+        firm_id: firm.id,
+        group_id: group.id,
+        person_id: personId,
+        ticket_no: parseInt(row['Ticket No'] || row.ticket_no) || null,
+        status: 'active',
+        created_by: user?.id
+      }
+    }).filter(m => m !== null)
+
+    const { error: mErr } = await supabase.from('members').insert(memberPayload)
+    
+    if (mErr) showToast(mErr.message, 'error')
+    else {
+      showToast(`Successfully enrolled ${memberPayload.length} members!`, 'success')
+      load()
+    }
+  }
+
+
   async function deleteMember(id: number) {
      if(!confirm('Are you sure?')) return
      const { error } = await supabase.from('members').delete().eq('id', id)
@@ -175,7 +239,7 @@ export default function GroupLedgerPage() {
         <StatCard label="Earnings" value={fmt(totalComm)} color="blue" />
       </div>
 
-      <Card title="Auction Ledger">
+      <Card title={t('auction_ledger')}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -220,7 +284,18 @@ export default function GroupLedgerPage() {
         </div>
       </Card>
 
-      <Card title="Member List" subtitle={`${members.length} enrollments`}>
+      <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
+        actions={
+            <div className="flex gap-2">
+               {isOwner && (
+                 <>
+                   <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet}>{t('export_people')}</Btn>
+                   <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload}>{t('import_people')}</Btn>
+                 </>
+               )}
+               {can('addMember') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={UserPlus}>{t('add_member')}</Btn>}
+            </div>
+        }>
         <Table>
           <thead><tr><Th>#</Th><Th>Name</Th><Th className="hidden md:table-cell">Phone</Th><Th className="hidden sm:table-cell">Status</Th><Th right>Actions</Th></tr></thead>
           <tbody>
@@ -245,9 +320,9 @@ export default function GroupLedgerPage() {
             ))}
           </tbody>
         </Table>
-      </Card>
+      </TableCard>
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Group Enrollment" size="lg">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('add_member')} size="lg">
          <div className="flex gap-1 mb-5 bg-[var(--surface2)] p-1 rounded-xl">
             <button onClick={() => setAddTab('new')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", addTab === 'new' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>New Person</button>
             <button onClick={() => setAddTab('existing')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-lg transition-all", addTab === 'existing' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>From Registry</button>
@@ -302,6 +377,14 @@ export default function GroupLedgerPage() {
           </Modal>
         )
       })()}
+
+      <CSVImportModal 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        onImport={handleImport} 
+        title="Bulk Enroll Members" 
+        requiredFields={['Name', 'Ticket No']} 
+      />
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>

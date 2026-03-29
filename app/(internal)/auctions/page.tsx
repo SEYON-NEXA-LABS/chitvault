@@ -9,12 +9,16 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Settings2, TrendingDown } from 'lucide-react'
+import { Plus, Trash2, Settings2, TrendingDown, FileSpreadsheet } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
+import { downloadCSV } from '@/lib/utils/csv'
 import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person } from '@/types'
 
 export default function AuctionsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, can } = useFirm()
+  const { firm, role, can } = useFirm()
+  const { t } = useI18n()
+  const isOwner = role === 'owner' || role === 'superadmin'
   const { toast, show, hide } = useToast()
   const router = useRouter()
 
@@ -115,10 +119,20 @@ export default function AuctionsPage() {
           }
         );
       }
-      setAddOpen(false); 
-      load() 
+      show('Auction recorded successfully!', 'success'); setAddOpen(false); load()
     }
     setSaving(false)
+  }
+  
+  const handleExport = () => {
+    const data = auctions.map(a => ({
+      Month: a.month,
+      Group: groups.find(g => g.id === a.group_id)?.name || 'Unknown',
+      Bid: a.bid_amount,
+      Dividend: a.dividend,
+      Payout: a.net_payout
+    }))
+    downloadCSV(data, 'auction_ledger')
   }
 
   async function del(id: number) {
@@ -149,11 +163,14 @@ export default function AuctionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black text-[var(--text)]">Auction Ledger</h1>
-        <Btn variant="primary" icon={Plus} onClick={() => setAddOpen(true)}>Record Auction</Btn>
+        <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
+        <div className="flex gap-2">
+           {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
+           {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('record_auction')}</Btn>}
+        </div>
       </div>
 
-      <TableCard title="History" subtitle="All previous auctions across your groups">
+      <TableCard title={t('auction_history')} subtitle="Consolidated list of recent auctions.">
         {auctions.length === 0 
           ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
           : <Table>

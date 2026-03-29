@@ -8,7 +8,9 @@ import {
   TableCard, Table, Th, Td, Tr,
   Loading, Empty, Badge, StatCard, Btn
 } from '@/components/ui'
-import { Printer, Phone, MapPin, Search } from 'lucide-react'
+import { downloadCSV } from '@/lib/utils/csv'
+import { Printer, Phone, MapPin, Search, FileSpreadsheet } from 'lucide-react'
+import { useI18n } from '@/lib/i18n/context'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
 
 interface MemberDue {
@@ -31,6 +33,7 @@ interface CollectionItem {
 export default function CollectionPage() {
   const supabase = createClient()
   const { firm } = useFirm()
+  const { t } = useI18n()
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -112,23 +115,44 @@ export default function CollectionPage() {
     return { totalOut, critical };
   }, [filtered]);
 
+  const handleExportCSV = () => {
+    const csvData: any[] = [];
+    filtered.forEach(p => {
+      p.items.forEach((item: any) => {
+        csvData.push({
+          'Person Name': p.person.name,
+          'Phone': p.person.phone || '',
+          'Address': p.person.address || '',
+          'Group Name': item.group.name,
+          'Ticket No': item.member.ticket_no,
+          'Outstanding Amount': item.totalBalance,
+          'Unpaid Months': item.dues.map((d: any) => d.month).join(', ')
+        });
+      });
+    });
+    downloadCSV(csvData, 'collection_report');
+  };
+
   if (loading) return <Loading />
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Total to Collect" value={fmt(stats.totalOut)} color="red" />
-        <StatCard label="Pending Persons" value={filtered.length} color="gold" />
-        <StatCard label="High Outstanding" value={stats.critical} color="red" />
+        <StatCard label={t('total_outstanding')} value={fmt(stats.totalOut)} color="red" />
+        <StatCard label={t('all_people')} value={filtered.length} color="gold" />
+        <StatCard label={t('due_date')} value={stats.critical} color="red" />
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }}>
         <div className="flex-1 max-w-md relative">
            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
-            placeholder="Filter by name, phone or area..." value={search} onChange={e => setSearch(e.target.value)} />
+            placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
         </div>
-        <Btn variant="secondary" onClick={() => window.print()} icon={Printer}>Print Report</Btn>
+        <div className="flex gap-2">
+           <Btn variant="secondary" onClick={handleExportCSV} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>
+           <Btn variant="secondary" onClick={() => window.print()} icon={Printer}>{t('print')}</Btn>
+        </div>
       </div>
 
       <TableCard title={`Consolidated Collection Report — ${fmtDate(new Date().toISOString())}`} subtitle={`${filtered.length} persons with active dues`}>

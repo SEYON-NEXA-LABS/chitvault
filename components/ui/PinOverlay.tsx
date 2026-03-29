@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Lock, Delete, X } from 'lucide-react'
 
 interface PinOverlayProps {
@@ -11,20 +11,29 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handleKey(e.key)
+      } else if (e.key === 'Backspace') {
+        handleBackspace()
+      } else if (e.key === 'Enter') {
+        handleSubmit()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pin]) // Re-bind when pin changes so handlers have fresh state
+
   const handleKey = (num: string) => {
     if (pin.length >= 6) return
     setError(false)
     const next = pin + num
     setPin(next)
-    
-    if (next.length === 6 || (next.length >= 4 && next.length <= 6)) {
-        // We can't auto-unlock because we don't know the PIN length,
-        // but let's assume 4-6 digits. User hits "Enter" or we check on change.
-    }
   }
 
   const handleBackspace = () => {
-    setPin(pin.slice(0, -1))
+    setPin(prev => prev.slice(0, -1))
     setError(false)
   }
 
@@ -34,7 +43,6 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
     } else {
       setError(true)
       setPin('')
-      // Haptic shake animation logic could go here
     }
   }
 

@@ -84,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 20 }}>
             {firm.name}&apos;s account has been suspended. Contact us to renew.
           </p>
-          <a href="mailto:billing@chitvault.app" style={{ color: 'var(--gold)', fontSize: 14 }}>billing@chitvault.app</a>
+          <a href="mailto:seyonnexalabs@gmail.com" style={{ color: 'var(--gold)', fontSize: 14 }}>seyonnexalabs@gmail.com</a>
           <br />
           <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
             style={{ marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontSize: 13 }}>
@@ -198,6 +198,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
+        {hasPin && (
+          <div className="px-3 pb-3">
+            <button onClick={lock}
+              title="Lock Session"
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
+              style={{ background: 'var(--green)', color: 'white', boxShadow: '0 4px 12px var(--green-dim)' }}>
+              <Lock size={14} />
+              Lock Session
+            </button>
+          </div>
+        )}
+
         <div className="mt-auto border-t p-4" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative">
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
@@ -211,14 +223,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-              {hasPin && (
-                <button onClick={lock}
-                  title="Lock Session"
-                  className="p-1.5 rounded-lg hover:bg-[var(--gold-dim)] hover:text-[var(--gold)] shrink-0"
-                  style={{ color: 'var(--text3)' }}>
-                  <Lock size={14} />
-                </button>
-              )}
               <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
                 title={t('sign_out')}
                 className="p-1.5 rounded-lg hover:bg-[var(--red-dim)] hover:text-[var(--red)] shrink-0"
@@ -229,11 +233,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div className="mt-3 flex items-center justify-between px-2">
             <span className="text-[12px] font-bold tracking-widest opacity-30">{process.env.NEXT_PUBLIC_APP_NAME} - {process.env.NEXT_PUBLIC_APP_VERSION}</span>
-            {isInstallable && (
+            {/* {isInstallable && (
               <button onClick={install} className="text-[12px] font-bold text-[var(--gold)] hover:underline">
                 INSTALL APP
               </button>
-            )}
+            )} */}
           </div>
         </div>
       </aside>
@@ -289,30 +293,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors" style={{ color: 'var(--text2)' }}>
                 {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
               </button>
+              {/* Quick Lock */}
+              {hasPin && (
+                <>
+                  <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
+                  <button onClick={lock} title="Lock Session" className="p-1 rounded-full hover:bg-[var(--gold-dim)] hover:text-[var(--gold)] transition-colors">
+                    <Lock size={13} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </header>
-        <main className="flex-1 p-5 overflow-auto" style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom))' }}>{children}</main>
-
-        {/* Mobile Bottom Nav */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t lg:hidden px-2 pt-2.5 flex items-center justify-around shadow-lg no-print"
-          style={{ borderColor: 'var(--border)', backdropFilter: 'blur(10px)', background: 'rgba(var(--surface-rgb), 0.8)', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))' }}>
-          {[
-            { href: '/dashboard', icon: LayoutDashboard, label: 'nav_dashboard' },
-            { href: '/groups', icon: UsersRound, label: 'nav_groups' },
-            { href: '/members', icon: Users, label: 'nav_members' },
-            { href: '/payments', icon: CreditCard, label: 'nav_payments' },
-          ].map(item => {
-            const active = pathname === item.href
-            return (
-              <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 px-3 py-1.5 transition-all"
-                style={{ color: active ? 'var(--gold)' : 'var(--text3)' }}>
-                <item.icon size={20} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{t(item.label)}</span>
-              </Link>
-            )
-          })}
-        </nav>
+        <main className="flex-1 p-5 overflow-auto">{children}</main>
       </div>
     </div>
   )
