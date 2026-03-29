@@ -12,7 +12,8 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Settings2, TrendingDown, FileSpreadsheet } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
-import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person } from '@/types'
+import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person, Firm } from '@/types'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 export default function AuctionsPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -29,6 +30,8 @@ export default function AuctionsPage() {
   const [loading,     setLoading]     = useState(true)
   const [addOpen,     setAddOpen]     = useState(false)
   const [saving,      setSaving]      = useState(false)
+  const [firms,       setFirms]       = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [form, setForm] = useState({
     group_id: '', month: '', auction_date: '', winner_id: '',
@@ -40,22 +43,32 @@ export default function AuctionsPage() {
   const [groupRules, setGroupRules] = useState<any>(null)
 
   const load = useCallback(async (isInitial = false) => {
-    if (!firm) return
     if (isInitial) setLoading(true)
-    const [g, m, a, fc] = await Promise.all([
-      supabase.from('groups').select('*').eq('firm_id', firm.id).neq('status','closed').order('name'),
-      supabase.from('members').select('*, persons(*)').eq('firm_id', firm.id).in('status',['active','foreman']),
-      supabase.from('auctions').select('*').eq('firm_id', firm.id).order('month', { ascending: false }),
-      supabase.from('foreman_commissions').select('*').eq('firm_id', firm.id).order('month'),
-    ])
+    const targetId = role === 'superadmin' ? selectedFirmId : firm?.id
+
+    let gQ  = withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status','closed'), targetId).order('name')
+    let mQ  = withFirmScope(supabase.from('members').select('*, persons(*)').in('status',['active','foreman']), targetId)
+    let aQ  = withFirmScope(supabase.from('auctions').select('*, firms(name)'), targetId).order('month', { ascending: false })
+    let fcQ = withFirmScope(supabase.from('foreman_commissions').select('*'), targetId).order('month')
+
+    const [g, m, a, fc] = await Promise.all([gQ, mQ, aQ, fcQ])
+    
     setGroups(g.data || [])
     setMembers(m.data || [])
     setAuctions(a.data || [])
     setCommissions(fc.data || [])
-    setLoading(false)
-  }, [firm, supabase])
 
-  useEffect(() => { if (firm) load(true) }, [firm, load])
+    if (role === 'superadmin' && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
+    setLoading(false)
+  }, [supabase, firm, role, selectedFirmId, firms.length])
+
+  const filteredAuctions = useMemo(() => auctions, [auctions])
+  const filteredCommissions = useMemo(() => commissions, [commissions])
+
+  useEffect(() => { load(true) }, [load])
 
   async function onGroupChange(groupId: string) {
     const g = groups.find(x => x.id === +groupId)
@@ -65,7 +78,8 @@ export default function AuctionsPage() {
     const gMembers   = members.filter(m => m.group_id === g.id && !winnerIds.includes(m.id))
     const foremanM   = members.filter(m => m.group_id === g.id && m.status === 'foreman')
 
-    const { data: rules } = await supabase.from('groups').select('*').eq('id', +groupId).single()
+    const targetId = role === 'superadmin' ? selectedFirmId : firm?.id
+    const { data: rules } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).single()
     setGroupRules(rules)
     setEligible(gMembers)
     setForm(f => ({
@@ -136,6 +150,7 @@ export default function AuctionsPage() {
   }
 
   async function del(id: number) {
+    if (!can('deleteAuction')) return
     if (!confirm('Are you sure you want to delete this auction? This will revert stats but might leave payment gaps.')) return
     
     // Find auction for logging
@@ -165,6 +180,14 @@ export default function AuctionsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
         <div className="flex gap-2">
+           {role === 'superadmin' && (
+              <div className="w-48">
+                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
+                  <option value="all">All Firms</option>
+                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+           )}
            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
            {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('record_auction')}</Btn>}
         </div>
@@ -175,6 +198,7 @@ export default function AuctionsPage() {
           ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
           : <Table>
               <thead><tr>
+                {role === 'superadmin' && <Th>Firm</Th>}
                 <Th>Group</Th>
                 <Th>Month</Th>
                 <Th className="hidden md:table-cell">Date</Th>
@@ -187,12 +211,15 @@ export default function AuctionsPage() {
                 <Th>Action</Th>
               </tr></thead>
               <tbody>
-                {auctions.map(a => {
+                {filteredAuctions.map(a => {
                   const g  = groups.find(x => x.id === a.group_id)
                   const w  = members.find(x => x.id === a.winner_id)
                   const fc = commissions.find(c => c.auction_id === a.id)
                   return (
                     <Tr key={a.id}>
+                      {role === 'superadmin' && (
+                        <Td><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
+                      )}
                       <Td><span className="font-semibold">{g?.name || `#${a.group_id}`}</span></Td>
                       <Td><Badge variant="blue">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
                       <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
@@ -229,14 +256,18 @@ export default function AuctionsPage() {
         <TableCard title="👑 Foreman Commission Summary">
           <Table>
             <thead><tr>
+              {role === 'superadmin' && <Th>Firm</Th>}
               {['Group','Month','Chit Value','Bid','Discount','Commission','Net Dividend','Per Member','Goes To'].map(h => <Th key={h}>{h}</Th>)}
             </tr></thead>
             <tbody>
-              {commissions.map(fc => {
+              {filteredCommissions.map(fc => {
                 const g = groups.find(x => x.id === fc.group_id)
                 const fm = members.find(x => x.id === fc.foreman_member_id)
                 return (
                   <Tr key={fc.id}>
+                    {role === 'superadmin' && (
+                      <Td><Badge variant="gray">{(fc as any).firms?.name || '—'}</Badge></Td>
+                    )}
                     <Td>{g?.name || '—'}</Td>
                     <Td><Badge variant="blue">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
                     <Td right>{fmt(fc.chit_value)}</Td>

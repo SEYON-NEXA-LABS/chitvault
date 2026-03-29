@@ -24,6 +24,17 @@ export const PERMISSIONS = {
   // Payments
   recordPayment: ['owner', 'staff'] as UserRole[],
   viewPayments:  ['owner', 'staff'] as UserRole[],
+  deletePayment: ['owner'] as UserRole[],
+
+  // Cashbook & Denominations
+  viewCashbook:     ['owner', 'staff'] as UserRole[],
+  recordCashEntry:  ['owner', 'staff'] as UserRole[],
+  deleteCashEntry:  ['owner'] as UserRole[],
+
+  // Settlement
+  viewSettlement:   ['owner', 'staff'] as UserRole[],
+  recordSettlement: ['owner', 'staff'] as UserRole[],
+  deleteSettlement: ['owner'] as UserRole[],
 
   // Reports
   viewReports:     ['owner', 'staff'] as UserRole[],

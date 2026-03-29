@@ -8,7 +8,8 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useFirm } from '@/lib/firm/context'
 import { logActivity } from '@/lib/utils/logger'
-import type { Group, Member, Auction, Payment, Person } from '@/types'
+import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
 
 interface MemberDue {
@@ -41,7 +42,7 @@ interface PersonSummary {
 
 export default function PaymentsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role } = useFirm()
+  const { firm, role, can } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -51,28 +52,38 @@ export default function PaymentsPage() {
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
   const [saving,   setSaving]   = useState(false)
+  const [firms,    setFirms]    = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
+
+  const isSuper = role === 'superadmin'
 
   const [payModal, setPayModal] = useState<PersonSummary | null>(null)
   const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '' })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
 
   const load = useCallback(async (isInitial = false) => {
-    if (!firm) return
     if (isInitial) setLoading(true)
+    const targetId = isSuper ? selectedFirmId : firm?.id
+
     const [g, m, a, p] = await Promise.all([
-      supabase.from('groups').select('*').eq('firm_id', firm.id).neq('status','archived').order('name'),
-      supabase.from('members').select('*, persons(*)').eq('firm_id', firm.id),
-      supabase.from('auctions').select('*').eq('firm_id', firm.id).order('month'),
-      supabase.from('payments').select('*').eq('firm_id', firm.id).order('payment_date', { ascending: false }),
+      withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId).order('name'),
+      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
+      withFirmScope(supabase.from('auctions').select('*'), targetId).order('month'),
+      withFirmScope(supabase.from('payments').select('*'), targetId).order('payment_date', { ascending: false }),
     ])
     setGroups(g.data || [])
     setMembers(m.data || [])
     setAuctions(a.data || [])
     setPayments(p.data || [])
-    setLoading(false)
-  }, [firm, supabase])
 
-  useEffect(() => { if (firm) load(true) }, [firm, load])
+    if (isSuper && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
+    setLoading(false)
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+
+  useEffect(() => { load(true) }, [load])
 
   const personSummaries: PersonSummary[] = useMemo(() => {
     // 1. Calculate membership-level summaries first
@@ -245,6 +256,7 @@ export default function PaymentsPage() {
   }
 
   async function handleDeletePayment(paymentId: number) {
+    if (!can('deletePayment')) return;
     if (!window.confirm('Are you sure you want to delete this payment record? This will increase the outstanding balance.')) return;
     
     // Get details for logging BEFORE delete
@@ -272,6 +284,22 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-black text-[var(--text)]">Payments Ledger</h1>
+        {isSuper && (
+          <div className="w-64">
+             <select 
+               className={inputClass} 
+               style={inputStyle}
+               value={selectedFirmId} 
+               onChange={e => setSelectedFirmId(e.target.value)}
+             >
+               <option value="all">All Firms (Global View)</option>
+               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+             </select>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Collected Today" value={fmt(stats.collectedToday)} color="green" />
         <StatCard label="Total Outstanding" value={fmt(stats.totalOut)} color="red" />
@@ -437,7 +465,7 @@ export default function PaymentsPage() {
                     <Th>Target Ticket/Month</Th>
                     <Th>Mode</Th>
                     <Th right>Amount</Th>
-                    {(role === 'owner' || role === 'superadmin') && <Th className="w-10">{""}</Th>}
+                    {can('deletePayment') && <Th className="w-10">{""}</Th>}
                   </Tr>
                 </thead>
                 <tbody>
@@ -452,7 +480,7 @@ export default function PaymentsPage() {
                         </Td>
                         <Td><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
                         <Td right className="font-bold text-[var(--green)]">{fmt(p.amount)}</Td>
-                        {(role === 'owner' || role === 'superadmin') && (
+                        {can('deletePayment') && (
                           <Td right>
                             <button 
                               onClick={() => handleDeletePayment(Number(p.id))} 

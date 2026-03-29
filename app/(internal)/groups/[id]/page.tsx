@@ -185,6 +185,7 @@ export default function GroupLedgerPage() {
 
 
   async function deleteMember(id: number) {
+     if(!can('deleteMember')) return
      if(!confirm('Are you sure?')) return
      const { error } = await supabase.from('members').delete().eq('id', id)
      if(error) showToast(error.message, 'error')
@@ -313,7 +314,7 @@ export default function GroupLedgerPage() {
                 <Td right>
                    <div className="flex justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => setSelectedMember(m.id)} icon={Info}>Details</Btn>
-                      {auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>Remove</Btn>}
+                      {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>Remove</Btn>}
                    </div>
                 </Td>
               </Tr>

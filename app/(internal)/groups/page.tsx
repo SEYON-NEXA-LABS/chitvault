@@ -15,7 +15,8 @@ import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2,
 import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Group, Auction, Payment } from '@/types'
+import type { Group, Auction, Payment, Firm } from '@/types'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 export default function GroupsPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -34,6 +35,8 @@ export default function GroupsPage() {
   const [showArch, setShowArch] = useState(false)
   const [archLoading, setArchLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [firms, setFirms] = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
@@ -44,16 +47,23 @@ export default function GroupsPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
+    const targetId = isSuper ? selectedFirmId : firm?.id
+
     const [g, a, p] = await Promise.all([
-      supabase.from('groups').select('*, firms(name)').neq('status', 'archived').order('id'),
-      supabase.from('auctions').select('group_id,month'),
-      supabase.from('payments').select('group_id,status'),
+      withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).order('id'),
+      withFirmScope(supabase.from('auctions').select('group_id,month'), targetId),
+      withFirmScope(supabase.from('payments').select('group_id,status'), targetId),
     ])
     setGroups((g.data as any) || [])
     setAuctions((a.data as any) || [])
     setPayments((p.data as any) || [])
+
+    if (isSuper && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
     setLoading(false)
-  }, [supabase])
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
 
@@ -72,13 +82,19 @@ export default function GroupsPage() {
     return { done, pending, pct, isComplete, endDate }
   }, [auctions, payments])
 
-  const active = useMemo(() => groups.filter(g => { const s = groupStats(g); return !s.isComplete }), [groups, groupStats])
-  const completed = useMemo(() => groups.filter(g => { const s = groupStats(g); return s.isComplete }), [groups, groupStats])
+  const active = useMemo(() => {
+    return groups.filter(g => { const s = groupStats(g); return !s.isComplete })
+  }, [groups, groupStats])
+
+  const completed = useMemo(() => {
+    return groups.filter(g => { const s = groupStats(g); return s.isComplete })
+  }, [groups, groupStats])
 
 
   async function loadArchived() {
     setArchLoading(true)
-    const { data } = await supabase.from('groups').select('*, firms(name)').eq('status', 'archived').order('id')
+    const targetId = isSuper ? selectedFirmId : firm?.id
+    const { data } = await withFirmScope(supabase.from('groups').select('*, firms(name)').eq('status', 'archived'), targetId).order('id')
     setArchived(data || [])
     setArchLoading(false)
   }
@@ -142,6 +158,7 @@ export default function GroupsPage() {
   }
 
   async function del(id: number) {
+    if (!can('deleteGroup')) return
     if (!confirm('EXTREME DANGER: Delete this group and ALL its members/auctions/payments forever?')) return
     const { error } = await supabase.from('groups').delete().eq('id', id)
     if (error) showToast(error.message, 'error')
@@ -228,6 +245,14 @@ export default function GroupsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-black text-[var(--text)]">{t('active_groups')}</h1>
           <div className="flex gap-2">
+            {isSuper && (
+              <div className="w-48">
+                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
+                  <option value="all">All Firms</option>
+                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+            )}
             {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
             {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('new_group')}</Btn>}
           </div>

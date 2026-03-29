@@ -5,6 +5,7 @@ export type ActivityAction =
   | 'AUCTION_RECORDED' | 'AUCTION_DELETED'
   | 'MEMBER_CREATED'   | 'MEMBER_UPDATED'  | 'MEMBER_DELETED' | 'MEMBER_TRANSFERRED'
   | 'CASH_ENTRY_SAVED' | 'CASH_ENTRY_DELETED'
+  | 'SETTLEMENT_SAVED' | 'SETTLEMENT_DELETED' | 'SETTLEMENT_UPDATED' | 'SETTLEMENT_CANCELLED'
   | 'SETTING_UPDATED'  | 'STAFF_ADDED'     | 'STAFF_REMOVED'
 
 export async function logActivity(
@@ -16,7 +17,7 @@ export async function logActivity(
 ) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user || !firmId) return
 
   await supabase.from('activity_logs').insert({
     firm_id: firmId,

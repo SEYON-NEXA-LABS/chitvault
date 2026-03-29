@@ -11,11 +11,12 @@ import {
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
-import type { Group, Member, Auction, Payment, Person } from '@/types'
+import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
 import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import { CSVImportModal } from '@/components/ui'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 interface Contact extends Person {
   tickets: Member[];
@@ -42,6 +43,8 @@ export default function MembersPage() {
   const [view,   setView]   = useState<'people' | 'groups'>('people')
   const [filter, setFilter] = useState<number | 'all'>('all')
   const [search, setSearch] = useState('')
+  const [firms,  setFirms]  = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [addOpen,       setAddOpen]       = useState(false)
   const [detailContact, setDetailContact] = useState<Contact | null>(null)
@@ -58,22 +61,30 @@ export default function MembersPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
+    const targetId = isSuper ? selectedFirmId : firm?.id
+    
+    // Scoped Queries for Multi-Tenancy
     const [g, m, p, a, pay] = await Promise.all([
-      supabase.from('groups').select('*, firms(name)').order('name'),
-      supabase.from('members').select('*, persons(*)').order('ticket_no'),
-      supabase.from('persons').select('*').order('name'),
-      supabase.from('auctions').select('*').order('month'),
-      supabase.from('payments').select('*'),
+      withFirmScope(supabase.from('groups').select('*, firms(name)'), targetId).order('name'),
+      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).order('ticket_no'),
+      withFirmScope(supabase.from('persons').select('*, firms(name)'), targetId).order('name'),
+      withFirmScope(supabase.from('auctions').select('*'), targetId).order('month'),
+      withFirmScope(supabase.from('payments').select('*'), targetId),
     ])
     setAllGroups(g.data || [])
     setMembers(m.data || [])
     setPersons(p.data || [])
     setAuctions(a.data || [])
     setPayments(pay.data || [])
-    setLoading(false)
-  }, [supabase])
 
-  useEffect(() => { if (firm) load(true) }, [load])
+    if (isSuper && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
+    setLoading(false)
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+
+  useEffect(() => { load(true) }, [load])
 
   useEffect(() => {
     if (payMember) {
@@ -324,6 +335,7 @@ export default function MembersPage() {
   }
 
   async function deleteMember(m: Member) {
+    if (!can('deleteMember')) return
     if (!confirm('Are you sure you want to remove this ticket?')) return
     const { error } = await supabase.from('members').delete().eq('id', m.id)
     if (error) showToast(error.message, 'error')
@@ -331,6 +343,7 @@ export default function MembersPage() {
   }
 
   async function deletePerson(pId: number) {
+    if (!can('deleteMember')) return
     if (!confirm('Are you sure? This will remove the person and ALL their tickets across ALL groups!')) return
     const { error } = await supabase.from('persons').delete().eq('id', pId)
     if (error) showToast(error.message, 'error')
@@ -374,6 +387,14 @@ export default function MembersPage() {
             </div>
          </div>
          <div className="flex flex-1 gap-2 items-center justify-end px-2">
+            {isSuper && (
+              <div className="w-48">
+                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
+                  <option value="all">All Firms</option>
+                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="flex-1 max-w-sm relative">
                <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
                 placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
@@ -405,7 +426,7 @@ export default function MembersPage() {
             <tbody>
               {filteredPeople.map(c => (
                 <Tr key={c.id}>
-                  {isSuper && <Td><Badge variant="gray">{c.tickets[0]?.firms?.name}</Badge></Td>}
+                  {isSuper && <Td><Badge variant="gray">{(c as any).firms?.name || '—'}</Badge></Td>}
                   <Td>
                     <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--gold)] ml-1">({c.nickname})</span>}</div>
                     <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
