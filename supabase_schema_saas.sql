@@ -898,14 +898,13 @@ begin
 
   v_net_payout := v_raw_payout - v_commission;
 
-  -- Dividend logic
+  -- Dividend logic: Calculate surplus for both, but distribute only if DIVIDEND scheme
+  v_net_div := v_discount - v_commission;
+  if v_net_div < 0 then v_net_div := 0; end if;
+
   if g.auction_scheme = 'ACCUMULATION' then
-     v_net_div    := 0; -- No dividend, bids are saved in surplus pool
      v_per_member := 0;
   else
-     v_net_div := v_discount - v_commission;
-     if v_net_div < 0 then v_net_div := 0; end if;
-
      -- Count active members
      select count(*) into v_num_members from members
      where group_id = p_group_id and firm_id = my_firm_id() and status in ('active','foreman');
@@ -1007,3 +1006,25 @@ end;
 $$;
 
 grant execute on function public.record_auction_with_commission(bigint,int,date,bigint,numeric,bigint,text) to authenticated;
+
+-- ── 9. ACTIVITY LOGS (Audit Trail) ──────────────────────────
+create table if not exists activity_logs (
+  id           bigint primary key generated always as identity,
+  firm_id      uuid not null references firms(id) on delete cascade,
+  user_id      uuid references auth.users(id) on delete set null,
+  action       text not null,
+  entity_type  text,
+  entity_id    text,
+  metadata     jsonb,
+  created_at   timestamptz default now()
+);
+
+alter table activity_logs enable row level security;
+grant all on activity_logs to authenticated;
+
+create index if not exists idx_activity_logs_firm_date on activity_logs(firm_id, created_at desc);
+
+create policy activity_logs_select on activity_logs for select
+  using (firm_id = my_firm_id() or is_superadmin());
+create policy activity_logs_insert on activity_logs for insert
+  with check (firm_id = my_firm_id() or is_superadmin());

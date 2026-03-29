@@ -7,8 +7,9 @@ import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { Btn, Badge, TableCard, Table, Th, Td, Tr, Modal, Field, Loading, Empty, Toast, StatCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Plus, Trash2, Settings2, TrendingDown } from 'lucide-react'
+import { logActivity } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
+import { Plus, Trash2, Settings2, TrendingDown } from 'lucide-react'
 import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person } from '@/types'
 
 export default function AuctionsPage() {
@@ -99,15 +100,48 @@ export default function AuctionsPage() {
     })
 
     if (error) { show(error.message, 'error'); setSaving(false) }
-    else { show('Auction recorded!'); setAddOpen(false); load() }
+    else { 
+      show('Auction recorded!'); 
+      if (firm) {
+        await logActivity(
+          firm.id,
+          'AUCTION_RECORDED',
+          'auction',
+          null,
+          { 
+            group_id: form.group_id, 
+            month: form.month, 
+            bid_amount: form.bid_amount 
+          }
+        );
+      }
+      setAddOpen(false); 
+      load() 
+    }
     setSaving(false)
   }
 
   async function del(id: number) {
     if (!confirm('Are you sure you want to delete this auction? This will revert stats but might leave payment gaps.')) return
+    
+    // Find auction for logging
+    const auc = auctions.find(a => a.id === id);
+    
     const { error } = await supabase.from('auctions').delete().eq('id', id)
     if (error) show(error.message, 'error')
-    else { show('Auction deleted'); load() }
+    else { 
+      show('Auction deleted'); 
+      if (auc && firm) {
+        await logActivity(
+          firm.id,
+          'AUCTION_DELETED',
+          'auction',
+          id,
+          { month: auc.month, group_id: auc.group_id }
+        );
+      }
+      load(); 
+    }
   }
 
   if (loading) return <Loading />

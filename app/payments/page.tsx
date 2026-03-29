@@ -7,8 +7,9 @@ import { Btn, Badge, Card, Loading, Empty, Toast, Chip, Modal, Field, StatCard, 
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useFirm } from '@/lib/firm/context'
+import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
-import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
 
 interface MemberDue {
   group: Group;
@@ -40,7 +41,7 @@ interface PersonSummary {
 
 export default function PaymentsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm } = useFirm()
+  const { firm, role } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -85,22 +86,34 @@ export default function PaymentsPage() {
       const currentMonth = Math.min(group.duration, gAucs.length + 1);
       
       const mDues: MemberDue[] = [];
+      let mTotalDue = 0;
       for (let month = 1; month <= currentMonth; month++) {
-        const auc = gAucs.find((a: Auction) => a.month === month);
-        const dividend = auc ? Number(auc.dividend || 0) : 0;
+        // Dividend Calculation (Next Month Rule):
+        // Month 1 is always full. Month 2 is reduced by Auction 1's dividend.
+        const prevMonthAuc = gAucs.find((a: Auction) => a.month === month - 1);
+        const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0;
+        
         const amountDue = Number(group.monthly_contribution) - dividend;
         const amountPaid = mPays.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
-        const balance = Math.max(0, amountDue - amountPaid);
-        if (balance > 0.01 || amountPaid > 0) {
-          mDues.push({ group, month, amountDue, amountPaid, balance, isAuctioned: !!auc, dividend });
+        
+        // Month-level balance for display (not for total sum to avoid Math.max issues)
+        const displayBalance = Math.max(0, amountDue - amountPaid);
+        
+        mTotalDue += amountDue;
+        
+        if (displayBalance > 0.01 || amountPaid > 0) {
+          mDues.push({ group, month, amountDue, amountPaid, balance: displayBalance, isAuctioned: !!gAucs.find(a => a.month === month), dividend });
         }
       }
 
+      const mTotalPaid = mPays.reduce((s, p) => s + Number(p.amount), 0);
+      const mNetBalance = Math.max(0, mTotalDue - mTotalPaid);
+
       return {
         member: m, group, dues: mDues,
-        totalDue: mDues.reduce((s: number, d: MemberDue) => s + d.amountDue, 0),
-        totalPaid: mDues.reduce((s: number, d: MemberDue) => s + d.amountPaid, 0),
-        totalBalance: mDues.reduce((s: number, d: MemberDue) => s + d.balance, 0),
+        totalDue: mTotalDue,
+        totalPaid: mTotalPaid,
+        totalBalance: mNetBalance,
       };
     }).filter(Boolean) as MemberSummary[];
 
@@ -209,10 +222,50 @@ export default function PaymentsPage() {
     if (error) { show(error.message, 'error'); }
     else { 
       show(`Recorded ${finalPayments.length} payment segments!`); 
+      
+      // Log Activity
+      if (payModal.person) {
+        await logActivity(
+          firm.id,
+          'PAYMENT_RECORDED',
+          'payment',
+          null,
+          { 
+            person_name: payModal.person.name, 
+            amount, 
+            segments: finalPayments.length 
+          }
+        );
+      }
+
       setPayModal(null); 
       load(); 
     }
     setSaving(false);
+  }
+
+  async function handleDeletePayment(paymentId: number) {
+    if (!window.confirm('Are you sure you want to delete this payment record? This will increase the outstanding balance.')) return;
+    
+    // Get details for logging BEFORE delete
+    const payment = payments.find(p => p.id === paymentId);
+    
+    const { error } = await supabase.from('payments').delete().eq('id', paymentId);
+    if (error) {
+      show(error.message, 'error');
+    } else {
+      show('Payment reverted successfully!');
+      if (payment && firm) {
+        await logActivity(
+          firm.id,
+          'PAYMENT_DELETED',
+          'payment',
+          paymentId,
+          { amount: payment.amount, month: payment.month }
+        );
+      }
+      load();
+    }
   }
 
   if (loading) return <Loading />
@@ -384,6 +437,7 @@ export default function PaymentsPage() {
                     <Th>Target Ticket/Month</Th>
                     <Th>Mode</Th>
                     <Th right>Amount</Th>
+                    {(role === 'owner' || role === 'superadmin') && <Th className="w-10">{""}</Th>}
                   </Tr>
                 </thead>
                 <tbody>
@@ -398,6 +452,17 @@ export default function PaymentsPage() {
                         </Td>
                         <Td><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
                         <Td right className="font-bold text-[var(--green)]">{fmt(p.amount)}</Td>
+                        {(role === 'owner' || role === 'superadmin') && (
+                          <Td right>
+                            <button 
+                              onClick={() => handleDeletePayment(Number(p.id))} 
+                              className="p-1.5 hover:bg-[var(--red-dim)] text-[var(--red)] rounded-md transition-colors opacity-70 hover:opacity-100"
+                              title="Delete Payment"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </Td>
+                        )}
                       </Tr>
                     );
                   })}

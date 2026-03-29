@@ -10,8 +10,9 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin } from 'lucide-react'
+import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
+import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin } from 'lucide-react'
 
 interface Contact extends Person {
   tickets: Member[];
@@ -170,6 +171,18 @@ export default function MembersPage() {
     if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }
 
     showToast('Person registered!'); 
+    
+    // Log Activity
+    if (pData && firm) {
+      await logActivity(
+        firm.id,
+        'MEMBER_CREATED',
+        'person',
+        pData.id,
+        { name: pData.name }
+      );
+    }
+
     setAddOpen(false)
     setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
     load()
@@ -193,6 +206,18 @@ export default function MembersPage() {
       
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
     showToast('Contact updated!')
+    
+    // Log Activity
+    if (firm) {
+      await logActivity(
+        firm.id,
+        'MEMBER_UPDATED',
+        'person',
+        detailContact.id,
+        { name: editForm.name }
+      );
+    }
+
     setSaving(false); setIsEditing(false); setDetailContact(null); load()
   }
 
@@ -231,6 +256,22 @@ export default function MembersPage() {
     }
 
     showToast('Payment recorded successfully!', 'success')
+    
+    // Log Activity
+    if (firm) {
+      await logActivity(
+        firm.id,
+        'PAYMENT_RECORDED',
+        'payment',
+        null,
+        { 
+          person_name: payMember.persons?.name, 
+          amount: payForm.amount, 
+          month: payForm.month 
+        }
+      );
+    }
+
     setPayMember(null); setSaving(false); load()
   }
 
@@ -245,7 +286,23 @@ export default function MembersPage() {
     if (!confirm('Are you sure? This will remove the person and ALL their tickets across ALL groups!')) return
     const { error } = await supabase.from('persons').delete().eq('id', pId)
     if (error) showToast(error.message, 'error')
-    else { showToast('Person and all tickets removed!'); setDetailContact(null); load() }
+    else { 
+      showToast('Person and all tickets removed!'); 
+      
+      // Log Activity
+      if (firm) {
+        await logActivity(
+          firm.id,
+          'MEMBER_DELETED',
+          'person',
+          pId,
+          { id: pId }
+        );
+      }
+
+      setDetailContact(null); 
+      load() 
+    }
   }
 
   async function transferTicket(targetMember: Member, exitM: number, newP: { name: string, phone: string, address: string }) {

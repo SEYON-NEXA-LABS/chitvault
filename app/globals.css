@@ -199,6 +199,31 @@ a {
 
   body {
     background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset layout margins for print */
+  .lg\:ml-60 {
+    margin-left: 0 !important;
+  }
+
+  /* Ensure content takes full width */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .flex-1 {
+    flex: none !important;
+    display: block !important;
+  }
+
+  /* Hide sticky/fixed positioning for print */
+  .sticky, .fixed {
+    position: relative !important;
   }
 }
 

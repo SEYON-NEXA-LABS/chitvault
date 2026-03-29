@@ -21,7 +21,7 @@ export default function DashboardPage() {
         supabase.from('groups').select('*').neq('status','archived'),
         supabase.from('members').select('*, persons(*)'),
         supabase.from('auctions').select('*').order('id', { ascending: false }),
-        supabase.from('payments').select('*').eq('status','paid'),
+        supabase.from('payments').select('*'),
       ])
       setGroups(g.data || [])
       setMembers(m.data || [])
@@ -48,14 +48,16 @@ export default function DashboardPage() {
       const currentMonth = Math.min(group.duration, gAucs.length + 1)
       const mPays = payments.filter(p => p.member_id === member.id && p.group_id === group.id)
       
-      let pending = 0
+      let mTotalDue = 0
       for (let month = 1; month <= currentMonth; month++) {
-        const auc = gAucs.find(a => a.month === month)
-        const div = auc ? Number(auc.dividend || 0) : 0
-        const due = Number(group.monthly_contribution) - div
-        const paid = mPays.filter(p => p.month === month).reduce((s, p) => s + Number(p.amount), 0)
-        pending += Math.max(0, due - paid)
+        const prevMonthAuc = gAucs.find(a => a.month === month - 1)
+        const div = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
+        mTotalDue += (Number(group.monthly_contribution) - div)
       }
+      
+      const mTotalPaid = mPays.reduce((s, p) => s + Number(p.amount), 0)
+      const pending = Math.max(0, mTotalDue - mTotalPaid)
+      
       return sum + pending
     }, 0)
 

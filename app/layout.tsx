@@ -45,6 +45,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </BrandingProvider>
         </FirmProvider>
         <script dangerouslySetInnerHTML={{ __html: `
+          window.deferredPrompt = null;
+          window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.deferredPrompt = e;
+          });
+
           if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
               navigator.serviceWorker.register('/sw.js');
