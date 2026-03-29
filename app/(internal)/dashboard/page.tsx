@@ -3,34 +3,51 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { StatCard, Card, Loading, Badge } from '@/components/ui'
-import type { Group, Member, Auction, Payment } from '@/types'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { inputClass, inputStyle } from '@/components/ui'
+import type { Group, Member, Auction, Payment, Firm } from '@/types'
 
 export default function DashboardPage() {
   const supabase = createClient()
+  const { firm, role } = useFirm()
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading,  setLoading]  = useState(true)
+  const [firms,    setFirms]    = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
+
+  const isSuper = role === 'superadmin'
 
   useEffect(() => {
     async function load() {
+      setLoading(true)
+      const targetId = isSuper ? selectedFirmId : firm?.id
+      
       const [g, m, a, p] = await Promise.all([
-        supabase.from('groups').select('*').neq('status','archived'),
-        supabase.from('members').select('*, persons(*)'),
-        supabase.from('auctions').select('*').order('id', { ascending: false }),
-        supabase.from('payments').select('*'),
+        withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId),
+        withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
+        withFirmScope(supabase.from('auctions').select('*'), targetId).order('id', { ascending: false }).limit(10),
+        withFirmScope(supabase.from('payments').select('*'), targetId),
       ])
+
       setGroups(g.data || [])
       setMembers(m.data || [])
       setAuctions(a.data || [])
       setPayments(p.data || [])
+
+      if (isSuper && firms.length === 0) {
+        const { data: f } = await supabase.from('firms').select('*').order('name')
+        setFirms(f || [])
+      }
       setLoading(false)
     }
     load()
-  }, [supabase])
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
 
   const stats = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
@@ -71,6 +88,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      
+      {/* Header with Firm Filter */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-black text-[var(--text)]">Dashboard</h1>
+        {isSuper && (
+          <div className="w-64">
+             <select 
+               className={inputClass} 
+               style={inputStyle}
+               value={selectedFirmId} 
+               onChange={e => setSelectedFirmId(e.target.value)}
+             >
+               <option value="all">All Firms (Global)</option>
+               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+             </select>
+          </div>
+        )}
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

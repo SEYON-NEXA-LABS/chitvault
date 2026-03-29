@@ -184,8 +184,27 @@ export interface ForemanCommission {
   notes:                string | null
   created_at:           string
   created_by:           string | null
-  updated_at:           string | null
   updated_by:           string | null
+}
+
+// Settlement record (persistent calculation)
+export interface Settlement {
+  id:                   number
+  firm_id:              string
+  member_id:            number | null
+  group_id:             number | null
+  total_amount:         number
+  total_months:         number
+  average_per_month:    number
+  month_14_balance:     number
+  entries:              { date: string; amount: number }[]
+  notes:                string | null
+  created_at:           string
+  created_by:           string | null
+  members?: {
+    persons: { name: string }
+    groups: { name: string }
+  }
 }
 
 // Result from calculate_auction RPC

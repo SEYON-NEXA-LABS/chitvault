@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, Badge, StatCard, Btn } from '@/components/ui'
-import { Gavel, TrendingDown, Target, HelpCircle, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Gavel, TrendingDown, Target, HelpCircle, ArrowLeft, ArrowRight, ShieldCheck, Calculator, Save, UserCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { fmt } from '@/lib/utils'
 
@@ -117,6 +117,53 @@ export default function SchemesGuidePage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      {/* Settlement Process */}
+      <Card title="🏆 Settlement & Payout Process" subtitle="How to finalize a winner's payout and record it">
+         <div className="p-6 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                     <UserCheck size={24} />
+                  </div>
+                  <h4 className="font-bold text-sm">1. Link Member</h4>
+                  <p className="text-xs opacity-60">Select the winner. Their auction &quot;Net Payout&quot; will auto-fill as the base for the settlement.</p>
+               </div>
+               <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-[var(--gold-dim)] text-[var(--gold)] flex items-center justify-center">
+                     <Calculator size={24} />
+                  </div>
+                  <h4 className="font-bold text-sm">2. Apply 15-Mo Rule</h4>
+                  <p className="text-xs opacity-60">The total amount is divided by 15. The system then calculates the 14-month balance automatically.</p>
+               </div>
+               <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center">
+                     <Save size={24} />
+                  </div>
+                  <h4 className="font-bold text-sm">3. Save Record</h4>
+                  <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and proof of payout for the member.</p>
+               </div>
+            </div>
+
+            <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
+               <h4 className="text-sm font-bold mb-3 underline decoration-[var(--gold)]/30">Why is this important?</h4>
+               <ul className="space-y-3">
+                  <li className="text-xs opacity-80 flex gap-2">
+                     <span className="text-[var(--gold)]">•</span>
+                     <span>**Transparency**: You can show the member exactly how their payout was derived using the handwritten chit rules.</span>
+                  </li>
+                  <li className="text-xs opacity-80 flex gap-2">
+                     <span className="text-[var(--gold)]">•</span>
+                     <span>**Accuracy**: Auto-fill prevents typing errors by pulling directly from verified auction outcomes.</span>
+                  </li>
+                  <li className="text-xs opacity-80 flex gap-2">
+                     <span className="text-[var(--gold)]">•</span>
+                     <span>**Compliance**: Persistent records ensure that if a member disputes a payout months later, you have the digital receipt.</span>
+                  </li>
+               </ul>
+            </div>
+         </div>
       </Card>
 
       {/* Commission Rules */}

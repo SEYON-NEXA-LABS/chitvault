@@ -8,9 +8,10 @@ import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
 import { downloadCSV } from '@/lib/utils/csv'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
-import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
-import type { Group, Member, Auction, Payment, ForemanCommission } from '@/types'
+import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet } from 'lucide-react'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
+import type { Group, Member, Auction, Payment, ForemanCommission, Firm } from '@/types'
 
 
 export default function ReportsPage() {
@@ -57,6 +58,11 @@ function ReportsPageContent() {
   
   const [selectedGroupId, setSelectedGroupId] = useState<string>('')
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
+
+  const [firms,    setFirms]    = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
+  const isSuper = role === 'superadmin'
+  const targetId = isSuper ? selectedFirmId : firm?.id
 
   const [timeFilter, setTimeFilter] = useState<string>('all')
 
@@ -105,15 +111,16 @@ function ReportsPageContent() {
       try {
         setLoading(true)
         setError(null)
+        
         const res = await Promise.all([
-          supabase.from('groups').select('*').order('name'),
-          supabase.from('members').select('*, persons(*)'),
-          supabase.from('auctions').select('*').order('month', { ascending: false }),
-          supabase.from('payments').select('*').order('payment_date', { ascending: false }),
-          supabase.from('foreman_commissions').select('*').order('month'),
-          supabase.from('denominations').select('*').order('entry_date', { ascending: false }),
-          supabase.from('activity_logs').select('*').order('created_at', { ascending: false }),
-          supabase.from('profiles').select('id, full_name'),
+          withFirmScope(supabase.from('groups').select('*'), targetId).order('name'),
+          withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
+          withFirmScope(supabase.from('auctions').select('*'), targetId).order('month', { ascending: false }),
+          withFirmScope(supabase.from('payments').select('*'), targetId).order('payment_date', { ascending: false }),
+          withFirmScope(supabase.from('foreman_commissions').select('*'), targetId).order('month'),
+          withFirmScope(supabase.from('denominations').select('*'), targetId).order('entry_date', { ascending: false }),
+          withFirmScope(supabase.from('activity_logs').select('*'), targetId).order('created_at', { ascending: false }),
+          withFirmScope(supabase.from('profiles').select('id, full_name'), targetId),
         ])
 
         res.forEach((r, i) => { if (r.error) throw new Error(`Query ${i} failed: ${r.error.message}`) })
@@ -126,6 +133,11 @@ function ReportsPageContent() {
         setDenominations(res[5].data || [])
         setActivityLogs(res[6].data || [])
         setProfiles(res[7].data || [])
+
+        if (isSuper && firms.length === 0) {
+          const { data: f } = await supabase.from('firms').select('*').order('name')
+          setFirms(f || [])
+        }
       } catch (e: any) {
         setError(e.message)
       } finally {
@@ -133,7 +145,7 @@ function ReportsPageContent() {
       }
     }
     load()
-  }, [supabase, firm, searchParams])
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length, searchParams])
 
   const handleExportCSV = () => {
     if (!activeReport) return
@@ -255,10 +267,23 @@ function ReportsPageContent() {
           <div className="flex justify-between items-center mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
             <h1 className="text-2xl font-bold">{t('reports_hub')}</h1>
             <div className="flex items-center gap-3">
+              {isSuper && (
+                <div className="w-64">
+                   <select 
+                     className={inputClass} 
+                     style={inputStyle}
+                     value={selectedFirmId} 
+                     onChange={e => setSelectedFirmId(e.target.value)}
+                   >
+                     <option value="all">Global (All Firms)</option>
+                     {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                   </select>
+                </div>
+              )}
               <label className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>{t('date_filter')}:</label>
               <select className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 12px' }} value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)}>
                 <option value="all">{t('all_time')}</option>
-                <option value="fy">Current Financial Year</option>
+                <option value="fy">{t('financial_year') || 'Financial Year'}</option>
                 <option value="q1">Q1 (Apr - Jun)</option>
                 <option value="q2">Q2 (Jul - Sep)</option>
                 <option value="q3">Q3 (Oct - Dec)</option>

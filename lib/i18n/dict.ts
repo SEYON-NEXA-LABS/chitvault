@@ -17,6 +17,8 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_team: 'Team',
     nav_settings: 'Settings',
     nav_help: 'Help & Support',
+    nav_journey: 'App Journey',
+    nav_settlements: 'Settlements',
     
     // Header
     signed_in_as: 'Signed in as',
@@ -89,6 +91,8 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_team: 'குழு',
     nav_settings: 'அமைப்புகள்',
     nav_help: 'உதவி மற்றும் ஆதரவு',
+    nav_journey: 'செயலி பயணம்',
+    nav_settlements: 'பட்டுவாடா',
     
     // Header
     signed_in_as: 'உள்நுழைந்துள்ள மின்னஞ்சல்',

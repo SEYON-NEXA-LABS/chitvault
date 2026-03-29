@@ -5,10 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmtDate } from '@/lib/utils'
 import { Btn, Card, Badge, Loading, Toast, Modal, Field } from '@/components/ui'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { UserPlus, Trash2, Shield, User, Crown, Mail } from 'lucide-react'
+import type { Firm } from '@/types'
 
 interface TeamMember {
   id:        string
@@ -51,34 +53,43 @@ export default function TeamPage() {
   const [inviteRole,  setInviteRole]  = useState<'staff'|'owner'>('staff')
   const [saving,   setSaving]   = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
+  const [firms,    setFirms]    = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
-  const load = useCallback(async () => {
-    if (!firm) return
-    setLoading(true)
+  const isSuper = role === 'superadmin'
+  const targetId = isSuper ? selectedFirmId : firm?.id
+
+  const load = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true)
+    const targetId = isSuper ? selectedFirmId : firm?.id
+    
     const { data: { user } } = await supabase.auth.getUser()
     setCurrentUserId(user?.id || '')
 
-    // Load all profiles for this firm
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name, role, created_at')
-      .eq('firm_id', firm.id)
-      .order('created_at')
+    // Load all profiles for this firm (Scoped)
+    const { data: profiles } = await withFirmScope(
+      supabase.from('profiles').select('id, full_name, role, created_at'),
+      targetId
+    ).order('created_at')
 
     setMembers(profiles || [])
 
-    // Load pending invites
-    const { data: inv } = await supabase
-      .from('invites')
-      .select('*')
-      .eq('firm_id', firm.id)
-      .order('created_at', { ascending: false })
+    // Load pending invites (Scoped)
+    const { data: inv } = await withFirmScope(
+      supabase.from('invites').select('*'),
+      targetId
+    ).order('created_at', { ascending: false })
 
     setInvites(inv || [])
-    setLoading(false)
-  }, [firm, supabase])
 
-  useEffect(() => { if (firm) load() }, [firm, load])
+    if (isSuper && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
+    setLoading(false)
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+
+  useEffect(() => { load(true) }, [load])
 
   async function sendInvite() {
     if (!firm || !inviteEmail.trim()) return
@@ -157,7 +168,7 @@ export default function TeamPage() {
     show('Invite link copied!')
   }
 
-  if (!can('viewTeam')) return (
+  if (!can('viewTeam') && !isSuper) return (
     <div className="flex items-center justify-center py-20 text-center">
       <div>
         <div className="text-4xl mb-3">🔒</div>
@@ -173,12 +184,29 @@ export default function TeamPage() {
   return (
     <div className="max-w-3xl space-y-5">
 
-      {/* Header card */}
+      {/* Header card with Firm Filter */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-black text-[var(--text)]">Team Management</h1>
+        {isSuper && (
+          <div className="w-64">
+             <select 
+               className={inputClass} 
+               style={inputStyle}
+               value={selectedFirmId} 
+               onChange={e => setSelectedFirmId(e.target.value)}
+             >
+               <option value="all">Global (All Users)</option>
+               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+             </select>
+          </div>
+        )}
+      </div>
+
       <Card className="p-5">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-semibold text-base mb-1" style={{ color: 'var(--text)' }}>
-              Team Members — {firm?.name}
+              Team Members {targetId !== 'all' ? `— ${firms.find(f=>f.id===targetId)?.name || firm?.name || ''}` : '(Platform Wide)'}
             </h2>
             <p className="text-sm" style={{ color: 'var(--text2)' }}>
               {members.length} member{members.length !== 1 ? 's' : ''} · {pendingInvites.length} pending invite{pendingInvites.length !== 1 ? 's' : ''}

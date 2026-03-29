@@ -7,7 +7,8 @@ import { fmt, fmtDate } from '@/lib/utils'
 import { Btn, Card, StatCard, Loading, Empty, Toast, Modal, Badge } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { DENOMINATIONS } from '@/types'
-import type { Denomination } from '@/types'
+import { withFirmScope } from '@/lib/supabase/firmQuery'
+import type { Denomination, Firm } from '@/types'
 import { Printer, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 
@@ -19,7 +20,7 @@ const EMPTY_COUNTS = (): DenomCounts =>
 
 export default function CashbookPage() {
   const supabase = createClient()
-  const { firm } = useFirm()
+  const { firm, role, can } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [entries,  setEntries]  = useState<Denomination[]>([])
@@ -28,6 +29,10 @@ export default function CashbookPage() {
   const [addOpen,  setAddOpen]  = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  
+  const [firms,    setFirms]    = useState<Firm[]>([])
+  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
+  const isSuper = role === 'superadmin'
 
   // Form state
   const [entryDate, setEntryDate]  = useState(new Date().toISOString().split('T')[0])
@@ -42,17 +47,16 @@ export default function CashbookPage() {
   })
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0])
 
-  const load = useCallback(async () => {
-    if (!firm) return
+  const load = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true)
+    const targetId = isSuper ? selectedFirmId : firm?.id
+
     const [dRes, pRes] = await Promise.all([
-      supabase
-        .from('denominations')
-        .select('*')
-        .eq('firm_id', firm.id)
+      withFirmScope(supabase.from('denominations').select('*'), targetId)
         .gte('entry_date', fromDate)
         .lte('entry_date', toDate)
         .order('entry_date', { ascending: false }),
-      supabase.from('profiles').select('id, full_name, role').eq('firm_id', firm.id).order('full_name')
+      withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name')
     ])
     
     if (dRes.error) {
@@ -72,11 +76,15 @@ export default function CashbookPage() {
       return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal };
     });
 
+    if (isSuper && firms.length === 0) {
+      const { data: f } = await supabase.from('firms').select('*').order('name')
+      setFirms(f || [])
+    }
     setEntries(entriesWithTotal)
     setLoading(false)
-  }, [firm, fromDate, toDate, supabase, show])
+  }, [supabase, isSuper, selectedFirmId, firm, firms.length, fromDate, toDate, show])
 
-  useEffect(() => { if (firm) load() }, [firm, fromDate, toDate, load])
+  useEffect(() => { load(true) }, [load])
 
   function recalc(c: DenomCounts) {
     const total = DENOMINATIONS.reduce((s, d) => s + (c[d.key] || 0) * d.value, 0)
@@ -116,6 +124,7 @@ export default function CashbookPage() {
   }
 
   async function del(id: number) {
+    if (!can('deleteCashEntry')) return
     if (!confirm('Delete this cash entry?')) return
     await supabase.from('denominations').delete().eq('id', id)
     show('Deleted.')
@@ -135,7 +144,25 @@ export default function CashbookPage() {
   const coins_section = DENOMINATIONS.filter(d => d.type === 'coin')
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Header with Firm Filter */}
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-black text-[var(--text)]">Daily Cashbook</h1>
+        {isSuper && (
+          <div className="w-64">
+             <select 
+               className="w-full px-3 py-2 rounded-lg border text-sm outline-none" 
+               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}
+               value={selectedFirmId} 
+               onChange={e => setSelectedFirmId(e.target.value)}
+             >
+               <option value="all">Global View (All Firms)</option>
+               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+             </select>
+          </div>
+        )}
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-5">
         <StatCard label="Today's Cash"    value={fmt(todayTotal)}   color="green" />
@@ -280,7 +307,7 @@ export default function CashbookPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="font-mono font-bold text-xl" style={{ color: 'var(--gold)' }}>{fmt(e.total || 0)}</div>
-                          <Btn size="sm" variant="danger" onClick={() => del(e.id)}><Trash2 size={13} /></Btn>
+                          {can('deleteCashEntry') && <Btn size="sm" variant="danger" onClick={() => del(e.id)}><Trash2 size={13} /></Btn>}
                         </div>
                       </div>
                     </div>
