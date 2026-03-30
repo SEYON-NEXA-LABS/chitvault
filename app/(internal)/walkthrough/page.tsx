@@ -2,9 +2,9 @@
 
 import React from "react"
 import { Card, Btn, Badge } from "@/components/ui"
-import { 
-  UserPlus, Users, Gavel, CreditCard, 
-  Calculator, ChevronRight, CheckCircle2, 
+import {
+  UserPlus, Users, Gavel, CreditCard,
+  Calculator, ChevronRight, CheckCircle2,
   ArrowRight, BookOpen, Building2, Landmark
 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -18,7 +18,7 @@ export default function AppJourneyPage() {
     <div className="relative pl-12 pb-12 last:pb-0">
       {/* Connector Line */}
       <div className="absolute left-[20px] top-[40px] bottom-0 w-[2px] bg-[var(--border)] last:hidden" />
-      
+
       {/* Number Badge */}
       <div className="absolute left-0 top-0 w-10 h-10 rounded-full border-2 border-[var(--gold)] bg-[var(--surface)] flex items-center justify-center font-bold text-[var(--gold)] z-10">
         {index}
@@ -37,11 +37,11 @@ export default function AppJourneyPage() {
               {description}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
-               <Badge variant="gray" className="text-[10px]">Step {index} of 6</Badge>
-               <Badge variant="blue" className="text-[10px] flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  Sidebar Link: {t(navLabel)}
-               </Badge>
+              <Badge variant="gray" className="text-[10px]">Step {index} of 6</Badge>
+              <Badge variant="blue" className="text-[10px] flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                Sidebar Link: {t(navLabel)}
+              </Badge>
             </div>
           </div>
           <div className="shrink-0">
@@ -50,10 +50,10 @@ export default function AppJourneyPage() {
             </Btn>
           </div>
         </div>
-        
+
         {/* Subtle Background Icon */}
         <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-           <Icon size={120} />
+          <Icon size={120} />
         </div>
       </Card>
     </div>
@@ -61,7 +61,7 @@ export default function AppJourneyPage() {
 
   return (
     <div className="max-w-4xl mx-auto py-8">
-      
+
       {/* Header section */}
       <div className="text-center mb-16 space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--gold-dim)] text-[var(--gold)] text-xs font-bold uppercase tracking-widest border border-[var(--gold-border)]">
@@ -72,15 +72,15 @@ export default function AppJourneyPage() {
           The ChitVault <span style={{ color: 'var(--gold)' }}>Journey</span>
         </h1>
         <p className="text-base opacity-60 max-w-xl mx-auto">
-          From creating your first contact to settling the final payout. 
+          From creating your first contact to settling the final payout.
           Follow these 5 steps to master your digital chit fund.
         </p>
       </div>
 
       {/* Vertical Timeline */}
       <div className="space-y-4">
-        
-        <Step 
+
+        <Step
           index={1}
           icon={UserPlus}
           title="Create the Person (Contact)"
@@ -90,7 +90,7 @@ export default function AppJourneyPage() {
           navLabel="nav_members"
         />
 
-        <Step 
+        <Step
           index={2}
           icon={Building2}
           title="Setup a Chit Group"
@@ -100,7 +100,7 @@ export default function AppJourneyPage() {
           navLabel="nav_groups"
         />
 
-        <Step 
+        <Step
           index={3}
           icon={Users}
           title="Onboarding Members"
@@ -110,7 +110,7 @@ export default function AppJourneyPage() {
           navLabel="nav_groups"
         />
 
-        <Step 
+        <Step
           index={4}
           icon={Gavel}
           title="Monthly Auctions & Collections"
@@ -120,7 +120,7 @@ export default function AppJourneyPage() {
           navLabel="nav_auctions"
         />
 
-        <Step 
+        <Step
           index={5}
           icon={Landmark}
           title="The Integrated Cash Audit"
@@ -130,7 +130,7 @@ export default function AppJourneyPage() {
           navLabel="nav_cashbook"
         />
 
-        <Step 
+        <Step
           index={6}
           icon={Calculator}
           title="Final Prize Settlement"
@@ -146,7 +146,7 @@ export default function AppJourneyPage() {
       <div className="mt-16 p-8 rounded-3xl border text-center space-y-6 overflow-hidden relative" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
         <div className="relative z-10">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: 'var(--green)' }} />
-          <h2 className="text-2xl font-bold">You're all set!</h2>
+          <h2 className="text-2xl font-bold">You&apos;re all set!</h2>
           <p className="text-sm opacity-60 max-w-md mx-auto">
             Following these steps ensures your firm data remains clean, auditable, and easy to manage for your staff.
           </p>
@@ -155,10 +155,10 @@ export default function AppJourneyPage() {
             <Btn variant="secondary" onClick={() => router.push('/schemes')}>Math Guide</Btn>
           </div>
         </div>
-        
+
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 p-4 opacity-5">
-           <Landmark size={120} />
+          <Landmark size={120} />
         </div>
       </div>
 
