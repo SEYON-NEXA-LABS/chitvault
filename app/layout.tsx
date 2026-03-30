@@ -51,10 +51,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.deferredPrompt = e;
           });
 
-          if ('serviceWorker' in navigator && ${process.env.NODE_ENV === 'production' ? 'true' : 'false'}) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js');
-            });
+          if ('serviceWorker' in navigator) {
+            if (${process.env.NODE_ENV === 'production' ? 'true' : 'false'}) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js');
+              });
+            } else {
+              // Always unregister in dev to stop service worker interference on localhost
+              navigator.serviceWorker.getRegistrations().then(regs => {
+                for(let reg of regs) reg.unregister();
+              });
+            }
           }
         `}} />
       </body>

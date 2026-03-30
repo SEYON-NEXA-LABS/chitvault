@@ -40,10 +40,14 @@ export default function CashbookPage() {
   const [counts,    setCounts]     = useState<DenomCounts>(EMPTY_COUNTS())
   const [notes,     setNotes]      = useState('')
   const [liveTotal, setLiveTotal]  = useState(0)
+  
+  // Transaction stats
+  const [totalCollections, setTotalCollections] = useState(0)
+  const [totalPayouts,     setTotalPayouts]     = useState(0)
 
   // Range filter
   const [fromDate, setFromDate] = useState(() => {
-    const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0]
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]
   })
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0])
 
@@ -51,12 +55,18 @@ export default function CashbookPage() {
     if (isInitial) setLoading(true)
     const targetId = isSuper ? selectedFirmId : firm?.id
 
-    const [dRes, pRes] = await Promise.all([
+    const [dRes, pRes, payRes, setRes] = await Promise.all([
       withFirmScope(supabase.from('denominations').select('*'), targetId)
         .gte('entry_date', fromDate)
         .lte('entry_date', toDate)
         .order('entry_date', { ascending: false }),
-      withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name')
+      withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name'),
+      withFirmScope(supabase.from('payments').select('amount'), targetId)
+        .gte('payment_date', fromDate)
+        .lte('payment_date', toDate),
+      withFirmScope(supabase.from('settlements').select('total_amount, created_at'), targetId)
+        .gte('created_at', fromDate + 'T00:00:00Z')
+        .lte('created_at', toDate + 'T23:59:59Z')
     ])
     
     if (dRes.error) {
@@ -65,6 +75,13 @@ export default function CashbookPage() {
       setLoading(false)
       return
     }
+
+    // Sum transactions
+    const collections = (payRes.data || []).reduce((s: number, p: any) => s + Number(p.amount || 0), 0)
+    const payouts = (setRes.data || []).reduce((s: number, p: any) => s + Number(p.total_amount || 0), 0)
+    setTotalCollections(collections)
+    setTotalPayouts(payouts)
+
     setProfiles(pRes.data || [])
 
     // Defensively calculate total for each entry to prevent crashes if it's missing from DB
@@ -164,11 +181,29 @@ export default function CashbookPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <StatCard label="Today's Cash"    value={fmt(todayTotal)}   color="green" />
-        <StatCard label="Period Total"    value={fmt(totalInRange)} color="gold"  sub={`${entryCount} entries`} />
-        <StatCard label="Entries in Range" value={entryCount}       color="blue"  />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <StatCard label="Collections (In)" value={fmt(totalCollections)} color="blue" />
+        <StatCard label="Payouts (Out)"     value={fmt(totalPayouts)}     color="red"  />
+        <StatCard 
+          label="Book Balance" 
+          value={fmt(totalCollections - totalPayouts)} 
+          color="gold" 
+          sub="Expected Cash"
+        />
+        <StatCard 
+          label="Physical Cash" 
+          value={fmt(totalInRange)} 
+          color={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'green' : 'red'} 
+          sub={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'Matches Book' : `Diff: ${fmt(totalInRange - (totalCollections - totalPayouts))}`}
+        />
       </div>
+
+      {Math.abs(totalInRange - (totalCollections - totalPayouts)) > 1 && (
+        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-sm font-semibold flex items-center gap-3 mb-6 no-print">
+           <div className="p-1.5 rounded-full bg-red-500 text-white"><Trash2 size={14} /></div>
+           Cash Discrepancy detected! Your physical count does not match the total collections/payouts in this period.
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">

@@ -19,6 +19,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_help: 'Help & Support',
     nav_journey: 'App Journey',
     nav_settlements: 'Settlements',
+    nav_reports_group: 'Reporting & Audit',
     
     // Header
     signed_in_as: 'Signed in as',
@@ -73,7 +74,30 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     auction_history: 'Auction History',
     winning_bid: 'Winning Bid (₹)',
     payout_amt: 'Payout Amount',
-    per_member_div: 'Per Member Div'
+    per_member_div: 'Per Member Div',
+
+    // Settlements
+    settlement_title: 'Settlement Utility',
+    settlement_desc: 'Monthly amount calculation & settlement summary',
+    calculation_summary: 'Calculation Summary',
+    add_month: 'Add Month',
+    save_record: 'Save Record',
+    monthly_entry: 'Monthly Amount Entry',
+    entry_desc: 'Enter collection details below',
+    date: 'Date',
+    amount: 'Amount',
+    balance: 'Balance',
+    action: 'Action',
+    settlement_history: 'Settlement History',
+    history_desc: 'Recently saved prize payouts',
+    member_group: 'Member / Group',
+    total_months: 'Months Entered',
+    avg_per_month: 'Calculated Average',
+    settlement_payout: 'Settlement Payout',
+    manual_calc: '-- Manual Calculation --',
+    settlement_saved: 'Settlement saved successfully!',
+    delete_confirm: 'Are you sure you want to delete this settlement record?',
+    payout_rule_note: 'The Average is calculated by dividing the total net amount by the target duration. The Settlement Payout represents the amount for (Duration - 1) months.'
   },
   ta: {
     // Sidebar
@@ -93,6 +117,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_help: 'உதவி மற்றும் ஆதரவு',
     nav_journey: 'செயலி பயணம்',
     nav_settlements: 'பட்டுவாடா',
+    nav_reports_group: 'அறிக்கைகள் மற்றும் தணிக்கை',
     
     // Header
     signed_in_as: 'உள்நுழைந்துள்ள மின்னஞ்சல்',
@@ -147,6 +172,29 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     auction_history: 'ஏல வரலாறு',
     winning_bid: 'ஏலத் தொகை (₹)',
     payout_amt: 'பட்டுவாடா தொகை',
-    per_member_div: 'நபர் தள்ளுபடி'
+    per_member_div: 'நபர் தள்ளுபடி',
+
+    // Settlements
+    settlement_title: 'பட்டுவாடா சரிபார்ப்பு',
+    settlement_desc: 'மாதாந்திரத் தொகை கணக்கீடு மற்றும் பட்டுவாடா சுருக்கம்',
+    calculation_summary: 'கணக்கீடு சுருக்கம்',
+    add_month: 'மாதம் சேர்க்க',
+    save_record: 'பதிவு செய்',
+    monthly_entry: 'மாதாந்திர வரிவு',
+    entry_desc: 'கீழே வசூல் விபரங்களை உள்ளிடவும்',
+    date: 'தேதி',
+    amount: 'தொகை',
+    balance: 'மீதி',
+    action: 'செயல்',
+    settlement_history: 'பட்டுவாடா வரலாறு',
+    history_desc: 'சமீபத்திய சேமிக்கப்பட்ட பட்டுவாடா விபரங்கள்',
+    member_group: 'உறுப்பினர் / குழு',
+    total_months: 'பதிவு செய்யப்பட்ட மாதங்கள்',
+    avg_per_month: 'கணக்கிடப்பட்ட சராசரி',
+    settlement_payout: 'பட்டுவாடா தொகை',
+    manual_calc: '-- கைமுறையாகக் கணக்கிடுதல் --',
+    settlement_saved: 'பட்டுவாடா விபரம் சேமிக்கப்பட்டது!',
+    delete_confirm: 'நிச்சயமாக இந்தப் பதிவை நீக்க வேண்டுமா?',
+    payout_rule_note: 'மொத்த நிகரத் தொகையை இலக்கு காலத்தால் வகுப்பதன் மூலம் சராசரி கணக்கிடப்படுகிறது. பட்டுவாடா தொகை என்பது (காலம் - 1) மாதங்களுக்கான தொகையைக் குறிக்கிறது.'
   }
 };

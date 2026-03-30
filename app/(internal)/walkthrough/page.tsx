@@ -8,11 +8,13 @@ import {
   ArrowRight, BookOpen, Building2, Landmark
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useI18n } from "@/lib/i18n/context"
 
 export default function AppJourneyPage() {
   const router = useRouter()
+  const { t } = useI18n()
 
-  const Step = ({ index, title, description, icon: Icon, href, actionLabel }: any) => (
+  const Step = ({ index, title, description, icon: Icon, href, actionLabel, navLabel }: any) => (
     <div className="relative pl-12 pb-12 last:pb-0">
       {/* Connector Line */}
       <div className="absolute left-[20px] top-[40px] bottom-0 w-[2px] bg-[var(--border)] last:hidden" />
@@ -35,8 +37,11 @@ export default function AppJourneyPage() {
               {description}
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
-               <Badge variant="gray" className="text-[10px]">Step {index} of 5</Badge>
-               <Badge variant="blue" className="text-[10px]">Module: {href.split('/')[1]}</Badge>
+               <Badge variant="gray" className="text-[10px]">Step {index} of 6</Badge>
+               <Badge variant="blue" className="text-[10px] flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  Sidebar Link: {t(navLabel)}
+               </Badge>
             </div>
           </div>
           <div className="shrink-0">
@@ -82,6 +87,7 @@ export default function AppJourneyPage() {
           description="Every member starts as a Person record. This separates their identity (name, phone) from their chit tickets. You only need to create a Person once, even if they join 10 different groups."
           href="/members"
           actionLabel="Add Contacts"
+          navLabel="nav_members"
         />
 
         <Step 
@@ -91,6 +97,7 @@ export default function AppJourneyPage() {
           description="Create a Group to define the rules: the total chit value (e.g. 5 Lakhs), the monthly installment, and the duration (e.g. 20 months). Choose your auction scheme: Dividend or Accumulation."
           href="/groups"
           actionLabel="Create Group"
+          navLabel="nav_groups"
         />
 
         <Step 
@@ -100,24 +107,37 @@ export default function AppJourneyPage() {
           description="Now, link your Persons to the Group. This is where you assign them a Ticket Number (e.g. Member #05). Once all spots are filled, the chit group is ready to start!"
           href="/groups"
           actionLabel="Manage Members"
+          navLabel="nav_groups"
         />
 
         <Step 
           index={4}
           icon={Gavel}
-          title="The Monthly Cycle"
-          description="Each month, record the Auction winner and their bid amount. Then, collect Payments from every member. For Dividend groups, the bid is shared; for Accumulation, it's stored in the surplus pool."
+          title="Monthly Auctions & Collections"
+          description="Every month, record the Auction winner and their bid amount. Then, collect Payments from every member. This builds your 'Digital Total' automatically."
           href="/auctions"
-          actionLabel="Run Auction"
+          actionLabel="Record Auction"
+          navLabel="nav_auctions"
         />
 
         <Step 
           index={5}
+          icon={Landmark}
+          title="The Integrated Cash Audit"
+          description="At the end of the day or week, record your physical note counts (Denominations). The app will automatically compare this to your Digital Total (Collections - Payouts) and flag any discrepancies immediately."
+          href="/cashbook"
+          actionLabel="Audit Cash"
+          navLabel="nav_cashbook"
+        />
+
+        <Step 
+          index={6}
           icon={Calculator}
           title="Final Prize Settlement"
           description="When it's time to pay out the prize money, use the Settlement Utility. It calculates the final amount after all deductions and creates a persistent record for audit proof."
           href="/settlement"
           actionLabel="Calculate Payout"
+          navLabel="nav_settlements"
         />
 
       </div>
