@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      setLoading(true)
+      if (groups.length === 0) setLoading(true)
       const targetId = isSuper ? selectedFirmId : firm?.id
       
       const [g, m, a, p] = await Promise.all([

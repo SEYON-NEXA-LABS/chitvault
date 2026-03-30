@@ -58,11 +58,11 @@ export default function PaymentsPage() {
   const isSuper = role === 'superadmin'
 
   const [payModal, setPayModal] = useState<PersonSummary | null>(null)
-  const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '' })
+  const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
 
   const load = useCallback(async (isInitial = false) => {
-    if (isInitial) setLoading(true)
+    if (isInitial && groups.length === 0) setLoading(true)
     const targetId = isSuper ? selectedFirmId : firm?.id
 
     const [g, m, a, p] = await Promise.all([
@@ -180,70 +180,100 @@ export default function PaymentsPage() {
     let remaining = amount;
     const finalPayments = [];
 
-    // All dues of this person across all memberships, sorted by month
-    const allDues = payModal.memberships.flatMap(m => m.dues.map(d => ({ ...d, memberId: m.member.id })))
-      .sort((a, b) => a.month - b.month);
+    if (payForm.isManual) {
+      // Use manual allocations
+      for (const [key, val] of Object.entries(payForm.manualAllocations)) {
+        const amt = Number(val);
+        if (amt <= 0) continue;
+        
+        const [mId, month] = key.split('-').map(Number);
+        const m = payModal.memberships.find(x => x.member.id === mId);
+        const due = m?.dues.find(d => d.month === month);
+        if (!m || !due) continue;
 
-    for (const due of allDues) {
-      if (remaining <= 0) break;
-      if (due.balance <= 0) continue;
-
-      const toPay = Math.min(remaining, due.balance);
-      remaining -= toPay;
-
-      finalPayments.push({
-        firm_id: firm.id,
-        member_id: due.memberId,
-        group_id: due.group.id,
-        month: due.month,
-        amount: toPay,
-        status: (due.amountPaid + toPay) >= due.amountDue ? 'paid' : 'partial',
-        amount_due: due.amountDue,
-        balance_due: Math.max(0, due.amountDue - due.amountPaid - toPay),
-        payment_date: payForm.date,
-        mode: payForm.mode,
-        payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
-        note: payForm.note
-      });
-    }
-
-    // Residual amount goes to the first membership's next month
-    if (remaining > 0 && payModal.memberships.length > 0) {
-      const ms = payModal.memberships[0];
-      const nextMonth = (ms.dues.length > 0 ? Math.max(...ms.dues.map(d => d.month)) : 0) + 1;
-      if (nextMonth <= ms.group.duration) {
         finalPayments.push({
           firm_id: firm.id,
-          member_id: ms.member.id,
-          group_id: ms.group.id,
-          month: nextMonth,
-          amount: remaining,
-          status: remaining >= ms.group.monthly_contribution ? 'paid' : 'partial',
-          amount_due: ms.group.monthly_contribution,
-          balance_due: Math.max(0, ms.group.monthly_contribution - remaining),
+          member_id: mId,
+          group_id: m.group.id,
+          month: month,
+          amount: amt,
+          status: (due.amountPaid + amt) >= due.amountDue ? 'paid' : 'partial',
+          amount_due: due.amountDue,
+          balance_due: Math.max(0, due.amountDue - due.amountPaid - amt),
           payment_date: payForm.date,
           mode: payForm.mode,
-          payment_type: remaining >= ms.group.monthly_contribution ? 'full' : 'partial',
+          payment_type: (due.amountPaid + amt) >= due.amountDue ? 'full' : 'partial',
           note: payForm.note
         });
       }
+    } else {
+      // Auto-distribution logic
+      // All dues of this person across all memberships, sorted by month
+      const allDues = payModal.memberships.flatMap(m => m.dues.map(d => ({ ...d, memberId: m.member.id })))
+        .sort((a, b) => a.month - b.month);
+
+      for (const due of allDues) {
+        if (remaining <= 0) break;
+        if (due.balance <= 0) continue;
+
+        const toPay = Math.min(remaining, due.balance);
+        remaining -= toPay;
+
+        finalPayments.push({
+          firm_id: firm.id,
+          member_id: due.memberId,
+          group_id: due.group.id,
+          month: due.month,
+          amount: toPay,
+          status: (due.amountPaid + toPay) >= due.amountDue ? 'paid' : 'partial',
+          amount_due: due.amountDue,
+          balance_due: Math.max(0, due.amountDue - due.amountPaid - toPay),
+          payment_date: payForm.date,
+          mode: payForm.mode,
+          payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
+          note: payForm.note
+        });
+      }
+
+      // Residual amount goes to the first membership's next month
+      if (remaining > 0 && payModal.memberships.length > 0) {
+        const ms = payModal.memberships[0];
+        const nextMonth = (ms.dues.length > 0 ? Math.max(...ms.dues.map(d => d.month)) : 0) + 1;
+        if (nextMonth <= ms.group.duration) {
+          finalPayments.push({
+            firm_id: firm.id,
+            member_id: ms.member.id,
+            group_id: ms.group.id,
+            month: nextMonth,
+            amount: remaining,
+            status: remaining >= ms.group.monthly_contribution ? 'paid' : 'partial',
+            amount_due: ms.group.monthly_contribution,
+            balance_due: Math.max(0, ms.group.monthly_contribution - remaining),
+            payment_date: payForm.date,
+            mode: payForm.mode,
+            payment_type: remaining >= ms.group.monthly_contribution ? 'full' : 'partial',
+            note: payForm.note
+          });
+        }
+      }
     }
 
-    const { error } = await supabase.from('payments').insert(finalPayments);
+    if (finalPayments.length === 0) { show('No allocations made', 'error'); setSaving(false); return; }
+
+    const { data: created, error } = await supabase.from('payments').insert(finalPayments).select();
     if (error) { show(error.message, 'error'); }
     else { 
       show(`Recorded ${finalPayments.length} payment segments!`); 
       
-      // Log Activity
       if (payModal.person) {
         await logActivity(
           firm.id,
           'PAYMENT_RECORDED',
           'payment',
-          null,
+          created?.[0]?.id || null,
           { 
             person_name: payModal.person.name, 
-            amount, 
+            total_amount: amount, 
             segments: finalPayments.length 
           }
         );
@@ -367,7 +397,7 @@ export default function PaymentsPage() {
                   <div className="flex gap-1 justify-end">
                     <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
                     <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => {
-                        setPayForm({ amount: String(s.overallTotalBalance), date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '' });
+                        setPayForm({ amount: String(s.overallTotalBalance), date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
                         setPayModal(s);
                     }}>Collect</Btn>
                   </div>
@@ -398,20 +428,50 @@ export default function PaymentsPage() {
             </div>
 
             <div className="space-y-3">
-              <div className="text-xs font-bold uppercase opacity-40 px-1">Outstanding Breakdown (Across Groups)</div>
-              <div className="max-h-48 overflow-y-auto space-y-2 rounded-xl border p-2" style={{ borderColor: 'var(--border)' }}>
-                {payModal.memberships.flatMap(m => m.dues.filter(d=>d.balance > 0.01).map(d => (
-                  <div key={`${m.member.id}-${d.month}`} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--surface2)] text-xs border border-transparent hover:border-[var(--border)] transition-all">
-                    <div>
-                       <div className="font-bold">{m.group.name} · {fmtMonth(d.month, m.group.start_date)}</div>
-                       <div className="text-[9px] opacity-40">Ticket #{m.member.ticket_no}</div>
+              <div className="flex justify-between items-center px-1">
+                 <div className="text-xs font-bold uppercase opacity-40">Outstanding Dues</div>
+                 <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input type="checkbox" checked={payForm.isManual} onChange={e => setPayForm(f => ({ ...f, isManual: e.target.checked }))} />
+                    <span className="font-bold">Manual Allocation</span>
+                 </label>
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl border p-2" style={{ borderColor: 'var(--border)' }}>
+                {payModal.memberships.flatMap(m => m.dues.filter(d=>d.balance > 0.01).map(d => {
+                  const key = `${m.member.id}-${d.month}`;
+                  return (
+                    <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--surface2)] text-xs border border-transparent hover:border-[var(--border)] transition-all">
+                      <div className="flex-1">
+                         <div className="font-bold">{m.group.name} · {fmtMonth(d.month, m.group.start_date)}</div>
+                         <div className="text-[9px] opacity-40">Ticket #{m.member.ticket_no}</div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right min-w-[80px]">
+                           <div className="font-bold text-[var(--red)]">{fmt(d.balance)}</div>
+                           <div className="text-[9px] opacity-40 font-mono">Bal: {fmt(d.amountDue)}</div>
+                        </div>
+                        {payForm.isManual && (
+                          <div className="w-24">
+                             <input 
+                               className={inputClass} 
+                               style={{ ...inputStyle, padding: '4px 8px', fontSize: '11px' }} 
+                               type="number"
+                               placeholder="Amt"
+                               value={payForm.manualAllocations[key] || ''}
+                               onChange={e => {
+                                 const val = e.target.value;
+                                 setPayForm(f => {
+                                   const next = { ...f.manualAllocations, [key]: val };
+                                   const newTotal = Object.values(next).reduce((s, v) => s + Number(v || 0), 0);
+                                   return { ...f, manualAllocations: next, amount: String(newTotal) };
+                                 });
+                               }}
+                             />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                       <div className="font-bold text-[var(--red)]">{fmt(d.balance)}</div>
-                       <div className="text-[9px] opacity-40">Due: {fmt(d.amountDue)}</div>
-                    </div>
-                  </div>
-                )))}
+                  );
+                }))}
               </div>
             </div>
 
@@ -419,8 +479,11 @@ export default function PaymentsPage() {
               <div className="space-y-4">
                 <Field label="Total Amount Received">
                   <input className={inputClass} style={inputStyle} type="number" 
+                    readOnly={payForm.isManual}
                     value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} />
-                  <p className="text-[10px] opacity-40 italic mt-1">* Amount will be automatically distributed starting from oldest dues.</p>
+                  <p className="text-[10px] opacity-40 italic mt-1">
+                    {payForm.isManual ? "* This is the sum of manual allocations defined above." : "* Amount will be automatically distributed starting from oldest dues."}
+                  </p>
                 </Field>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Payment Date">

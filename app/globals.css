@@ -197,6 +197,21 @@ a {
     display: none !important;
   }
 
+  /* Force Light Theme Colors for Printing */
+  :root, .dark {
+    --bg: #ffffff !important;
+    --surface: #ffffff !important;
+    --surface2: #f8fafc !important;
+    --surface3: #f1f5f9 !important;
+    --border: #e2e8f0 !important;
+    --text: #000000 !important;
+    --text2: #334155 !important;
+    --text3: #64748b !important;
+    --shadow: none !important;
+    --gold: #000000 !important; /* Force black for accent icons like crown */
+    --gold-dim: #f1f5f9 !important;
+  }
+
   body {
     background: white !important;
     color: black !important;
@@ -204,8 +219,27 @@ a {
     padding: 0 !important;
   }
 
+  /* Remove all transparency/opacity for clarity on paper */
+  * {
+    opacity: 1 !important;
+    transition: none !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force dark contrast for text that was previously faded */
+  .text-text3, .text-text2, .opacity-30, .opacity-40, .opacity-50, .opacity-60, .opacity-70, .opacity-80, .text-gray-400, .text-slate-400 {
+    color: #1a1a1a !important;
+  }
+
+  [style*="opacity"] {
+    opacity: 1 !important;
+    color: #000 !important;
+  }
+
   /* Reset layout margins for print */
-  .lg\:ml-60 {
+  .lg-ml-60, .lg\:ml-60 {
     margin-left: 0 !important;
   }
 
@@ -222,8 +256,31 @@ a {
   }
 
   /* Hide sticky/fixed positioning for print */
-  .sticky, .fixed {
+  .sticky, .fixed, sidebar, aside {
     position: relative !important;
+  }
+
+  /* Specific table optimizations */
+  table { 
+    page-break-inside: auto; 
+    border: 1px solid #e2e8f0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: auto !important; /* Allow centering if not full width */
+    min-width: 80% !important; /* Maintain a professional minimum width */
+    max-width: 100% !important;
+  }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  th, td { border-bottom: 1px solid #e2e8f0 !important; color: #000 !important; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  
+  /* Ensure badges are readable */
+  .badge {
+     border: 1px solid #000 !important;
+     background: #fff !important;
+     color: #000 !important;
+     font-weight: bold !important;
   }
 }
 

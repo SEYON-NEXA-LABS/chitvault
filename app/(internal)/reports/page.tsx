@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/utils/csv'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
@@ -28,11 +28,13 @@ function ReportsPageContent() {
   const { t } = useI18n()
   
   const REPORTS = useMemo(() => [
+    { id: 'today_collection', category: 'Financial', title: 'Today\'s Collection', desc: 'Daily breakdown of cash, UPI and other payments', icon: History },
     { id: 'pnl', category: 'Financial', title: t('report_pnl') || 'Profit & Loss (P&L)', desc: 'Summary of income versus expenses', icon: DollarSign },
     { id: 'cashflow', category: 'Financial', title: 'Cash Flow Analysis', desc: 'Movement of money in and out', icon: TrendingUp },
     { id: 'dividend', category: 'Financial', title: 'Dividend Performance', desc: 'Average dividend trends by group', icon: DollarSign },
     
     { id: 'upcoming_pay', category: 'Operational', title: t('upcoming_payments') || 'Upcoming & Pending Payments', desc: 'Pending collections for auction cycles', icon: Calendar },
+    { id: 'group_enrollment', category: 'Operational', title: 'Group Enrollment Report', desc: 'Member list and ticket details for a group', icon: Users },
     { id: 'auction_sched', category: 'Operational', title: 'Auction Schedule', desc: 'Upcoming auctions for all active groups', icon: Calendar },
     { id: 'group_ledger', category: 'Operational', title: 'Group Ledger', desc: 'Detailed transaction history for a single group', icon: FileText },
     
@@ -109,7 +111,7 @@ function ReportsPageContent() {
   useEffect(() => {
     async function load() {
       try {
-        setLoading(true)
+        if (groups.length === 0) setLoading(true)
         setError(null)
         
         const res = await Promise.all([
@@ -153,6 +155,20 @@ function ReportsPageContent() {
     const reportTitle = REPORTS.find(r => r.id === activeReport)?.title || 'report'
 
     switch(activeReport) {
+      case 'today_collection':
+        const todayStr = new Date().toISOString().split('T')[0]
+        csvData = payments.filter(p => p.payment_date === todayStr).map(p => {
+          const m = members.find(x => x.id === p.member_id)
+          const g = groups.find(x => x.id === p.group_id)
+          return {
+            Time: new Date(p.created_at).toLocaleTimeString(),
+            Member: m?.persons?.name,
+            Group: g?.name,
+            Mode: p.mode,
+            Amount: p.amount
+          }
+        })
+        break
       case 'pnl':
         csvData = [
           { Category: 'Income', Description: 'Foreman Commissions', Amount: filteredCommissions.reduce((sum, c) => sum + Number(c.commission_amt), 0) },
@@ -193,6 +209,39 @@ function ReportsPageContent() {
           }
         })
         break
+      case 'group_enrollment':
+        if (!selectedGroupId) { alert('Please select a group first'); return }
+        const grp = groups.find(g => g.id === Number(selectedGroupId))
+        const grpMems = members.filter(m => m.group_id === Number(selectedGroupId))
+        
+        // Clubbing logic for CSV
+        const clubMapCsv = new Map<number, any>()
+        grpMems.forEach(m => {
+          const won = auctions.some(a => a.winner_id === m.id)
+          if (!clubMapCsv.has(m.person_id)) {
+            clubMapCsv.set(m.person_id, { 
+              name: m.persons?.name, 
+              nickname: m.persons?.nickname || '', 
+              phone: m.persons?.phone || '', 
+              winning: won ? [m.ticket_no] : [],
+              pending: !won ? [m.ticket_no] : []
+            })
+          } else {
+            const node = clubMapCsv.get(m.person_id)
+            if (won) node.winning.push(m.ticket_no)
+            else node.pending.push(m.ticket_no)
+          }
+        })
+
+        csvData = Array.from(clubMapCsv.values()).map(p => ({
+          Member: p.name,
+          Nickname: p.nickname,
+          Phone: p.phone,
+          'Winning Tickets': p.winning.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None',
+          'Pending Tickets': p.pending.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None',
+          'Total Count': p.winning.length + p.pending.length
+        }))
+        break
       case 'activity':
         csvData = activityLogs.map(l => ({
           Time: new Date(l.created_at).toLocaleString(),
@@ -216,6 +265,7 @@ function ReportsPageContent() {
 
   const renderActiveReport = () => {
     switch (activeReport) {
+      case 'today_collection': return <ReportTodayCollection payments={payments} members={members} groups={groups} />
       case 'reconciliation': return <ReportReconciliation payments={payments} denominations={denominations} />
       case 'activity': return <ReportActivityLog logs={activityLogs} profiles={profiles} />
       case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} auctions={filteredAuctions} />
@@ -245,8 +295,19 @@ function ReportsPageContent() {
           {selectedMemberId && <ReportMemberHistory memberId={Number(selectedMemberId)} members={members} groups={groups} payments={filteredPayments} auctions={filteredAuctions} />}
         </div>
       )
-      case 'defaulters': return <ReportDefaulters members={members} groups={groups} />
+      case 'defaulters': return <ReportDefaulters members={members} groups={groups} auctions={filteredAuctions} />
       case 'winners': return <ReportWinners auctions={filteredAuctions} groups={groups} members={members} />
+      case 'group_enrollment': return (
+        <div>
+           <Field label="Select Group" className="mb-4 max-w-sm no-print">
+            <select className={inputClass} style={inputStyle} value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)}>
+              <option value="">-- Choose Group --</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </Field>
+          {selectedGroupId && <ReportGroupEnrollment groupId={Number(selectedGroupId)} members={members} groups={groups} auctions={filteredAuctions} />}
+        </div>
+      )
       default: return null
     }
   }
@@ -255,9 +316,13 @@ function ReportsPageContent() {
     <div className="space-y-6">
       <style jsx global>{`
         @media print {
+          @page { margin: 1cm; size: portrait; }
           body > #__next > div > main > div > :not(.printable) { display: none; }
-          .no-print { display: none !important; }
-          @page { margin: 1cm; size: landscape; }
+          .printable { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .card-title { font-size: 1.2rem !important; }
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th, td { padding: 4px 8px !important; font-size: 11px !important; border-bottom: 1px solid #333 !important; }
+          .badge { border: 1px solid #000 !important; }
         }
       `}</style>
 
@@ -456,8 +521,9 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
 
     const mTotalPaid = memberPayments.reduce((s: number, p: Payment) => s + Number(p.amount), 0)
     const mOutstanding = Math.max(0, mTotalDue - mTotalPaid)
+    const isWinner = auctions.some((a: Auction) => a.winner_id === member.id)
 
-    if (mOutstanding > 0) return { member, group, mOutstanding, mPending }
+    if (mOutstanding > 0) return { member, group, mOutstanding, mPending, isWinner }
     return null
   }).filter(Boolean)
 
@@ -497,6 +563,7 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
                     <div key={item.member.id} className="text-[11px] flex justify-between gap-10 bg-[var(--surface2)] p-1.5 rounded-lg">
                       <span>
                         <span className="font-bold">{item.group.name}</span>
+                        {item.isWinner && <span className="ml-1 text-gold" title="Winner">👑</span>}
                         <span className="mx-2 opacity-30">|</span>
                         {item.mPending.map((m: any) => (
                            <Badge key={m.month} variant="gray" className="mr-0.5 text-[8px]">{fmtMonth(m.month, item.group.start_date)}</Badge>
@@ -629,7 +696,7 @@ function ReportMemberHistory({ memberId, members, groups, payments, auctions }: 
   )
 }
 
-function ReportDefaulters({ members, groups }: { members: Member[], groups: Group[] }) {
+function ReportDefaulters({ members, groups, auctions }: { members: Member[], groups: Group[], auctions: Auction[] }) {
   const defaulters = members.filter(m => m.status === 'defaulter')
   
   return (
@@ -642,7 +709,9 @@ function ReportDefaulters({ members, groups }: { members: Member[], groups: Grou
             return (
               <Tr key={m.id}>
                 <Td className="font-semibold" style={{ color: 'var(--red)' }}>
-                  {m.persons?.name || 'Member'} <Badge variant="red" className="ml-1">Defaulter</Badge>
+                  {m.persons?.name || 'Member'} 
+                  {auctions.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
+                  <Badge variant="red" className="ml-1">Defaulter</Badge>
                 </Td>
                 <Td>{g?.name} (#{m.ticket_no})</Td>
                 <Td>{m.persons?.phone || '—'}</Td>
@@ -678,6 +747,68 @@ function ReportWinners({ auctions, groups, members }: { auctions: Auction[], gro
               </Tr>
             )
           })}
+        </tbody>
+      </Table>
+    </TableCard>
+  )
+}
+
+function ReportGroupEnrollment({ groupId, members, groups, auctions }: { groupId: number, members: Member[], groups: Group[], auctions: Auction[] }) {
+  const group = groups.find(g => g.id === groupId)
+  const gMembers = members.filter(m => m.group_id === groupId)
+  
+  // Clubbing Logic
+  const clubMap = new Map<number, any>()
+  gMembers.forEach(m => {
+    const isWinner = auctions.some(a => a.winner_id === m.id)
+    if (!clubMap.has(m.person_id)) {
+      clubMap.set(m.person_id, { 
+        person: m.persons, 
+        tickets: [{ no: m.ticket_no, won: isWinner }],
+        status: m.status,
+        hasWinner: isWinner
+      })
+    } else {
+      const existing = clubMap.get(m.person_id)
+      existing.tickets.push({ no: m.ticket_no, won: isWinner })
+      if (isWinner) existing.hasWinner = true
+    }
+  })
+  
+  const clubbed = Array.from(clubMap.values()).sort((a,b) => a.person?.name.localeCompare(b.person?.name))
+  
+  return (
+    <TableCard title={`Enrollment: ${group?.name || 'Group'}`} subtitle={`${gMembers.length} tickets across ${clubbed.length} members`}>
+      <Table>
+        <thead><tr>
+          <Th>Member Name</Th>
+          <Th>Nickname</Th>
+          <Th>Phone</Th>
+          <Th>Ticket Numbers</Th>
+          <Th right>Count</Th>
+        </tr></thead>
+        <tbody>
+          {clubbed.map((item: any, idx) => (
+            <Tr key={idx}>
+              <Td className="font-semibold">
+                {item.person?.name}
+                {item.hasWinner && <Badge variant="gold" className="ml-2">Winner</Badge>}
+              </Td>
+              <Td className="text-[10px] opacity-50">{item.person?.nickname || '—'}</Td>
+              <Td className="font-mono text-xs">{item.person?.phone || '—'}</Td>
+              <Td className="text-xs font-mono">
+                {item.tickets.sort((a:any,b:any)=>a.no-b.no).map((t:any) => (
+                   <span key={t.no} className={cn("mr-2 px-1.5 py-0.5 rounded", t.won ? "bg-gold text-white font-bold" : "bg-[var(--surface2)] text-[var(--text3)]")}>
+                     #{t.no}{t.won && ' 👑'}
+                   </span>
+                ))}
+              </Td>
+              <Td right>
+                <Badge variant={item.tickets.length > 1 ? 'gold' : 'gray'}>{item.tickets.length}</Badge>
+              </Td>
+            </Tr>
+          ))}
+          {clubbed.length === 0 && <Tr><Td colSpan={5} className="text-center py-5">No members enrolled in this group.</Td></Tr>}
         </tbody>
       </Table>
     </TableCard>
@@ -791,5 +922,57 @@ function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] })
         </tbody>
       </Table>
     </TableCard>
+  )
+}
+
+function ReportTodayCollection({ payments, members, groups }: { payments: Payment[], members: Member[], groups: Group[] }) {
+  const today = new Date().toISOString().split('T')[0]
+  const todayPayments = payments.filter(p => p.payment_date === today)
+  
+  const cashTotal = todayPayments.filter(p => p.mode === 'Cash').reduce((s, p) => s + Number(p.amount), 0)
+  const upiTotal  = todayPayments.filter(p => p.mode === 'UPI').reduce((s, p) => s + Number(p.amount), 0)
+  const bankTotal = todayPayments.filter(p => p.mode === 'Bank Transfer').reduce((s, p) => s + Number(p.amount), 0)
+  const grandTotal = todayPayments.reduce((s, p) => s + Number(p.amount), 0)
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard label="Today's Total" value={fmt(grandTotal)} color="blue" sub="Total received today" />
+        <StatCard label="Cash Total" value={fmt(cashTotal)} color="gold" sub="Physical cash" />
+        <StatCard label="UPI Total" value={fmt(upiTotal)} color="green" sub="UPI / Digital" />
+        <StatCard label="Bank Total" value={fmt(bankTotal)} color="blue" sub="Direct Transfer" />
+      </div>
+
+      <TableCard title="Today's Collections Breakdown" subtitle={`Showing ${todayPayments.length} transactions for ${fmtDate(today)}`}>
+        <Table>
+          <thead>
+            <tr>
+              <Th>Time</Th>
+              <Th>Member</Th>
+              <Th>Group</Th>
+              <Th>Mode</Th>
+              <Th right>Amount</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {todayPayments.length === 0 ? (
+              <Tr><Td colSpan={5} className="text-center py-10 opacity-50">No collections recorded today yet.</Td></Tr>
+            ) : todayPayments.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(p => {
+              const m = members.find(x => x.id === p.member_id)
+              const g = groups.find(x => x.id === p.group_id)
+              return (
+                <Tr key={p.id}>
+                  <Td className="text-xs opacity-50">{new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Td>
+                  <Td className="font-semibold">{m?.persons?.name || 'Unknown'}</Td>
+                  <Td className="text-xs">{g?.name || '—'}</Td>
+                  <Td><Badge variant={p.mode === 'Cash' ? 'gold' : 'blue'}>{p.mode}</Badge></Td>
+                  <Td right className="font-mono font-bold text-[var(--green)]">{fmt(p.amount)}</Td>
+                </Tr>
+              )
+            })}
+          </tbody>
+        </Table>
+      </TableCard>
+    </div>
   )
 }

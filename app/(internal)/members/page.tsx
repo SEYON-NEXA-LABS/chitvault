@@ -60,7 +60,7 @@ export default function MembersPage() {
   const [importOpen, setImportOpen] = useState(false)
 
   const load = useCallback(async (isInitial = false) => {
-    if (isInitial) setLoading(true)
+    if (isInitial && members.length === 0) setLoading(true)
     const targetId = isSuper ? selectedFirmId : firm?.id
     
     // Scoped Queries for Multi-Tenancy
@@ -169,39 +169,68 @@ export default function MembersPage() {
 
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
+    if (addTab === 'new' && (!form.name || !form.phone)) { showToast('Name and Phone are required', 'error'); return }
+    if (addTab === 'existing' && !form.existing_id) { showToast('Please select a person', 'error'); return }
+    if (!form.group_id) { showToast('Please select a group', 'error'); return }
+
     setSaving(true)
     const { data: authData } = await supabase.auth.getUser()
     
-    const { data: pData, error: pErr } = await supabase.from('persons')
-      .insert({
-        name: form.name,
-        nickname: form.nickname,
-        phone: form.phone,
-        address: form.address,
-        firm_id: firm.id,
-        created_by: authData.user?.id
-      })
-      .select()
-      .single()
-      
-    if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }
+    let personId = Number(form.existing_id);
 
-    showToast('Person registered!'); 
+    if (addTab === 'new') {
+      const { data: pData, error: pErr } = await supabase.from('persons')
+        .insert({
+          name: form.name,
+          nickname: form.nickname,
+          phone: form.phone,
+          address: form.address,
+          firm_id: firm.id,
+          created_by: authData.user?.id
+        })
+        .select()
+        .single()
+        
+      if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }
+      personId = pData.id;
+      showToast('Person registered!');
+    }
+
+    // Now Enroll in Group
+    const groupId = Number(form.group_id);
+    const numTickets = Number(form.num_tickets);
     
-    // Log Activity
-    if (pData && firm) {
+    // Get current max ticket number for this group
+    const { data: existingMems } = await supabase.from('members').select('ticket_no').eq('group_id', groupId);
+    const maxTicket = existingMems?.reduce((max: number, m: { ticket_no: number }) => Math.max(max, m.ticket_no), 0) || 0;
+
+    const newMembers = Array.from({ length: numTickets }, (_, i) => ({
+      firm_id: firm.id,
+      group_id: groupId,
+      person_id: personId,
+      ticket_no: maxTicket + i + 1,
+      status: 'active',
+      created_by: authData.user?.id
+    }))
+
+    const { error: mErr } = await supabase.from('members').insert(newMembers);
+    
+    if (mErr) {
+      showToast(mErr.message, 'error');
+    } else {
+      showToast(`Enrolled in group with ${numTickets} ticket(s)!`, 'success');
+      // Log Activity
       await logActivity(
         firm.id,
         'MEMBER_CREATED',
         'person',
-        pData.id,
-        { name: pData.name }
+        personId,
+        { group_id: groupId, tickets: numTickets }
       );
+      setAddOpen(false)
+      setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
+      load()
     }
-
-    setAddOpen(false)
-    setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
-    load()
     setSaving(false)
   }
 
@@ -220,6 +249,18 @@ export default function MembersPage() {
       'Balance Due': p.totalBalance
     }))
     downloadCSV(data, 'people_directory')
+  }
+  
+  const handleExportGroup = (g: Group) => {
+    const gMembers = members.filter(m => m.group_id === g.id).sort((a,b) => a.ticket_no - b.ticket_no)
+    const data = gMembers.map(m => ({
+      'Ticket No': m.ticket_no,
+      Member: m.persons?.name,
+      Nickname: m.persons?.nickname || '',
+      Phone: m.persons?.phone || '',
+      Status: m.status
+    }))
+    downloadCSV(data, `enrollment_${g.name.toLowerCase().replace(/\s+/g,'_')}`)
   }
 
   const handleImport = async (data: any[]) => {
@@ -457,7 +498,12 @@ export default function MembersPage() {
               const gMembers = members.filter(m => m.group_id === g.id)
               return (
                 <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} tickets enrolled`}
-                  actions={isSuper && <Badge variant="gold">Owned by: {g.firms?.name}</Badge>}>
+                  actions={
+                    <div className="flex items-center gap-2">
+                       {isSuper && <Badge variant="gold">Owned by: {g.firms?.name}</Badge>}
+                       <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>CSV</Btn>
+                    </div>
+                  }>
                   <Table>
                       <thead><tr>
                         <Th>Ticket</Th>
@@ -470,7 +516,10 @@ export default function MembersPage() {
                         {gMembers.map(m => (
                           <Tr key={m.id}>
                             <Td className="font-mono font-bold">#{m.ticket_no}</Td>
-                            <Td className="font-semibold">{m.persons?.name} {m.persons?.nickname && <span className="text-[var(--gold)] ml-1 opacity-70">({m.persons.nickname})</span>}</Td>
+                            <Td className="font-semibold">
+                               {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--gold)] ml-1 opacity-70">({m.persons.nickname})</span>}
+                               {auctions.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
+                            </Td>
                             <Td className="hidden md:table-cell text-xs">{m.persons?.phone}</Td>
                             <Td className="hidden sm:table-cell">
                                {m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}
@@ -497,16 +546,55 @@ export default function MembersPage() {
         </div>
       )}
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('register_person')}>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
-          <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
-          <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
-          <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
-        </div>
-        <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-          <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
-          <Btn variant="primary" loading={saving} onClick={saveMember}>Save to Registry</Btn>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member" size="lg">
+        <div className="space-y-6">
+          <div className="flex bg-[var(--surface2)] p-1 rounded-xl border w-fit" style={{ borderColor: 'var(--border)' }}>
+             <Chip active={addTab === 'new'} onClick={() => setAddTab('new')}>New Person</Chip>
+             <Chip active={addTab === 'existing'} onClick={() => setAddTab('existing')}>Existing Person</Chip>
+          </div>
+
+          {addTab === 'existing' ? (
+            <Field label="Select Person">
+              <select className={inputClass} style={inputStyle} value={form.existing_id} onChange={e => {
+                const p = persons.find(x => x.id === Number(e.target.value));
+                setForm(f => ({ ...f, existing_id: e.target.value, name: p?.name || '', phone: p?.phone || '' }));
+              }}>
+                <option value="">-- Choose from Registry --</option>
+                {persons.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.phone || 'No phone'})</option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
+              <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
+              <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
+              <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
+            </div>
+          )}
+
+          <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs font-bold uppercase opacity-40 mb-4">Enrollment Details</div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Target Group">
+                <select className={inputClass} style={inputStyle} value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>
+                   <option value="">-- Select Group --</option>
+                   {allGroups.filter(g => g.status === 'active').map(g => (
+                     <option key={g.id} value={g.id}>{g.name} ({fmt(g.chit_value)} · {g.duration}m)</option>
+                   ))}
+                </select>
+              </Field>
+              <Field label="Tickets to Add">
+                <input className={inputClass} style={inputStyle} type="number" min="1" max="10" value={form.num_tickets} onChange={e => setForm(f => ({ ...f, num_tickets: e.target.value }))} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+            <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
+            <Btn variant="primary" loading={saving} onClick={saveMember}>Register & Enroll</Btn>
+          </div>
         </div>
       </Modal>
 
