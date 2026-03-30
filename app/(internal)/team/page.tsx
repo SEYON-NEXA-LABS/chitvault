@@ -9,13 +9,14 @@ import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
-import { UserPlus, Trash2, Shield, User, Crown, Mail } from 'lucide-react'
+import { UserPlus, Trash2, Shield, User, Crown, Mail, UserX, CheckCircle } from 'lucide-react'
 import type { Firm } from '@/types'
 
 interface TeamMember {
   id:        string
   full_name: string | null
   role:      string
+  status:    string
   created_at: string
   email?:    string
 }
@@ -68,7 +69,7 @@ export default function TeamPage() {
 
     // Load all profiles for this firm (Scoped)
     const { data: profiles } = await withFirmScope(
-      supabase.from('profiles').select('id, full_name, role, created_at'),
+      supabase.from('profiles').select('id, full_name, role, status, created_at'),
       targetId
     ).order('created_at')
 
@@ -155,9 +156,20 @@ export default function TeamPage() {
   async function removeMember(memberId: string) {
     if (memberId === currentUserId) { show("You can't remove yourself.", 'error'); return }
     if (!confirm('Remove this staff member from your firm?')) return
-    await supabase.from('profiles').update({ firm_id: null, role: 'staff' }).eq('id', memberId)
+    await supabase.from('profiles').update({ firm_id: null, role: 'staff', status: 'active' }).eq('id', memberId)
     show('Member removed.')
     if (firm) await logActivity(firm.id, 'STAFF_REMOVED', 'profile', memberId)
+    load()
+  }
+
+  async function toggleStatus(memberId: string, currentStatus: string) {
+    if (memberId === currentUserId) { show("You can't deactivate yourself.", 'error'); return }
+    const nextStatus = currentStatus === 'active' ? 'inactive' : 'active'
+    if (nextStatus === 'inactive' && !confirm('Are you sure you want to disable access for this user? They will be logged out immediately.')) return
+    
+    await supabase.from('profiles').update({ status: nextStatus }).eq('id', memberId)
+    show(`User ${nextStatus === 'active' ? 'activated' : 'deactivated'}.`)
+    if (firm) await logActivity(firm.id, 'SETTING_UPDATED', 'profile_status', memberId, { status: nextStatus })
     load()
   }
 
@@ -266,7 +278,7 @@ export default function TeamPage() {
                     {m.id === currentUserId && <span className="text-xs" style={{ color: 'var(--text3)' }}>(you)</span>}
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>
-                    Joined {fmtDate(m.created_at)}
+                    Joined {fmtDate(m.created_at)} {m.status === 'inactive' && <span className="text-[var(--red)] font-bold ml-1.5">• ACCESS DISABLED</span>}
                   </div>
                 </div>
               </div>
@@ -287,7 +299,13 @@ export default function TeamPage() {
                         <User size={12} /> Make Staff
                       </Btn>
                     )}
-                    <Btn size="sm" variant="danger" onClick={() => removeMember(m.id)}>
+                    <Btn size="sm" variant="secondary" onClick={() => toggleStatus(m.id, m.status)}
+                      title={m.status === 'active' ? 'Deactivate User' : 'Activate User'}
+                      style={{ color: m.status === 'active' ? 'var(--red)' : 'var(--green)' }}>
+                      {m.status === 'active' ? <UserX size={12} /> : <CheckCircle size={12} />}
+                      {m.status === 'active' ? 'Disable' : 'Enable'}
+                    </Btn>
+                    <Btn size="sm" variant="danger" onClick={() => removeMember(m.id)} title="Remove from Firm">
                       <Trash2 size={12} />
                     </Btn>
                   </div>

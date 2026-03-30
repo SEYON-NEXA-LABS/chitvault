@@ -58,7 +58,7 @@ export default function OnboardingPage() {
 
   function next() {
     if (step < steps.length - 1) setStep(s => s + 1)
-    else router.push('/dashboard')
+    else window.location.replace('/dashboard')
   }
 
   const current = steps[step]
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <button onClick={() => router.push('/dashboard')}
+        <button onClick={() => window.location.replace('/dashboard')}
           style={{ marginTop: 16, background: 'none', border: 'none', color: '#505a70', fontSize: 13, cursor: 'pointer' }}>
           Skip intro →
         </button>

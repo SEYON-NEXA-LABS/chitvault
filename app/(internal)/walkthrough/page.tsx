@@ -5,16 +5,18 @@ import { Card, Btn, Badge } from "@/components/ui"
 import {
   UserPlus, Users, Gavel, CreditCard,
   Calculator, ChevronRight, CheckCircle2,
-  ArrowRight, BookOpen, Building2, Landmark
+  ArrowRight, BookOpen, Building2, Landmark, Shield
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useI18n } from "@/lib/i18n/context"
+
+import { useToast } from "@/lib/hooks/useToast"
 
 export default function AppJourneyPage() {
   const router = useRouter()
   const { t } = useI18n()
 
-  const Step = ({ index, title, description, icon: Icon, href, actionLabel, navLabel }: any) => (
+  const Step = ({ index, title, description, icon: Icon, href, actionLabel, navLabel, ownerOnly }: any) => (
     <div className="relative pl-12 pb-12 last:pb-0">
       {/* Connector Line */}
       <div className="absolute left-[20px] top-[40px] bottom-0 w-[2px] bg-[var(--border)] last:hidden" />
@@ -32,6 +34,11 @@ export default function AppJourneyPage() {
                 <Icon size={20} />
               </div>
               <h3 className="text-lg font-bold uppercase tracking-tight">{title}</h3>
+              {ownerOnly && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--red-dim)] text-[var(--red)] text-[10px] font-black uppercase tracking-tighter border border-[var(--red-border)]">
+                  <Shield size={10} /> Owner Required
+                </div>
+              )}
             </div>
             <p className="text-sm opacity-70 leading-relaxed max-w-2xl">
               {description}
@@ -84,10 +91,11 @@ export default function AppJourneyPage() {
           index={1}
           icon={UserPlus}
           title="Create the Person (Contact)"
-          description="Every member starts as a Person record. This separates their identity (name, phone) from their chit tickets. You only need to create a Person once, even if they join 10 different groups."
+          description="Every member starts as a Person record. This separates their identity (name, phone) from their chit tickets. Only the Firm Owner can add new contacts to the system."
           href="/members"
           actionLabel="Add Contacts"
           navLabel="nav_members"
+          ownerOnly={true}
         />
 
         <Step
@@ -104,10 +112,11 @@ export default function AppJourneyPage() {
           index={3}
           icon={Users}
           title="Onboarding Members"
-          description="Now, link your Persons to the Group. This is where you assign them a Ticket Number (e.g. Member #05). Once all spots are filled, the chit group is ready to start!"
+          description="Now, link your Persons to the Group. This assigns them a Ticket Number (e.g. Member #05). This structural change is restricted to Owners; staff must be promoted to assist here."
           href="/groups"
           actionLabel="Manage Members"
           navLabel="nav_groups"
+          ownerOnly={true}
         />
 
         <Step

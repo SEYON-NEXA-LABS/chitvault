@@ -5,6 +5,7 @@ import { BrandingProvider } from '@/lib/branding/BrandingProvider'
 import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { PwaProvider } from '@/lib/pwa/context'
+import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import './globals.css'
 
 const noto = Noto_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-noto' })
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <PinLockProvider>
                 <PwaProvider>
                   {children}
+                  <InviteAutoLinker />
                 </PwaProvider>
               </PinLockProvider>
             </I18nProvider>
