@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { can } from '@/lib/firm/permissions'
 import { applyBranding } from '@/lib/branding/context'
@@ -80,12 +80,14 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
 
   const role = profile?.role as UserRole | null ?? null
 
+  const value = useMemo(() => ({
+    firm, profile, role, loading,
+    can: (action: Permission) => can(role, action),
+    refresh: load
+  }), [firm, profile, role, loading, load])
+
   return (
-    <Ctx.Provider value={{
-      firm, profile, role, loading,
-      can: (action: Permission) => can(role, action),
-      refresh: load
-    }}>
+    <Ctx.Provider value={value}>
       {children}
     </Ctx.Provider>
   )

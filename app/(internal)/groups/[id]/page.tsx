@@ -40,8 +40,9 @@ export default function GroupLedgerPage() {
   const [allPersons, setAllPersons] = useState<Person[]>([])
   const [importOpen, setImportOpen] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (isInitial = false) => {
     if (!firm) return
+    if (isInitial && !group) setLoading(true)
     
     const [gRes, mRes, aRes, pRes, fcRes] = await Promise.all([
       supabase.from('groups').select('*').eq('id', groupId).eq('firm_id', firm.id).single(),
@@ -59,9 +60,9 @@ export default function GroupLedgerPage() {
     setAllPersons(pRes.data || [])
     setCommissions(fcRes.data || [])
     setLoading(false)
-  }, [firm, groupId, router, supabase])
+  }, [firm, groupId, router, supabase, group])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(true) }, [load])
 
   useEffect(() => {
     if (addOpen && members.length < (group?.num_members || 0)) {
@@ -131,6 +132,7 @@ export default function GroupLedgerPage() {
       'Ticket No': m.ticket_no,
       'Name': m.persons?.name,
       'Phone': m.persons?.phone || '',
+      'Winner': auctionHistory.some(a => a.winner_id === m.id) ? 'Yes' : 'No',
       'Status': m.status
     }))
     downloadCSV(data, `${group?.name}_members`)
@@ -307,7 +309,7 @@ export default function GroupLedgerPage() {
                 <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
                 <Td className="font-semibold text-xs md:text-sm">
                   {m.persons?.name}
-                  {auctionHistory.some(a => a.winner_id === m.id) && <span className="ml-1" title="Won previously">👑</span>}
+                  {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
                 </Td>
                 <Td className="hidden md:table-cell text-xs font-mono">{m.persons?.phone || '—'}</Td>
                 <Td className="hidden sm:table-cell">{m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}</Td>
