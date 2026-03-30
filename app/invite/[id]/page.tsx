@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type State = 'loading' | 'invalid' | 'expired' | 'already_member' | 'ready' | 'signin' | 'success' | 'error'
+type State = 'loading' | 'invalid' | 'expired' | 'already_member' | 'ready' | 'signin' | 'success' | 'error' | 'check_email'
 
 interface InviteInfo {
   id:        string
@@ -82,10 +82,23 @@ export default function InvitePage() {
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: invite.email,
       password: form.password,
-      options: { data: { full_name: form.full_name } }
+      options: { 
+        data: { full_name: form.full_name },
+        emailRedirectTo: window.location.origin + '/dashboard'
+      }
     })
+    
     setLoading(false)
-    if (authErr || !authData.user) { setError(authErr?.message || 'Sign up failed.'); return }
+    if (authErr) { setError(authErr.message); return }
+    if (!authData.user) { setError('Sign up failed.'); return }
+
+    // If confirmation is required, session will be null
+    if (!authData.session) {
+      localStorage.setItem('pending_invite_id', inviteId)
+      setState('check_email')
+      return
+    }
+
     await doAccept()
   }
 
@@ -143,6 +156,21 @@ export default function InvitePage() {
       <div style={{ fontSize: 48, marginBottom: 14 }}>🎉</div>
       <h2 style={{ color: '#3ecf8e', marginBottom: 8 }}>You&apos;re in!</h2>
       <p style={{ color: '#8892aa', fontSize: 14 }}>You&apos;ve joined {invite?.firm_name}. Redirecting...</p>
+    </div></div>
+  )
+
+  if (state === 'check_email') return (
+    <div style={sty.page}><div style={{ ...sty.box, textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 14 }}>✉️</div>
+      <h2 style={{ color: '#2563eb', marginBottom: 8 }}>Check your email</h2>
+      <p style={{ color: '#8892aa', fontSize: 14, lineHeight: 1.6 }}>
+        We&apos;ve sent a confirmation link to <strong>{invite?.email}</strong>. 
+        <br /><br />
+        Please click the link in the email to activate your account. Once confirmed, you will automatically join <strong>{invite?.firm_name}</strong>.
+      </p>
+      <div style={{ marginTop: 24, borderTop: '1px solid #2a3045', paddingTop: 20 }}>
+         <a href="/login" style={{ color: '#2563eb', fontSize: 14, textDecoration: 'none' }}>Go to login →</a>
+      </div>
     </div></div>
   )
 

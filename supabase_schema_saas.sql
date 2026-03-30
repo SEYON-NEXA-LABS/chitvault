@@ -69,6 +69,7 @@ create table if not exists profiles (
   firm_id    uuid not null references firms(id) on delete cascade,
   full_name  text,
   role       text default 'staff',
+  status     text default 'active',
   created_at timestamptz default now(),
   created_by uuid references auth.users(id),
   updated_at timestamptz default now(),
@@ -79,6 +80,11 @@ do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'profiles_role_chk') then
     alter table profiles add constraint profiles_role_chk
       check (role in ('owner','staff','superadmin'));
+  end if;
+
+  if not exists (select 1 from pg_constraint where conname = 'profiles_status_chk') then
+    alter table profiles add constraint profiles_status_chk
+      check (status in ('active', 'inactive'));
   end if;
 end $$;
 

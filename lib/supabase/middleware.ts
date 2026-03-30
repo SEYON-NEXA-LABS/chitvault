@@ -34,40 +34,51 @@ export async function updateSession(request: NextRequest) {
   const isAdmin = pathname.startsWith('/admin')
   const isOnboarding = pathname === '/onboarding'
   const isInvite = pathname.startsWith('/invite')
+  const isDenied = pathname === '/access-denied'
 
-  // Not logged in — allow public pages and invite links only
-  if (!user && !isPublic && !isInvite) {
+  // Not logged in — allow public pages, invite links, and access-denied
+  if (!user && !isPublic && !isInvite && !isDenied) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Logged in on a public page — route to the right place
-  if (user && isPublic) {
+  // Logged in — enforce routing
+  if (user) {
     const { data: profile } = await supabase
-      .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
+      .from('profiles').select('firm_id, role, status').eq('id', user.id).maybeSingle()
 
-    if (profile?.role === 'superadmin') {
-      return NextResponse.redirect(new URL('/admin', request.url))
+    // 0. If account is inactive —> Force Access Denied (unless already there)
+    if (profile?.status === 'inactive' && !isDenied) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/access-denied'
+      return NextResponse.redirect(url)
     }
 
-    // Default to dashboard for authenticated users on public pages
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // Logged in, protected route — enforce admin guard
-  if (user && !isPublic && !isOnboarding && !isInvite) {
-    const { data: profile } = await supabase
-      .from('profiles').select('firm_id, role').eq('id', user.id).maybeSingle()
-
-    // Admin-only areas
-    if (isAdmin && profile?.role !== 'superadmin') {
+    // 1. If on Onboarding but already have a firm —> Forward to Dashboard
+    if (isOnboarding && profile?.firm_id) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // If no profile or firm_id at all, only then force onboarding
-    if (!profile && !isAdmin) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
+    // 2. If on Public page —> Forward to App
+    if (isPublic) {
+      if (profile?.role === 'superadmin') {
+        return NextResponse.redirect(new URL('/admin', request.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // 3. If on Protected route —> Enforce guards
+    if (!isPublic && !isOnboarding && !isInvite) {
+      // Admin-only areas
+      if (isAdmin && profile?.role !== 'superadmin') {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+
+      // If no profile at all, force onboarding
+      if (!profile && !isAdmin) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
     }
   }
 
