@@ -2,10 +2,11 @@
 
 import React, { useMemo, useState, useCallback, useEffect } from "react"
 import { Card, Table, Th, Td, Tr, Badge, Loading, Btn, Field } from "@/components/ui"
-import { Calculator, Plus, Trash2, Save, History, User } from "lucide-react"
+import { Calculator, Plus, Trash2, Save, User } from "lucide-react"
 import { fmt, fmtDate } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { useFirm } from "@/lib/firm/context"
+import { useI18n } from "@/lib/i18n/context"
 import { useToast } from "@/lib/hooks/useToast"
 import { logActivity } from "@/lib/utils/logger"
 import { withFirmScope } from "@/lib/supabase/firmQuery"
@@ -20,12 +21,13 @@ type Entry = {
 type MemberWithDetails = Member & {
   firms?: { name: string }
   persons?: Person
-  groups?: { name: string }
+  groups?: { name: string, duration: number }
 }
 
 export default function SettlementPage() {
   const supabase = createClient()
   const { show } = useToast()
+  const { t } = useI18n()
   const { firm, role, can } = useFirm()
   
   const [entries, setEntries] = useState<Entry[]>([
@@ -37,6 +39,7 @@ export default function SettlementPage() {
   const [history, setHistory] = useState<Settlement[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [targetMonths, setTargetMonths] = useState<number>(15)
 
   const isSuper = role === 'superadmin'
 
@@ -47,13 +50,10 @@ export default function SettlementPage() {
     [entries]
   )
 
-  const totalMonths = entries.length
-
   const averagePerMonth = useMemo(() => {
-    if (totalMonths === 0) return 0
-    // As per user rule: divide by 15
-    return Math.round(totalAmount / 15)
-  }, [totalAmount, totalMonths])
+    if (targetMonths <= 0) return 0
+    return Math.round(totalAmount / targetMonths)
+  }, [totalAmount, targetMonths])
 
   /* Running & Closing Balances */
   const balances = useMemo(() => {
@@ -69,9 +69,9 @@ export default function SettlementPage() {
     })
   }, [entries, totalAmount])
 
-  const month14Balance = useMemo(() => {
-    return totalAmount - (averagePerMonth * 14)
-  }, [totalAmount, averagePerMonth])
+  const settlementTotal = useMemo(() => {
+    return averagePerMonth * (targetMonths - 1)
+  }, [averagePerMonth, targetMonths])
 
   /* ---------------- Persistence ---------------- */
 
@@ -82,7 +82,7 @@ export default function SettlementPage() {
 
     // Load Members for dropdown
     const { data: mems } = await withFirmScope(
-       supabase.from('members').select('*, persons(*), groups(name)'),
+       supabase.from('members').select('*, persons(*), groups(name, duration)'),
        targetId
     )
     setMembers((mems as MemberWithDetails[]) || [])
@@ -108,30 +108,30 @@ export default function SettlementPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const mId = selectedMemberId ? Number(selectedMemberId) : null
-      const gId = members.find(m => m.id === mId)?.group_id || null
+      const selectedMember = members.find(m => m.id === mId)
+      const gId = selectedMember?.group_id || null
 
       const { error } = await supabase.from('settlements').insert({
         firm_id: firm.id,
         member_id: mId,
         group_id: gId,
         total_amount: totalAmount,
-        total_months: totalMonths,
+        total_months: targetMonths,
         average_per_month: averagePerMonth,
-        month_14_balance: month14Balance,
+        month_14_balance: settlementTotal,
         entries: entries,
         created_by: user?.id
       })
 
       if (error) throw error
 
-      show('Settlement saved successfully!', 'success')
+      show(t('settlement_saved'), 'success')
       logActivity(firm.id, 'SETTLEMENT_SAVED', 'settlements', null, { 
         total: totalAmount, 
         member_id: mId 
       })
       
       load() // Refresh history
-      // Keep entries for printing/viewing
     } catch (e: any) {
       show(e.message, 'error')
     } finally {
@@ -141,7 +141,7 @@ export default function SettlementPage() {
 
   async function deleteSettlement(id: number) {
      if (!firm || !can('deleteSettlement')) return
-     if (!confirm('Are you sure you want to delete this settlement record?')) return
+     if (!confirm(t('delete_confirm'))) return
      
      const { error } = await supabase.from('settlements').delete().eq('id', id)
      if (error) return show(error.message, 'error')
@@ -155,6 +155,12 @@ export default function SettlementPage() {
     setSelectedMemberId(mId)
     if (!mId) return
 
+    // Auto-fill Target Duration from Group
+    const selectedMem = members.find(m => String(m.id) === mId)
+    if (selectedMem?.groups?.duration) {
+      setTargetMonths(selectedMem.groups.duration)
+    }
+
     // Try to auto-fill from last won auction payout
     const { data: auction } = await supabase
       .from('auctions')
@@ -165,8 +171,6 @@ export default function SettlementPage() {
 
     if (auction && auction[0]?.net_payout) {
       show('Auto-filled total amount from last won auction!')
-      // We update the first entry or set a single entry if empty?
-      // Actually, standard practice: put it as the base total for entries[0]
       const updated = [...entries]
       updated[0] = { ...updated[0], amount: Number(auction[0].net_payout) }
       setEntries(updated)
@@ -217,13 +221,13 @@ export default function SettlementPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Calculator size={24} style={{ color: 'var(--gold)' }} />
-            Settlement Utility
+            {t('settlement_title')}
           </h1>
-          <p className="text-sm opacity-60">Monthly amount calculation & settlement summary</p>
+          <p className="text-sm opacity-60">{t('settlement_desc')}</p>
         </div>
         <div className="flex items-center gap-2">
-           <Btn onClick={addEntry} icon={Plus} variant="secondary">Add Month</Btn>
-           <Btn onClick={handleSave} icon={Save} loading={saving}>Save Record</Btn>
+           <Btn onClick={addEntry} icon={Plus} variant="secondary">{t('add_month')}</Btn>
+           <Btn onClick={handleSave} icon={Save} loading={saving}>{t('save_record')}</Btn>
         </div>
       </div>
 
@@ -231,15 +235,15 @@ export default function SettlementPage() {
         
         {/* Entry Table (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
-          <Card title="Monthly Amount Entry" subtitle="Enter collection details below">
+          <Card title={t('monthly_entry')} subtitle={t('entry_desc')}>
             <Table>
               <thead>
                 <tr>
                   <Th className="w-12">#</Th>
-                  <Th>Date</Th>
-                  <Th right>Amount (₹)</Th>
-                  <Th right>Balance (₹)</Th>
-                  <Th className="w-20 text-center">Action</Th>
+                  <Th>{t('date')}</Th>
+                  <Th right>{t('amount')} (₹)</Th>
+                  <Th right>{t('balance')} (₹)</Th>
+                  <Th className="w-20 text-center">{t('action')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -282,21 +286,21 @@ export default function SettlementPage() {
             </Table>
             <div className="mt-4 flex justify-center">
                <button onClick={addEntry} className="text-xs flex items-center gap-1 font-semibold opacity-50 hover:opacity-100 transition-opacity">
-                  <Plus size={14} /> ADD NEW MONTH
+                  <Plus size={14} /> {t('add_month').toUpperCase()}
                </button>
             </div>
           </Card>
 
           {/* History Section */}
-          <Card title="Settlement History" subtitle="Recently saved prize payouts">
+          <Card title={t('settlement_history')} subtitle={t('history_desc')}>
              <Table>
                 <thead>
                    <tr>
-                      <Th>Date</Th>
-                      <Th>Member / Group</Th>
-                      <Th right>Total Amount</Th>
-                      <Th right>14th-Mo Bal</Th>
-                      <Th className="text-center w-10">Action</Th>
+                      <Th>{t('date')}</Th>
+                      <Th>{t('member_group')}</Th>
+                      <Th right>{t('amount')}</Th>
+                      <Th right>{t('settlement_payout')}</Th>
+                      <Th className="text-center w-10">{t('action')}</Th>
                    </tr>
                 </thead>
                 <tbody>
@@ -319,9 +323,9 @@ export default function SettlementPage() {
                          <Td right><Badge variant="gold" className="text-[10px]">{fmt(s.month_14_balance)}</Badge></Td>
                          <Td className="text-center">
                             {can('deleteSettlement') && (
-                               <button onClick={() => deleteSettlement(s.id)} className="p-1 opacity-20 hover:opacity-100 hover:text-red-500">
+                               <button onClick={() => deleteSettlement(s.id)} className="p-1 opacity-50 hover:opacity-100 hover:text-red-500">
                                   <Trash2 size={14} />
-                               </button>
+                                </button>
                             )}
                          </Td>
                       </Tr>
@@ -333,26 +337,44 @@ export default function SettlementPage() {
 
         {/* Summary (1/3 width) */}
         <div className="space-y-4">
-           <Card title="Calculation Summary" subtitle="Tamil Settlement Rules">
+           <Card title={t('calculation_summary')} subtitle={t('payout_amt')}>
               <div className="space-y-4 py-2">
                  
-                 <Field label="Attribution (Optional)" className="mb-4">
+                 <Field label={t('nav_members')} className="mb-4">
                     <select 
                        className={inputClass} 
                        style={inputStyle}
                        value={selectedMemberId} 
                        onChange={e => onMemberChange(e.target.value)}
                     >
-                       <option value="">-- Manual Calculation --</option>
+                       <option value="">{t('manual_calc')}</option>
                        {members.map(m => (
                           <option key={m.id} value={m.id}>{m.persons?.name} ({m.groups?.name})</option>
                        ))}
                     </select>
                  </Field>
 
+                 <Field label={t('duration')}>
+                    <div className="flex items-center gap-2">
+                       <input 
+                          type="number"
+                          className={inputClass}
+                          style={inputStyle}
+                          min={1}
+                          disabled={!!selectedMemberId}
+                          value={targetMonths}
+                          onChange={e => setTargetMonths(Math.max(1, parseInt(e.target.value) || 0))} 
+                       />
+                       <span className="text-[10px] opacity-40 font-bold uppercase tracking-widest">
+                         {targetMonths} {t('duration')}
+                         {selectedMemberId && " (Auto-filled)"}
+                       </span>
+                    </div>
+                 </Field>
+
                  <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--border)' }}>
                     <div className="text-sm">
-                       <div className="font-bold">Total Amount</div>
+                       <div className="font-bold">{t('amount')}</div>
                        <div className="text-xs opacity-50">மொத்தம் (Total)</div>
                     </div>
                     <div className="text-xl font-black" style={{ color: 'var(--gold)' }}>{fmt(totalAmount)}</div>
@@ -360,30 +382,32 @@ export default function SettlementPage() {
 
                  <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--border)' }}>
                     <div className="text-sm">
-                       <div className="font-bold">Total Months</div>
+                       <div className="font-bold">{t('total_months')}</div>
                        <div className="text-xs opacity-50">மாதங்கள் (Months)</div>
                     </div>
-                    <div className="text-xl font-mono">{totalMonths}</div>
+                    <div className="text-xl font-mono">{entries.length}</div>
                  </div>
 
                  <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--border)' }}>
                     <div className="text-sm">
-                       <div className="font-bold">15-Month Average</div>
+                       <div className="font-bold">{t('avg_per_month')}</div>
                        <div className="text-xs opacity-50">சராசரி (Average)</div>
                     </div>
                     <div className="text-xl font-black" style={{ color: 'var(--green)' }}>{fmt(averagePerMonth)}</div>
                  </div>
 
                  <div className="p-4 rounded-xl border mt-4" style={{ background: 'var(--gold-dim)', borderColor: 'var(--gold)' }}>
-                    <div className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--gold)' }}>14‑Month Balance</div>
-                    <div className="text-xs opacity-60 mb-2">14‑வது மாத மீதி</div>
-                    <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>{fmt(month14Balance)}</div>
-                 </div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--gold)' }}>
+                       {t('settlement_payout')} ({targetMonths - 1} months)
+                    </div>
+                    <div className="text-[10px] opacity-60 mb-2">{(targetMonths - 1)}‑மாதப் பட்டுவாடா</div>
+                    <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>{fmt(settlementTotal)}</div>
+                  </div>
               </div>
            </Card>
 
            <div className="p-4 rounded-xl border text-[11px] leading-relaxed opacity-80" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-             <strong>NOTE:</strong> The &quot;Average Per Month&quot; is calculated by dividing the total amount by 15 as per the handwritten chit settlement rule. The 14th-month balance is calculated as (Total - [Average x 14]).
+             <strong>NOTE:</strong> {t('payout_rule_note')}
            </div>
         </div>
 
