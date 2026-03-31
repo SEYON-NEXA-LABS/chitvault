@@ -84,30 +84,30 @@ export default function DashboardPage() {
     return { totalChitValue, todayColl, totalPending, defaulters }
   }, [groups, members, auctions, payments])
 
+
   if (loading) return <Loading />
 
   return (
     <div className="space-y-6">
-      
       {/* Header with Firm Filter */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black text-[var(--text)]">Dashboard</h1>
         {isSuper && (
           <div className="w-64">
-             <select 
-               className={inputClass} 
-               style={inputStyle}
-               value={selectedFirmId} 
-               onChange={e => setSelectedFirmId(e.target.value)}
-             >
-               <option value="all">All Firms (Global)</option>
-               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-             </select>
+            <select 
+              className={inputClass} 
+              style={inputStyle}
+              value={selectedFirmId} 
+              onChange={e => setSelectedFirmId(e.target.value)}
+            >
+              <option value="all">All Firms (Global)</option>
+              {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
           </div>
         )}
       </div>
 
-      {/* Stats */}
+      {/* Primary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="gold" />
         <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="green" />
@@ -119,12 +119,105 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* Group Overview Section */}
+      <div>
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>Group Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {groups.length === 0 ? (
+            <div className="col-span-full py-12 text-center border-2 border-dashed rounded-xl" style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}>
+              No active groups found. Create one to get started.
+            </div>
+          ) : (
+            groups.map(g => {
+              const done = auctions.filter(a => a.group_id === g.id).length
+              const pct = Math.round((done / g.duration) * 100)
+              const isAcc = g.auction_scheme === 'ACCUMULATION'
+              
+              return (
+                <Link key={g.id} href={`/groups/${g.id}`} className="block group">
+                  <Card className="h-full relative overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 border-t-4"
+                        style={{ borderTopColor: isAcc ? 'var(--blue)' : 'var(--gold)' }}>
+                    <div className="p-5">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-bold text-lg leading-tight mb-1" style={{ color: 'var(--text)' }}>
+                            {g.name}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={isAcc ? "blue" : "gold"}>
+                              {g.auction_scheme}
+                            </Badge>
+                            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--text3)' }}>
+                              {g.duration} Months
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-2xl font-black block" style={{ color: 'var(--text)' }}>
+                            {fmt(g.chit_value)}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold" style={{ color: 'var(--text3)' }}>
+                            Chit Value
+                          </span>
+                        </div>
+                      </div>
 
-        {/* Recent Auctions */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-xs mb-1.5 font-medium">
+                          <span style={{ color: 'var(--text2)' }}>Progress</span>
+                          <span style={{ color: 'var(--text)' }}>{done} / {g.duration} Months</span>
+                        </div>
+                        <div className="progress-bar-wrap h-1.5">
+                          <div className="progress-bar" style={{ width: `${pct}%`, background: isAcc ? 'var(--blue)' : 'var(--gold)' }} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--text3)' }}>
+                            Contribution
+                          </span>
+                          <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+                            {fmt(g.monthly_contribution)} /m
+                          </span>
+                        </div>
+                        {isAcc ? (
+                          <div>
+                            <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--blue)' }}>
+                              Group Surplus
+                            </span>
+                            <span className="text-sm font-bold" style={{ color: 'var(--blue)' }}>
+                              {fmt(g.accumulated_surplus)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--text3)' }}>
+                              Status
+                            </span>
+                            <Badge variant="green" className="text-[10px]">Active</Badge>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg className="w-4 h-4" style={{ color: 'var(--text2)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5">
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b font-semibold text-sm"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+               style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
             Recent Auctions
           </div>
           {auctions.length === 0
@@ -169,39 +262,6 @@ export default function DashboardPage() {
               </table>
           }
         </Card>
-
-        {/* Group Progress */}
-        <Card className="overflow-hidden">
-          <div className="px-5 py-4 border-b font-semibold text-sm"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-            Group Progress
-          </div>
-          <div className="p-5 space-y-4">
-            {groups.length === 0
-              ? <div className="text-center text-sm py-6" style={{ color: 'var(--text3)' }}>No groups yet</div>
-              : groups.map(g => {
-                  const done = auctions.filter(a => a.group_id === g.id).length
-                  const pct  = Math.round(done / g.duration * 100)
-                  return (
-                    <div key={g.id}>
-                      <div className="flex justify-between mb-1.5">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{g.name}</span>
-                        <span className="text-xs font-mono" style={{ color: 'var(--text2)' }}>{done}/{g.duration} mo</span>
-                      </div>
-                      <div className="progress-bar-wrap">
-                        <div className="progress-bar" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="flex justify-between mt-1">
-                        <span className="text-xs" style={{ color: 'var(--text3)' }}>{fmt(g.chit_value)}</span>
-                        <span className="text-xs" style={{ color: 'var(--text3)' }}>{pct}% complete</span>
-                      </div>
-                    </div>
-                  )
-                })
-            }
-          </div>
-        </Card>
-
       </div>
     </div>
   )

@@ -210,6 +210,11 @@ create table if not exists auctions (
   total_pot    numeric(12,2) not null,
   dividend     numeric(12,2) not null,
   net_payout   numeric(12,2) default 0.0,
+  -- Payout Settlement
+  is_payout_settled boolean default false,
+  payout_date       date,
+  payout_amount     numeric(12,2),
+  payout_note       text,
   created_at   timestamptz default now(),
   created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
@@ -218,8 +223,12 @@ create table if not exists auctions (
   constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0)
 );
 
--- Migration: add net_payout to auctions
-alter table auctions add column if not exists net_payout numeric(12,2) default 0.0;
+-- Migration: add net_payout & settlement columns to auctions
+alter table auctions add column if not exists net_payout          numeric(12,2) default 0.0;
+alter table auctions add column if not exists is_payout_settled   boolean default false;
+alter table auctions add column if not exists payout_date        date;
+alter table auctions add column if not exists payout_amount      numeric(12,2);
+alter table auctions add column if not exists payout_note        text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'auctions_group_firm_fk') then
@@ -687,7 +696,9 @@ create trigger check_payment_consistency
   for each row execute function trg_check_payment_consistency();
 
 -- ── 9. UTILITY VIEW ──────────────────────────────────────────
-create or replace view v_member_dues as
+create or replace view v_member_dues
+with (security_invoker = true)
+as
 select
   p.firm_id, p.group_id, p.member_id, p.month,
   sum(p.amount)                  as amount_paid,

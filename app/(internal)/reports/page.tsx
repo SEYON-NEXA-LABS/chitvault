@@ -63,6 +63,7 @@ function ReportsPageContent() {
 
   const [firms,    setFirms]    = useState<Firm[]>([])
   const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
+  const [winnerFilter, setWinnerFilter] = useState<'all'|'pending'|'settled'>('all')
   const isSuper = role === 'superadmin'
   const targetId = isSuper ? selectedFirmId : firm?.id
 
@@ -217,19 +218,24 @@ function ReportsPageContent() {
         // Clubbing logic for CSV
         const clubMapCsv = new Map<number, any>()
         grpMems.forEach(m => {
-          const won = auctions.some(a => a.winner_id === m.id)
+          const auc = auctions.find(a => a.group_id === m.group_id && a.winner_id === m.id)
           if (!clubMapCsv.has(m.person_id)) {
             clubMapCsv.set(m.person_id, { 
               name: m.persons?.name, 
               nickname: m.persons?.nickname || '', 
               phone: m.persons?.phone || '', 
-              winning: won ? [m.ticket_no] : [],
-              pending: !won ? [m.ticket_no] : []
+              winning: auc ? [m.ticket_no] : [],
+              wonMonths: auc ? [fmtMonth(auc.month, grp?.start_date)] : [],
+              pending: !auc ? [m.ticket_no] : []
             })
           } else {
             const node = clubMapCsv.get(m.person_id)
-            if (won) node.winning.push(m.ticket_no)
-            else node.pending.push(m.ticket_no)
+            if (auc) {
+              node.winning.push(m.ticket_no)
+              node.wonMonths.push(fmtMonth(auc.month, grp?.start_date))
+            } else {
+              node.pending.push(m.ticket_no)
+            }
           }
         })
 
@@ -237,10 +243,26 @@ function ReportsPageContent() {
           Member: p.name,
           Nickname: p.nickname,
           Phone: p.phone,
+          'Total Tickets': p.winning.length + p.pending.length,
           'Winning Tickets': p.winning.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None',
-          'Pending Tickets': p.pending.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None',
-          'Total Count': p.winning.length + p.pending.length
+          'Won Months': p.wonMonths.join(', ') || '—',
+          'Pending Tickets': p.pending.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None'
         }))
+        break
+      case 'winners':
+        csvData = auctions.filter(a => a.winner_id != null).map(a => {
+          const m = members.find(x => x.id === a.winner_id)
+          const g = groups.find(x => x.id === a.group_id)
+          return {
+            'Auction Date': fmtDate(a.created_at),
+            'Group': g?.name,
+            'Month': `M${a.month}`,
+            'Winner': m?.persons?.name,
+            'Payout Amt': a.net_payout || a.bid_amount,
+            'Settled': a.is_payout_settled ? 'Yes' : 'No',
+            'Settled Date': a.is_payout_settled ? fmtDate(a.payout_date) : 'N/A'
+          }
+        })
         break
       case 'activity':
         csvData = activityLogs.map(l => ({
@@ -296,7 +318,7 @@ function ReportsPageContent() {
         </div>
       )
       case 'defaulters': return <ReportDefaulters members={members} groups={groups} auctions={filteredAuctions} />
-      case 'winners': return <ReportWinners auctions={filteredAuctions} groups={groups} members={members} />
+      case 'winners': return <ReportWinners auctions={filteredAuctions} groups={groups} members={members} filter={winnerFilter} onFilterChange={setWinnerFilter} />
       case 'group_enrollment': return (
         <div>
            <Field label="Select Group" className="mb-4 max-w-sm no-print">
@@ -726,30 +748,54 @@ function ReportDefaulters({ members, groups, auctions }: { members: Member[], gr
   )
 }
 
-function ReportWinners({ auctions, groups, members }: { auctions: Auction[], groups: Group[], members: Member[] }) {
-  const wonAucs = auctions.filter(a => a.winner_id != null).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+function ReportWinners({ auctions, groups, members, filter, onFilterChange }: { auctions: Auction[], groups: Group[], members: Member[], filter: string, onFilterChange: (v: any) => void }) {
+  const wonAucs = auctions.filter(a => {
+    if (a.winner_id == null) return false
+    if (filter === 'pending') return !a.is_payout_settled
+    if (filter === 'settled') return a.is_payout_settled
+    return true
+  }).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   
   return (
-    <TableCard title="Auction Winners">
-      <Table>
-        <thead><tr><Th>Date</Th><Th>Winner</Th><Th>Group</Th><Th>Month</Th><Th right>Bid Amount (Payout)</Th></tr></thead>
-        <tbody>
-          {wonAucs.map(a => {
-            const m = members.find(x => x.id === a.winner_id)
-            const g = groups.find(x => x.id === a.group_id)
-            return (
-              <Tr key={a.id}>
-                <Td>{fmtDate(a.created_at)}</Td>
-                <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
-                <Td>{g?.name}</Td>
-                <Td><Badge variant="gold">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
-                <Td right style={{ color: 'var(--red)' }}>{fmt(a.bid_amount)}</Td>
-              </Tr>
-            )
-          })}
-        </tbody>
-      </Table>
-    </TableCard>
+    <div className="space-y-4">
+      <div className="flex justify-end no-print">
+        <select 
+          className={inputClass} 
+          style={{ ...inputStyle, width: 'auto' }}
+          value={filter}
+          onChange={e => onFilterChange(e.target.value)}
+        >
+          <option value="all">All Winners</option>
+          <option value="pending">Pending Payouts</option>
+          <option value="settled">Settled Payouts</option>
+        </select>
+      </div>
+      <TableCard title="Auction Winners">
+        <Table>
+          <thead><tr><Th>Date</Th><Th>Winner</Th><Th>Group</Th><Th>Month</Th><Th right>Payout Amount</Th><Th>Settlement</Th></tr></thead>
+          <tbody>
+            {wonAucs.map(a => {
+              const m = members.find(x => x.id === a.winner_id)
+              const g = groups.find(x => x.id === a.group_id)
+              return (
+                <Tr key={a.id}>
+                  <Td>{fmtDate(a.created_at)}</Td>
+                  <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
+                  <Td>{g?.name}</Td>
+                  <Td><Badge variant="gold">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
+                  <Td right className="font-mono font-bold text-green-600">{fmt(a.net_payout || a.bid_amount)}</Td>
+                  <Td>
+                    {a.is_payout_settled 
+                      ? <div className="flex flex-col text-[10px] text-green-600 font-bold"><span>✓ Settled</span><span className="opacity-50">{fmtDate(a.payout_date)}</span></div>
+                      : <Badge variant="red">Pending</Badge>}
+                  </Td>
+                </Tr>
+              )
+            })}
+          </tbody>
+        </Table>
+      </TableCard>
+    </div>
   )
 }
 
@@ -760,18 +806,18 @@ function ReportGroupEnrollment({ groupId, members, groups, auctions }: { groupId
   // Clubbing Logic
   const clubMap = new Map<number, any>()
   gMembers.forEach(m => {
-    const isWinner = auctions.some(a => a.winner_id === m.id)
+    const auc = auctions.find(a => a.group_id === groupId && a.winner_id === m.id)
     if (!clubMap.has(m.person_id)) {
       clubMap.set(m.person_id, { 
         person: m.persons, 
-        tickets: [{ no: m.ticket_no, won: isWinner }],
+        tickets: [{ no: m.ticket_no, won: !!auc, month: auc ? fmtMonth(auc.month, group?.start_date) : null }],
         status: m.status,
-        hasWinner: isWinner
+        hasWinner: !!auc
       })
     } else {
       const existing = clubMap.get(m.person_id)
-      existing.tickets.push({ no: m.ticket_no, won: isWinner })
-      if (isWinner) existing.hasWinner = true
+      existing.tickets.push({ no: m.ticket_no, won: !!auc, month: auc ? fmtMonth(auc.month, group?.start_date) : null })
+      if (auc) existing.hasWinner = true
     }
   })
   
@@ -785,6 +831,7 @@ function ReportGroupEnrollment({ groupId, members, groups, auctions }: { groupId
           <Th>Nickname</Th>
           <Th>Phone</Th>
           <Th>Ticket Numbers</Th>
+          <Th>Won Month</Th>
           <Th right>Count</Th>
         </tr></thead>
         <tbody>
@@ -802,6 +849,9 @@ function ReportGroupEnrollment({ groupId, members, groups, auctions }: { groupId
                      #{t.no}{t.won && ' 👑'}
                    </span>
                 ))}
+              </Td>
+              <Td className="text-xs font-bold text-[var(--gold)]">
+                {item.tickets.filter((t:any) => t.month).map((t:any) => t.month).join(', ') || '—'}
               </Td>
               <Td right>
                 <Badge variant={item.tickets.length > 1 ? 'gold' : 'gray'}>{item.tickets.length}</Badge>
