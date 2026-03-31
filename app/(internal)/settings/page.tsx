@@ -12,7 +12,7 @@ import { APP_NAME } from '@/lib/utils'
 import { 
   Sun, Moon, LogOut, Key, Palette, Type, Building, Building2, 
   Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
-  Lock, LockKeyhole
+  Lock, LockKeyhole, Monitor
 } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 import { usePinLock } from '@/lib/lock/context'
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const isOwner = role === 'owner' || isSuperAdmin
 
   const [email,     setEmail]     = useState('')
-  const [theme,     setTheme]     = useState<'dark'|'light'>('light')
+  const [theme,     setTheme]     = useState<'light' | 'dark' | 'system'>('light')
   const [resetting, setResetting] = useState(false)
   const [saving,    setSaving]    = useState(false)
   const [resetMsg,  setResetMsg]  = useState('')
@@ -60,7 +60,7 @@ export default function SettingsPage() {
       setEmail(data.user?.email || '')
     }
     loadUser()
-    const t = (localStorage.getItem('theme') || 'light') as 'dark'|'light'
+    const t = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system'
     setTheme(t)
     if (firm) {
       setName(firm.name || '')
@@ -76,10 +76,13 @@ export default function SettingsPage() {
     }
   }, [firm, supabase.auth])
 
-  function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next); localStorage.setItem('theme', next)
-    document.documentElement.classList.toggle('dark', next === 'dark')
+  function updateTheme(val: 'light' | 'dark' | 'system') {
+    setTheme(val)
+    localStorage.setItem('theme', val)
+    const isDark = val === 'system' 
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+      : val === 'dark'
+    document.documentElement.classList.toggle('dark', isDark)
   }
 
   function handleColorSelect(val: string) {
@@ -486,16 +489,32 @@ export default function SettingsPage() {
       {/* ── Appearance ────────────────────────────────────── */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          🌗 Theme
+          🌗 Appearance & Theme
         </div>
-        <div className="p-5 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>Dark / Light Mode</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text2)' }}>Currently: <strong>{theme === 'dark' ? 'Dark 🌙' : 'Light ☀️'}</strong></div>
-          </div>
-          <Btn variant="secondary" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>} Switch to {theme === 'dark' ? 'Light' : 'Dark'}
-          </Btn>
+        <div className="p-5">
+           <div className="grid grid-cols-3 gap-3">
+              {(['light', 'dark', 'system'] as const).map(m => (
+                <button key={m} onClick={() => updateTheme(m)}
+                  className="p-4 rounded-xl border flex flex-col items-center gap-2 transition-all group"
+                  style={{
+                    borderColor: theme === m ? 'var(--gold)' : 'var(--border)',
+                    background: theme === m ? 'var(--gold-dim)' : 'transparent',
+                  }}>
+                  <div style={{ color: theme === m ? 'var(--gold)' : 'var(--text3)' }}>
+                    {m === 'light' && <Sun size={20} />}
+                    {m === 'dark' && <Moon size={20} />}
+                    {m === 'system' && <Monitor size={20} />}
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest" 
+                    style={{ color: theme === m ? 'var(--gold)' : 'var(--text2)' }}>
+                    {m}
+                  </span>
+                </button>
+              ))}
+           </div>
+           <p className="text-[11px] mt-4 opacity-50 px-1" style={{ color: 'var(--text2)' }}>
+             Choose Light for a clean look, Dark for high contrast, or System to follow your device settings.
+           </p>
         </div>
       </Card>
 

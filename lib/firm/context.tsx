@@ -14,11 +14,14 @@ interface FirmContext {
   loading: boolean
   can:     (action: Permission) => boolean
   refresh: () => Promise<void>
+  switchedFirmId: string | 'all'
+  setSwitchedFirmId: (id: string | 'all') => void
 }
 
 const Ctx = createContext<FirmContext>({
   firm: null, profile: null, role: null, loading: true,
-  can: () => false, refresh: async () => {}
+  can: () => false, refresh: async () => {},
+  switchedFirmId: 'all', setSwitchedFirmId: () => {}
 })
 
 export function FirmProvider({ children }: { children: React.ReactNode }) {
@@ -26,6 +29,12 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const [firm,    setFirm]    = useState<Firm | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [switchedFirmId, setSwitchedFirmId] = useState<string | 'all'>('all')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('switched_firm_id') || 'all'
+    setSwitchedFirmId(saved)
+  }, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(async (silent = false) => {
@@ -45,18 +54,31 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     
     setProfile(prof)
     
-    // Load firm if profile exists with firm_id
-    if (prof?.firm_id) {
+    // Determine active firm ID: use switchedFirmId if superadmin
+    const role = prof?.role as UserRole | null
+    const activeFirmId = (role === 'superadmin' && switchedFirmId !== 'all') 
+      ? switchedFirmId 
+      : prof?.firm_id
+
+    // Load firm if active ID exists
+    if (activeFirmId) {
       const { data: f } = await supabase
-        .from('firms').select('*').eq('id', prof.firm_id).maybeSingle()
+        .from('firms').select('*').eq('id', activeFirmId).maybeSingle()
       setFirm(f)
       if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'Noto Sans')
     } else {
       setFirm(null)
+      // Reset branding to default if global
+      applyBranding('#2563eb', 'Noto Sans')
     }
     
     setLoading(false)
-  }, [supabase])
+  }, [supabase, switchedFirmId])
+
+  const handleSwitch = useCallback((id: string | 'all') => {
+    setSwitchedFirmId(id)
+    localStorage.setItem('switched_firm_id', id)
+  }, [])
 
   useEffect(() => { 
     // Initial load
@@ -86,8 +108,10 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     firm, profile, role, loading,
     can: (action: Permission) => can(role, action),
-    refresh: load
-  }), [firm, profile, role, loading, load])
+    refresh: load,
+    switchedFirmId,
+    setSwitchedFirmId: handleSwitch
+  }), [firm, profile, role, loading, load, switchedFirmId, handleSwitch])
 
   return (
     <Ctx.Provider value={value}>
