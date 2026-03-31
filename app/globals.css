@@ -282,6 +282,14 @@ a {
      color: #000 !important;
      font-weight: bold !important;
   }
+
+  .only-print {
+    display: table-cell !important;
+  }
+}
+
+.only-print {
+  display: none !important;
 }
 
 /* ── Accessibility ───────────────────────────────────────── */

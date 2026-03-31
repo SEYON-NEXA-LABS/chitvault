@@ -57,6 +57,9 @@ export default function PaymentsPage() {
 
   const isSuper = role === 'superadmin'
 
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [showOnlyPaid, setShowOnlyPaid] = useState(false)
+
   const [payModal, setPayModal] = useState<PersonSummary | null>(null)
   const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
@@ -158,18 +161,40 @@ export default function PaymentsPage() {
   }, [members, groups, auctions, payments]);
 
   const filtered = useMemo(() => {
-    return personSummaries.filter((s: PersonSummary) => 
-      s.person.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.person.phone && s.person.phone.includes(search))
-    ).sort((a: PersonSummary, b: PersonSummary) => b.overallTotalBalance - a.overallTotalBalance);
-  }, [personSummaries, search]);
+    return personSummaries.filter((s: PersonSummary) => {
+      const matchSearch = s.person.name.toLowerCase().includes(search.toLowerCase()) ||
+        (s.person.phone && s.person.phone.includes(search));
+      
+      if (!matchSearch) return false;
+
+      if (showOnlyPaid && dateRange.start && dateRange.end) {
+        // Person must have at least one payment in the range
+        const hasPaymentInRange = payments.some(p => 
+          s.memberships.some(ms => ms.member.id === p.member_id) && 
+          p.payment_date! >= dateRange.start && 
+          p.payment_date! <= dateRange.end
+        );
+        if (!hasPaymentInRange) return false;
+      }
+
+      return true;
+    }).sort((a: PersonSummary, b: PersonSummary) => b.overallTotalBalance - a.overallTotalBalance);
+  }, [personSummaries, search, showOnlyPaid, dateRange, payments]);
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const collectedToday = payments.filter((p: Payment) => p.payment_date === today).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
+    
+    let collectedInRange = 0;
+    if (dateRange.start && dateRange.end) {
+      collectedInRange = payments.filter((p: Payment) => 
+        p.payment_date! >= dateRange.start && p.payment_date! <= dateRange.end
+      ).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
+    }
+
     const totalOut = personSummaries.reduce((s: number, p: PersonSummary) => s + p.overallTotalBalance, 0);
-    return { collectedToday, totalOut };
-  }, [payments, personSummaries]);
+    return { collectedToday, totalOut, collectedInRange };
+  }, [payments, personSummaries, dateRange]);
 
   async function handlePay() {
     if (!payModal || !firm) return;
@@ -330,20 +355,43 @@ export default function PaymentsPage() {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Collected Today" value={fmt(stats.collectedToday)} color="green" />
+        {dateRange.start && dateRange.end && (
+          <StatCard label="Collected in Range" value={fmt(stats.collectedInRange)} color="blue" />
+        )}
         <StatCard label="Total Outstanding" value={fmt(stats.totalOut)} color="red" />
-        <StatCard label="Total Persons" value={personSummaries.length} color="blue" />
+        <StatCard label="Total Persons" value={personSummaries.length} color="gold" />
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[var(--surface)] p-3 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex-1 max-w-md relative">
+      <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex-1 relative">
            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
             placeholder="Search name or phone..." value={search} onChange={e => setSearch(e.target.value)} />
            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
         </div>
-        <div className="text-xs opacity-50 flex items-center gap-2">
-           <Badge variant="gray">{filtered.length} matching</Badge>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: 13 }} 
+              value={dateRange.start} onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))} />
+            <span className="opacity-30">to</span>
+            <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: 13 }} 
+              value={dateRange.end} onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))} />
+          </div>
+          
+          {(dateRange.start || dateRange.end) && (
+            <button onClick={() => setDateRange({ start: '', end: '' })} className="text-[10px] uppercase font-bold text-[var(--red)] hover:underline">
+              Clear
+            </button>
+          )}
+
+          <div className="h-6 w-px bg-[var(--border)] mx-1 hidden md:block" />
+
+          <label className="flex items-center gap-2 text-xs font-bold whitespace-nowrap cursor-pointer select-none">
+            <input type="checkbox" checked={showOnlyPaid} onChange={e => setShowOnlyPaid(e.target.checked)} />
+            Show only paid
+          </label>
         </div>
       </div>
 
@@ -355,6 +403,7 @@ export default function PaymentsPage() {
               <Th className="hidden md:table-cell">Last Activity</Th>
               <Th className="hidden sm:table-cell">Account Status</Th>
               <Th right>Total Balance</Th>
+              {dateRange.start && dateRange.end && <Th right>Paid in Range</Th>}
               <Th right>Action</Th>
             </Tr>
           </thead>
@@ -393,6 +442,20 @@ export default function PaymentsPage() {
                       {fmt(s.overallTotalBalance)}
                    </div>
                 </Td>
+                {dateRange.start && dateRange.end && (
+                   <Td right>
+                      <div className="font-mono font-bold text-[var(--green)]">
+                        {(() => {
+                           const collected = payments.filter(p => 
+                             s.memberships.some(ms => ms.member.id === p.member_id) && 
+                             p.payment_date! >= dateRange.start && 
+                             p.payment_date! <= dateRange.end
+                           ).reduce((sum, p) => sum + Number(p.amount), 0);
+                           return fmt(collected);
+                        })()}
+                      </div>
+                   </Td>
+                 )}
                 <Td right>
                   <div className="flex gap-1 justify-end">
                     <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>

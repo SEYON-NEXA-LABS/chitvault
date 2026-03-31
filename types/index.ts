@@ -88,6 +88,10 @@ export interface Auction {
   auction_date: string | null; winner_id: number | null
   bid_amount: number; total_pot: number; dividend: number;
   net_payout?: number;
+  is_payout_settled: boolean
+  payout_date: string | null
+  payout_amount: number | null
+  payout_note: string | null
   created_at: string
 }
 
