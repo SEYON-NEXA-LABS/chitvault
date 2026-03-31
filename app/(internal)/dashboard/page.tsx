@@ -12,21 +12,20 @@ import type { Group, Member, Auction, Payment, Firm } from '@/types'
 
 export default function DashboardPage() {
   const supabase = createClient()
-  const { firm, role } = useFirm()
+  const { firm, role, switchedFirmId } = useFirm()
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading,  setLoading]  = useState(true)
   const [firms,    setFirms]    = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const isSuper = role === 'superadmin'
 
   useEffect(() => {
     async function load() {
       if (groups.length === 0) setLoading(true)
-      const targetId = isSuper ? selectedFirmId : firm?.id
+      const targetId = isSuper ? switchedFirmId : firm?.id
       
       const [g, m, a, p] = await Promise.all([
         withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId),
@@ -47,7 +46,7 @@ export default function DashboardPage() {
       setLoading(false)
     }
     load()
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   const stats = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
@@ -89,22 +88,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Firm Filter */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black text-[var(--text)]">Dashboard</h1>
-        {isSuper && (
-          <div className="w-64">
-            <select 
-              className={inputClass} 
-              style={inputStyle}
-              value={selectedFirmId} 
-              onChange={e => setSelectedFirmId(e.target.value)}
-            >
-              <option value="all">All Firms (Global)</option>
-              {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </div>
-        )}
       </div>
 
       {/* Primary Stats */}

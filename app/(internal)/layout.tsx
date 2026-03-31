@@ -9,11 +9,12 @@ import { APP_BRAND, APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
+import type { Firm, Profile, UserRole } from '@/types'
 
 interface NavItem {
   href?: string
@@ -60,18 +61,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { lang, setLang, t } = useI18n()
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
   const { install, isInstallable } = usePwa()
+  const { switchedFirmId, setSwitchedFirmId } = useFirm()
+  const [firms, setFirms] = useState<Firm[]>([])
 
   const [userEmail, setUserEmail] = useState('')
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(14)
   const [monochrome, setMonochrome] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
-    const savedTheme = (localStorage.getItem('theme') || 'dark') as 'dark' | 'light'
+    const savedTheme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system'
     setTheme(savedTheme)
-    document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+    
+    const apply = (t: 'light' | 'dark' | 'system') => {
+      const isDark = t === 'system' 
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+        : t === 'dark'
+      document.documentElement.classList.toggle('dark', isDark)
+    }
+
+    apply(savedTheme)
+
+    // Listen for system changes if mode is system
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const listener = () => {
+      if (localStorage.getItem('theme') === 'system') apply('system')
+    }
+    media.addEventListener('change', listener)
 
     const savedSize = parseInt(localStorage.getItem('fontSize') || '16')
     setFontSize(savedSize)
@@ -81,12 +99,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setMonochrome(savedMono)
     document.documentElement.classList.toggle('grayscale-mode', savedMono)
 
+    if (role === 'superadmin') {
+      supabase.from('firms').select('*').order('name').then((res: { data: Firm[] | null }) => setFirms(res.data || []))
+    }
+
     if (firm?.name) {
       document.title = `${firm.name} | ${APP_BRAND} ${APP_NAME}`
     } else {
-      document.title = `${APP_BRAND} ${APP_NAME}`
+      document.title = (switchedFirmId === 'all') ? `Platform Admin | ${APP_BRAND}` : `${APP_BRAND} ${APP_NAME}`
     }
-  }, [firm, supabase.auth])
+    return () => {
+      media.removeEventListener('change', listener)
+    }
+  }, [firm, supabase, role, switchedFirmId])
 
   // Suspended check
   if (firm?.plan_status === 'suspended') {
@@ -110,9 +135,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next); localStorage.setItem('theme', next)
-    document.documentElement.classList.toggle('dark', next === 'dark')
+    const modes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system']
+    const next = modes[(modes.indexOf(theme) + 1) % modes.length]
+    setTheme(next)
+    localStorage.setItem('theme', next)
+    
+    const isDark = next === 'system' 
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+      : next === 'dark'
+    document.documentElement.classList.toggle('dark', isDark)
   }
 
   function adjustFont(delta: number) {
@@ -143,7 +174,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
 
         {/* Firm header */}
-        <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 py-4 border-b space-y-3" style={{ borderColor: 'var(--border)' }}>
+          {/* Superadmin Firm Switcher */}
+          {role === 'superadmin' && (
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Active Workspace</label>
+              <select 
+                value={switchedFirmId}
+                onChange={(e) => setSwitchedFirmId(e.target.value as any)}
+                className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold transition-all focus:ring-1 focus:ring-[var(--gold)] outline-none"
+                style={{ color: switchedFirmId === 'all' ? 'var(--text)' : 'var(--gold)' }}
+              >
+                <option value="all">🌐 Platform Overview</option>
+                <optgroup label="Manage Firms">
+                  {firms.map(f => (
+                    <option key={f.id} value={f.id}>🏢 {f.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          )}
+
           <Link href="/dashboard" className="flex items-center gap-2 mb-2.5 hover:opacity-80 transition-opacity overflow-hidden">
             {firm?.logo_url ? (
               <img src={firm.logo_url} alt="Logo" style={{ height: 20, width: 'auto', maxWidth: 110, objectFit: 'contain', flexShrink: 0, borderRadius: 2 }} />
@@ -151,25 +202,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Building2 size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
             )}
             <div className="flex flex-col truncate">
-              <span className="text-[10px] font-black tracking-[0.3em] uppercase opacity-40 leading-none mb-1" style={{ color: 'var(--text)' }}>
-                {APP_BRAND}
-              </span>
-              <div className="font-bold text-base leading-none" style={{ color: 'var(--gold)' }}>
-                {firm?.name || APP_NAME}
+              {switchedFirmId !== 'all' && (
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-[var(--gold)] leading-none mb-1">
+                  VIEWING FIRM
+                </span>
+              )}
+              <div className="font-bold text-base leading-none" style={{ color: switchedFirmId !== 'all' ? 'var(--text)' : 'var(--gold)' }}>
+                {firm?.name || (switchedFirmId === 'all' ? 'Platform Admin' : APP_NAME)}
               </div>
             </div>
           </Link>
+
           <div className="flex items-center gap-2">
-            {firm && (
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold"
-                style={{ background: planColor[firm.plan] + '22', color: planColor[firm.plan] }}>
-                {firm.plan.charAt(0).toUpperCase() + firm.plan.slice(1)}
-              </span>
+            {switchedFirmId === 'all' ? (
+               <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-[var(--gold-dim)] text-[var(--gold)] border border-[var(--gold-border)]">
+                 GLOBAL
+               </span>
+            ) : (
+              firm && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                  style={{ background: planColor[firm.plan] + '22', color: planColor[firm.plan] }}>
+                  {firm.plan.charAt(0).toUpperCase() + firm.plan.slice(1)}
+                </span>
+              )
             )}
-            {/* Role badge */}
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
               style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--blue-dim)', color: isOwner ? 'var(--gold)' : 'var(--blue)' }}>
-              {role === 'superadmin' ? '👑 Superadmin' : (isOwner ? '👑 Firm Admin' : '👤 Staff')}
+              {role === 'superadmin' ? '👑 Super' : (isOwner ? '👑 Admin' : '👤 Staff')}
             </span>
           </div>
         </div>
@@ -229,8 +288,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         )}
 
-        <div className="mt-auto border-t p-4" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative">
+        <div className="mt-auto border-t p-4 space-y-4" style={{ borderColor: 'var(--border)' }}>
+          {/* Customization Quick Tools (Moved from Header) */}
+          <div className="flex items-center justify-between gap-1 p-1 rounded-xl bg-[var(--surface2)] border" style={{ borderColor: 'var(--border)' }}>
+              {/* Theme Cycle */}
+              <button onClick={toggleTheme} className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors" 
+                style={{ color: theme === 'system' ? 'var(--gold)' : 'var(--text2)' }}
+                title={`Theme: ${theme.toUpperCase()}`}>
+                {theme === 'light' && <Sun size={14} />}
+                {theme === 'dark' && <Moon size={14} />}
+                {theme === 'system' && <Monitor size={14} />}
+              </button>
+              
+              <div className="w-[1px] h-4 bg-[var(--border)]" />
+              
+              {/* Language Switch */}
+              <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
+                className="px-2 py-1 rounded-lg hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
+                style={{ color: 'var(--gold)' }}>
+                {lang === 'en' ? 'தமிழ்' : 'EN'}
+              </button>
+
+              <div className="w-[1px] h-4 bg-[var(--border)]" />
+
+              {/* Font Size */}
+              <div className="flex items-center">
+                <button onClick={() => adjustFont(-1)} title="Smaller font" className="w-6 h-6 flex items-center justify-center text-[10px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A-</button>
+                <button onClick={() => adjustFont(1)} title="Larger font" className="w-6 h-6 flex items-center justify-center text-[12px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A+</button>
+              </div>
+
+              <div className="w-[1px] h-4 bg-[var(--border)]" />
+
+              {/* Monochrome */}
+              <button onClick={toggleMono} title="Monochrome Mode"
+                className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
+                style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
+                <Palette size={14} />
+              </button>
+          </div>
+
+          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative border" 
+            style={{ borderColor: 'rgba(0,0,0,0)', background: 'transparent' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
               style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid var(--gold-border)' }}>
               {userEmail ? userEmail.substring(0, 2).toUpperCase() : '??'}
@@ -272,7 +370,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu size={20} />
             </button>
             <h1 className="font-display text-lg" style={{ color: 'var(--text)' }}>
-              {t(NAV.find(n => 'href' in n && n.href === pathname)?.label || '') || firm?.name || APP_NAME}
+              {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -282,48 +380,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ⚠ Trial: {trialDaysLeft}d left
               </div>
             )}
-            <div className="flex items-center gap-1.5 p-1 rounded-full border" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-              {/* Monochrome */}
-              <button onClick={toggleMono} title="Monochrome Mode"
-                className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors"
-                style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
-                <Palette size={13} />
-              </button>
-              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-              {/* Font Size */}
-              <button onClick={() => adjustFont(-1)} title="Decrease Font"
-                className="text-[10px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
-                style={{ color: 'var(--text2)' }}>
-                A-
-              </button>
-              <button onClick={() => adjustFont(1)} title="Increase Font"
-                className="text-[12px] font-black w-5 h-5 flex items-center justify-center hover:bg-[var(--surface3)] rounded-full"
-                style={{ color: 'var(--text2)' }}>
-                A+
-              </button>
-              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-              {/* Language Switch */}
-              <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
-                style={{ color: 'var(--gold)', border: '1px solid var(--gold-dim)' }}>
-                <Languages size={12} />
-                {lang === 'en' ? 'தமிழ்' : 'EN'}
-              </button>
-              <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-              {/* Theme */}
-              <button onClick={toggleTheme} className="p-1 rounded-full hover:bg-[var(--surface3)] transition-colors" style={{ color: 'var(--text2)' }}>
-                {theme === 'dark' ? <Moon size={13} /> : <Sun size={13} />}
-              </button>
-              {/* Quick Lock */}
-              {hasPin && (
-                <>
-                  <div className="w-[1px] h-3 bg-[var(--border)] mx-0.5" />
-                  <button onClick={lock} title="Lock Session" className="p-1 rounded-full hover:bg-[var(--gold-dim)] hover:text-[var(--gold)] transition-colors">
-                    <Lock size={13} />
-                  </button>
-                </>
-              )}
-            </div>
+            {/* Options toolstrip moved to sidebar footer */}
           </div>
         </header>
         <main className="flex-1 p-5 overflow-auto">{children}</main>

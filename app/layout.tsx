@@ -29,6 +29,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#2563eb" />
+        {/* Blocking script to prevent theme flickering */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                var theme = localStorage.getItem('theme') || 'light';
+                var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var active = theme === 'system' ? (supportDark ? 'dark' : 'light') : theme;
+                
+                document.documentElement.classList.add(active);
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.setAttribute('data-active-theme', active);
+              } catch (e) {}
+            })();
+          `
+        }} />
         {/* Google Fonts preconnect for fast dynamic font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
