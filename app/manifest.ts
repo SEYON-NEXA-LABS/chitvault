@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next'
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: 'chitvault-pwa',
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
     short_name: 'ChitVault',
     description: 'Auction Chit Fund Management',
     start_url: '/',

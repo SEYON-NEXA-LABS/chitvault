@@ -28,7 +28,7 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [branding, setBranding] = useState<FirmBranding>({
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
     theme_id: 'theme1', logo_url: null,
     tagline: 'Chit Fund Manager', font: 'Noto Sans'
   })
@@ -150,7 +150,7 @@ function LoginForm() {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           {branding.logo_url ? (
             <div className="relative w-56 h-14 mx-auto mb-3 bg-white/50 rounded-xl p-2 flex items-center justify-center overflow-hidden">
-               <img src={branding.logo_url} alt={branding.name} className="max-w-full max-h-full object-contain" />
+              <img src={branding.logo_url} alt={branding.name} className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
             <div style={{ fontSize: 48, marginBottom: 8 }}>🏦</div>
@@ -208,9 +208,9 @@ function LoginForm() {
         <div style={{ textAlign: 'center', marginTop: 18 }}>
           {isInstallable && (
             <button onClick={install}
-              style={{ 
+              style={{
                 background: 'rgba(201,168,76,0.1)', color: clr, border: `1px solid ${clr}44`,
-                padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700, 
+                padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700,
                 display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 12
               }}>
               <Download size={14} /> Install ChitVault App

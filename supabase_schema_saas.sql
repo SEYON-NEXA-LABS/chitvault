@@ -1045,3 +1045,38 @@ create policy activity_logs_select on activity_logs for select
   using (firm_id = my_firm_id() or is_superadmin());
 create policy activity_logs_insert on activity_logs for insert
   with check (firm_id = my_firm_id() or is_superadmin());
+-- ══════════════════════════════════════════════════════════════
+-- SUPERADMIN COMMAND CENTER: GLOBAL ACTIVITY TRACKING
+-- ══════════════════════════════════════════════════════════════
+
+-- ── admin_activity table ────────────────────────────────────
+create table if not exists admin_activity (
+  id          bigint primary key generated always as identity,
+  event_type  text not null, -- 'firm_created', 'plan_changed', 'status_suspended', etc.
+  details     jsonb default '{}',
+  firm_id     uuid references firms(id) on delete set null,
+  created_at  timestamptz default now()
+);
+
+alter table admin_activity enable row level security;
+create policy admin_activity_select on admin_activity for select
+  using (is_superadmin());
+
+-- ── Trigger: Log New Firm Registration ───────────────────────
+create or replace function trg_log_new_firm()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into admin_activity (event_type, details, firm_id)
+  values ('firm_created', jsonb_build_object(
+    'name', new.name,
+    'city', new.city,
+    'plan', new.plan
+  ), new.id);
+  return new;
+end;
+$$;
+
+drop trigger if exists log_new_firm on firms;
+create trigger log_new_firm
+  after insert on firms
+  for each row execute function trg_log_new_firm();

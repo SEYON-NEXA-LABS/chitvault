@@ -17,18 +17,20 @@ No subdomains. No wildcard DNS. No per-client config.
 
 ---
 
-## Deploy to Vercel (Free)
+## Deploy to Railway (Starter Plan)
 
 ```bash
-# Install Vercel CLI
-npm install -g vercel
+# Install Railway CLI
+npm install -g railway
+
+# Login
+railway login
 
 # Deploy
-cd chitvault-saas
-vercel
+cd chitvault
+railway up
 
-# Follow prompts — it asks for env vars
-# Or set them in Vercel Dashboard → Settings → Environment Variables:
+# Set env vars in Railway Dashboard → Your Project → Variables:
 #   NEXT_PUBLIC_SUPABASE_URL
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   NEXT_PUBLIC_APP_NAME
@@ -37,13 +39,12 @@ vercel
 
 ### Add your custom domain (optional)
 ```
-Vercel Dashboard → Your Project → Settings → Domains
+Railway Dashboard → Your Project → Settings → Domains
 Add: chitvault.app
 Add: www.chitvault.app
 
 At your domain registrar, add:
-  CNAME  www  →  cname.vercel-dns.com
-  A      @    →  76.76.21.21
+  CNAME  www  →  chitvault.up.railway.app
 ```
 
 ---
@@ -89,9 +90,9 @@ npm run dev
 
 | Action | URL |
 |---|---|
-| Landing page | `chitvault.app` |
-| Sign in | `chitvault.app/login` |
-| New firm registration | `chitvault.app/register` |
-| After login | `chitvault.app/dashboard` |
-| Admin panel (you only) | `chitvault.app/admin` |
-| Staff invite link | `chitvault.app/invite/<uuid>` |
+| Landing page | `chitvault.up.railway.app` |
+| Sign in | `chitvault.up.railway.app/login` |
+| New firm registration | `chitvault.up.railway.app/register` |
+| After login | `chitvault.up.railway.app/dashboard` |
+| Admin panel (you only) | `chitvault.up.railway.app/admin` |
+| Staff invite link | `chitvault.up.railway.app/invite/<uuid>` |

@@ -96,10 +96,10 @@ export interface Auction {
 }
 
 
-export const PLAN_LIMITS: Record<Plan, { groups: number; members: number; label: string; price: string }> = {
-  trial: { groups: 2,    members: 20,   label: 'Trial (30 days)', price: 'Free'      },
-  basic: { groups: 10,   members: 200,  label: 'Basic',           price: '₹2,000/yr' },
-  pro:   { groups: 9999, members: 9999, label: 'Pro',             price: '₹5,000/yr' },
+export const PLAN_LIMITS: Record<Plan, { groups: number; members: number; label: string; setupFee: string; amc: string }> = {
+  trial: { groups: 2,    members: 20,   label: 'Trial (30 days)', setupFee: 'Free',   amc: 'Free'      },
+  basic: { groups: 10,   members: 200,  label: 'Basic',           setupFee: '₹2,000', amc: '₹1,000/yr' },
+  pro:   { groups: 9999, members: 9999, label: 'Pro',             setupFee: '₹5,000', amc: '₹2,500/yr' },
 }
 
 export interface Payment {

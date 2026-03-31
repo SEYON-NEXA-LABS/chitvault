@@ -108,3 +108,34 @@ export async function updateFirmTheme(firmId: string, themeId: string) {
   revalidatePath('/admin')
   return { success: true }
 }
+
+export async function updateFirmDetails(firmId: string, params: {
+  name: string;
+  slug: string;
+  city?: string;
+  phone?: string;
+  tagline?: string;
+  font?: string;
+}) {
+  const supabase = createServerClient(cookies())
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
+  
+  if (profile?.role !== 'superadmin') {
+    return { error: 'Access denied' }
+  }
+
+  const { error } = await supabase.from('firms').update({
+    name: params.name,
+    slug: params.slug,
+    city: params.city || null,
+    phone: params.phone || null,
+    tagline: params.tagline || null,
+    font: params.font || 'Noto Sans'
+  }).eq('id', firmId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/admin')
+  return { success: true }
+}
