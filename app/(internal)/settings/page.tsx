@@ -506,11 +506,11 @@ export default function SettingsPage() {
         <div className="p-5 space-y-0">
           {[
             ['Business',   firm?.name || '—'],
-            ['Plan',       firm?.plan ? firm.plan.charAt(0).toUpperCase() + firm.plan.slice(1) : '—'],
+            isSuperAdmin ? ['Plan', firm?.plan ? (firm.plan === 'basic' ? 'Standard' : firm.plan === 'pro' ? 'Enterprise' : firm.plan.charAt(0).toUpperCase() + firm.plan.slice(1)) : '—'] : null,
             ['Version',    process.env.NEXT_PUBLIC_APP_VERSION || '2.0.0'],
             ['Framework',  'Next.js 14 + Supabase'],
             ['DB',         process.env.NEXT_PUBLIC_SUPABASE_URL || '—'],
-          ].map(([k, v]) => (
+          ].filter(Boolean).map(([k, v]: any) => (
             <div key={k} className="flex justify-between py-2.5 border-b last:border-0 text-sm"
               style={{ borderColor: 'var(--border)' }}>
               <span style={{ color: 'var(--text2)' }}>{k}</span>

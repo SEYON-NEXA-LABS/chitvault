@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { APP_NAME, cn } from '@/lib/utils'
+import { APP_BRAND, APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
@@ -73,7 +73,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.documentElement.classList.toggle('grayscale-mode', savedMono)
 
     if (firm?.name) {
-      document.title = firm.name
+      document.title = `${firm.name} | ${APP_BRAND} ${APP_NAME}`
+    } else {
+      document.title = `${APP_BRAND} ${APP_NAME}`
     }
   }, [firm, supabase.auth])
 
@@ -139,8 +141,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ) : (
               <Building2 size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
             )}
-            <div className="font-bold text-base truncate" style={{ color: 'var(--gold)' }}>
-              {firm?.name || APP_NAME}
+            <div className="flex flex-col truncate">
+              <span className="text-[10px] font-black tracking-[0.3em] uppercase opacity-40 leading-none mb-1" style={{ color: 'var(--text)' }}>
+                {APP_BRAND}
+              </span>
+              <div className="font-bold text-base leading-none" style={{ color: 'var(--gold)' }}>
+                {firm?.name || APP_NAME}
+              </div>
             </div>
           </Link>
           <div className="flex items-center gap-2">
@@ -235,12 +242,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between px-2">
-            <span className="text-[12px] font-bold tracking-widest opacity-30">{process.env.NEXT_PUBLIC_APP_NAME} - {process.env.NEXT_PUBLIC_APP_VERSION}</span>
-            {/* {isInstallable && (
-              <button onClick={install} className="text-[12px] font-bold text-[var(--gold)] hover:underline">
-                INSTALL APP
-              </button>
-            )} */}
+            <div className="text-[10px] font-bold tracking-[0.2em] opacity-20 uppercase">
+              {APP_NAME} v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </div>
+          </div>
+          <div className="mt-2 px-2">
+             <div className="text-[9px] font-medium opacity-20 uppercase tracking-widest">
+               Powered by SEYON NEXA LABS
+             </div>
           </div>
         </div>
       </aside>

@@ -12,7 +12,7 @@ const noto = Noto_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'
 const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '600', '700'], variable: '--font-noto-tamil' })
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault',
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
   description: 'Chit Fund Management Software',
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-512.png' },
   manifest: '/manifest.webmanifest'
@@ -46,7 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </I18nProvider>
           </BrandingProvider>
         </FirmProvider>
-        <script dangerouslySetInnerHTML={{ __html: `
+        <script dangerouslySetInnerHTML={{
+          __html: `
           window.deferredPrompt = null;
           window.addEventListener('beforeinstallprompt', function(e) {
             e.preventDefault();

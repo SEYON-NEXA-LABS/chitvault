@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
 }
 
+export const APP_NAME  = process.env.NEXT_PUBLIC_APP_NAME  || 'ChitVault'
+export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'SEYON'
+export const SUPPORT_EMAIL    = 'seyonnexalabs@gmail.com'
+export const SUPERADMIN_EMAIL = 'seyonnexalabs@gmail.com'
+
 // Format Indian Rupees
 export function fmt(n: number | string | null | undefined): string {
   const num = Number(String(n || 0).replace(/[^\d.-]/g, ''))
@@ -48,6 +53,3 @@ export function fmtMonth(m: number, start?: string | null): string {
   const yr  = d.getFullYear().toString().slice(-2)
   return `M${m} (${mon}-${yr})`
 }
-
-// App name from env
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Seyon Chit Vault'

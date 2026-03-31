@@ -13,7 +13,7 @@
 | Auth        | Supabase Auth (email + password)  |
 | Styling     | Tailwind CSS + CSS Variables      |
 | Language    | TypeScript                        |
-| Deployment  | Vercel (free tier)                |
+| Deployment  | Railway (Starter Plan)        |
 | Desktop     | Electron (optional .exe build)    |
 
 ---
@@ -23,10 +23,10 @@
 Single domain. All firms log in at the same URL. Data is isolated by `firm_id` on every table, enforced at the database level via Supabase Row Level Security (RLS).
 
 ```
-chitvault.app/login    → All firms log in here
-chitvault.app/register → New firm self-registration
-chitvault.app/admin    → Super admin (your panel)
-chitvault.app/dashboard → Each firm's private workspace
+chitvault.up.railway.app/login    → All firms log in here
+chitvault.up.railway.app/register → New firm self-registration
+chitvault.up.railway.app/admin    → Super admin (your panel)
+chitvault.up.railway.app/dashboard → Each firm's private workspace
 ```
 
 After login, middleware reads `profiles.firm_id` and routes the user to their own dashboard. Firm A can never see Firm B's data — enforced at the DB level, not just the UI.
@@ -244,9 +244,9 @@ git push
 ## Deploy
 
 ```bash
-npm install -g vercel
-vercel login
-vercel --prod
+npm install -g railway
+railway login
+railway up
 ```
 
 See `DEPLOYMENT.md` for full instructions including custom domain setup.
