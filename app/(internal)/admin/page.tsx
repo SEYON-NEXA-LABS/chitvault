@@ -433,58 +433,85 @@ function AdminDashboard() {
       </main>
 
       {/* Modals & Toasts */}
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Register New Firm">
-        <div style={{ display:'flex', gap:28 }}>
-          <div style={{ flex: 1.2 }}>
-            {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:18 }}>✗ {createErr}</div>}
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Business Name *">
-                <input style={sty.input} value={newFirm.name} onChange={e => setNewFirm(n=>({...n, name: e.target.value}))} placeholder="e.g. Kumari Chit Funds" />
-              </Field>
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Register New Firm" size="lg" persist={true}>
+        <div className="space-y-8">
+          {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>✗ {createErr}</div>}
+
+          {/* Section 1: Business Profile */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] opacity-40">Section 1: Business Profile</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
+              <div className="md:col-span-2">
+                <Field label="Business Name *">
+                  <input style={sty.input} value={newFirm.name} onChange={e => setNewFirm(n=>({...n, name: e.target.value}))} placeholder="e.g. Kumari Chit Funds" />
+                </Field>
+              </div>
               <Field label="City">
-                <input style={sty.input} value={newFirm.city} onChange={e => setNewFirm(n=>({...n, city: e.target.value}))} placeholder="Coimbatore" />
+                <input style={sty.input} value={newFirm.city} onChange={e => setNewFirm(n=>({...n, city: e.target.value}))} placeholder="City name" />
               </Field>
-              <Field label="Owner Name">
-                <input style={sty.input} value={newFirm.owner_name} onChange={e => setNewFirm(n=>({...n, owner_name: e.target.value}))} placeholder="Full Name" />
+              <Field label="Phone">
+                <input style={sty.input} value={newFirm.phone} onChange={e => setNewFirm(n=>({...n, phone: e.target.value.replace(/\D/g,'')}))} placeholder="10-digit mobile" maxLength={10} />
               </Field>
+            </div>
+          </div>
+
+          {/* Section 2: Owner Credentials */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] opacity-40">Section 2: Owner Credentials</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
+              <div className="md:col-span-2">
+                <Field label="Owner Name">
+                  <input style={sty.input} value={newFirm.owner_name} onChange={e => setNewFirm(n=>({...n, owner_name: e.target.value}))} placeholder="Full Name of the Owner" />
+                </Field>
+              </div>
               <Field label="Owner Email *">
                 <input style={sty.input} type="email" value={newFirm.owner_email} onChange={e => setNewFirm(n=>({...n, owner_email: e.target.value}))} placeholder="admin@email.com" />
               </Field>
               <Field label="Password *">
                 <input style={sty.input} type="password" value={newFirm.owner_pass} onChange={e => setNewFirm(n=>({...n, owner_pass: e.target.value}))} placeholder="••••••" />
               </Field>
-              <Field label="Phone">
-                <input style={sty.input} value={newFirm.phone} onChange={e => setNewFirm(n=>({...n, phone: e.target.value.replace(/\D/g,'')}))} placeholder="10-digit mobile" maxLength={10} />
-              </Field>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
-              <Btn variant="primary" className="flex-1" loading={creating} onClick={handleCreate}>Create Firm Instance</Btn>
             </div>
           </div>
-          <div style={{ flex: 1, borderLeft: '1px solid var(--border)', paddingLeft: 28 }}>
-            <Field label="Initial Plan">
-              <select style={{ ...sty.select, width: '100%', padding: '10px' }} value={newFirm.plan} onChange={e => setNewFirm(n=>({...n, plan: e.target.value}))}>
-                <option value="trial">Trial (Free)</option>
-                <option value="basic">Standard (₹19,999)</option>
-                <option value="pro">Enterprise (₹39,999)</option>
-              </select>
-            </Field>
-            <div style={{ marginTop: 24 }}>
-              <label style={{ fontSize:10, fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:1, display:'block', marginBottom:12 }}>Selected Theme</label>
-              <div className="grid grid-cols-2 gap-3">
-                {THEMES.map(t => (
-                  <button key={t.id} onClick={() => setNewFirm(n => ({...n, theme_id: t.id}))} 
-                    style={{ padding: 10, borderRadius: 12, border: `2px solid ${newFirm.theme_id===t.id?'var(--blue)':'transparent'}`, background: 'var(--surface2)', cursor: 'pointer', textAlign: 'left' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{t.name}</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 4, background: t.primary }} />
-                      <div style={{ width: 14, height: 14, borderRadius: 4, background: t.accent }} />
-                    </div>
-                  </button>
-                ))}
+
+          {/* Section 3: Initial Config */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] opacity-40">Section 3: Plan & Branding</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-5 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
+              <div>
+                <Field label="Initial Plan">
+                  <select style={{ ...sty.select, width: '100%', padding: '10px' }} value={newFirm.plan} onChange={e => setNewFirm(n=>({...n, plan: e.target.value}))}>
+                    <option value="trial">Trial (Free)</option>
+                    <option value="basic">Standard (₹19,999)</option>
+                    <option value="pro">Enterprise (₹39,999)</option>
+                  </select>
+                </Field>
+                <p className="text-[10px] mt-2 opacity-50 uppercase font-black">Controls feature limits and pricing</p>
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-2" style={{ color:'var(--text2)' }}>Instance Theme</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {THEMES.map(t => (
+                    <button key={t.id} onClick={() => setNewFirm(n => ({...n, theme_id: t.id}))} 
+                      className="group transition-all"
+                      style={{ padding: 10, borderRadius: 12, border: `2px solid ${newFirm.theme_id===t.id?'var(--gold)':'var(--border)'}`, background: newFirm.theme_id===t.id?'var(--surface3)':'var(--surface)', cursor: 'pointer', textAlign: 'left' }}>
+                      <div className="flex items-center justify-between">
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t.name}</div>
+                        <div style={{ display: 'flex', gap: 3 }}>
+                          <div style={{ width: 12, height: 12, borderRadius: 3, background: t.primary }} />
+                          <div style={{ width: 12, height: 12, borderRadius: 3, background: t.accent }} />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+          </div>
+
+          <div className="pt-6 border-t flex gap-3" style={{ borderColor:'var(--border)' }}>
+            <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
+            <Btn variant="primary" className="flex-1" loading={creating} onClick={handleCreate}>Create Firm Instance</Btn>
           </div>
         </div>
       </Modal>

@@ -28,8 +28,8 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) { 
@@ -50,7 +50,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       const { data: f } = await supabase
         .from('firms').select('*').eq('id', prof.firm_id).maybeSingle()
       setFirm(f)
-      if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'DM Sans')
+      if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'Noto Sans')
     } else {
       setFirm(null)
     }
@@ -64,7 +64,10 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes (Login/Logout/Refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+      // Use silent reload for background events
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+         load(true)
+      } else if (event === 'SIGNED_IN') {
          load()
       } else if (event === 'SIGNED_OUT') {
          setProfile(null)
