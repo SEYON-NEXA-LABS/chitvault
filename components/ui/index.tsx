@@ -149,24 +149,26 @@ export function TableCard({ title, subtitle, actions, children }: {
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
-export function Modal({ open, onClose, title, children, size = 'md' }: {
+export function Modal({ open, onClose, title, children, size = 'md', persist = false }: {
   open: boolean; onClose: () => void; title: string
-  children: React.ReactNode; size?: 'sm' | 'md' | 'lg'
+  children: React.ReactNode; size?: 'sm' | 'md' | 'lg'; persist?: boolean
 }) {
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handler = (e: KeyboardEvent) => { 
+      if (e.key === 'Escape' && !persist) onClose() 
+    }
     if (open) document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [open, onClose])
+  }, [open, onClose, persist])
 
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      onClick={e => { if (e.target === e.currentTarget && !persist) onClose() }}>
       <div className={cn('w-full rounded-2xl border shadow-2xl max-h-[90vh] overflow-y-auto', sizes[size])}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between px-6 py-5 border-b"

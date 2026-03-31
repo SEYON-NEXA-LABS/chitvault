@@ -41,10 +41,10 @@ export const PERMISSIONS = {
   viewCollection:  ['owner', 'staff'] as UserRole[],
 
   // Team & Settings
-  viewTeam:      ['owner'] as UserRole[],
+  viewTeam:      ['owner', 'staff'] as UserRole[],
   inviteStaff:   ['owner'] as UserRole[],
   removeStaff:   ['owner'] as UserRole[],
-  viewSettings:  ['owner'] as UserRole[],
+  viewSettings:  ['owner', 'staff'] as UserRole[],
 }
 
 export type Permission = keyof typeof PERMISSIONS

@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const { isElectron, hasPin, setPin, lock } = usePinLock()
 
   const isSuperAdmin = role === 'superadmin'
+  const isOwner = role === 'owner' || isSuperAdmin
 
   const [email,     setEmail]     = useState('')
   const [theme,     setTheme]     = useState<'dark'|'light'>('light')
@@ -163,7 +164,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-4">
 
       {/* ── Firm Profile (Basic Info for Admin/Owner) ────────────────── */}
-      {can('viewSettings') && (
+      {isOwner && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -194,7 +195,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Branding (Superadmin Only) ─────────────────────────────────── */}
-      {can('viewSettings') && isSuperAdmin && (
+      {isOwner && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -319,7 +320,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Registration Link (Superadmin Only) ─────────────────────────── */}
-      {can('viewSettings') && isSuperAdmin && (
+      {isOwner && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>

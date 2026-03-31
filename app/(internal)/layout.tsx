@@ -15,7 +15,16 @@ import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
 
-const NAV = [
+interface NavItem {
+  href?: string
+  label: string
+  icon?: any
+  divider?: boolean
+  ownerOnly?: boolean
+  superAdminOnly?: boolean
+}
+
+const NAV: NavItem[] = [
   { href: '/dashboard', label: 'nav_dashboard', icon: LayoutDashboard },
   { href: '/groups', label: 'nav_groups', icon: UsersRound },
   { href: '/members', label: 'nav_members', icon: Users },
@@ -28,8 +37,8 @@ const NAV = [
   { href: '/collection', label: 'nav_collection', icon: ClipboardList },
   { href: '/settlement', label: 'nav_settlements', icon: Calculator },
   { label: 'nav_manage', divider: true },
-  { href: '/team', label: 'nav_team', icon: UserCog, ownerOnly: true },
-  { href: '/settings', label: 'nav_settings', icon: Settings, ownerOnly: true },
+  { href: '/team', label: 'nav_team', icon: UserCog },
+  { href: '/settings', label: 'nav_settings', icon: Settings },
   { label: 'nav_help', divider: true },
   { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
   { href: '/schemes', label: 'nav_help', icon: HelpCircle },
