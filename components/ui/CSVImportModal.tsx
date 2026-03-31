@@ -78,7 +78,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
         <div className="space-y-6">
           <div className="flex items-center justify-between bg-[var(--surface2)] p-4 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[var(--gold-dim)] flex items-center justify-center text-[var(--gold)] border border-[var(--gold-border)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent)] border border-[var(--accent-border)]">
                    <Upload size={20} />
                 </div>
                 <div>
@@ -92,7 +92,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
              </button>
           </div>
 
-          <div className="p-4 rounded-xl flex gap-3" style={{ background: 'var(--red-dim)', border: '1px solid rgba(246,109,122,0.2)', color: 'var(--red)' }}>
+          <div className="p-4 rounded-xl flex gap-3" style={{ background: 'var(--danger-dim)', border: '1px solid rgba(246,109,122,0.2)', color: 'var(--danger)' }}>
              <AlertTriangle className="shrink-0" size={20} />
              <div>
                 <div className="font-bold text-sm">Warning: Critical Data Update</div>
@@ -103,7 +103,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
           </div>
 
           {errors.length > 0 && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs space-y-1">
+            <div className="p-4 rounded-xl bg-danger-500/10 border border-danger-500/20 text-danger-500 text-xs space-y-1">
               <div className="font-bold flex items-center gap-1 mb-1"><AlertCircle size={14}/> Validation Errors ({errors.length})</div>
               <ul className="list-disc list-inside max-h-32 overflow-y-auto">
                 {errors.slice(0, 10).map((err, i) => <li key={i}>{err}</li>)}
@@ -113,7 +113,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
           )}
 
           {errors.length === 0 && (
-            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-bold flex items-center gap-2">
+            <div className="p-4 rounded-xl bg-success-500/10 border border-success-500/20 text-success-500 text-xs font-bold flex items-center gap-2">
               <CheckCircle2 size={16} /> All {data.length} rows are valid and ready to import!
             </div>
           )}
@@ -132,7 +132,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
                            const actualKey = Object.keys(row).find(k => k.toLowerCase() === f.toLowerCase())
                            const val = actualKey ? row[actualKey] : null
                            return (
-                             <Td key={f}>{val || <span className="text-red-500 font-bold italic">Missing</span>}</Td>
+                             <Td key={f}>{val || <span className="text-danger-500 font-bold italic">Missing</span>}</Td>
                            )
                          })}
                       </Tr>
@@ -155,7 +155,7 @@ export function CSVImportModal({ open, onClose, onImport, title, requiredFields 
              <p className="text-[10px] uppercase tracking-widest font-black opacity-30 mb-2">Technical Assistance</p>
              <p className="text-xs" style={{ color: 'var(--text2)' }}>
                 Import not working as expected? <br/>
-                <a href="mailto:seyonnexalabs@gmail.com" className="text-[var(--gold)] font-bold hover:underline">Contact Superadmin for Support</a>
+                <a href="mailto:seyonnexalabs@gmail.com" className="text-[var(--accent)] font-bold hover:underline">Contact Superadmin for Support</a>
              </p>
           </div>
         </div>

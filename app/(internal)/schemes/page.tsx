@@ -40,7 +40,7 @@ export default function SchemesGuidePage() {
         
         {/* Dividend Model */}
         <Card className="p-6 relative overflow-hidden group border-t-4 border-t-blue-500">
-           <Badge variant="blue" className="mb-4">Option A</Badge>
+           <Badge variant="info" className="mb-4">Option A</Badge>
            <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
              In this model, the &quot;Discount&quot; (bid amount) is divided equally among all members every month. 
@@ -49,19 +49,19 @@ export default function SchemesGuidePage() {
            
            <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
               <ExampleRow label="Monthly Installment" dividend="₹30,000" accumulation="—" color="var(--text)" />
-              <ExampleRow label="Winning Bid (Discount)" dividend="₹70,000" accumulation="—" color="var(--red)" />
-              <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--green)" />
-              <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--blue)" fontWeight="bold" />
+              <ExampleRow label="Winning Bid (Discount)" dividend="₹70,000" accumulation="—" color="var(--danger)" />
+              <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--success)" />
+              <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--info)" fontWeight="bold" />
            </div>
            
-           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-blue-500">
+           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-info-500">
              <ShieldCheck size={14} /> Immediate savings for all members.
            </div>
         </Card>
 
         {/* Accumulation Model */}
-        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--gold)]">
-           <Badge variant="gold" className="mb-4">Option B</Badge>
+        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--accent)]">
+           <Badge variant="accent" className="mb-4">Option B</Badge>
            <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
              Everyone pays the **Full Amount** every month. The &quot;Bid&quot; is stored in a **Surplus Pool**. 
@@ -70,12 +70,12 @@ export default function SchemesGuidePage() {
 
            <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
               <ExampleRow label="Monthly Installment" dividend="—" accumulation="₹30,000" color="var(--text)" />
-              <ExampleRow label="To Surplus Pool" dividend="—" accumulation="+ ₹70,000" color="var(--gold)" />
-              <ExampleRow label="Winner Payout" dividend="—" accumulation="₹380,000" color="var(--green)" />
-              <ExampleRow label="Member Pays This Month" dividend="—" accumulation="₹30,000" color="var(--blue)" fontWeight="bold" />
+              <ExampleRow label="To Surplus Pool" dividend="—" accumulation="+ ₹70,000" color="var(--accent)" />
+              <ExampleRow label="Winner Payout" dividend="—" accumulation="₹380,000" color="var(--success)" />
+              <ExampleRow label="Member Pays This Month" dividend="—" accumulation="₹30,000" color="var(--info)" fontWeight="bold" />
            </div>
 
-           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--gold)]">
+           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--accent)]">
              <Target size={14} /> Group closes 3-5 months early.
            </div>
         </Card>
@@ -106,7 +106,7 @@ export default function SchemesGuidePage() {
           </div>
 
           <div className="p-4 rounded-xl border border-dashed flex items-start gap-4" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
-            <div className="p-2 rounded-lg bg-red-400/10 text-red-500"><TrendingDown size={20} /></div>
+            <div className="p-2 rounded-lg bg-danger-400/10 text-danger-500"><TrendingDown size={20} /></div>
             <div>
               <h4 className="text-sm font-bold mb-1 underline decoration-red-500/30">The Closing Magic</h4>
               <p className="text-xs opacity-70 leading-relaxed">
@@ -124,21 +124,21 @@ export default function SchemesGuidePage() {
          <div className="p-6 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
                      <UserCheck size={24} />
                   </div>
                   <h4 className="font-bold text-sm">1. Link Member</h4>
                   <p className="text-xs opacity-60">Select the winner. Their auction &quot;Net Payout&quot; will auto-fill as the base for the settlement.</p>
                </div>
                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-[var(--gold-dim)] text-[var(--gold)] flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
                      <Calculator size={24} />
                   </div>
                   <h4 className="font-bold text-sm">2. Apply 15-Mo Rule</h4>
                   <p className="text-xs opacity-60">The total amount is divided by 15. The system then calculates the 14-month balance automatically.</p>
                </div>
                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
                      <Save size={24} />
                   </div>
                   <h4 className="font-bold text-sm">3. Save Record</h4>
@@ -147,18 +147,18 @@ export default function SchemesGuidePage() {
             </div>
 
             <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-               <h4 className="text-sm font-bold mb-3 underline decoration-[var(--gold)]/30">Why is this important?</h4>
+               <h4 className="text-sm font-bold mb-3 underline decoration-[var(--accent)]/30">Why is this important?</h4>
                <ul className="space-y-3">
                   <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--gold)]">•</span>
+                     <span className="text-[var(--accent)]">•</span>
                      <span>**Transparency**: You can show the member exactly how their payout was derived using the handwritten chit rules.</span>
                   </li>
                   <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--gold)]">•</span>
+                     <span className="text-[var(--accent)]">•</span>
                      <span>**Accuracy**: Auto-fill prevents typing errors by pulling directly from verified auction outcomes.</span>
                   </li>
                   <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--gold)]">•</span>
+                     <span className="text-[var(--accent)]">•</span>
                      <span>**Compliance**: Persistent records ensure that if a member disputes a payout months later, you have the digital receipt.</span>
                   </li>
                </ul>
@@ -172,7 +172,7 @@ export default function SchemesGuidePage() {
             <div className="space-y-4">
                <div>
                   <h4 className="text-sm font-bold flex items-center gap-2 mb-2">
-                    <span className="p-1 rounded bg-blue-500/10 text-blue-500 font-mono text-[10px]">NEW</span>
+                    <span className="p-1 rounded bg-info-500/10 text-info-500 font-mono text-[10px]">NEW</span>
                     % of Payout (Deducted)
                   </h4>
                   <p className="text-xs opacity-60 leading-relaxed">

@@ -50,8 +50,8 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-500">
       <div className={`w-80 p-8 rounded-[40px] border border-white/10 bg-white/5 shadow-2xl flex flex-col items-center transition-transform duration-300 ${error ? 'animate-shake' : ''}`}>
         
-        <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mb-6 border border-gold/20 shadow-[0_0_20px_rgba(201,168,76,0.2)]">
-          <Lock className="text-gold" size={24} />
+        <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-6 border border-accent/20 shadow-[0_0_20px_rgba(201,168,76,0.2)]">
+          <Lock className="text-accent" size={24} />
         </div>
 
         <h2 className="text-xl font-bold text-white mb-2">Desktop Locked</h2>
@@ -62,7 +62,7 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} 
               className={`w-3 h-3 rounded-full border transition-all duration-200 ${
-                pin.length >= i ? 'bg-gold border-gold scale-125 shadow-[0_0_10px_#c9a84c]' : 'bg-transparent border-white/20'
+                pin.length >= i ? 'bg-accent border-accent scale-125 shadow-[0_0_10px_#c9a84c]' : 'bg-transparent border-white/20'
               }`}
             />
           ))}
@@ -85,13 +85,13 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
             0
           </button>
           <button onClick={handleSubmit}
-            className="w-full aspect-square rounded-full flex items-center justify-center text-gold font-bold hover:bg-gold/20 active:scale-95 transition-all border border-gold/20">
+            className="w-full aspect-square rounded-full flex items-center justify-center text-accent font-bold hover:bg-accent/20 active:scale-95 transition-all border border-accent/20">
             OK
           </button>
         </div>
 
         {error && (
-          <div className="mt-6 text-red-400 text-xs font-bold tracking-tight animate-bounce">
+          <div className="mt-6 text-danger-400 text-xs font-bold tracking-tight animate-bounce">
             Incorrect PIN. Try again.
           </div>
         )}

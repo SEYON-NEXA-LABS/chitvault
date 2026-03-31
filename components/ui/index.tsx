@@ -5,17 +5,17 @@ import { X }  from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-type BadgeVariant = 'green' | 'red' | 'gold' | 'blue' | 'gray'
+type BadgeVariant = 'success' | 'danger' | 'accent' | 'info' | 'gray'
 
 export function Badge({ variant = 'gray', children, className }: {
   variant?: BadgeVariant; children: React.ReactNode; className?: string
 }) {
   const styles: Record<BadgeVariant, React.CSSProperties> = {
-    green: { background: 'var(--green-dim)', color: 'var(--green)' },
-    red:   { background: 'var(--red-dim)',   color: 'var(--red)'   },
-    gold:  { background: 'rgba(201,168,76,0.15)', color: 'var(--gold)' },
-    blue:  { background: 'var(--blue-dim)',  color: 'var(--blue)'  },
-    gray:  { background: 'var(--surface3)',  color: 'var(--text2)' },
+    success: { background: 'var(--success-dim)', color: 'var(--success)' },
+    danger:  { background: 'var(--danger-dim)',   color: 'var(--danger)'  },
+    accent:  { background: 'var(--accent-dim)',   color: 'var(--accent)' },
+    info:    { background: 'var(--info-dim)',     color: 'var(--info)'  },
+    gray:    { background: 'var(--surface3)',     color: 'var(--text2)' },
   }
   return (
     <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider', className)}
@@ -26,7 +26,7 @@ export function Badge({ variant = 'gray', children, className }: {
 }
 
 // ── Button ────────────────────────────────────────────────────────────────────
-type BtnVariant = 'primary' | 'secondary' | 'danger' | 'green' | 'ghost'
+type BtnVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost'
 
 export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, children, className, ...props }: {
   variant?: BtnVariant; size?: 'sm' | 'md' | 'lg'
@@ -35,10 +35,10 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-[13px]', md: 'px-4 py-2 text-[15px]', lg: 'px-5 py-3 text-base' }
   const styles: Record<BtnVariant, React.CSSProperties> = {
-    primary:   { background: 'var(--gold)',      color: '#ffffff' },
+    primary:   { background: 'var(--accent)',      color: '#ffffff' },
     secondary: { background: 'var(--surface2)',  color: 'var(--text)', border: '1px solid var(--border)' },
-    danger:    { background: 'var(--red-dim)',   color: 'var(--red)',  border: '1px solid rgba(246,109,122,0.3)' },
-    green:     { background: 'var(--green-dim)', color: 'var(--green)', border: '1px solid rgba(62,207,142,0.3)' },
+    danger:    { background: 'var(--danger-dim)',   color: 'var(--danger)',  border: '1px solid var(--accent-border)' },
+    success:     { background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid var(--accent-border)' },
     ghost:     { background: 'transparent',      color: 'var(--text)' },
   }
   return (
@@ -74,11 +74,11 @@ export function Card({ title, subtitle, children, className, style }: {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, color = 'gold' }: {
+export function StatCard({ label, value, sub, color = 'accent' }: {
   label: string; value: string | number; sub?: string
-  color?: 'gold' | 'green' | 'red' | 'blue'
+  color?: 'accent' | 'success' | 'danger' | 'info'
 }) {
-  const colors = { gold: 'var(--gold)', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)' }
+  const colors = { accent: 'var(--accent)', success: 'var(--success)', danger: 'var(--danger)', info: 'var(--info)' }
   return (
     <Card className="p-5">
       <div className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>{label}</div>
@@ -193,12 +193,12 @@ export function Field({ label, error, children, className }: {
         {label}
       </label>
       {children}
-      {error && <span className="text-xs" style={{ color: 'var(--red)' }}>{error}</span>}
+      {error && <span className="text-xs" style={{ color: 'var(--danger)' }}>{error}</span>}
     </div>
   )
 }
 
-export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--gold)] font-medium'
+export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--accent)] font-medium'
 export const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
 
 // ── Progress Bar ──────────────────────────────────────────────────────────────
@@ -247,8 +247,8 @@ export function Toast({ msg, type, onClose }: {
     <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border shadow-xl text-sm font-medium"
       style={{
         background: 'var(--surface)',
-        borderColor: type === 'success' ? 'rgba(62,207,142,0.5)' : 'rgba(246,109,122,0.5)',
-        color: type === 'success' ? 'var(--green)' : 'var(--red)',
+        borderColor: type === 'success' ? 'var(--accent-border)' : 'rgba(246,109,122,0.5)',
+        color: type === 'success' ? 'var(--success)' : 'var(--danger)',
       }}>
       {type === 'success' ? '✓' : '✗'} {msg}
     </div>
@@ -263,7 +263,7 @@ export function Chip({ active, onClick, children }: {
     <button onClick={onClick}
       className="px-3 py-1 rounded-full text-xs font-medium border transition-all"
       style={active
-        ? { background: 'rgba(201,168,76,0.15)', borderColor: 'var(--gold)', color: 'var(--gold)' }
+        ? { background: 'var(--accent-dim)', borderColor: 'var(--accent)', color: 'var(--accent)' }
         : { background: 'transparent', borderColor: 'var(--border)', color: 'var(--text2)' }}>
       {children}
     </button>

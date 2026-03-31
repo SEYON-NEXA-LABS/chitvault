@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
         )}
         
         <div style={{ textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          <a href="/login" style={{ fontSize: 13, color: 'var(--blue)', textDecoration: 'none', fontWeight: 600 }}>
+          <a href="/login" style={{ fontSize: 13, color: 'var(--info)', textDecoration: 'none', fontWeight: 600 }}>
             Back to Login
           </a>
         </div>

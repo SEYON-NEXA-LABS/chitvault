@@ -42,7 +42,7 @@ interface PersonSummary {
 
 export default function PaymentsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [groups,   setGroups]   = useState<Group[]>([])
@@ -53,7 +53,6 @@ export default function PaymentsPage() {
   const [search,   setSearch]   = useState('')
   const [saving,   setSaving]   = useState(false)
   const [firms,    setFirms]    = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const isSuper = role === 'superadmin'
 
@@ -66,7 +65,7 @@ export default function PaymentsPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial && groups.length === 0) setLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [g, m, a, p] = await Promise.all([
       withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId).order('name'),
@@ -84,7 +83,7 @@ export default function PaymentsPage() {
       setFirms(f || [])
     }
     setLoading(false)
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
 
@@ -341,27 +340,14 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-black text-[var(--text)]">Payments Ledger</h1>
-        {isSuper && (
-          <div className="w-64">
-             <select 
-               className={inputClass} 
-               style={inputStyle}
-               value={selectedFirmId} 
-               onChange={e => setSelectedFirmId(e.target.value)}
-             >
-               <option value="all">All Firms (Global View)</option>
-               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-             </select>
-          </div>
-        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Collected Today" value={fmt(stats.collectedToday)} color="green" />
+        <StatCard label="Collected Today" value={fmt(stats.collectedToday)} color="success" />
         {dateRange.start && dateRange.end && (
-          <StatCard label="Collected in Range" value={fmt(stats.collectedInRange)} color="blue" />
+          <StatCard label="Collected in Range" value={fmt(stats.collectedInRange)} color="info" />
         )}
-        <StatCard label="Total Outstanding" value={fmt(stats.totalOut)} color="red" />
-        <StatCard label="Total Persons" value={personSummaries.length} color="gold" />
+        <StatCard label="Total Outstanding" value={fmt(stats.totalOut)} color="danger" />
+        <StatCard label="Total Persons" value={personSummaries.length} color="accent" />
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
@@ -381,7 +367,7 @@ export default function PaymentsPage() {
           </div>
           
           {(dateRange.start || dateRange.end) && (
-            <button onClick={() => setDateRange({ start: '', end: '' })} className="text-[10px] uppercase font-bold text-[var(--red)] hover:underline">
+            <button onClick={() => setDateRange({ start: '', end: '' })} className="text-[10px] uppercase font-bold text-[var(--danger)] hover:underline">
               Clear
             </button>
           )}
@@ -432,19 +418,19 @@ export default function PaymentsPage() {
                 </Td>
                 <Td className="hidden sm:table-cell">
                   {s.overallTotalBalance <= 0.01 ? (
-                    <Badge variant="green">Clear Account</Badge>
+                    <Badge variant="success">Clear Account</Badge>
                   ) : (
-                    <Badge variant="red">{s.memberships.filter(m => m.totalBalance > 0).length} Tickets Pending</Badge>
+                    <Badge variant="danger">{s.memberships.filter(m => m.totalBalance > 0).length} Tickets Pending</Badge>
                   )}
                 </Td>
                 <Td right>
-                   <div className={cn("font-bold font-mono text-base", s.overallTotalBalance > 0.01 ? "text-[var(--red)]" : "text-[var(--green)]")}>
+                   <div className={cn("font-bold font-mono text-base", s.overallTotalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                       {fmt(s.overallTotalBalance)}
                    </div>
                 </Td>
                 {dateRange.start && dateRange.end && (
                    <Td right>
-                      <div className="font-mono font-bold text-[var(--green)]">
+                      <div className="font-mono font-bold text-[var(--success)]">
                         {(() => {
                            const collected = payments.filter(p => 
                              s.memberships.some(ms => ms.member.id === p.member_id) && 
@@ -475,7 +461,7 @@ export default function PaymentsPage() {
         <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record Consolidated Payment" size="lg">
           <div className="space-y-6">
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--surface2)]">
-              <div className="w-12 h-12 rounded-full bg-[var(--gold)] flex items-center justify-center text-white text-xl font-bold">
+              <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">
                 {payModal.person.name.charAt(0)}
               </div>
               <div className="flex-1">
@@ -486,7 +472,7 @@ export default function PaymentsPage() {
               </div>
               <div className="text-right">
                  <div className="text-[10px] uppercase opacity-40">Total Outstanding</div>
-                 <div className="text-xl font-black text-[var(--red)]">{fmt(payModal.overallTotalBalance)}</div>
+                 <div className="text-xl font-black text-[var(--danger)]">{fmt(payModal.overallTotalBalance)}</div>
               </div>
             </div>
 
@@ -509,7 +495,7 @@ export default function PaymentsPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right min-w-[80px]">
-                           <div className="font-bold text-[var(--red)]">{fmt(d.balance)}</div>
+                           <div className="font-bold text-[var(--danger)]">{fmt(d.balance)}</div>
                            <div className="text-[9px] opacity-40 font-mono">Bal: {fmt(d.amountDue)}</div>
                         </div>
                         {payForm.isManual && (
@@ -605,12 +591,12 @@ export default function PaymentsPage() {
                            <div className="opacity-50 text-[10px]">{fmtMonth(p.month, group?.start_date)}</div>
                         </Td>
                         <Td><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
-                        <Td right className="font-bold text-[var(--green)]">{fmt(p.amount)}</Td>
+                        <Td right className="font-bold text-[var(--success)]">{fmt(p.amount)}</Td>
                         {can('deletePayment') && (
                           <Td right>
                             <button 
                               onClick={() => handleDeletePayment(Number(p.id))} 
-                              className="p-1.5 hover:bg-[var(--red-dim)] text-[var(--red)] rounded-md transition-colors opacity-70 hover:opacity-100"
+                              className="p-1.5 hover:bg-[var(--danger-dim)] text-[var(--danger)] rounded-md transition-colors opacity-70 hover:opacity-100"
                               title="Delete Payment"
                             >
                               <Trash2 size={14} />

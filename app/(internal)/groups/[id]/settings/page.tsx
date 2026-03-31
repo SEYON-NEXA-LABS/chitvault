@@ -100,7 +100,7 @@ export default function GroupSettingsPage() {
       <Card title="🎯 Bid Limits" subtitle="Floor and ceiling for auction bidding">
         <div className="p-5 space-y-5">
            <div className="p-3 rounded-xl text-sm flex gap-2"
-            style={{ background: 'rgba(91,138,245,0.07)', border: '1px solid rgba(91,138,245,0.2)', color: 'var(--blue)' }}>
+            style={{ background: 'rgba(91,138,245,0.07)', border: '1px solid rgba(91,138,245,0.2)', color: 'var(--info)' }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Bid limits control the lowest and highest amount a member can bid.
           </div>
@@ -108,14 +108,14 @@ export default function GroupSettingsPage() {
           <div>
             <div className="flex justify-between mb-2">
               <label className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Minimum Bid (Floor)</label>
-              <span className="text-sm font-mono font-bold" style={{ color: 'var(--gold)' }}>
+              <span className="text-sm font-mono font-bold" style={{ color: 'var(--accent)' }}>
                 {Math.round(rules.min_bid_pct * 100)}% = {fmt(minBid)}
               </span>
             </div>
             <input type="range" min="50" max="100" step="1" 
               value={Math.round(rules.min_bid_pct * 100)} 
               onChange={e => setRules(r => ({...r, min_bid_pct: +e.target.value / 100}))}
-              className="w-full" style={{ accentColor: 'var(--gold)' }} />
+              className="w-full" style={{ accentColor: 'var(--accent)' }} />
           </div>
         </div>
       </Card>
@@ -127,11 +127,11 @@ export default function GroupSettingsPage() {
                 <button key={type} onClick={() => setRules(r => ({...r, commission_type: type}))}
                   className="text-left px-4 py-3 rounded-xl border transition-all"
                   style={{ 
-                    borderColor: rules.commission_type === type ? 'var(--gold)' : 'var(--border)',
+                    borderColor: rules.commission_type === type ? 'var(--accent)' : 'var(--border)',
                     background:  rules.commission_type === type ? 'rgba(201,168,76,0.08)' : 'var(--surface2)',
                   }}>
                   <div className="flex items-center gap-2">
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${rules.commission_type === type ? 'var(--gold)' : 'var(--border)'}`, background: rules.commission_type === type ? 'var(--gold)' : 'transparent' }} />
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${rules.commission_type === type ? 'var(--accent)' : 'var(--border)'}`, background: rules.commission_type === type ? 'var(--accent)' : 'transparent' }} />
                     <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>{label}</span>
                   </div>
                 </button>
@@ -141,7 +141,7 @@ export default function GroupSettingsPage() {
             <div>
               <div className="flex justify-between mb-1.5">
                 <label className="text-sm font-semibold">Value</label>
-                <span className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
+                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                   {rules.commission_type === 'fixed_amount' ? fmt(rules.commission_value) : `${rules.commission_value}%`}
                 </span>
               </div>
@@ -165,19 +165,19 @@ export default function GroupSettingsPage() {
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
                 <div>
                   <div className="text-[10px] uppercase opacity-50 mb-1">Total Discount</div>
-                  <div className="text-sm font-bold text-red-500">{fmt(preview.discount)}</div>
+                  <div className="text-sm font-bold text-danger-500">{fmt(preview.discount)}</div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase opacity-50 mb-1">Your Commission</div>
-                  <div className="text-sm font-bold text-gold-500" style={{ color: 'var(--gold)' }}>{fmt(preview.commission_amt)}</div>
+                  <div className="text-sm font-bold text-accent-500" style={{ color: 'var(--accent)' }}>{fmt(preview.commission_amt)}</div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase opacity-50 mb-1">Total Dividend</div>
-                  <div className="text-sm font-bold text-green-500">{fmt(preview.net_dividend)}</div>
+                  <div className="text-sm font-bold text-success-500">{fmt(preview.net_dividend)}</div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase opacity-50 mb-1">Each Member Pays</div>
-                  <div className="text-sm font-bold text-blue-500">{fmt(preview.each_pays)}</div>
+                  <div className="text-sm font-bold text-info-500">{fmt(preview.each_pays)}</div>
                 </div>
               </div>
             )}

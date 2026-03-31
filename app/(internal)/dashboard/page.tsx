@@ -95,13 +95,13 @@ export default function DashboardPage() {
 
       {/* Primary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="gold" />
-        <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="green" />
+        <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="accent" />
+        <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Total Pending" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="red" />
+          <StatCard label="Total Pending" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="danger" />
         </Link>
         <Link href="/reports?type=defaulters" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="blue" />
+          <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="info" />
         </Link>
       </div>
 
@@ -122,7 +122,7 @@ export default function DashboardPage() {
               return (
                 <Link key={g.id} href={`/groups/${g.id}`} className="block group">
                   <Card className="h-full relative overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 border-t-4"
-                        style={{ borderTopColor: isAcc ? 'var(--blue)' : 'var(--gold)' }}>
+                        style={{ borderTopColor: isAcc ? 'var(--info)' : 'var(--accent)' }}>
                     <div className="p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                             {g.name}
                           </h3>
                           <div className="flex items-center gap-2">
-                            <Badge variant={isAcc ? "blue" : "gold"}>
+                            <Badge variant={isAcc ? "info" : "accent"}>
                               {g.auction_scheme}
                             </Badge>
                             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--text3)' }}>
@@ -154,7 +154,7 @@ export default function DashboardPage() {
                           <span style={{ color: 'var(--text)' }}>{done} / {g.duration} Months</span>
                         </div>
                         <div className="progress-bar-wrap h-1.5">
-                          <div className="progress-bar" style={{ width: `${pct}%`, background: isAcc ? 'var(--blue)' : 'var(--gold)' }} />
+                          <div className="progress-bar" style={{ width: `${pct}%`, background: isAcc ? 'var(--info)' : 'var(--accent)' }} />
                         </div>
                       </div>
 
@@ -169,10 +169,10 @@ export default function DashboardPage() {
                         </div>
                         {isAcc ? (
                           <div>
-                            <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--blue)' }}>
+                            <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--info)' }}>
                               Group Surplus
                             </span>
-                            <span className="text-sm font-bold" style={{ color: 'var(--blue)' }}>
+                            <span className="text-sm font-bold" style={{ color: 'var(--info)' }}>
                               {fmt(g.accumulated_surplus)}
                             </span>
                           </div>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                             <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--text3)' }}>
                               Status
                             </span>
-                            <Badge variant="green" className="text-[10px]">Active</Badge>
+                            <Badge variant="success" className="text-[10px]">Active</Badge>
                           </div>
                         )}
                       </div>
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                           {g?.name || `Group #${a.group_id}`}
                         </td>
                         <td className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                          <Badge variant="blue">{fmtMonth(a.month, g?.start_date)}</Badge>
+                          <Badge variant="info">{fmtMonth(a.month, g?.start_date)}</Badge>
                         </td>
                         <td className="px-4 py-3" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
                           👑 {w?.persons?.name || '—'}
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 font-mono" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
                           {fmt(a.bid_amount)}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--green)', borderBottom: '1px solid var(--border)' }}>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--success)', borderBottom: '1px solid var(--border)' }}>
                           {fmt(a.dividend)}/m
                         </td>
                         <td className="px-4 py-3 text-xs" style={{ color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>

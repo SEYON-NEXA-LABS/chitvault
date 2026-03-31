@@ -22,10 +22,11 @@ create table if not exists firms (
   city        text,
   address     text,
   phone       text,
-  -- Branding / white-label
-  primary_color   text default '#2563eb',     -- hex colour (DEPRECATED in favor of themes)
-  accent_color    text default '#1e40af',     -- hex colour (DEPRECATED in favor of themes)
-  theme_id        text default 'theme1',      -- id from THEMES list in frontend
+  -- Branding / white-label (LEGACY - DEPRECATED)
+  primary_color   text default '#2563eb',     -- hex colour (DEPRECATED: No longer used in UI)
+  accent_color    text default '#1e40af',     -- hex colour (DEPRECATED: No longer used in UI)
+  theme_id        text default 'theme1',      -- id from THEMES list (DEPRECATED: Fixed via Profile)
+  color_profile   text default 'indigo',      -- indigo | emerald | violet | crimson | graphite
   logo_url        text,                        -- hosted image URL
   tagline         text default 'Chit Fund Manager',
   font            text default 'DM Sans',      -- Google Font name
@@ -536,19 +537,20 @@ grant execute on function public.register_firm(text,text,text,text,text) to auth
 create or replace function public.get_firm_branding(p_slug text)
 returns table (
   name text, theme_id text, logo_url text,
-  tagline text, font text, plan_status text
+  tagline text, font text, plan_status text,
+  color_profile text
 )
 language sql stable security definer set search_path = public as $$
-  select name, theme_id, logo_url, tagline, font, plan_status
+  select name, theme_id, logo_url, tagline, font, plan_status, color_profile
   from firms where slug = p_slug
 $$;
 grant execute on function public.get_firm_branding(text) to anon, authenticated;
 
 -- Public RPC: validate register token
 create or replace function public.get_firm_by_register_token(p_token text)
-returns table (id uuid, name text, slug text, theme_id text, logo_url text, tagline text)
+returns table (id uuid, name text, slug text, theme_id text, logo_url text, tagline text, color_profile text)
 language sql stable security definer set search_path = public as $$
-  select id, name, slug, theme_id, logo_url, tagline
+  select id, name, slug, theme_id, logo_url, tagline, color_profile
   from firms where register_token = p_token
 $$;
 grant execute on function public.get_firm_by_register_token(text) to anon, authenticated;
@@ -742,7 +744,7 @@ create or replace function public.admin_create_firm(
   p_city          text default null,
   p_phone         text default null,
   p_plan          text default 'trial',
-  p_theme_id      text default 'theme1',
+  p_color_profile text default 'indigo',
   p_tagline       text default 'Chit Fund Manager',
   p_font          text default 'DM Sans'
 )
@@ -758,8 +760,8 @@ bash
     raise exception 'SLUG_TAKEN';
   end if;
 
-  insert into firms (name, slug, owner_id, city, phone, plan, theme_id, tagline, font)
-  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_theme_id, p_tagline, p_font)
+  insert into firms (name, slug, owner_id, city, phone, plan, color_profile, tagline, font)
+  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_color_profile, p_tagline, p_font)
   returning id into v_firm_id;
 
   -- Create or link profile immediately

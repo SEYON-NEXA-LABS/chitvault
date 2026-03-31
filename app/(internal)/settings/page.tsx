@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS } from '@/lib/branding/context'
+import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS, COLOR_PROFILES } from '@/lib/branding/context'
 import { Btn, Card, Badge, Toast } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const isOwner = role === 'owner' || isSuperAdmin
 
   const [email,     setEmail]     = useState('')
-  const [theme,     setTheme]     = useState<'light' | 'dark' | 'system'>('light')
+  const [theme,     setTheme]     = useState<'light' | 'dark' | 'system' | 'monochrome'>('light')
   const [resetting, setResetting] = useState(false)
   const [saving,    setSaving]    = useState(false)
   const [resetMsg,  setResetMsg]  = useState('')
@@ -46,10 +46,7 @@ export default function SettingsPage() {
   const [name,       setName]       = useState(firm?.name || '')
   const [address,    setAddress]    = useState(firm?.address || '')
   const [phone,      setPhone]      = useState(firm?.phone || '')
-  const [color,      setColor]      = useState(firm?.primary_color || '#2563eb')
-  const [accentColor, setAccentColor] = useState(firm?.accent_color || '#1e40af')
-  const [customColor, setCustomColor] = useState(firm?.primary_color || '#2563eb')
-  const [logoUrl,    setLogoUrl]    = useState(firm?.logo_url || '')
+  const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
   const [tagline,    setTagline]    = useState(firm?.tagline || 'Chit Fund Manager')
   const [font,       setFont]       = useState(firm?.font || 'Noto Sans')
   const [regToken,   setRegToken]   = useState(firm?.register_token || '')
@@ -60,50 +57,34 @@ export default function SettingsPage() {
       setEmail(data.user?.email || '')
     }
     loadUser()
-    const t = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system'
+    const t = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system' | 'monochrome'
     setTheme(t)
     if (firm) {
       setName(firm.name || '')
       setAddress(firm.address || '')
       setPhone(firm.phone || '')
-      setColor(firm.primary_color || '#2563eb')
-      setAccentColor(firm.accent_color || '#1e40af')
-      setCustomColor(firm.primary_color || '#2563eb')
-      setLogoUrl(firm.logo_url || '')
+      setColorProfile(firm.color_profile || 'indigo')
       setTagline(firm.tagline || 'Chit Fund Manager')
       setFont(firm.font || 'Noto Sans')
       setRegToken(firm.register_token || '')
     }
   }, [firm, supabase.auth])
 
-  function updateTheme(val: 'light' | 'dark' | 'system') {
+  function updateTheme(val: 'light' | 'dark' | 'system' | 'monochrome') {
     setTheme(val)
     localStorage.setItem('theme', val)
-    const isDark = val === 'system' 
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches 
-      : val === 'dark'
-    document.documentElement.classList.toggle('dark', isDark)
+    document.documentElement.setAttribute('data-theme', val)
   }
 
-  function handleColorSelect(val: string) {
-    if (val === 'custom') return
-    setColor(val); setCustomColor(val)
-    applyBranding(val, font, accentColor)
-  }
-
-  function handleCustomColor(val: string) {
-    setCustomColor(val); setColor(val)
-    applyBranding(val, font, accentColor)
-  }
-
-  function handleAccentChange(val: string) {
-    setAccentColor(val)
-    applyBranding(color, font, val)
+  function handleProfileSelect(id: string) {
+    setColorProfile(id)
+    // Apply immediately for preview
+    document.documentElement.setAttribute('data-color-profile', id)
   }
 
   function handleFontChange(f: string) {
     setFont(f)
-    applyBranding(color, f, accentColor)
+    applyBranding(f, colorProfile)
   }
 
   async function saveBranding() {
@@ -113,9 +94,7 @@ export default function SettingsPage() {
       name:          name.trim() || undefined,
       address:       address.trim() || null,
       phone:         phone.trim() || null,
-      primary_color: color,
-      accent_color:  accentColor,
-      logo_url:      logoUrl.trim() || null,
+      color_profile: colorProfile,
       tagline:       tagline.trim() || 'Chit Fund Manager',
       font,
     }).eq('id', firm.id)
@@ -206,25 +185,6 @@ export default function SettingsPage() {
           </div>
           <div className="p-5 space-y-5">
 
-            {/* Logo */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <ImageIcon size={13} /> Logo URL
-              </div>
-              <div className="flex gap-3 items-center">
-                {logoUrl && (
-                  <Image src={logoUrl} alt="logo preview" width={176} height={44}
-                    style={{ borderRadius: 8, border: '1px solid var(--border)', objectFit: 'contain', background: '#fff', padding: 4 }} />
-                )}
-                <input className={inputClass} style={inputStyle} value={logoUrl}
-                  onChange={e => setLogoUrl(e.target.value)}
-                  placeholder="https://your-logo.png (leave blank for emoji icon)" />
-              </div>
-              <p className="text-xs mt-1.5" style={{ color: 'var(--text3)' }}>
-                Host your logo on imgur.com or your website. Recommended: 200×60px PNG/SVG with transparent background.
-              </p>
-            </div>
-
             {/* Tagline */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>
@@ -234,67 +194,33 @@ export default function SettingsPage() {
                 onChange={e => setTagline(e.target.value)} placeholder="e.g. Trusted Chit Fund Manager" />
             </div>
 
-            {/* Colour */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-              {/* Primary */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                  <Palette size={13} /> Primary Colour
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {PRESET_COLORS.map(p => (
-                    p.value !== 'custom' ? (
-                      <button key={p.value} onClick={() => handleColorSelect(p.value)}
-                        title={p.label}
-                        style={{
-                          width: 32, height: 32, borderRadius: 8, background: p.value, border: 'none', cursor: 'pointer',
-                          outline: color === p.value ? `3px solid ${p.value}` : '3px solid transparent',
-                          outlineOffset: 2, transition: 'outline 0.15s'
-                        }} />
-                    ) : null
-                  ))}
-                  <div style={{ position: 'relative' }}>
-                    <input type="color" value={customColor} onChange={e => handleCustomColor(e.target.value)}
-                      style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div style={{ width: 20, height: 20, borderRadius: 5, background: color }} />
-                  <span className="text-xs font-mono opacity-60">{color}</span>
-                </div>
+            {/* Color Profiles */}
+            <div className="pt-2">
+              <div className="flex items-center gap-1.5 mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                <Palette size={13} /> Color Profile
               </div>
-
-              {/* Accent */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                  <Palette size={13} /> Accent Colour
-                </div>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {['#1e40af', '#1d4ed8', '#0369a1', '#0e7490', '#c026d3', '#db2777', '#dc2626', '#d97706'].map(c => (
-                    <button key={c} onClick={() => handleAccentChange(c)}
-                      title="Preset"
-                      style={{
-                        width: 32, height: 32, borderRadius: 8, background: c, border: 'none', cursor: 'pointer',
-                        outline: accentColor === c ? `3px solid ${c}` : '3px solid transparent',
-                        outlineOffset: 2, transition: 'outline 0.15s'
-                      }} />
-                  ))}
-                  <div style={{ position: 'relative' }}>
-                    <input type="color" value={accentColor} onChange={e => handleAccentChange(e.target.value)}
-                      style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'var(--surface2)' }} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div style={{ width: 20, height: 20, borderRadius: 5, background: accentColor }} />
-                  <span className="text-xs font-mono opacity-60">{accentColor}</span>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {COLOR_PROFILES.map(p => (
+                  <button key={p.id} onClick={() => handleProfileSelect(p.id)}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group"
+                    style={{
+                      borderColor: colorProfile === p.id ? 'var(--accent)' : 'var(--border)',
+                      background: colorProfile === p.id ? 'var(--accent-dim)' : 'var(--surface2)',
+                    }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 6, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                    <span className="text-[10px] font-bold uppercase tracking-tight text-center" 
+                      style={{ color: colorProfile === p.id ? 'var(--accent)' : 'var(--text2)' }}>
+                      {p.name.split(' ')[0]}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Font */}
-            <div>
+            <div className="pt-2">
               <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Type size={13} /> Font
+                <Type size={13} /> Typography
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_FONTS.map(f => (
@@ -302,9 +228,9 @@ export default function SettingsPage() {
                     className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all"
                     style={{
                       fontFamily: `'${f.value}', sans-serif`,
-                      borderColor: font === f.value ? color : 'var(--border)',
-                      background: font === f.value ? `${color}15` : 'var(--surface2)',
-                      color: font === f.value ? color : 'var(--text2)',
+                      borderColor: font === f.value ? 'var(--accent)' : 'var(--border)',
+                      background: font === f.value ? 'var(--accent-dim)' : 'var(--surface2)',
+                      color: font === f.value ? 'var(--accent)' : 'var(--text2)',
                       fontWeight: font === f.value ? 700 : 400,
                     }}>
                     {f.label}
@@ -372,7 +298,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex justify-between py-2.5 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
               <span className="opacity-60">Status</span>
-              <Badge variant="green">Active Account ✓</Badge>
+              <Badge variant="success">Active Account ✓</Badge>
             </div>
           </div>
 
@@ -394,7 +320,7 @@ export default function SettingsPage() {
             </div>
 
             {passMsg && (
-              <p className="text-sm font-medium" style={{ color: passMsg.type === 'success' ? 'var(--green)' : 'var(--red)' }}>
+              <p className="text-sm font-medium" style={{ color: passMsg.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
                 {passMsg.type === 'success' ? '✓ ' : '✗ '}{passMsg.text}
               </p>
             )}
@@ -420,7 +346,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 {hasPin ? (
-                  <Badge variant="green">Enabled ✓</Badge>
+                  <Badge variant="success">Enabled ✓</Badge>
                 ) : (
                   <Badge variant="gray">Disabled</Badge>
                 )}
@@ -436,8 +362,8 @@ export default function SettingsPage() {
             )}
 
             {(pinChange || !hasPin) && (
-              <div className="space-y-3 p-4 bg-gold/5 rounded-xl border border-gold/20">
-                <label className="text-xs font-bold text-gold uppercase tracking-wider block">Set New 4-6 Digit PIN</label>
+              <div className="space-y-3 p-4 bg-accent/5 rounded-xl border border-accent/20">
+                <label className="text-xs font-bold text-accent uppercase tracking-wider block">Set New 4-6 Digit PIN</label>
                 <div className="flex gap-2">
                   <input 
                     type="password" 
@@ -480,38 +406,83 @@ export default function SettingsPage() {
                    Sign Out Completely
                 </Btn>
              </div>
-             {resetMsg && <p className="text-xs" style={{ color: resetMsg.startsWith('✓') ? 'var(--green)' : 'var(--red)' }}>{resetMsg}</p>}
+             {resetMsg && <p className="text-xs" style={{ color: resetMsg.startsWith('✓') ? 'var(--success)' : 'var(--danger)' }}>{resetMsg}</p>}
           </div>
 
         </div>
       </Card>
 
-      {/* ── Appearance ────────────────────────────────────── */}
+      {/* ── Personal Appearance & Selection ────────────────────────────────────── */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          🌗 Appearance & Theme
+          🌗 Personal Theme & Appearance
         </div>
-        <div className="p-5">
-           <div className="grid grid-cols-3 gap-3">
-              {(['light', 'dark', 'system'] as const).map(m => (
+        <div className="p-5 space-y-6">
+            
+            {/* Color Profiles (Personal Selection) */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                  <Palette size={13} /> Personal Color Profile
+                </div>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('chitvault-user-color-profile')
+                    window.location.reload()
+                  }}
+                  className="text-[10px] font-bold text-[var(--accent)] hover:underline"
+                >
+                  Reset to Firm Default
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {COLOR_PROFILES.map(p => {
+                  const isSelected = (typeof window !== 'undefined' && localStorage.getItem('chitvault-user-color-profile')) === p.id
+                  return (
+                    <button key={p.id} onClick={() => {
+                      localStorage.setItem('chitvault-user-color-profile', p.id)
+                      window.location.reload()
+                    }}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group"
+                    style={{
+                      borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                      background: isSelected ? 'var(--accent-dim)' : 'var(--surface2)',
+                    }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 6, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                    <span className="text-[10px] font-bold uppercase tracking-tight text-center" 
+                      style={{ color: isSelected ? 'var(--accent)' : 'var(--text2)' }}>
+                      {p.name.split(' ')[0]}
+                    </span>
+                  </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <hr style={{ borderColor: 'var(--border)' }} />
+
+            {/* High Level Theme (Light/Dark) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {(['light', 'dark', 'system', 'monochrome'] as const).map(m => (
                 <button key={m} onClick={() => updateTheme(m)}
                   className="p-4 rounded-xl border flex flex-col items-center gap-2 transition-all group"
                   style={{
-                    borderColor: theme === m ? 'var(--gold)' : 'var(--border)',
-                    background: theme === m ? 'var(--gold-dim)' : 'transparent',
+                    borderColor: theme === m ? 'var(--accent)' : 'var(--border)',
+                    background: theme === m ? 'var(--accent-dim)' : 'transparent',
                   }}>
-                  <div style={{ color: theme === m ? 'var(--gold)' : 'var(--text3)' }}>
+                  <div style={{ color: theme === m ? 'var(--accent)' : 'var(--text3)' }}>
                     {m === 'light' && <Sun size={20} />}
                     {m === 'dark' && <Moon size={20} />}
                     {m === 'system' && <Monitor size={20} />}
+                    {m === 'monochrome' && <Palette size={20} />}
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-widest" 
-                    style={{ color: theme === m ? 'var(--gold)' : 'var(--text2)' }}>
+                    style={{ color: theme === m ? 'var(--accent)' : 'var(--text2)' }}>
                     {m}
                   </span>
                 </button>
               ))}
-           </div>
+            </div>
            <p className="text-[11px] mt-4 opacity-50 px-1" style={{ color: 'var(--text2)' }}>
              Choose Light for a clean look, Dark for high contrast, or System to follow your device settings.
            </p>
@@ -544,10 +515,10 @@ export default function SettingsPage() {
       <Card title="⚠️ Danger Zone" subtitle="System reset actions">
         <div className="p-5">
           <div className="p-4 rounded-xl border flex items-center justify-between" 
-            style={{ background: 'var(--red-dim)', borderColor: 'var(--red)' }}>
+            style={{ background: 'var(--danger-dim)', borderColor: 'var(--danger)' }}>
             <div>
-              <div className="text-sm font-bold" style={{ color: 'var(--red)' }}>Clear Local Cache & Hard Logout</div>
-              <p className="text-xs opacity-70 mt-0.5" style={{ color: 'var(--red)' }}>
+              <div className="text-sm font-bold" style={{ color: 'var(--danger)' }}>Clear Local Cache & Hard Logout</div>
+              <p className="text-xs opacity-70 mt-0.5" style={{ color: 'var(--danger)' }}>
                 This will wipe all local settings (theme, etc.) and sign you out completely.
               </p>
             </div>

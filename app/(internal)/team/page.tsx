@@ -36,14 +36,14 @@ const roleIcon = (role: string) => ({
 }[role] || <User size={13} />)
 
 const roleBadge = (role: string) => {
-  if (role === 'owner') return <Badge variant="gold">👑 Owner</Badge>
-  if (role === 'staff') return <Badge variant="blue">Staff</Badge>
+  if (role === 'owner') return <Badge variant="accent">👑 Owner</Badge>
+  if (role === 'staff') return <Badge variant="info">Staff</Badge>
   return <Badge variant="gray">{role}</Badge>
 }
 
 export default function TeamPage() {
   const supabase = createClient()
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [members,  setMembers]  = useState<TeamMember[]>([])
@@ -55,14 +55,13 @@ export default function TeamPage() {
   const [saving,   setSaving]   = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [firms,    setFirms]    = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const isSuper = role === 'superadmin'
-  const targetId = isSuper ? selectedFirmId : firm?.id
+  const targetId = isSuper ? switchedFirmId : firm?.id
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
     
     const { data: { user } } = await supabase.auth.getUser()
     setCurrentUserId(user?.id || '')
@@ -88,7 +87,7 @@ export default function TeamPage() {
       setFirms(f || [])
     }
     setLoading(false)
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
 
@@ -199,19 +198,6 @@ export default function TeamPage() {
       {/* Header card with Firm Filter */}
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-black text-[var(--text)]">Team Management</h1>
-        {isSuper && (
-          <div className="w-64">
-             <select 
-               className={inputClass} 
-               style={inputStyle}
-               value={selectedFirmId} 
-               onChange={e => setSelectedFirmId(e.target.value)}
-             >
-               <option value="all">Global (All Users)</option>
-               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-             </select>
-          </div>
-        )}
       </div>
 
       <Card className="p-5">
@@ -239,8 +225,8 @@ export default function TeamPage() {
         </div>
         <div className="grid grid-cols-2 gap-0">
           {[
-            { role: 'Owner', icon: '👑', color: 'var(--gold)', perms: ['Create & delete groups', 'Add & remove members', 'Record auctions', 'Record payments', 'All reports', 'Manage team & settings'] },
-            { role: 'Staff', icon: '👤', color: 'var(--blue)', perms: ['View all groups', 'View all members', 'Record payments', 'Collection report', 'View reports', '— Cannot modify structure'] },
+            { role: 'Owner', icon: '👑', color: 'var(--accent)', perms: ['Create & delete groups', 'Add & remove members', 'Record auctions', 'Record payments', 'All reports', 'Manage team & settings'] },
+            { role: 'Staff', icon: '👤', color: 'var(--info)', perms: ['View all groups', 'View all members', 'Record payments', 'Collection report', 'View reports', '— Cannot modify structure'] },
           ].map(r => (
             <div key={r.role} className="p-5 border-r last:border-0" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2 mb-3">
@@ -269,7 +255,7 @@ export default function TeamPage() {
             <div key={m.id} className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
-                  style={{ background: m.role === 'owner' ? 'rgba(201,168,76,0.15)' : 'var(--blue-dim)', color: m.role === 'owner' ? 'var(--gold)' : 'var(--blue)' }}>
+                  style={{ background: m.role === 'owner' ? 'rgba(201,168,76,0.15)' : 'var(--info-dim)', color: m.role === 'owner' ? 'var(--accent)' : 'var(--info)' }}>
                   {(m.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -278,7 +264,7 @@ export default function TeamPage() {
                     {m.id === currentUserId && <span className="text-xs" style={{ color: 'var(--text3)' }}>(you)</span>}
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>
-                    Joined {fmtDate(m.created_at)} {m.status === 'inactive' && <span className="text-[var(--red)] font-bold ml-1.5">• ACCESS DISABLED</span>}
+                    Joined {fmtDate(m.created_at)} {m.status === 'inactive' && <span className="text-[var(--danger)] font-bold ml-1.5">• ACCESS DISABLED</span>}
                   </div>
                 </div>
               </div>
@@ -301,7 +287,7 @@ export default function TeamPage() {
                     )}
                     <Btn size="sm" variant="secondary" onClick={() => toggleStatus(m.id, m.status)}
                       title={m.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                      style={{ color: m.status === 'active' ? 'var(--red)' : 'var(--green)' }}>
+                      style={{ color: m.status === 'active' ? 'var(--danger)' : 'var(--success)' }}>
                       {m.status === 'active' ? <UserX size={12} /> : <CheckCircle size={12} />}
                       {m.status === 'active' ? 'Disable' : 'Enable'}
                     </Btn>
@@ -354,7 +340,7 @@ export default function TeamPage() {
       )}
 
       {/* How to invite info */}
-      <div className="p-4 rounded-xl border text-sm" style={{ background: 'rgba(91,138,245,0.06)', borderColor: 'rgba(91,138,245,0.2)', color: 'var(--blue)' }}>
+      <div className="p-4 rounded-xl border text-sm" style={{ background: 'rgba(91,138,245,0.06)', borderColor: 'rgba(91,138,245,0.2)', color: 'var(--info)' }}>
         <strong>How invites work:</strong> Click &quot;Invite Staff&quot; → enter their email → copy the invite link → send via WhatsApp or email. When they click the link, they create an account and automatically join your firm as Staff.
       </div>
 
@@ -372,11 +358,11 @@ export default function TeamPage() {
                 <button key={r} onClick={() => setInviteRole(r)}
                   className="p-4 rounded-xl border text-left transition-all"
                   style={{
-                    borderColor: inviteRole === r ? (r === 'owner' ? 'var(--gold)' : 'var(--blue)') : 'var(--border)',
-                    background: inviteRole === r ? (r === 'owner' ? 'rgba(201,168,76,0.08)' : 'var(--blue-dim)') : 'var(--surface2)',
+                    borderColor: inviteRole === r ? (r === 'owner' ? 'var(--accent)' : 'var(--info)') : 'var(--border)',
+                    background: inviteRole === r ? (r === 'owner' ? 'rgba(201,168,76,0.08)' : 'var(--info-dim)') : 'var(--surface2)',
                   }}>
                   <div className="text-base mb-1">{r === 'owner' ? '👑' : '👤'}</div>
-                  <div className="font-semibold text-sm capitalize" style={{ color: r === 'owner' ? 'var(--gold)' : 'var(--blue)' }}>{r}</div>
+                  <div className="font-semibold text-sm capitalize" style={{ color: r === 'owner' ? 'var(--accent)' : 'var(--info)' }}>{r}</div>
                   <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>
                     {r === 'owner' ? 'Full access including settings' : 'View & record payments only'}
                   </div>

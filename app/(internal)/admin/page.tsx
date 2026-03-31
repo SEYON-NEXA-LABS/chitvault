@@ -3,12 +3,12 @@
 import { useEffect, useState, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { registerFirm, updateFirmTheme, updateFirmDetails } from './actions'
+import { registerFirm, updateFirmProfile, updateFirmDetails } from './actions'
 import { Pencil, UserPlus, Link as LinkIcon, Check, Copy, Search, ExternalLink } from 'lucide-react'
 import { Modal, Field, Btn, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { fmtDate } from '@/lib/utils'
-import { THEMES, getTheme } from '@/lib/branding/themes'
+import { COLOR_PROFILES } from '@/lib/branding/context'
 import { PLAN_LIMITS } from '@/types'
 import type { Firm } from '@/types'
 
@@ -19,10 +19,10 @@ interface FirmWithStats extends Firm {
 }
 
 const planColor = (plan: string) => ({
-  trial: 'var(--blue)', basic: 'var(--blue)', pro: 'var(--green)'
+  trial: 'var(--info)', basic: 'var(--info)', pro: 'var(--success)'
 }[plan] || 'var(--text2)')
 
-const statusColor = (s: string) => s === 'active' ? 'var(--green)' : s === 'suspended' ? 'var(--red)' : 'var(--text2)'
+const statusColor = (s: string) => s === 'active' ? 'var(--success)' : s === 'suspended' ? 'var(--danger)' : 'var(--text2)'
 
 export default function AdminPage() {
   return (
@@ -121,7 +121,7 @@ function AdminDashboard() {
 
   async function handleThemeChange(firmId: string, themeId: string) {
     setUpdating(firmId)
-    const { error } = await updateFirmTheme(firmId, themeId)
+    const { error } = await updateFirmProfile(firmId, themeId)
     if (error) alert(error)
     await load()
     setUpdating(null)
@@ -133,7 +133,7 @@ function AdminDashboard() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', theme_id:'theme1', tagline:'Chit Fund Manager', font:'Noto Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', tagline:'Chit Fund Manager', font:'Noto Sans' })
   const [createErr, setCreateErr] = useState('')
 
   // Edit firm state
@@ -165,7 +165,7 @@ function AdminDashboard() {
     setCreating(false)
     if (error) { setCreateErr(error === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', theme_id:'theme1', tagline:'Chit Fund Manager', font:'Noto Sans' })
+    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', tagline:'Chit Fund Manager', font:'Noto Sans' })
     load()
   }
 
@@ -217,7 +217,7 @@ function AdminDashboard() {
     <div style={sty.page}>
       <header style={sty.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, background: 'var(--blue)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>S</div>
+          <div style={{ width: 32, height: 32, background: 'var(--info)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>S</div>
           <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Superadmin Dashboard</h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -230,25 +230,25 @@ function AdminDashboard() {
         
         {/* Revenue Analytics Header */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 30 }}>
-          <div style={{ ...sty.card, borderLeft: '4px solid var(--gold)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ fontSize: 11, color: 'var(--gold)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>💰 Total Startup Revenue</div>
+          <div style={{ ...sty.card, borderLeft: '4px solid var(--accent)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>💰 Total Startup Revenue</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)' }}>{fmtCurrency(revStats.setup)}</div>
             <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Total One-time Setup Fees Collected</div>
             <div style={{ position: 'absolute', right: -10, bottom: -10, opacity: 0.05, transform: 'rotate(-15deg)' }}><Copy size={80} /></div>
           </div>
-          <div style={{ ...sty.card, borderLeft: '4px solid var(--green)' }}>
-            <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🔄 Projected Annual AMC</div>
+          <div style={{ ...sty.card, borderLeft: '4px solid var(--success)' }}>
+            <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🔄 Projected Annual AMC</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)' }}>{fmtCurrency(revStats.amc)}</div>
             <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Recurring Revenue from all Firms</div>
           </div>
-          <div style={{ ...sty.card, borderLeft: '4px solid var(--red)' }}>
-            <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>☁️ Hosting Overhead</div>
+          <div style={{ ...sty.card, borderLeft: '4px solid var(--danger)' }}>
+            <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>☁️ Hosting Overhead</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)' }}>{fmtCurrency(revStats.hosting)}</div>
             <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Railway + Supabase (Yearly Cost)</div>
           </div>
-          <div style={{ ...sty.card, borderLeft: `4px solid ${revStats.profit > 0 ? 'var(--gold)' : 'var(--text3)'}`, background: revStats.profit > 0 ? 'rgba(201,168,76,0.05)' : 'var(--surface)' }}>
+          <div style={{ ...sty.card, borderLeft: `4px solid ${revStats.profit > 0 ? 'var(--accent)' : 'var(--text3)'}`, background: revStats.profit > 0 ? 'rgba(201,168,76,0.05)' : 'var(--surface)' }}>
             <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>📈 Net Yearly Profit</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: revStats.profit > 0 ? 'var(--gold)' : 'var(--text)' }}>{fmtCurrency(revStats.profit)}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: revStats.profit > 0 ? 'var(--accent)' : 'var(--text)' }}>{fmtCurrency(revStats.profit)}</div>
             <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Profit AFTER all expenses are paid</div>
           </div>
         </div>
@@ -259,11 +259,11 @@ function AdminDashboard() {
             {/* Quick Stats Row */}
             <div style={{ display: 'flex', gap: 12 }}>
               {[
-                { label: 'Total', value: stats.total, color: 'var(--blue)' },
-                { label: 'Standard', value: stats.basic, color: 'var(--blue)' },
-                { label: 'Enterprise', value: stats.pro, color: 'var(--gold)' },
+                { label: 'Total', value: stats.total, color: 'var(--info)' },
+                { label: 'Standard', value: stats.basic, color: 'var(--info)' },
+                { label: 'Enterprise', value: stats.pro, color: 'var(--accent)' },
                 { label: 'Trial', value: stats.trial, color: 'var(--text3)' },
-                { label: 'Suspended', value: stats.suspended, color: 'var(--red)' },
+                { label: 'Suspended', value: stats.suspended, color: 'var(--danger)' },
               ].map(s => (
                 <div key={s.label} style={{ ...sty.card, flex: 1, padding: '12px 16px' }}>
                   <div style={{ fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>{s.label}</div>
@@ -316,7 +316,7 @@ function AdminDashboard() {
                                 <button onClick={() => { setEditingFirm(f); setEditForm({ name: f.name, slug: f.slug, city: f.city||'', phone: f.phone||'', tagline: f.tagline||'', font: f.font||'Noto Sans' }); setEditOpen(true) }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md transition-colors" title="Edit">
                                   <Pencil size={12} />
                                 </button>
-                                <button onClick={() => { setInvitingFirm(f); setInviteOpen(true); setInviteLink(''); setInviteEmail('') }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--blue)] transition-colors" title="Invite">
+                                <button onClick={() => { setInvitingFirm(f); setInviteOpen(true); setInviteLink(''); setInviteEmail('') }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--info)] transition-colors" title="Invite">
                                   <UserPlus size={12} />
                                 </button>
                                 <a href={`https://${f.slug}.chitvault.app`} target="_blank" className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--text3)]" title="Open Link"><ExternalLink size={12} /></a>
@@ -324,8 +324,8 @@ function AdminDashboard() {
                             </div>
                           </td>
                           <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{f.city || '—'}</td>
-                          <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--blue)' }}>{f.groupCount}</td>
-                          <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--blue)' }}>{f.memberCount}</td>
+                          <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--info)' }}>{f.groupCount}</td>
+                          <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--info)' }}>{f.memberCount}</td>
                           <td style={{ padding: '12px 14px' }}>
                             <select style={{ ...sty.select, color: planColor(f.plan) }} value={f.plan} disabled={updating === f.id} onChange={e => updatePlan(f.id, e.target.value)}>
                               <option value="trial">Trial</option>
@@ -354,25 +354,25 @@ function AdminDashboard() {
 
             {/* Billing Guide Card */}
             <div style={sty.card}>
-              <div style={{ fontWeight: 700, marginBottom: 14, fontSize: 13, color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: 0.5 }}>📋 Manual Billing Guide</div>
+              <div style={{ fontWeight: 700, marginBottom: 14, fontSize: 13, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: 0.5 }}>📋 Manual Billing Guide</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
                 <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.8 }}>
                   <div className="flex items-start gap-2 mb-2">
-                    <span className="font-bold text-[var(--blue)]">1.</span>
-                    <span><strong>Trial ends</strong> → Change plan to <code style={{ color: 'var(--blue)' }}>Standard</code>.</span>
+                    <span className="font-bold text-[var(--info)]">1.</span>
+                    <span><strong>Trial ends</strong> → Change plan to <code style={{ color: 'var(--info)' }}>Standard</code>.</span>
                   </div>
                   <div className="flex items-start gap-2 mb-2">
-                    <span className="font-bold text-[var(--blue)]">2.</span>
+                    <span className="font-bold text-[var(--info)]">2.</span>
                     <span><strong>Payment received</strong> → Update plan, enter <strong>Invoice Ref</strong>.</span>
                   </div>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.8 }}>
                   <div className="flex items-start gap-2 mb-2">
-                    <span className="font-bold text-[var(--blue)]">3.</span>
-                    <span><strong>Late Payment</strong> → Set status to <code style={{ color: 'var(--red)' }}>suspended</code>.</span>
+                    <span className="font-bold text-[var(--info)]">3.</span>
+                    <span><strong>Late Payment</strong> → Set status to <code style={{ color: 'var(--danger)' }}>suspended</code>.</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="font-bold text-[var(--blue)]">4.</span>
+                    <span className="font-bold text-[var(--info)]">4.</span>
                     <span><strong>Support</strong> → Use <strong>seyonnexalabs@gmail.com</strong> for assistance.</span>
                   </div>
                 </div>
@@ -385,14 +385,14 @@ function AdminDashboard() {
             <div style={{ ...sty.card, padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text2)' }}>⚡ Platform Activity</div>
-                <div style={{ background: 'var(--blue)', color: 'white', fontSize: 10, fontWeight: 900, padding: '2px 6px', borderRadius: 4 }}>LIVE</div>
+                <div style={{ background: 'var(--info)', color: 'white', fontSize: 10, fontWeight: 900, padding: '2px 6px', borderRadius: 4 }}>LIVE</div>
               </div>
               <div style={{ maxHeight: 600, overflowY: 'auto' }}>
                 {activities.length === 0 ? (
                   <div style={{ padding: 40, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>No platform activity recorded.</div>
                 ) : activities.map((a, i) => (
                   <div key={a.id} style={{ padding: '14px 20px', borderBottom: i === activities.length - 1 ? 'none' : '1px solid var(--border)', display: 'flex', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: a.event_type === 'firm_created' ? 'var(--blue-dim)' : 'var(--surface3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: a.event_type === 'firm_created' ? 'var(--info-dim)' : 'var(--surface3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <span style={{ fontSize: 14 }}>{a.event_type === 'firm_created' ? '🏢' : '⚙️'}</span>
                     </div>
                     <div style={{ flex: 1 }}>
@@ -409,7 +409,7 @@ function AdminDashboard() {
 
             {/* Plan Reference Sidebar */}
             <div style={sty.card}>
-              <div style={{ fontWeight: 700, marginBottom: 14, fontSize: 12, color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: 0.5 }}>💎 Plan Pricing</div>
+              <div style={{ fontWeight: 700, marginBottom: 14, fontSize: 12, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: 0.5 }}>💎 Plan Pricing</div>
               <div className="space-y-3">
                 {(Object.keys(PLAN_LIMITS) as Array<keyof typeof PLAN_LIMITS>).map(p => {
                   const plan = PLAN_LIMITS[p]
@@ -435,7 +435,7 @@ function AdminDashboard() {
       {/* Modals & Toasts */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Register New Firm" size="lg" persist={true}>
         <div className="space-y-8">
-          {createErr && <div style={{ background:'var(--red-dim)', color:'var(--red)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>✗ {createErr}</div>}
+          {createErr && <div style={{ background:'var(--danger-dim)', color:'var(--danger)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>✗ {createErr}</div>}
 
           {/* Section 1: Business Profile */}
           <div className="space-y-4">
@@ -489,19 +489,14 @@ function AdminDashboard() {
               </div>
               
               <div className="md:col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wide block mb-2" style={{ color:'var(--text2)' }}>Instance Theme</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {THEMES.map(t => (
-                    <button key={t.id} onClick={() => setNewFirm(n => ({...n, theme_id: t.id}))} 
-                      className="group transition-all"
-                      style={{ padding: 10, borderRadius: 12, border: `2px solid ${newFirm.theme_id===t.id?'var(--gold)':'var(--border)'}`, background: newFirm.theme_id===t.id?'var(--surface3)':'var(--surface)', cursor: 'pointer', textAlign: 'left' }}>
-                      <div className="flex items-center justify-between">
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t.name}</div>
-                        <div style={{ display: 'flex', gap: 3 }}>
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: t.primary }} />
-                          <div style={{ width: 12, height: 12, borderRadius: 3, background: t.accent }} />
-                        </div>
-                      </div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-2" style={{ color:'var(--text2)' }}>Instance Appearance</label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {COLOR_PROFILES.map(p => (
+                    <button key={p.id} onClick={() => setNewFirm(n => ({...n, color_profile: p.id}))} 
+                      className="group transition-all flex flex-col items-center gap-2"
+                      style={{ padding: 10, borderRadius: 12, border: `2px solid ${newFirm.color_profile===p.id?'var(--accent)':'var(--border)'}`, background: newFirm.color_profile===p.id?'var(--accent-dim)':'var(--surface)', cursor: 'pointer', textAlign: 'center' }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 4, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                      <div style={{ fontSize: 10, fontWeight: 700, color: newFirm.color_profile===p.id?'var(--accent)':'var(--text2)' }}>{p.name.split(' ')[0]}</div>
                     </button>
                   ))}
                 </div>
@@ -550,8 +545,8 @@ function AdminDashboard() {
                 {(['staff','owner'] as const).map(r => (
                   <button key={r} onClick={() => setInviteRole(r)}
                     className="p-4 rounded-xl border text-left transition-all"
-                    style={{ borderColor: inviteRole===r?(r==='owner'?'var(--gold)':'var(--blue)'):'var(--border)', background: inviteRole===r?(r==='owner'?'rgba(201,168,76,0.08)':'var(--blue-dim)'):'var(--surface2)' }}>
-                    <div className="font-bold text-sm capitalize" style={{ color: inviteRole===r?(r==='owner'?'var(--gold)':'var(--blue)'):'var(--text2)' }}>{r === 'owner' ? '👑 Owner' : '👤 Staff'}</div>
+                    style={{ borderColor: inviteRole===r?(r==='owner'?'var(--accent)':'var(--info)'):'var(--border)', background: inviteRole===r?(r==='owner'?'rgba(201,168,76,0.08)':'var(--info-dim)'):'var(--surface2)' }}>
+                    <div className="font-bold text-sm capitalize" style={{ color: inviteRole===r?(r==='owner'?'var(--accent)':'var(--info)'):'var(--text2)' }}>{r === 'owner' ? '👑 Owner' : '👤 Staff'}</div>
                     <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{r === 'owner' ? 'Full administrative control' : 'Limited operational data entry'}</div>
                   </button>
                 ))}
@@ -561,13 +556,13 @@ function AdminDashboard() {
           </div>
         ) : (
           <div className="space-y-5 text-center">
-            <div style={{ display: 'inline-flex', padding: 20, borderRadius: '50%', background: 'var(--green-dim)', color: 'var(--green)', fontSize: 32, marginBottom: 10 }}>✓</div>
+            <div style={{ display: 'inline-flex', padding: 20, borderRadius: '50%', background: 'var(--success-dim)', color: 'var(--success)', fontSize: 32, marginBottom: 10 }}>✓</div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Invitation Ready!</h3>
             <p style={{ fontSize: 13, color: 'var(--text3)', margin: '4px 0 20px' }}>Send this unique link to the user to join the firm.</p>
             <div className="group relative">
               <input readOnly value={inviteLink} style={{ ...sty.input, paddingRight: 90, fontSize: 12, textAlign: 'center' }} />
               <button onClick={() => { navigator.clipboard.writeText(inviteLink); show('Link copied to clipboard') }}
-                className="absolute right-1 top-1 bottom-1 px-3 bg-[var(--blue)] text-white text-[10px] font-bold rounded-md">COPY</button>
+                className="absolute right-1 top-1 bottom-1 px-3 bg-[var(--info)] text-white text-[10px] font-bold rounded-md">COPY</button>
             </div>
             <Btn variant="secondary" className="w-full mt-4" onClick={() => setInviteOpen(false)}>Close Modal</Btn>
           </div>

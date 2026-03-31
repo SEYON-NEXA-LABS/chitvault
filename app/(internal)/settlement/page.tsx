@@ -220,7 +220,7 @@ export default function SettlementPage() {
        <div className="flex items-center justify-between border-b pb-4 mb-2" style={{ borderColor: 'var(--border)' }}>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calculator size={24} style={{ color: 'var(--gold)' }} />
+            <Calculator size={24} style={{ color: 'var(--accent)' }} />
             {t('settlement_title')}
           </h1>
           <p className="text-sm opacity-60">{t('settlement_desc')}</p>
@@ -275,7 +275,7 @@ export default function SettlementPage() {
                     <Td className="text-center">
                       {can('deleteSettlement') && (
                         <button onClick={() => removeEntry(index)} 
-                          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded transition-colors text-xs opacity-30 hover:opacity-100">
+                          className="p-1.5 hover:bg-danger-500/10 hover:text-danger-500 rounded transition-colors text-xs opacity-30 hover:opacity-100">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -320,10 +320,10 @@ export default function SettlementPage() {
                             </div>
                          </Td>
                          <Td right className="font-bold">{fmt(s.total_amount)}</Td>
-                         <Td right><Badge variant="gold" className="text-[10px]">{fmt(s.month_14_balance)}</Badge></Td>
+                         <Td right><Badge variant="accent" className="text-[10px]">{fmt(s.month_14_balance)}</Badge></Td>
                          <Td className="text-center">
                             {can('deleteSettlement') && (
-                               <button onClick={() => deleteSettlement(s.id)} className="p-1 opacity-50 hover:opacity-100 hover:text-red-500">
+                               <button onClick={() => deleteSettlement(s.id)} className="p-1 opacity-50 hover:opacity-100 hover:text-danger-500">
                                   <Trash2 size={14} />
                                 </button>
                             )}
@@ -377,7 +377,7 @@ export default function SettlementPage() {
                        <div className="font-bold">{t('amount')}</div>
                        <div className="text-xs opacity-50">மொத்தம் (Total)</div>
                     </div>
-                    <div className="text-xl font-black" style={{ color: 'var(--gold)' }}>{fmt(totalAmount)}</div>
+                    <div className="text-xl font-black" style={{ color: 'var(--accent)' }}>{fmt(totalAmount)}</div>
                  </div>
 
                  <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: 'var(--border)' }}>
@@ -393,15 +393,15 @@ export default function SettlementPage() {
                        <div className="font-bold">{t('avg_per_month')}</div>
                        <div className="text-xs opacity-50">சராசரி (Average)</div>
                     </div>
-                    <div className="text-xl font-black" style={{ color: 'var(--green)' }}>{fmt(averagePerMonth)}</div>
+                    <div className="text-xl font-black" style={{ color: 'var(--success)' }}>{fmt(averagePerMonth)}</div>
                  </div>
 
-                 <div className="p-4 rounded-xl border mt-4" style={{ background: 'var(--gold-dim)', borderColor: 'var(--gold)' }}>
-                    <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--gold)' }}>
+                 <div className="p-4 rounded-xl border mt-4" style={{ background: 'var(--accent-dim)', borderColor: 'var(--accent)' }}>
+                    <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--accent)' }}>
                        {t('settlement_payout')} ({targetMonths - 1} months)
                     </div>
                     <div className="text-[10px] opacity-60 mb-2">{(targetMonths - 1)}‑மாதப் பட்டுவாடா</div>
-                    <div className="text-2xl font-black" style={{ color: 'var(--gold)' }}>{fmt(settlementTotal)}</div>
+                    <div className="text-2xl font-black" style={{ color: 'var(--accent)' }}>{fmt(settlementTotal)}</div>
                   </div>
               </div>
            </Card>

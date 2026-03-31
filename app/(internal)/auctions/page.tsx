@@ -17,7 +17,7 @@ import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 export default function AuctionsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const { t } = useI18n()
   const isOwner = role === 'owner' || role === 'superadmin'
   const { toast, show, hide } = useToast()
@@ -31,7 +31,6 @@ export default function AuctionsPage() {
   const [addOpen,     setAddOpen]     = useState(false)
   const [saving,      setSaving]      = useState(false)
   const [firms,       setFirms]       = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [form, setForm] = useState({
     group_id: '', month: '', auction_date: '', winner_id: '',
@@ -44,7 +43,7 @@ export default function AuctionsPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
-    const targetId = role === 'superadmin' ? selectedFirmId : firm?.id
+    const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
 
     let gQ  = withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status','closed'), targetId).order('name')
     let mQ  = withFirmScope(supabase.from('members').select('*, persons(*)').in('status',['active','foreman']), targetId)
@@ -63,7 +62,7 @@ export default function AuctionsPage() {
       setFirms(f || [])
     }
     setLoading(false)
-  }, [supabase, firm, role, selectedFirmId, firms.length])
+  }, [supabase, firm, role, switchedFirmId, firms.length])
 
   const filteredAuctions = useMemo(() => auctions, [auctions])
   const filteredCommissions = useMemo(() => commissions, [commissions])
@@ -78,7 +77,7 @@ export default function AuctionsPage() {
     const gMembers   = members.filter(m => m.group_id === g.id && !winnerIds.includes(m.id))
     const foremanM   = members.filter(m => m.group_id === g.id && m.status === 'foreman')
 
-    const targetId = role === 'superadmin' ? selectedFirmId : firm?.id
+    const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
     const { data: rules } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).single()
     setGroupRules(rules)
     setEligible(gMembers)
@@ -180,14 +179,6 @@ export default function AuctionsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
         <div className="flex gap-2">
-           {role === 'superadmin' && (
-              <div className="w-48">
-                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
-                  <option value="all">All Firms</option>
-                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-           )}
            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
            {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('record_auction')}</Btn>}
         </div>
@@ -221,19 +212,19 @@ export default function AuctionsPage() {
                         <Td><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
                       )}
                       <Td><span className="font-semibold">{g?.name || `#${a.group_id}`}</span></Td>
-                      <Td><Badge variant="blue">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
+                      <Td><Badge variant="info">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
                       <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
                       <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
                       <Td right>{fmt(a.bid_amount)}</Td>
                       <Td right className="hidden lg:table-cell">
                          {g?.auction_scheme === 'ACCUMULATION' 
-                           ? <span style={{ color: 'var(--gold)' }}>+{fmt(a.bid_amount)}</span>
+                           ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)}</span>
                            : <span style={{ color: 'var(--text3)' }}>—</span>}
                       </Td>
-                      <Td right className="font-bold text-green-600">{fmt(a.net_payout || a.bid_amount)}</Td>
+                      <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
                       <Td right className="hidden md:table-cell">
                         {fc
-                          ? <span style={{ color: 'var(--red)' }}>{fmt(fc.commission_amt)}</span>
+                          ? <span style={{ color: 'var(--danger)' }}>{fmt(fc.commission_amt)}</span>
                           : <span style={{ color: 'var(--text3)' }}>—</span>}
                       </Td>
                       <Td right className="hidden sm:table-cell">
@@ -269,22 +260,22 @@ export default function AuctionsPage() {
                       <Td><Badge variant="gray">{(fc as any).firms?.name || '—'}</Badge></Td>
                     )}
                     <Td>{g?.name || '—'}</Td>
-                    <Td><Badge variant="blue">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
+                    <Td><Badge variant="info">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
                     <Td right>{fmt(fc.chit_value)}</Td>
                     <Td right>{fmt(fc.bid_amount)}</Td>
-                    <Td right><span style={{ color: 'var(--red)' }}>{fmt(fc.discount)}</span></Td>
+                    <Td right><span style={{ color: 'var(--danger)' }}>{fmt(fc.discount)}</span></Td>
                     <Td right>
-                      <div style={{ color: 'var(--gold)' }}>{fmt(fc.commission_amt)}</div>
+                      <div style={{ color: 'var(--accent)' }}>{fmt(fc.commission_amt)}</div>
                       <div className="text-[10px]" style={{ color: 'var(--text3)' }}>
                         {fc.commission_type === 'fixed_amount' ? 'Fixed' : `${fc.commission_rate}%`}
                       </div>
                     </Td>
-                    <Td right><span style={{ color: 'var(--green)' }}>{fmt(fc.net_dividend)}</span></Td>
-                    <Td right><span style={{ color: 'var(--green)' }}>{fmt(fc.per_member_div)}</span></Td>
+                    <Td right><span style={{ color: 'var(--success)' }}>{fmt(fc.net_dividend)}</span></Td>
+                    <Td right><span style={{ color: 'var(--success)' }}>{fmt(fc.per_member_div)}</span></Td>
                     <Td>
                       {fc.paid_to === 'foreman' && fm
-                        ? <Badge variant="gold">👑 {fm.persons?.name}</Badge>
-                        : <Badge variant="blue">🏦 Firm</Badge>}
+                        ? <Badge variant="accent">👑 {fm.persons?.name}</Badge>
+                        : <Badge variant="info">🏦 Firm</Badge>}
                     </Td>
                   </Tr>
                 )
@@ -310,7 +301,7 @@ export default function AuctionsPage() {
           {groupRules && (
             <div className="col-span-2 p-3 rounded-xl text-xs flex gap-4 flex-wrap"
               style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
-              <span>🎯 Bid range: <strong style={{ color: 'var(--gold)' }}>{fmt(groupRules.chit_value * groupRules.min_bid_pct)} – {fmt(groupRules.chit_value * groupRules.max_bid_pct)}</strong></span>
+              <span>🎯 Bid range: <strong style={{ color: 'var(--accent)' }}>{fmt(groupRules.chit_value * groupRules.min_bid_pct)} – {fmt(groupRules.chit_value * groupRules.max_bid_pct)}</strong></span>
             </div>
           )}
 
@@ -343,10 +334,10 @@ export default function AuctionsPage() {
 
           <Field label="Winning Bid (₹)" className="col-span-2">
             <input className={inputClass}
-              style={{ ...inputStyle, borderColor: calcError ? 'var(--red)' : calc ? 'var(--green)' : undefined }}
+              style={{ ...inputStyle, borderColor: calcError ? 'var(--danger)' : calc ? 'var(--success)' : undefined }}
               type="number" value={form.bid_amount}
               onChange={e => onBidChange(e.target.value)} />
-            {calcError && <span className="text-[10px] mt-1" style={{ color: 'var(--red)' }}>✗ {calcError}</span>}
+            {calcError && <span className="text-[10px] mt-1" style={{ color: 'var(--danger)' }}>✗ {calcError}</span>}
           </Field>
         </div>
 
@@ -354,9 +345,9 @@ export default function AuctionsPage() {
           <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
             <div className="p-4 grid grid-cols-3 gap-3">
               {[
-                { label: 'Net Payout',       value: fmt(calc.net_payout),      color: 'var(--green)' },
-                { label: 'Firm Comm.',  value: fmt(calc.commission_amt),  color: 'var(--red)'  },
-                { label: 'Per Member Div',   value: fmt(calc.per_member_div),  color: 'var(--blue)'  },
+                { label: 'Net Payout',       value: fmt(calc.net_payout),      color: 'var(--success)' },
+                { label: 'Firm Comm.',  value: fmt(calc.commission_amt),  color: 'var(--danger)'  },
+                { label: 'Per Member Div',   value: fmt(calc.per_member_div),  color: 'var(--info)'  },
               ].map(r => (
                 <div key={r.label} className="bg-[var(--surface2)] p-2 rounded-xl text-center">
                    <div className="text-[10px] opacity-40 uppercase tracking-widest">{r.label}</div>

@@ -65,21 +65,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [firms, setFirms] = useState<Firm[]>([])
 
   const [userEmail, setUserEmail] = useState('')
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system' | 'monochrome'>('light')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(14)
   const [monochrome, setMonochrome] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
-    const savedTheme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system'
-    setTheme(savedTheme)
-    
-    const apply = (t: 'light' | 'dark' | 'system') => {
-      const isDark = t === 'system' 
-        ? window.matchMedia('(prefers-color-scheme: dark)').matches 
-        : t === 'dark'
-      document.documentElement.classList.toggle('dark', isDark)
+    const savedTheme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system' | 'monochrome'
+    setTheme(savedTheme as any)
+
+    const apply = (t: string) => {
+      document.documentElement.setAttribute('data-theme', t)
     }
 
     apply(savedTheme)
@@ -119,11 +116,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'var(--bg)' }}>
         <div style={{ maxWidth: 420, textAlign: 'center' }}>
           <div style={{ fontSize: 52, marginBottom: 12 }}>⏸️</div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--red)', marginBottom: 10 }}>Account Suspended</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginBottom: 10 }}>Account Suspended</h2>
           <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 20 }}>
             {firm.name}&apos;s account has been suspended. Contact us to renew.
           </p>
-          <a href="mailto:seyonnexalabs@gmail.com" style={{ color: 'var(--gold)', fontSize: 14 }}>seyonnexalabs@gmail.com</a>
+          <a href="mailto:seyonnexalabs@gmail.com" style={{ color: 'var(--accent)', fontSize: 14 }}>seyonnexalabs@gmail.com</a>
           <br />
           <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
             style={{ marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontSize: 13 }}>
@@ -135,15 +132,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   function toggleTheme() {
-    const modes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system']
-    const next = modes[(modes.indexOf(theme) + 1) % modes.length]
+    const modes = ['light', 'dark', 'system', 'monochrome'] as const
+    const next = modes[(modes.indexOf(theme as any) + 1) % modes.length]
     setTheme(next)
     localStorage.setItem('theme', next)
-    
-    const isDark = next === 'system' 
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches 
-      : next === 'dark'
-    document.documentElement.classList.toggle('dark', isDark)
+    document.documentElement.setAttribute('data-theme', next)
   }
 
   function adjustFont(delta: number) {
@@ -179,11 +172,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {role === 'superadmin' && (
             <div className="space-y-1.5">
               <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Active Workspace</label>
-              <select 
+              <select
                 value={switchedFirmId}
                 onChange={(e) => setSwitchedFirmId(e.target.value as any)}
-                className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold transition-all focus:ring-1 focus:ring-[var(--gold)] outline-none"
-                style={{ color: switchedFirmId === 'all' ? 'var(--text)' : 'var(--gold)' }}
+                className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold transition-all focus:ring-1 focus:ring-[var(--accent)] outline-none"
+                style={{ color: switchedFirmId === 'all' ? 'var(--text)' : 'var(--accent)' }}
               >
                 <option value="all">🌐 Platform Overview</option>
                 <optgroup label="Manage Firms">
@@ -195,29 +188,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          <Link href="/dashboard" className="flex items-center gap-2 mb-2.5 hover:opacity-80 transition-opacity overflow-hidden">
-            {firm?.logo_url ? (
-              <img src={firm.logo_url} alt="Logo" style={{ height: 20, width: 'auto', maxWidth: 110, objectFit: 'contain', flexShrink: 0, borderRadius: 2 }} />
-            ) : (
-              <Building2 size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-            )}
+          <Link href="/dashboard" className="flex items-center gap-3 mb-2.5 hover:opacity-80 transition-opacity overflow-hidden">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
+              <img src="/icons/icon-192.png" alt="Logo" className="w-full h-full object-cover" />
+            </div>
             <div className="flex flex-col truncate">
               {switchedFirmId !== 'all' && (
-                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-[var(--gold)] leading-none mb-1">
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-[var(--accent)] leading-none mb-1">
                   VIEWING FIRM
                 </span>
               )}
-              <div className="font-bold text-base leading-none" style={{ color: switchedFirmId !== 'all' ? 'var(--text)' : 'var(--gold)' }}>
-                {firm?.name || (switchedFirmId === 'all' ? 'Platform Admin' : APP_NAME)}
+              <div className="font-bold text-lg leading-none" style={{ color: switchedFirmId !== 'all' ? 'var(--text)' : 'var(--accent)' }}>
+                {firm?.name || (switchedFirmId === 'all' ? APP_NAME : APP_NAME)}
               </div>
+              {firm?.tagline && (
+                <div className="text-[10px] font-medium opacity-40 truncate mt-1" style={{ color: 'var(--text)' }}>
+                  {firm.tagline}
+                </div>
+              )}
             </div>
           </Link>
 
           <div className="flex items-center gap-2">
             {switchedFirmId === 'all' ? (
-               <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-[var(--gold-dim)] text-[var(--gold)] border border-[var(--gold-border)]">
-                 GLOBAL
-               </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)]">
+                GLOBAL
+              </span>
             ) : (
               firm && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold"
@@ -227,7 +223,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )
             )}
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--blue-dim)', color: isOwner ? 'var(--gold)' : 'var(--blue)' }}>
+              style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--info-dim)', color: isOwner ? 'var(--accent)' : 'var(--info)' }}>
               {role === 'superadmin' ? '👑 Super' : (isOwner ? '👑 Admin' : '👤 Staff')}
             </span>
           </div>
@@ -257,7 +253,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return (
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all"
-                style={active ? { background: 'var(--gold-dim)', color: 'var(--gold)' } : { color: 'var(--text2)' }}>
+                style={active ? { background: 'var(--accent-dim)', color: 'var(--accent)' } : { color: 'var(--text2)' }}>
                 <Icon size={15} />
                 {t(item.label)}
               </Link>
@@ -269,7 +265,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-3 pb-3">
             <button onClick={install}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
-              style={{ background: 'var(--gold)', color: 'white', boxShadow: '0 4px 12px var(--gold-border)' }}>
+              style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 12px var(--accent-border)' }}>
               <Download size={15} />
               Install App
             </button>
@@ -281,7 +277,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button onClick={lock}
               title="Lock Session"
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
-              style={{ background: 'var(--green)', color: 'white', boxShadow: '0 4px 12px var(--green-dim)' }}>
+              style={{ background: 'var(--success)', color: 'white', boxShadow: '0 4px 12px var(--success-dim)' }}>
               <Lock size={14} />
               Lock Session
             </button>
@@ -291,46 +287,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="mt-auto border-t p-4 space-y-4" style={{ borderColor: 'var(--border)' }}>
           {/* Customization Quick Tools (Moved from Header) */}
           <div className="flex items-center justify-between gap-1 p-1 rounded-xl bg-[var(--surface2)] border" style={{ borderColor: 'var(--border)' }}>
-              {/* Theme Cycle */}
-              <button onClick={toggleTheme} className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors" 
-                style={{ color: theme === 'system' ? 'var(--gold)' : 'var(--text2)' }}
-                title={`Theme: ${theme.toUpperCase()}`}>
-                {theme === 'light' && <Sun size={14} />}
-                {theme === 'dark' && <Moon size={14} />}
-                {theme === 'system' && <Monitor size={14} />}
-              </button>
-              
-              <div className="w-[1px] h-4 bg-[var(--border)]" />
-              
-              {/* Language Switch */}
-              <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
-                className="px-2 py-1 rounded-lg hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
-                style={{ color: 'var(--gold)' }}>
-                {lang === 'en' ? 'தமிழ்' : 'EN'}
-              </button>
+            {/* Theme Cycle */}
+            <button onClick={toggleTheme} className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
+              style={{ color: theme === 'system' ? 'var(--accent)' : 'var(--text2)' }}
+              title={`Theme: ${theme.toUpperCase()}`}>
+              {theme === 'light' && <Sun size={14} />}
+              {theme === 'dark' && <Moon size={14} />}
+              {theme === 'system' && <Monitor size={14} />}
+            </button>
 
-              <div className="w-[1px] h-4 bg-[var(--border)]" />
+            <div className="w-[1px] h-4 bg-[var(--border)]" />
 
-              {/* Font Size */}
-              <div className="flex items-center">
-                <button onClick={() => adjustFont(-1)} title="Smaller font" className="w-6 h-6 flex items-center justify-center text-[10px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A-</button>
-                <button onClick={() => adjustFont(1)} title="Larger font" className="w-6 h-6 flex items-center justify-center text-[12px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A+</button>
-              </div>
+            {/* Language Switch */}
+            <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
+              className="px-2 py-1 rounded-lg hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
+              style={{ color: 'var(--accent)' }}>
+              {lang === 'en' ? 'தமிழ்' : 'EN'}
+            </button>
 
-              <div className="w-[1px] h-4 bg-[var(--border)]" />
+            <div className="w-[1px] h-4 bg-[var(--border)]" />
 
-              {/* Monochrome */}
-              <button onClick={toggleMono} title="Monochrome Mode"
-                className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
-                style={{ color: monochrome ? 'var(--gold)' : 'var(--text3)' }}>
-                <Palette size={14} />
-              </button>
+            {/* Font Size */}
+            <div className="flex items-center">
+              <button onClick={() => adjustFont(-1)} title="Smaller font" className="w-6 h-6 flex items-center justify-center text-[10px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A-</button>
+              <button onClick={() => adjustFont(1)} title="Larger font" className="w-6 h-6 flex items-center justify-center text-[12px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A+</button>
+            </div>
+
+            <div className="w-[1px] h-4 bg-[var(--border)]" />
+
+            {/* Monochrome */}
+            <button onClick={toggleMono} title="Monochrome Mode"
+              className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
+              style={{ color: monochrome ? 'var(--accent)' : 'var(--text3)' }}>
+              <Palette size={14} />
+            </button>
           </div>
 
-          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative border" 
+          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative border"
             style={{ borderColor: 'rgba(0,0,0,0)', background: 'transparent' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
-              style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid var(--gold-border)' }}>
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
               {userEmail ? userEmail.substring(0, 2).toUpperCase() : '??'}
             </div>
             <div className="flex-1 min-w-0">
@@ -342,7 +338,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
               <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
                 title={t('sign_out')}
-                className="p-1.5 rounded-lg hover:bg-[var(--red-dim)] hover:text-[var(--red)] shrink-0"
+                className="p-1.5 rounded-lg hover:bg-[var(--danger-dim)] hover:text-[var(--danger)] shrink-0"
                 style={{ color: 'var(--text3)' }}>
                 <LogOut size={14} />
               </button>
@@ -354,9 +350,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="mt-2 px-2">
-             <div className="text-[9px] font-medium opacity-20 uppercase tracking-widest">
-               Powered by SEYON NEXA LABS
-             </div>
+            <div className="text-[9px] font-medium opacity-20 uppercase tracking-widest">
+              Powered by SEYON NEXA LABS
+            </div>
           </div>
         </div>
       </aside>
@@ -376,7 +372,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2">
             {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
               <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
-                style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
+                style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
                 ⚠ Trial: {trialDaysLeft}d left
               </div>
             )}

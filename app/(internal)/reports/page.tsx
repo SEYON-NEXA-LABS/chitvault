@@ -24,7 +24,7 @@ export default function ReportsPage() {
 
 function ReportsPageContent() {
   const supabase = createClient()
-  const { firm, role } = useFirm()
+  const { firm, role, switchedFirmId } = useFirm()
   const { t } = useI18n()
   
   const REPORTS = useMemo(() => [
@@ -62,10 +62,9 @@ function ReportsPageContent() {
   const [selectedMemberId, setSelectedMemberId] = useState<string>('')
 
   const [firms,    setFirms]    = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
   const [winnerFilter, setWinnerFilter] = useState<'all'|'pending'|'settled'>('all')
   const isSuper = role === 'superadmin'
-  const targetId = isSuper ? selectedFirmId : firm?.id
+  const targetId = isSuper ? switchedFirmId : firm?.id
 
   const [timeFilter, setTimeFilter] = useState<string>('all')
 
@@ -148,7 +147,7 @@ function ReportsPageContent() {
       }
     }
     load()
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length, searchParams])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length, searchParams])
 
   const handleExportCSV = () => {
     if (!activeReport) return
@@ -283,7 +282,7 @@ function ReportsPageContent() {
   }
 
   if (loading) return <Loading />
-  if (error) return <div className="p-4 rounded-lg bg-red-100 text-red-700">Error: {error}</div>
+  if (error) return <div className="p-4 rounded-lg bg-danger-100 text-danger-700">Error: {error}</div>
 
   const renderActiveReport = () => {
     switch (activeReport) {
@@ -354,19 +353,6 @@ function ReportsPageContent() {
           <div className="flex justify-between items-center mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
             <h1 className="text-2xl font-bold">{t('reports_hub')}</h1>
             <div className="flex items-center gap-3">
-              {isSuper && (
-                <div className="w-64">
-                   <select 
-                     className={inputClass} 
-                     style={inputStyle}
-                     value={selectedFirmId} 
-                     onChange={e => setSelectedFirmId(e.target.value)}
-                   >
-                     <option value="all">Global (All Firms)</option>
-                     {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                   </select>
-                </div>
-              )}
               <label className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>{t('date_filter')}:</label>
               <select className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 12px' }} value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)}>
                 <option value="all">{t('all_time')}</option>
@@ -392,7 +378,7 @@ function ReportsPageContent() {
                       className="p-5 rounded-2xl border cursor-pointer hover:shadow-md transition-all group"
                       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 rounded-lg" style={{ background: 'var(--gold-dim)', color: 'var(--gold)' }}>
+                        <div className="p-2 rounded-lg" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                           <Icon size={18} />
                         </div>
                         <h3 className="font-semibold" style={{ color: 'var(--text)' }}>{report.title}</h3>
@@ -418,7 +404,7 @@ function ReportsPageContent() {
                <h1 className="text-2xl font-bold flex items-center gap-2">
                  {REPORTS.find(r => r.id === activeReport)?.title}
                  {timeFilter !== 'all' && (
-                   <span className="text-xs ml-2 px-2 py-1 rounded-lg bg-blue-100 text-blue-800 uppercase font-semibold">
+                   <span className="text-xs ml-2 px-2 py-1 rounded-lg bg-info-100 text-info-800 uppercase font-semibold">
                      {timeFilter === 'fy' ? 'Financial Year' : timeFilter.toUpperCase()} FILTER APPLIED
                    </span>
                  )}
@@ -445,8 +431,8 @@ function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commiss
   return (
     <>
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <StatCard label="Total Commission (Firm Income)" value={fmt(totalIncome)} color="green" />
-        <StatCard label="Dividends Distributed (Member Benefits)" value={fmt(totalDividends)} color="blue" />
+        <StatCard label="Total Commission (Firm Income)" value={fmt(totalIncome)} color="success" />
+        <StatCard label="Dividends Distributed (Member Benefits)" value={fmt(totalDividends)} color="info" />
       </div>
       <TableCard title="Profit & Loss by Group">
         <Table>
@@ -458,7 +444,7 @@ function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commiss
               return (
                 <Tr key={g.id}>
                   <Td className="font-semibold">{g.name}</Td>
-                  <Td right style={{ color: 'var(--green)' }}>{fmt(inc)}</Td>
+                  <Td right style={{ color: 'var(--success)' }}>{fmt(inc)}</Td>
                   <Td right style={{ color: 'var(--text2)' }}>{fmt(div)}</Td>
                 </Tr>
               )
@@ -478,9 +464,9 @@ function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions:
   return (
     <>
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <StatCard label="Total Inflow (Collections)" value={fmt(totalCollected)} color="green" />
-        <StatCard label="Total Outflow (Winner Payouts)" value={fmt(totalPaidOut)} color="red" />
-        <StatCard label="Net Cash Flow" value={fmt(netFlow)} color={netFlow >= 0 ? 'green' : 'red'} />
+        <StatCard label="Total Inflow (Collections)" value={fmt(totalCollected)} color="success" />
+        <StatCard label="Total Outflow (Winner Payouts)" value={fmt(totalPaidOut)} color="danger" />
+        <StatCard label="Net Cash Flow" value={fmt(netFlow)} color={netFlow >= 0 ? 'success' : 'danger'} />
       </div>
       <div className="p-4 rounded-xl border mb-5 text-sm" style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
         Cash flow represents the liquid money collected from members versus the money paid out to auction winners. 
@@ -504,7 +490,7 @@ function ReportDividend({ groups, auctions }: { groups: Group[], auctions: Aucti
                 <Td className="font-semibold">{g.name}</Td>
                 <Td>{aucs.length} / {g.duration}</Td>
                 <Td right>{fmt(sum)}</Td>
-                <Td right style={{ color: 'var(--gold)' }}>{fmt(avg)}</Td>
+                <Td right style={{ color: 'var(--accent)' }}>{fmt(avg)}</Td>
               </Tr>
             )
           })}
@@ -575,7 +561,7 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
               <Td>
                 <div className="font-bold text-lg">{pData.person.name}</div>
                 <div className="text-xs opacity-50 flex items-center gap-2">
-                   <span className="font-mono font-bold text-[var(--blue)]">{pData.person.phone}</span>
+                   <span className="font-mono font-bold text-[var(--info)]">{pData.person.phone}</span>
                    {pData.person.address && <span className="truncate max-w-[150px]">· {pData.person.address}</span>}
                 </div>
               </Td>
@@ -585,7 +571,7 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
                     <div key={item.member.id} className="text-[11px] flex justify-between gap-10 bg-[var(--surface2)] p-1.5 rounded-lg">
                       <span>
                         <span className="font-bold">{item.group.name}</span>
-                        {item.isWinner && <span className="ml-1 text-gold" title="Winner">👑</span>}
+                        {item.isWinner && <span className="ml-1 text-accent" title="Winner">👑</span>}
                         <span className="mx-2 opacity-30">|</span>
                         {item.mPending.map((m: any) => (
                            <Badge key={m.month} variant="gray" className="mr-0.5 text-[8px]">{fmtMonth(m.month, item.group.start_date)}</Badge>
@@ -597,7 +583,7 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
                 </div>
               </Td>
               <Td right>
-                <div className="text-xl font-black text-[var(--red)]">{fmt(pData.total)}</div>
+                <div className="text-xl font-black text-[var(--danger)]">{fmt(pData.total)}</div>
               </Td>
             </Tr>
           ))}
@@ -628,7 +614,7 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
                   {!isCompleted ? <span className="font-bold">{fmtMonth(completed + 1, g.start_date)}</span> : '—'}
                 </Td>
                 <Td>
-                  {isCompleted ? <Badge variant="green">Finished</Badge> : <Badge variant="blue">Ongoing</Badge>}
+                  {isCompleted ? <Badge variant="success">Finished</Badge> : <Badge variant="info">Ongoing</Badge>}
                 </Td>
               </Tr>
             )
@@ -655,9 +641,9 @@ function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { g
               <Tr key={auc.month}>
                 <Td><Badge variant="gray">{fmtMonth(auc.month, groups.find(gx=>gx.id===groupId)?.start_date)}</Badge></Td>
                 <Td>{w ? `👑 ${w.persons?.name || 'Member'}` : '—'}</Td>
-                <Td right style={{ color: 'var(--red)' }}>{fmt(auc.bid_amount)}</Td>
-                <Td right style={{ color: 'var(--gold)' }}>{fmt(auc.dividend)}</Td>
-                <Td right style={{ color: 'var(--green)' }}>{fmt(monthPayments)}</Td>
+                <Td right style={{ color: 'var(--danger)' }}>{fmt(auc.bid_amount)}</Td>
+                <Td right style={{ color: 'var(--accent)' }}>{fmt(auc.dividend)}</Td>
+                <Td right style={{ color: 'var(--success)' }}>{fmt(monthPayments)}</Td>
               </Tr>
             )
           })}
@@ -689,9 +675,9 @@ function ReportMemberHistory({ memberId, members, groups, payments, auctions }: 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label="Total Dues (to date)" value={fmt(totalDue)} color="blue" />
-        <StatCard label="Total Paid" value={fmt(totalPaid)} color="green" />
-        <StatCard label="Net Outstanding" value={fmt(balance)} color={balance > 0.01 ? 'red' : 'green'} />
+        <StatCard label="Total Dues (to date)" value={fmt(totalDue)} color="info" />
+        <StatCard label="Total Paid" value={fmt(totalPaid)} color="success" />
+        <StatCard label="Net Outstanding" value={fmt(balance)} color={balance > 0.01 ? 'danger' : 'success'} />
       </div>
 
       <TableCard title="Detailed Payment Log">
@@ -705,8 +691,8 @@ function ReportMemberHistory({ memberId, members, groups, payments, auctions }: 
                    <Td>{fmtDate(p.created_at)}</Td>
                    <Td>{g?.name}</Td>
                    <Td>{fmtMonth(p.month, g?.start_date)}</Td>
-                   <Td><Badge variant="blue">{p.mode}</Badge></Td>
-                   <Td right className="font-semibold" style={{ color: 'var(--green)' }}>{fmt(p.amount)}</Td>
+                   <Td><Badge variant="info">{p.mode}</Badge></Td>
+                   <Td right className="font-semibold" style={{ color: 'var(--success)' }}>{fmt(p.amount)}</Td>
                  </Tr>
                )
             })}
@@ -730,10 +716,10 @@ function ReportDefaulters({ members, groups, auctions }: { members: Member[], gr
             const g = groups.find(x => x.id === m.group_id)
             return (
               <Tr key={m.id}>
-                <Td className="font-semibold" style={{ color: 'var(--red)' }}>
+                <Td className="font-semibold" style={{ color: 'var(--danger)' }}>
                   {m.persons?.name || 'Member'} 
-                  {auctions.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
-                  <Badge variant="red" className="ml-1">Defaulter</Badge>
+                  {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
+                  <Badge variant="danger" className="ml-1">Defaulter</Badge>
                 </Td>
                 <Td>{g?.name} (#{m.ticket_no})</Td>
                 <Td>{m.persons?.phone || '—'}</Td>
@@ -782,12 +768,12 @@ function ReportWinners({ auctions, groups, members, filter, onFilterChange }: { 
                   <Td>{fmtDate(a.created_at)}</Td>
                   <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
                   <Td>{g?.name}</Td>
-                  <Td><Badge variant="gold">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
-                  <Td right className="font-mono font-bold text-green-600">{fmt(a.net_payout || a.bid_amount)}</Td>
+                  <Td><Badge variant="accent">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
+                  <Td right className="font-mono font-bold text-success-600">{fmt(a.net_payout || a.bid_amount)}</Td>
                   <Td>
                     {a.is_payout_settled 
-                      ? <div className="flex flex-col text-[10px] text-green-600 font-bold"><span>✓ Settled</span><span className="opacity-50">{fmtDate(a.payout_date)}</span></div>
-                      : <Badge variant="red">Pending</Badge>}
+                      ? <div className="flex flex-col text-[10px] text-success-600 font-bold"><span>✓ Settled</span><span className="opacity-50">{fmtDate(a.payout_date)}</span></div>
+                      : <Badge variant="danger">Pending</Badge>}
                   </Td>
                 </Tr>
               )
@@ -839,22 +825,22 @@ function ReportGroupEnrollment({ groupId, members, groups, auctions }: { groupId
             <Tr key={idx}>
               <Td className="font-semibold">
                 {item.person?.name}
-                {item.hasWinner && <Badge variant="gold" className="ml-2">Winner</Badge>}
+                {item.hasWinner && <Badge variant="accent" className="ml-2">Winner</Badge>}
               </Td>
               <Td className="text-[10px] opacity-50">{item.person?.nickname || '—'}</Td>
               <Td className="font-mono text-xs">{item.person?.phone || '—'}</Td>
               <Td className="text-xs font-mono">
                 {item.tickets.sort((a:any,b:any)=>a.no-b.no).map((t:any) => (
-                   <span key={t.no} className={cn("mr-2 px-1.5 py-0.5 rounded", t.won ? "bg-gold text-white font-bold" : "bg-[var(--surface2)] text-[var(--text3)]")}>
+                   <span key={t.no} className={cn("mr-2 px-1.5 py-0.5 rounded", t.won ? "bg-accent text-white font-bold" : "bg-[var(--surface2)] text-[var(--text3)]")}>
                      #{t.no}{t.won && ' 👑'}
                    </span>
                 ))}
               </Td>
-              <Td className="text-xs font-bold text-[var(--gold)]">
+              <Td className="text-xs font-bold text-[var(--accent)]">
                 {item.tickets.filter((t:any) => t.month).map((t:any) => t.month).join(', ') || '—'}
               </Td>
               <Td right>
-                <Badge variant={item.tickets.length > 1 ? 'gold' : 'gray'}>{item.tickets.length}</Badge>
+                <Badge variant={item.tickets.length > 1 ? 'success' : 'gray'}>{item.tickets.length}</Badge>
               </Td>
             </Tr>
           ))}
@@ -891,8 +877,8 @@ function ReportReconciliation({ payments, denominations }: { payments: Payment[]
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <StatCard label="Total Ledger (Accounting)" value={fmt(totalLedger)} color="blue" />
-        <StatCard label="Total Cashbook (Physical)" value={fmt(totalCash)} color="gold" />
+        <StatCard label="Total Ledger (Accounting)" value={fmt(totalLedger)} color="info" />
+        <StatCard label="Total Cashbook (Physical)" value={fmt(totalCash)} color="accent" />
       </div>
 
       <TableCard title="Daily Reconciliation" subtitle="Verification of member receipts vs physical cash">
@@ -910,13 +896,13 @@ function ReportReconciliation({ payments, denominations }: { payments: Payment[]
                 <Td>{fmtDate(r.date)}</Td>
                 <Td right className="font-mono">{fmt(r.ledgerTotal)}</Td>
                 <Td right className="font-mono">{fmt(r.cashbookTotal)}</Td>
-                <Td right className={`font-mono font-bold ${Math.abs(r.diff) > 0.1 ? 'text-red-500' : 'text-green-500'}`}>
+                <Td right className={`font-mono font-bold ${Math.abs(r.diff) > 0.1 ? 'text-danger-500' : 'text-success-500'}`}>
                   {r.diff > 0 ? '+' : ''}{fmt(r.diff)}
                 </Td>
                 <Td>
                   {Math.abs(r.diff) < 0.1 
-                    ? <Badge variant="green">Matched ✓</Badge>
-                    : <Badge variant="red">Discrepancy ✗</Badge>}
+                    ? <Badge variant="success">Matched ✓</Badge>
+                    : <Badge variant="danger">Discrepancy ✗</Badge>}
                 </Td>
               </Tr>
             ))}
@@ -955,7 +941,7 @@ function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] })
                 </div>
               </Td>
               <Td>
-                <Badge variant={l.action.includes('DELETED') ? 'red' : 'blue'} className="text-[9px]">
+                <Badge variant={l.action.includes('DELETED') ? 'danger' : 'info'} className="text-[9px]">
                   {l.action}
                 </Badge>
               </Td>
@@ -987,10 +973,10 @@ function ReportTodayCollection({ payments, members, groups }: { payments: Paymen
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard label="Today's Total" value={fmt(grandTotal)} color="blue" sub="Total received today" />
-        <StatCard label="Cash Total" value={fmt(cashTotal)} color="gold" sub="Physical cash" />
-        <StatCard label="UPI Total" value={fmt(upiTotal)} color="green" sub="UPI / Digital" />
-        <StatCard label="Bank Total" value={fmt(bankTotal)} color="blue" sub="Direct Transfer" />
+        <StatCard label="Today's Total" value={fmt(grandTotal)} color="info" sub="Total received today" />
+        <StatCard label="Cash Total" value={fmt(cashTotal)} color="accent" sub="Physical cash" />
+        <StatCard label="UPI Total" value={fmt(upiTotal)} color="success" sub="UPI / Digital" />
+        <StatCard label="Bank Total" value={fmt(bankTotal)} color="info" sub="Direct Transfer" />
       </div>
 
       <TableCard title="Today's Collections Breakdown" subtitle={`Showing ${todayPayments.length} transactions for ${fmtDate(today)}`}>
@@ -1015,8 +1001,8 @@ function ReportTodayCollection({ payments, members, groups }: { payments: Paymen
                   <Td className="text-xs opacity-50">{new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Td>
                   <Td className="font-semibold">{m?.persons?.name || 'Unknown'}</Td>
                   <Td className="text-xs">{g?.name || '—'}</Td>
-                  <Td><Badge variant={p.mode === 'Cash' ? 'gold' : 'blue'}>{p.mode}</Badge></Td>
-                  <Td right className="font-mono font-bold text-[var(--green)]">{fmt(p.amount)}</Td>
+                  <Td><Badge variant={p.mode === 'Cash' ? 'accent' : 'info'}>{p.mode}</Badge></Td>
+                  <Td right className="font-mono font-bold text-[var(--success)]">{fmt(p.amount)}</Td>
                 </Tr>
               )
             })}

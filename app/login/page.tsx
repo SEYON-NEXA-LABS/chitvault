@@ -5,12 +5,11 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
-import { getTheme } from '@/lib/branding/themes'
 import { usePwa } from '@/lib/pwa/context'
 import { Download } from 'lucide-react'
 
 interface FirmBranding {
-  name: string; theme_id: string; logo_url: string | null
+  name: string; color_profile: string; logo_url: string | null
   tagline: string; font: string
 }
 
@@ -29,7 +28,7 @@ function LoginForm() {
   const [success, setSuccess] = useState('')
   const [branding, setBranding] = useState<FirmBranding>({
     name: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
-    theme_id: 'theme1', logo_url: null,
+    color_profile: 'indigo', logo_url: null,
     tagline: 'Chit Fund Manager', font: 'Noto Sans'
   })
 
@@ -49,12 +48,11 @@ function LoginForm() {
           .rpc('get_firm_branding', { p_slug: firmSlug }) as any
         if (data) {
           setBranding({
-            name: data.name, theme_id: data.theme_id || 'theme1',
+            name: data.name, color_profile: data.color_profile || 'indigo',
             logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
             font: data.font || 'Noto Sans'
           })
-          const theme = getTheme(data.theme_id)
-          applyBranding(theme.primary, data.font || 'Noto Sans', theme.accent, theme.bg)
+          applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
         }
       } catch (err) {
         // RPC may fail if firm doesn't exist, use defaults
@@ -64,8 +62,7 @@ function LoginForm() {
     document.documentElement.classList.remove('dark')
   }, [firmSlug, supabase])
 
-  const theme = getTheme(branding.theme_id)
-  const clr = theme.primary
+  const clr = 'var(--accent)'
 
   async function handleRedirect(user: { id: string }) {
     try {
@@ -119,7 +116,7 @@ function LoginForm() {
   const sty = {
     page: {
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, background: theme.bg || 'var(--bg)'
+      padding: 20, background: 'var(--bg)'
     } as React.CSSProperties,
     card: {
       width: '100%', maxWidth: 400, background: 'var(--surface)',
@@ -153,7 +150,11 @@ function LoginForm() {
               <img src={branding.logo_url} alt={branding.name} className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
-            <div style={{ fontSize: 48, marginBottom: 8 }}>🏦</div>
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-32 h-32 rounded-2xl flex items-center justify-center overflow-hidden">
+                <img src="/icons/icon-512.png" alt="Logo" className="w-full h-full object-cover" />
+              </div>
+            </div>
           )}
           <div style={{ fontSize: 26, fontWeight: 800, color: clr }}>{branding.name}</div>
           <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 3 }}>{branding.tagline}</div>
@@ -175,10 +176,13 @@ function LoginForm() {
                 <label style={sty.lbl}>Password</label>
                 <input style={sty.inp} type="password" value={siPass} onChange={e => setSiPass(e.target.value)} placeholder="Your password" required />
               </div>
-              <button type="button" onClick={() => setTab('forgot')}
-                style={{ background: 'none', border: 'none', fontSize: 12, color: clr, cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-                Forgot password?
-              </button>
+              <div className="flex justify-between items-center mt-1">
+                <button type="button" onClick={() => setTab('forgot')}
+                  className="text-xs font-bold hover:underline transition-all"
+                  style={{ color: clr }}>
+                  Forgot password?
+                </button>
+              </div>
               <button type="submit" disabled={loading} style={{ ...sty.btn, opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>

@@ -22,7 +22,7 @@ export async function registerFirm(params: {
   city?: string;
   phone?: string;
   plan: string;
-  theme_id: string;
+  color_profile: string;
   tagline: string;
   font: string;
 }) {
@@ -72,7 +72,7 @@ export async function registerFirm(params: {
     p_city: params.city || null,
     p_phone: params.phone || null,
     p_plan: params.plan,
-    p_theme_id: params.theme_id,
+    p_color_profile: params.color_profile,
     p_tagline: params.tagline,
     p_font: params.font
   })
@@ -87,7 +87,7 @@ export async function registerFirm(params: {
   return { success: true, firmId }
 }
 
-export async function updateFirmTheme(firmId: string, themeId: string) {
+export async function updateFirmProfile(firmId: string, profileId: string) {
   const supabase = createServerClient(cookies())
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -98,10 +98,7 @@ export async function updateFirmTheme(firmId: string, themeId: string) {
   }
 
   const { error } = await supabase.from('firms').update({ 
-    theme_id: themeId,
-    // When a theme is selected, we clear custom colors to let the theme take over
-    primary_color: null,
-    accent_color: null
+    color_profile: profileId
   }).eq('id', firmId)
 
   if (error) return { error: error.message }
