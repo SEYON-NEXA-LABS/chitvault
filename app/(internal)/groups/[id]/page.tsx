@@ -319,7 +319,7 @@ export default function GroupLedgerPage() {
                 <th>Member Name</th>
                 <th>Phone Number</th>
                 <th>Address</th>
-                <th>Status</th>
+                <th>Won Amount</th>
                 <th class="sig-col">Signature</th>
               </tr>
             </thead>
@@ -330,7 +330,7 @@ export default function GroupLedgerPage() {
                   <td><b>${m.persons?.name}</b></td>
                   <td class="mono">${m.persons?.phone || '-'}</td>
                   <td class="mono">${m.persons?.address || '-'}</td>
-                  <td>${m.status}</td>
+                  <td style="width: 100px"></td>
                   <td></td>
                 </tr>
               `).join('')}
