@@ -1,41 +1,54 @@
+'use client'
+
 import { useEffect, createContext, useContext } from 'react'
 import type { Firm } from '@/types'
-import { getTheme } from './themes'
+import { useFirm } from '@/lib/firm/context'
 
 interface BrandingContext {
-  color: string
-  accent: string
-  bg: string
   name: string
   tagline: string
   font: string
-  logoUrl: string | null
+  colorProfile: string
 }
 
 const Ctx = createContext<BrandingContext>({
-  color: '#2563eb', accent: '#1e40af', bg: '#0b0d12', name: 'Seyon Chit Vault',
-  tagline: 'Chit Fund Manager', font: 'Noto Sans', logoUrl: null
+  name: 'Seyon Chit Vault',
+  tagline: 'Chit Fund Manager', font: 'Noto Sans', colorProfile: 'indigo'
 })
 
-export function BrandingProvider({ firm, children }: {
-  firm: Firm | null; children: React.ReactNode
+export function BrandingProvider({ children }: {
+  children: React.ReactNode
 }) {
-  const theme = getTheme(firm?.theme_id)
-
-  const color = firm?.primary_color || theme.primary
-  const accent = firm?.accent_color || theme.accent
-  const bg = theme.bg
+  const { firm } = useFirm()
   const name = firm?.name || process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault'
   const tagline = firm?.tagline || 'Chit Fund Manager'
   const font = firm?.font || 'Noto Sans'
-  const logoUrl = firm?.logo_url || null
+  
+  // Priority: 1. User Local Preference, 2. Firm Global Setting, 3. Default
+  const colorProfile = (typeof window !== 'undefined' && localStorage.getItem('chitvault-user-color-profile')) || firm?.color_profile || 'indigo'
 
   useEffect(() => {
-    applyBranding(color, font, accent, bg)
-  }, [color, font, accent, bg])
+    applyBranding(font, colorProfile)
+
+    // Sync Page Title
+    if (firm?.name) {
+      document.title = firm.name
+    }
+
+    // Update Favicon dynamically
+    const iconUrl = firm?.logo_url || '/icons/icon-192.png'
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']")
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+    link.href = iconUrl
+
+  }, [firm?.name, firm?.logo_url, font, colorProfile])
 
   return (
-    <Ctx.Provider value={{ color, accent, bg, name, tagline, font, logoUrl }}>
+    <Ctx.Provider value={{ name, tagline, font, colorProfile }}>
       {children}
     </Ctx.Provider>
   )
@@ -49,34 +62,31 @@ export const AVAILABLE_FONTS = [
   { label: 'Hind Madurai', value: 'Hind Madurai' },
 ]
 
-export const PRESET_COLORS = [
-  { label: 'Primary Blue', value: '#2563eb' },
-  { label: 'Indigo', value: '#4f46e5' },
-  { label: 'Cyan', value: '#0891b2' },
-  { label: 'Emerald', value: '#059669' },
-  { label: 'Amber', value: '#d97706' },
-  { label: 'Rose', value: '#e11d48' },
+export const COLOR_PROFILES = [
+  { id: 'indigo',       name: 'Indigo Professional', color: '#3a5ccc' },
+  { id: 'emerald',      name: 'Emerald Calm',        color: '#0f766e' },
+  { id: 'violet',       name: 'Violet Modern',       color: '#6d28d9' },
+  { id: 'crimson',      name: 'Crimson Authority',   color: '#991b1b' },
+  { id: 'graphite',     name: 'Neutral Graphite',    color: '#374151' },
+  { id: 'slate-blue',   name: 'Slate Blue',          color: '#475569' },
+  { id: 'warm-gray',    name: 'Warm Gray',           color: '#52525b' },
+  { id: 'muted-teal',   name: 'Muted Teal',          color: '#115e59' },
+  { id: 'deep-indigo',  name: 'Deep Indigo',         color: '#312e81' },
+  { id: 'bronze',       name: 'Muted Bronze',        color: '#7c4a1d' },
+  { id: 'charcoal',     name: 'Charcoal Minimal',    color: '#1f2933' },
+  { id: 'steel-blue',   name: 'Steel Blue Ops',      color: '#334155' },
+  { id: 'muted-olive',  name: 'Muted Olive',         color: '#3f6212' },
 ]
 
+// For backward compatibility with picker UI
+export const PRESET_COLORS = COLOR_PROFILES.map(p => ({ label: p.name, value: p.color, id: p.id }))
+
 // Apply CSS variables + load Google Font dynamically
-export function applyBranding(color: string, font: string, accent: string = '#1e40af', bg: string = '#0b0d12') {
+export function applyBranding(font: string, colorProfile: string = 'indigo') {
   const root = document.documentElement
 
-  // Set primary colors
-  root.style.setProperty('--gold', color)
-  root.style.setProperty('--gold-light', lighten(color, 0.2))
-  root.style.setProperty('--gold-dim', alpha(color, 0.15))
-  root.style.setProperty('--gold-border', alpha(color, 0.4))
-
-  // Set accent colors
-  root.style.setProperty('--accent', accent)
-  root.style.setProperty('--accent-dim', alpha(accent, 0.15))
-  root.style.setProperty('--accent-border', alpha(accent, 0.4))
-
-  // Set background color
-  root.style.setProperty('--bg-firm', bg)
-  // If BG is light (white/ivory), we might need to adjust some surface colors, 
-  // but for now we'll just expose the variable.
+  // Set Profile Attribute (Source of truth for CSS variables in globals.css)
+  root.setAttribute('data-color-profile', colorProfile)
 
   // Load Google Font if not already loaded
   const fontId = `gfont-${font.replace(/\s+/g, '-').toLowerCase()}`
@@ -98,23 +108,4 @@ export function applyBranding(color: string, font: string, accent: string = '#1e
   const fontStack = font === 'Noto Sans' ? `'Noto Sans', 'Noto Sans Tamil', sans-serif` : `'${font}', sans-serif`
   root.style.setProperty('--font-body', fontStack)
   document.body.style.fontFamily = fontStack
-}
-
-// Colour helpers
-function hexToRgb(hex: string) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return { r, g, b }
-}
-
-function lighten(hex: string, amount: number) {
-  const { r, g, b } = hexToRgb(hex)
-  const l = (c: number) => Math.min(255, Math.round(c + (255 - c) * amount))
-  return `#${l(r).toString(16).padStart(2, '0')}${l(g).toString(16).padStart(2, '0')}${l(b).toString(16).padStart(2, '0')}`
-}
-
-function alpha(hex: string, a: number) {
-  const { r, g, b } = hexToRgb(hex)
-  return `rgba(${r},${g},${b},${a})`
 }

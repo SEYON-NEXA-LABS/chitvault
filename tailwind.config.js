@@ -9,11 +9,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        gold:    { DEFAULT: '#2563eb', light: '#e8c870', dim: '#7a6230' },
-        surface: { DEFAULT: '#161921', 2: '#1e2230', 3: '#252a3a' },
+        // Semantic Tokens
+        accent:  { DEFAULT: 'var(--accent)', light: 'var(--accent-light)', dim: 'var(--accent-dim)', border: 'var(--accent-border)' },
+        success: { DEFAULT: 'var(--success)', dim: 'var(--success-dim)' },
+        danger:  { DEFAULT: 'var(--danger)', dim: 'var(--danger-dim)' },
+        info:    { DEFAULT: 'var(--info)', dim: 'var(--info-dim)' },
+
+        // Backgrounds & Surface
+        bg:      'var(--bg)',
+        surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface2)', 3: 'var(--surface3)' },
+        border:  'var(--border)',
+
+        // Text
+        text:    'var(--text)',
+        text2:   'var(--text2)',
+        text3:   'var(--text3)',
       },
       fontFamily: {
         display: ['var(--font-playfair)', 'Georgia', 'serif'],
+        body:    ['var(--font-body)', 'Inter', 'sans-serif'],
         mono:    ['var(--font-jetbrains)', 'ui-monospace', 'monospace'],
       },
     },

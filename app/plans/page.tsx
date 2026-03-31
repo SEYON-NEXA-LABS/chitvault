@@ -41,7 +41,7 @@ export default function PlansPage() {
           <ul className="space-y-3 text-sm my-8">
             {FEATURES.core.map(feature => (
               <li key={feature} className="flex items-center gap-3">
-                <Check size={16} style={{ color: 'var(--green)' }} />
+                <Check size={16} style={{ color: 'var(--success)' }} />
                 <span>{feature}</span>
               </li>
             ))}
@@ -50,8 +50,8 @@ export default function PlansPage() {
         </Card>
 
         {/* Pro Plan */}
-        <Card className="p-8 flex flex-col h-full border-2 relative" style={{ borderColor: 'var(--gold)' }}>
-           <Badge variant="gold" className="absolute -top-3 right-6">Recommended</Badge>
+        <Card className="p-8 flex flex-col h-full border-2 relative" style={{ borderColor: 'var(--accent)' }}>
+           <Badge variant="accent" className="absolute -top-3 right-6">Recommended</Badge>
           <h3 className="text-xl font-semibold">Pro Plan</h3>
           <p className="text-sm mt-2 flex-grow" style={{ color: 'var(--text2)' }}>
             Unlock powerful reporting, staff management, and advanced features.
@@ -59,13 +59,13 @@ export default function PlansPage() {
           <ul className="space-y-3 text-sm my-8">
             {FEATURES.core.map(feature => (
               <li key={feature} className="flex items-center gap-3">
-                <Check size={16} style={{ color: 'var(--green)' }} />
+                <Check size={16} style={{ color: 'var(--success)' }} />
                 <span>{feature}</span>
               </li>
             ))}
             {FEATURES.pro.map(feature => (
               <li key={feature} className="flex items-center gap-3">
-                <Check size={16} style={{ color: 'var(--gold)' }} />
+                <Check size={16} style={{ color: 'var(--accent)' }} />
                 <span className="font-semibold">{feature}</span>
               </li>
             ))}

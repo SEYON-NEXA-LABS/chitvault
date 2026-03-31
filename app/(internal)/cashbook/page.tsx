@@ -20,7 +20,7 @@ const EMPTY_COUNTS = (): DenomCounts =>
 
 export default function CashbookPage() {
   const supabase = createClient()
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
 
   const [entries,  setEntries]  = useState<Denomination[]>([])
@@ -30,8 +30,6 @@ export default function CashbookPage() {
   const [saving,   setSaving]   = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   
-  const [firms,    setFirms]    = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
   const isSuper = role === 'superadmin'
 
   // Form state
@@ -53,7 +51,7 @@ export default function CashbookPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [dRes, pRes, payRes, setRes] = await Promise.all([
       withFirmScope(supabase.from('denominations').select('*'), targetId)
@@ -93,13 +91,9 @@ export default function CashbookPage() {
       return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal };
     });
 
-    if (isSuper && firms.length === 0) {
-      const { data: f } = await supabase.from('firms').select('*').order('name')
-      setFirms(f || [])
-    }
     setEntries(entriesWithTotal)
     setLoading(false)
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length, fromDate, toDate, show])
+  }, [supabase, isSuper, switchedFirmId, firm, fromDate, toDate, show])
 
   useEffect(() => { load(true) }, [load])
 
@@ -165,42 +159,29 @@ export default function CashbookPage() {
       {/* Header with Firm Filter */}
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-black text-[var(--text)]">Daily Cashbook</h1>
-        {isSuper && (
-          <div className="w-64">
-             <select 
-               className="w-full px-3 py-2 rounded-lg border text-sm outline-none" 
-               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}
-               value={selectedFirmId} 
-               onChange={e => setSelectedFirmId(e.target.value)}
-             >
-               <option value="all">Global View (All Firms)</option>
-               {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-             </select>
-          </div>
-        )}
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <StatCard label="Collections (In)" value={fmt(totalCollections)} color="blue" />
-        <StatCard label="Payouts (Out)"     value={fmt(totalPayouts)}     color="red"  />
+        <StatCard label="Collections (In)" value={fmt(totalCollections)} color="info" />
+        <StatCard label="Payouts (Out)"     value={fmt(totalPayouts)}     color="danger"  />
         <StatCard 
           label="Book Balance" 
           value={fmt(totalCollections - totalPayouts)} 
-          color="gold" 
+          color="accent" 
           sub="Expected Cash"
         />
         <StatCard 
           label="Physical Cash" 
           value={fmt(totalInRange)} 
-          color={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'green' : 'red'} 
+          color={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'success' : 'danger'} 
           sub={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'Matches Book' : `Diff: ${fmt(totalInRange - (totalCollections - totalPayouts))}`}
         />
       </div>
 
       {Math.abs(totalInRange - (totalCollections - totalPayouts)) > 1 && (
-        <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-sm font-semibold flex items-center gap-3 mb-6 no-print">
-           <div className="p-1.5 rounded-full bg-red-500 text-white"><Trash2 size={14} /></div>
+        <div className="p-4 rounded-xl border border-danger-500/20 bg-danger-500/5 text-danger-500 text-sm font-semibold flex items-center gap-3 mb-6 no-print">
+           <div className="p-1.5 rounded-full bg-danger-500 text-white"><Trash2 size={14} /></div>
            Cash Discrepancy detected! Your physical count does not match the total collections/payouts in this period.
         </div>
       )}
@@ -256,11 +237,11 @@ export default function CashbookPage() {
                         </span>
                       ))}
                     </div>
-                    <div className="font-mono font-bold text-base mr-3" style={{ color: 'var(--gold)' }}>
+                    <div className="font-mono font-bold text-base mr-3" style={{ color: 'var(--accent)' }}>
                       {fmt(e.total || 0)}
                     </div>
                     {e.collected_by && (
-                      <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-3" style={{ background: 'var(--blue-dim)', color: 'var(--blue)' }}>
+                      <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-3" style={{ background: 'var(--info-dim)', color: 'var(--info)' }}>
                          <span className="text-[10px] font-bold uppercase opacity-60">Collected By:</span>
                          <span className="text-xs font-semibold">
                            {profiles.find(p => p.id === e.collected_by)?.full_name || 'Staff User'}
@@ -294,7 +275,7 @@ export default function CashbookPage() {
                                   <tr key={d.key}>
                                     <td className="py-1 font-medium" style={{ color: 'var(--text)' }}>{d.label}</td>
                                     <td className="py-1 font-mono" style={{ color: 'var(--text2)' }}>× {cnt}</td>
-                                    <td className="py-1 font-mono font-semibold" style={{ color: 'var(--green)' }}>{fmt(cnt * d.value)}</td>
+                                    <td className="py-1 font-mono font-semibold" style={{ color: 'var(--success)' }}>{fmt(cnt * d.value)}</td>
                                   </tr>
                                 )
                               })}
@@ -320,7 +301,7 @@ export default function CashbookPage() {
                                   <tr key={d.key}>
                                     <td className="py-1 font-medium" style={{ color: 'var(--text)' }}>{d.label}</td>
                                     <td className="py-1 font-mono" style={{ color: 'var(--text2)' }}>× {cnt}</td>
-                                    <td className="py-1 font-mono font-semibold" style={{ color: 'var(--green)' }}>{fmt(cnt * d.value)}</td>
+                                    <td className="py-1 font-mono font-semibold" style={{ color: 'var(--success)' }}>{fmt(cnt * d.value)}</td>
                                   </tr>
                                 )
                               })}
@@ -341,7 +322,7 @@ export default function CashbookPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-mono font-bold text-xl" style={{ color: 'var(--gold)' }}>{fmt(e.total || 0)}</div>
+                          <div className="font-mono font-bold text-xl" style={{ color: 'var(--accent)' }}>{fmt(e.total || 0)}</div>
                           {can('deleteCashEntry') && <Btn size="sm" variant="danger" onClick={() => del(e.id)}><Trash2 size={13} /></Btn>}
                         </div>
                       </div>
@@ -356,7 +337,7 @@ export default function CashbookPage() {
               <div className="px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-3"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <span style={{ color: 'var(--text2)' }}>Total for period</span>
-                <span className="font-mono font-bold text-xl" style={{ color: 'var(--gold)' }}>{fmt(totalInRange)}</span>
+                <span className="font-mono font-bold text-xl" style={{ color: 'var(--accent)' }}>{fmt(totalInRange)}</span>
               </div>
             </div>
           </div>
@@ -400,9 +381,9 @@ export default function CashbookPage() {
                     onChange={e => setCount(d.key, e.target.value)}
                     placeholder="0"
                     className="w-20 px-3 py-2 rounded-lg border text-sm font-mono outline-none text-center"
-                    style={{ background: 'var(--surface2)', borderColor: counts[d.key] > 0 ? 'var(--green)' : 'var(--border)', color: 'var(--text)' }} />
+                    style={{ background: 'var(--surface2)', borderColor: counts[d.key] > 0 ? 'var(--success)' : 'var(--border)', color: 'var(--text)' }} />
                   {counts[d.key] > 0 && (
-                    <div className="text-xs font-mono font-semibold" style={{ color: 'var(--green)', minWidth: 60 }}>
+                    <div className="text-xs font-mono font-semibold" style={{ color: 'var(--success)', minWidth: 60 }}>
                       = {fmt(counts[d.key] * d.value)}
                     </div>
                   )}
@@ -423,9 +404,9 @@ export default function CashbookPage() {
                     onChange={e => setCount(d.key, e.target.value)}
                     placeholder="0"
                     className="w-20 px-3 py-2 rounded-lg border text-sm font-mono outline-none text-center"
-                    style={{ background: 'var(--surface2)', borderColor: counts[d.key] > 0 ? 'var(--green)' : 'var(--border)', color: 'var(--text)' }} />
+                    style={{ background: 'var(--surface2)', borderColor: counts[d.key] > 0 ? 'var(--success)' : 'var(--border)', color: 'var(--text)' }} />
                   {counts[d.key] > 0 && (
-                    <div className="text-xs font-mono font-semibold" style={{ color: 'var(--green)', minWidth: 60 }}>
+                    <div className="text-xs font-mono font-semibold" style={{ color: 'var(--success)', minWidth: 60 }}>
                       = {fmt(counts[d.key] * d.value)}
                     </div>
                   )}
@@ -439,7 +420,7 @@ export default function CashbookPage() {
         <div className="flex items-center justify-between p-4 rounded-xl mb-4"
           style={{ background: liveTotal > 0 ? 'rgba(201,168,76,0.1)' : 'var(--surface2)', border: `1px solid ${liveTotal > 0 ? 'rgba(201,168,76,0.4)' : 'var(--border)'}` }}>
           <div className="text-sm font-semibold" style={{ color: 'var(--text2)' }}>Total Cash</div>
-          <div className="font-mono font-bold text-2xl" style={{ color: liveTotal > 0 ? 'var(--gold)' : 'var(--text3)' }}>
+          <div className="font-mono font-bold text-2xl" style={{ color: liveTotal > 0 ? 'var(--accent)' : 'var(--text3)' }}>
             {fmt(liveTotal)}
           </div>
         </div>

@@ -17,12 +17,11 @@ export interface Firm {
   address:        string | null
   phone:          string | null
   // Branding
-  primary_color:  string | null
-  accent_color:   string | null
   logo_url:       string | null
   tagline:        string | null
   font:           string | null
   theme_id:       string | null
+  color_profile:  string | null
   register_token: string | null
   created_at:     string
   created_by:     string | null

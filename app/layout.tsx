@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans, Noto_Sans_Tamil } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
-import { BrandingProvider } from '@/lib/branding/BrandingProvider'
+import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { PwaProvider } from '@/lib/pwa/context'

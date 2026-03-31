@@ -363,8 +363,8 @@ export default function GroupLedgerPage() {
           <div>
             <h1 className="text-xl md:text-3xl font-black text-[var(--text)]">{group.name}</h1>
             <div className="flex gap-2 mt-1">
-              <Badge variant={group.status === 'active' ? 'green' : 'gray'}>{group.status}</Badge>
-              {group.auction_scheme === 'ACCUMULATION' && <Badge variant="blue">Accumulation</Badge>}
+              <Badge variant={group.status === 'active' ? 'success' : 'gray'}>{group.status}</Badge>
+              {group.auction_scheme === 'ACCUMULATION' && <Badge variant="info">Accumulation</Badge>}
             </div>
           </div>
         </div>
@@ -377,20 +377,20 @@ export default function GroupLedgerPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-        <StatCard label="Progress" value={`${monthsCompleted}/${totalMonths}`} color="blue" />
-        <StatCard label="Vacant" value={group.num_members - members.length} color="gold" />
+        <StatCard label="Progress" value={`${monthsCompleted}/${totalMonths}`} color="info" />
+        <StatCard label="Vacant" value={group.num_members - members.length} color="accent" />
         {group.auction_scheme === 'ACCUMULATION' ? (
           <>
-            <StatCard label="Pool" value={fmt(group.accumulated_surplus)} color="green" />
-            <StatCard label="Target" value={fmt(group.chit_value)} color="red" />
+            <StatCard label="Pool" value={fmt(group.accumulated_surplus)} color="success" />
+            <StatCard label="Target" value={fmt(group.chit_value)} color="danger" />
           </>
         ) : (
           <>
-            <StatCard label="Dividends" value={fmt(totalDividends)} color="green" />
-            <StatCard label="Payouts" value={fmt(totalPayouts)} color="red" />
+            <StatCard label="Dividends" value={fmt(totalDividends)} color="success" />
+            <StatCard label="Payouts" value={fmt(totalPayouts)} color="danger" />
           </>
         )}
-        <StatCard label="Earnings" value={fmt(totalComm)} color="blue" />
+        <StatCard label="Earnings" value={fmt(totalComm)} color="info" />
       </div>
 
       <Card title={t('auction_ledger')}>
@@ -426,19 +426,19 @@ export default function GroupLedgerPage() {
                         </div>
                       ) : '—'}
                     </td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-bold text-red-500">{fmt(a.bid_amount)}</td>
-                    <td className="hidden md:table-cell font-mono text-right" style={{ padding: '12px 10px', color: 'var(--gold)' }}>
+                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-bold text-danger-500">{fmt(a.bid_amount)}</td>
+                    <td className="hidden md:table-cell font-mono text-right" style={{ padding: '12px 10px', color: 'var(--accent)' }}>
                       {group.auction_scheme === 'ACCUMULATION' ? `+${fmt(Number(a.total_pot || 0) - Number(a.bid_amount || 0))}` : fmt(a.dividend)}
                     </td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-black text-green-500">{fmt(a.net_payout || a.bid_amount)}</td>
+                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-black text-success-500">{fmt(a.net_payout || a.bid_amount)}</td>
                     <td className="hidden sm:table-cell font-mono font-bold text-right" style={{ padding: '12px 10px' }}>{fmt(eachPays)}</td>
                     <td style={{ padding: '12px 10px', textAlign: 'right' }}>
                       {a.is_payout_settled ? (
                         <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-1 text-green-600 font-bold text-[10px]">
+                          <div className="flex items-center gap-1 text-success-600 font-bold text-[10px]">
                             <CheckCircle2 size={12} /> Settled
                           </div>
-                          <div className="text-[10px] font-mono font-bold text-green-700">{fmt(a.payout_amount || a.net_payout || a.bid_amount)}</div>
+                          <div className="text-[10px] font-mono font-bold text-success-700">{fmt(a.payout_amount || a.net_payout || a.bid_amount)}</div>
                           <div className="text-[9px] opacity-50">{fmtDate(a.payout_date)}</div>
                           <div className="no-print mt-1">
                             <Btn size="sm" variant="ghost" onClick={() => handlePrintVoucher(a)} icon={Printer}>Voucher</Btn>
@@ -487,14 +487,14 @@ export default function GroupLedgerPage() {
                 <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
                 <Td className="font-semibold text-xs md:text-sm">
                   {m.persons?.name}
-                  {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
+                  {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
                 </Td>
                 <Td className="hidden md:table-cell text-xs font-mono">{m.persons?.phone || '—'}</Td>
-                <Td className="hidden sm:table-cell">{m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}</Td>
+                <Td className="hidden sm:table-cell">{m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}</Td>
                 <Td>
                   {(() => {
                     const auc = auctionHistory.find(a => a.winner_id === m.id)
-                    return auc ? <Badge variant="gold">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
+                    return auc ? <Badge variant="accent">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
                   })()}
                 </Td>
                 <Td right className="no-print">
@@ -545,8 +545,8 @@ export default function GroupLedgerPage() {
       {/* Payout Settlement Modal */}
       <Modal open={!!settling} onClose={() => setSettling(null)} title="Confirm Payout Settlement">
         <div className="space-y-4">
-          <div className="p-4 bg-[var(--gold-dim)] rounded-2xl border border-[var(--gold)]">
-            <div className="text-[10px] uppercase font-bold text-[var(--gold)] mb-1">Total Payout Amount</div>
+          <div className="p-4 bg-[var(--accent-dim)] rounded-2xl border border-[var(--accent)]">
+            <div className="text-[10px] uppercase font-bold text-[var(--accent)] mb-1">Total Payout Amount</div>
             <div className="text-2xl font-black">{fmt(settling?.net_payout || settling?.bid_amount || 0)}</div>
           </div>
 
@@ -594,7 +594,7 @@ export default function GroupLedgerPage() {
           <Modal open={!!selectedMember} onClose={() => setSelectedMember(null)} title="Member Details">
             <div className="space-y-4">
               <div className="bg-[var(--surface2)] p-4 rounded-2xl flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[var(--gold)] flex items-center justify-center text-white text-xl font-bold">{m.persons?.name.charAt(0)}</div>
+                <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{m.persons?.name.charAt(0)}</div>
                 <div>
                   <div className="font-bold text-lg">{m.persons?.name}</div>
                   <div className="text-xs opacity-50">Ticket #{m.ticket_no} · {m.status}</div>

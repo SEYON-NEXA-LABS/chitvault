@@ -20,7 +20,7 @@ import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 export default function GroupsPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const isSuper = role === 'superadmin'
   const isOwner = role === 'owner' || role === 'superadmin'
   const { t } = useI18n()
@@ -36,7 +36,6 @@ export default function GroupsPage() {
   const [archLoading, setArchLoading] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [firms, setFirms] = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
@@ -47,7 +46,7 @@ export default function GroupsPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [g, a, p] = await Promise.all([
       withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).order('id'),
@@ -63,7 +62,7 @@ export default function GroupsPage() {
       setFirms(f || [])
     }
     setLoading(false)
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
 
@@ -93,7 +92,7 @@ export default function GroupsPage() {
 
   async function loadArchived() {
     setArchLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
     const { data } = await withFirmScope(supabase.from('groups').select('*, firms(name)').eq('status', 'archived'), targetId).order('id')
     setArchived(data || [])
     setArchLoading(false)
@@ -188,7 +187,7 @@ export default function GroupsPage() {
             <Tr key={g.id}>
               {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
               <Td>
-                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--gold)] transition-colors">
+                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors">
                   {g.name}
                 </Link>
               </Td>
@@ -203,26 +202,26 @@ export default function GroupsPage() {
               </Td>
               <Td className="hidden lg:table-cell">
                 {s.pct >= 100
-                  ? <Badge variant="green">Completed ✓</Badge>
+                  ? <Badge variant="success">Completed ✓</Badge>
                   : s.done > 0
-                    ? <Badge variant="blue">{g.duration - s.done} mo left</Badge>
+                    ? <Badge variant="info">{g.duration - s.done} mo left</Badge>
                     : <Badge variant="gray">Not started</Badge>}
               </Td>
               <Td className="hidden xl:table-cell">{s.endDate}</Td>
               <Td className="hidden md:table-cell">
                 {s.pending > 0
-                  ? <Badge variant="red">{s.pending} pending</Badge>
-                  : <Badge variant="green">All paid</Badge>}
+                  ? <Badge variant="danger">{s.pending} pending</Badge>
+                  : <Badge variant="success">All paid</Badge>}
               </Td>
               <Td>
                 <div className="flex items-center gap-1.5">
                   <Btn size="sm" variant="ghost" icon={Gavel} onClick={() => router.push(`/groups/${g.id}`)}
-                    style={{ color: 'var(--blue)', border: '1px solid rgba(91,138,245,0.3)' }}>
+                    style={{ color: 'var(--info)', border: '1px solid var(--info-dim)' }}>
                     View
                   </Btn>
                   {showArchBtn && can('archiveGroup') && (
                     <Btn size="sm" variant="ghost" onClick={() => archive(g.id)}
-                      style={{ color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.3)' }}>
+                      style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
                       <Archive size={12} /> Archive
                     </Btn>
                   )}
@@ -245,14 +244,6 @@ export default function GroupsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-black text-[var(--text)]">{t('active_groups')}</h1>
           <div className="flex gap-2">
-            {isSuper && (
-              <div className="w-48">
-                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
-                  <option value="all">All Firms</option>
-                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-            )}
             {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
             {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('new_group')}</Btn>}
           </div>
@@ -269,7 +260,7 @@ export default function GroupsPage() {
       {completed.length > 0 && (
         <TableCard title={`✅ Completed — Ready to Archive (${completed.length})`}
           subtitle="All auctions done & all payments collected."
-          actions={<Btn size="sm" onClick={archiveAll} style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid rgba(201,168,76,0.3)' }}>
+          actions={<Btn size="sm" onClick={archiveAll} style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
             <Archive size={12} /> Archive All
           </Btn>}>
           <GroupTable list={completed} showArchBtn={true} />

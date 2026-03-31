@@ -138,9 +138,9 @@ export default function CollectionPage() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label={t('total_outstanding')} value={fmt(stats.totalOut)} color="red" />
-        <StatCard label={t('all_people')} value={filtered.length} color="gold" />
-        <StatCard label={t('due_date')} value={stats.critical} color="red" />
+        <StatCard label={t('total_outstanding')} value={fmt(stats.totalOut)} color="danger" />
+        <StatCard label={t('all_people')} value={filtered.length} color="accent" />
+        <StatCard label={t('due_date')} value={stats.critical} color="danger" />
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }}>
@@ -174,7 +174,7 @@ export default function CollectionPage() {
                    <div className="font-bold text-base">{x.person.name}</div>
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Phone size={10} className="opacity-30" />
-                      <a href={`tel:${x.person.phone}`} className="text-[11px] font-mono font-bold text-[var(--blue)]">{x.person.phone || '—'}</a>
+                      <a href={`tel:${x.person.phone}`} className="text-[11px] font-mono font-bold text-[var(--info)]">{x.person.phone || '—'}</a>
                    </div>
                 </Td>
                 <Td>
@@ -193,7 +193,7 @@ export default function CollectionPage() {
                             </div>
                             <div className="flex flex-wrap gap-1">
                                {item.dues.map((d: any) => (
-                                 <Badge key={d.month} variant={d.isAuctioned ? 'red' : 'gold'} className="text-[8px] px-1 py-0 shadow-sm">
+                                 <Badge key={d.month} variant={d.isAuctioned ? 'danger' : 'accent'} className="text-[8px] px-1 py-0 shadow-sm">
                                     {fmtMonth(d.month, item.group.start_date)}{!d.isAuctioned && '*'}
                                  </Badge>
                                ))}
@@ -203,7 +203,7 @@ export default function CollectionPage() {
                     </div>
                 </Td>
                 <Td right>
-                   <div className={cn("font-black font-mono text-lg", x.totalBalance > 10000 ? "text-[var(--red)]" : "text-[var(--text)]")}>
+                   <div className={cn("font-black font-mono text-lg", x.totalBalance > 10000 ? "text-[var(--danger)]" : "text-[var(--text)]")}>
                       {fmt(x.totalBalance)}
                    </div>
                 </Td>
@@ -227,5 +227,5 @@ export default function CollectionPage() {
   )
 }
 
-const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--gold)] font-medium'
+const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--accent)] font-medium'
 const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }

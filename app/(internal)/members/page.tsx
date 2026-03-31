@@ -28,7 +28,7 @@ interface Contact extends Person {
 
 export default function MembersPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const isSuper = role === 'superadmin'
   const { t } = useI18n()
   const { toast, show: showToast, hide: hideToast } = useToast()
@@ -44,7 +44,6 @@ export default function MembersPage() {
   const [filter, setFilter] = useState<number | 'all'>('all')
   const [search, setSearch] = useState('')
   const [firms,  setFirms]  = useState<Firm[]>([])
-  const [selectedFirmId, setSelectedFirmId] = useState<string | 'all'>('all')
 
   const [addOpen,       setAddOpen]       = useState(false)
   const [detailContact, setDetailContact] = useState<Contact | null>(null)
@@ -61,7 +60,7 @@ export default function MembersPage() {
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial && members.length === 0) setLoading(true)
-    const targetId = isSuper ? selectedFirmId : firm?.id
+    const targetId = isSuper ? switchedFirmId : firm?.id
     
     // Scoped Queries for Multi-Tenancy
     const [g, m, p, a, pay] = await Promise.all([
@@ -82,7 +81,7 @@ export default function MembersPage() {
       setFirms(f || [])
     }
     setLoading(false)
-  }, [supabase, isSuper, selectedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
 
@@ -428,14 +427,6 @@ export default function MembersPage() {
             </div>
          </div>
          <div className="flex flex-1 gap-2 items-center justify-end px-2">
-            {isSuper && (
-              <div className="w-48">
-                <select className={inputClass} style={inputStyle} value={selectedFirmId} onChange={e => setSelectedFirmId(e.target.value)}>
-                  <option value="all">All Firms</option>
-                  {firms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-            )}
             <div className="flex-1 max-w-sm relative">
                <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
                 placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
@@ -469,22 +460,22 @@ export default function MembersPage() {
                 <Tr key={c.id}>
                   {isSuper && <Td><Badge variant="gray">{(c as any).firms?.name || '—'}</Badge></Td>}
                   <Td>
-                    <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--gold)] ml-1">({c.nickname})</span>}</div>
+                    <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--accent)] ml-1">({c.nickname})</span>}</div>
                     <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
                   </Td>
                   <Td className="hidden md:table-cell font-mono text-xs">{c.phone || '—'}</Td>
                   <Td className="hidden sm:table-cell">
-                    {c.activeCount > 0 ? <Badge variant="blue">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
+                    {c.activeCount > 0 ? <Badge variant="info">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
                   </Td>
                   <Td>
-                     <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--red)]" : "text-[var(--green)]")}>
+                     <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                         {fmt(c.totalBalance)}
                      </div>
                      {c.totalPaid > 0 && <div className="text-[9px] opacity-40">Paid: {fmt(c.totalPaid)}</div>}
                   </Td>
                   <Td right>
                     <div className="flex gap-1.5 justify-end">
-                      <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--blue)' }}>Profile</Btn>
+                      <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--info)' }}>Profile</Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -500,7 +491,7 @@ export default function MembersPage() {
                 <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} tickets enrolled`}
                   actions={
                     <div className="flex items-center gap-2">
-                       {isSuper && <Badge variant="gold">Owned by: {g.firms?.name}</Badge>}
+                       {isSuper && <Badge variant="accent">Owned by: {g.firms?.name}</Badge>}
                        <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>CSV</Btn>
                     </div>
                   }>
@@ -517,12 +508,12 @@ export default function MembersPage() {
                           <Tr key={m.id}>
                             <Td className="font-mono font-bold">#{m.ticket_no}</Td>
                             <Td className="font-semibold">
-                               {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--gold)] ml-1 opacity-70">({m.persons.nickname})</span>}
-                               {auctions.some(a => a.winner_id === m.id) && <Badge variant="gold" className="ml-2">Winner</Badge>}
+                               {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--accent)] ml-1 opacity-70">({m.persons.nickname})</span>}
+                               {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
                             </Td>
                             <Td className="hidden md:table-cell text-xs">{m.persons?.phone}</Td>
                             <Td className="hidden sm:table-cell">
-                               {m.status === 'foreman' ? <Badge variant="blue">Foreman</Badge> : <Badge variant="green">Active</Badge>}
+                               {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
                             </Td>
                             <Td>
                                <div className="flex gap-1">
@@ -642,14 +633,14 @@ export default function MembersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="bg-[var(--surface2)] p-4 rounded-2xl">
                       <div className="flex items-center gap-3 mb-4">
-                         <div className="w-12 h-12 rounded-full bg-[var(--gold)] flex items-center justify-center text-white text-xl font-bold">{c.name.charAt(0)}</div>
+                         <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{c.name.charAt(0)}</div>
                          <div><div className="font-bold text-lg">{c.name}</div><div className="text-sm opacity-50 flex items-center gap-1"><Phone size={12}/> {c.phone}</div></div>
                       </div>
                       <div className="text-xs flex items-center gap-1 opacity-50"><MapPin size={12}/> {c.address}</div>
                    </div>
-                   <div className="bg-[var(--gold-dim)] p-4 rounded-2xl flex flex-col justify-center">
+                   <div className="bg-[var(--accent-dim)] p-4 rounded-2xl flex flex-col justify-center">
                       <div className="text-xs uppercase tracking-widest opacity-50 mb-1">Total Paid</div>
-                      <div className="text-3xl font-black text-[var(--gold)]">{fmt(c.totalPaid)}</div>
+                      <div className="text-3xl font-black text-[var(--accent)]">{fmt(c.totalPaid)}</div>
                    </div>
                 </div>
                 <div className="space-y-3">
@@ -660,7 +651,7 @@ export default function MembersPage() {
                          if (!g || g.status === 'archived') return null
                          return (
                             <div key={m.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                               <div className="flex items-center gap-3"><UserCheck size={16} className="text-[var(--blue)]"/><div><div className="font-bold text-sm">{g.name} <span className="opacity-40 ml-1">#{m.ticket_no}</span></div></div></div>
+                               <div className="flex items-center gap-3"><UserCheck size={16} className="text-[var(--info)]"/><div><div className="font-bold text-sm">{g.name} <span className="opacity-40 ml-1">#{m.ticket_no}</span></div></div></div>
                                <Btn size="sm" variant="ghost" onClick={() => { setPayMember(m); setDetailContact(null) }}>{t('record_payment')}</Btn>
                             </div>
                          )

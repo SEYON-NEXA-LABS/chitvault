@@ -65,11 +65,11 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       const { data: f } = await supabase
         .from('firms').select('*').eq('id', activeFirmId).maybeSingle()
       setFirm(f)
-      if (f) applyBranding(f.primary_color || '#2563eb', f.font || 'Noto Sans')
+      if (f) applyBranding(f.font || 'Noto Sans', f.color_profile || 'indigo')
     } else {
       setFirm(null)
       // Reset branding to default if global
-      applyBranding('#2563eb', 'Noto Sans')
+      applyBranding('Noto Sans', 'indigo')
     }
     
     setLoading(false)

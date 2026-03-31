@@ -22,20 +22,20 @@ export default function AppJourneyPage() {
       <div className="absolute left-[20px] top-[40px] bottom-0 w-[2px] bg-[var(--border)] last:hidden" />
 
       {/* Number Badge */}
-      <div className="absolute left-0 top-0 w-10 h-10 rounded-full border-2 border-[var(--gold)] bg-[var(--surface)] flex items-center justify-center font-bold text-[var(--gold)] z-10">
+      <div className="absolute left-0 top-0 w-10 h-10 rounded-full border-2 border-[var(--accent)] bg-[var(--surface)] flex items-center justify-center font-bold text-[var(--accent)] z-10">
         {index}
       </div>
 
-      <Card className="p-6 hover:border-[var(--gold)] transition-all group overflow-hidden">
+      <Card className="p-6 hover:border-[var(--accent)] transition-all group overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[var(--gold-dim)] text-[var(--gold)]">
+              <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)]">
                 <Icon size={20} />
               </div>
               <h3 className="text-lg font-bold uppercase tracking-tight">{title}</h3>
               {ownerOnly && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--red-dim)] text-[var(--red)] text-[10px] font-black uppercase tracking-tighter border border-[var(--red-border)]">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--danger-dim)] text-[var(--danger)] text-[10px] font-black uppercase tracking-tighter border border-[var(--red-border)]">
                   <Shield size={10} /> Owner Required
                 </div>
               )}
@@ -45,8 +45,8 @@ export default function AppJourneyPage() {
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
               <Badge variant="gray" className="text-[10px]">Step {index} of 6</Badge>
-              <Badge variant="blue" className="text-[10px] flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <Badge variant="info" className="text-[10px] flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-info-400" />
                 Sidebar Link: {t(navLabel)}
               </Badge>
             </div>
@@ -71,12 +71,12 @@ export default function AppJourneyPage() {
 
       {/* Header section */}
       <div className="text-center mb-16 space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--gold-dim)] text-[var(--gold)] text-xs font-bold uppercase tracking-widest border border-[var(--gold-border)]">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-bold uppercase tracking-widest border border-[var(--accent-border)]">
           <BookOpen size={14} />
           Complete Workflow Guide
         </div>
         <h1 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
-          The ChitVault <span style={{ color: 'var(--gold)' }}>Journey</span>
+          The ChitVault <span style={{ color: 'var(--accent)' }}>Journey</span>
         </h1>
         <p className="text-base opacity-60 max-w-xl mx-auto">
           From creating your first contact to settling the final payout.
@@ -154,7 +154,7 @@ export default function AppJourneyPage() {
       {/* Conclusion & Next Steps */}
       <div className="mt-16 p-8 rounded-3xl border text-center space-y-6 overflow-hidden relative" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
         <div className="relative z-10">
-          <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: 'var(--green)' }} />
+          <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: 'var(--success)' }} />
           <h2 className="text-2xl font-bold">You&apos;re all set!</h2>
           <p className="text-sm opacity-60 max-w-md mx-auto">
             Following these steps ensures your firm data remains clean, auditable, and easy to manage for your staff.

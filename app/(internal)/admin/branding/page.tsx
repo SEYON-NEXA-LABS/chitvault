@@ -2,21 +2,22 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { applyBranding } from '@/lib/branding/context'
+import { useFirm } from '@/lib/firm/context'
+import { applyBranding, COLOR_PROFILES } from '@/lib/branding/context'
 import { useToast } from '@/lib/hooks/useToast'
 import { Btn, Card } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { Palette, Type, Image as ImageIcon } from 'lucide-react'
-import { THEMES, getTheme } from '@/lib/branding/themes'
 
 interface Firm {
   id: string
   name: string
-  primary_color: string | null
-  accent_color: string | null
-  theme_id: string | null
+  address: string | null
+  phone: string | null
   logo_url: string | null
+  color_profile: string | null
   tagline: string | null
   font: string | null
 }
@@ -28,18 +29,26 @@ const AVAILABLE_FONTS = [
 ]
 
 export default function AdminBrandingPage() {
+  const router = useRouter()
   const supabase = createClient()
   const { show } = useToast()
+  const { role } = useFirm()
 
   const [firms, setFirms] = useState<Firm[]>([])
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  useEffect(() => {
+    if (role && role !== 'superadmin') {
+      router.push('/dashboard')
+      return
+    }
+  }, [role, router])
+
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
-  const [themeId, setThemeId] = useState('theme1')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [colorProfile, setColorProfile] = useState('indigo')
   const [tagline, setTagline] = useState('Chit Fund Manager')
   const [font, setFont] = useState('Noto Sans')
   const [saving, setSaving] = useState(false)
@@ -60,40 +69,30 @@ export default function AdminBrandingPage() {
 
   useEffect(() => {
     if (selectedFirm) {
-      const { name, address, phone, theme_id, logo_url, tagline, font, primary_color, accent_color } = selectedFirm as any
-      const theme = getTheme(theme_id)
+      const { tagline, font, color_profile } = selectedFirm
       
-      setName(name || '')
-      setAddress(address || '')
-      setPhone(phone || '')
-      setThemeId(theme_id || 'theme1')
-      setLogoUrl(logo_url || '')
+      setName(selectedFirm.name || '')
+      setAddress(selectedFirm.address || '')
+      setPhone(selectedFirm.phone || '')
+      setColorProfile(color_profile || 'indigo')
       setTagline(tagline || 'Chit Fund Manager')
       setFont(font || 'Noto Sans')
       
-      applyBranding(
-        primary_color || theme.primary, 
-        font || 'Noto Sans', 
-        accent_color || theme.accent,
-        theme.bg
-      )
+      applyBranding(font || 'Noto Sans', color_profile || 'indigo')
     } else {
-      const def = getTheme('theme1')
-      applyBranding(def.primary, 'Noto Sans', def.accent, def.bg)
+      applyBranding('Noto Sans', 'indigo')
     }
   }, [selectedFirm])
 
-  const handleThemeChange = useCallback((id: string) => {
-    setThemeId(id)
-    const t = getTheme(id)
-    applyBranding(t.primary, font, t.accent, t.bg) // live preview
+  const handleProfileChange = useCallback((id: string) => {
+    setColorProfile(id)
+    applyBranding(font, id)
   }, [font]);
 
   const handleFontChange = useCallback((f: string) => {
     setFont(f)
-    const t = getTheme(themeId)
-    applyBranding(t.primary, f, t.accent, t.bg)
-  }, [themeId]);
+    applyBranding(f, colorProfile)
+  }, [colorProfile]);
 
   async function saveBranding() {
     if (!selectedFirm) return
@@ -102,11 +101,7 @@ export default function AdminBrandingPage() {
       name: name.trim() || undefined,
       address: address.trim() || null,
       phone: phone.trim() || null,
-      theme_id: themeId,
-      // Clear legacy custom colors when theme is set
-      primary_color: null,
-      accent_color: null,
-      logo_url: logoUrl.trim() || null,
+      color_profile: colorProfile,
       tagline: tagline.trim() || 'Chit Fund Manager',
       font,
     }).eq('id', selectedFirm.id)
@@ -173,56 +168,42 @@ export default function AdminBrandingPage() {
               </div>
             </div>
 
-            {/* Logo */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                <ImageIcon size={13} /> Logo URL
-              </div>
-              <div className="flex gap-3 items-center">
-                {logoUrl && (
-                  <div className="relative w-32 h-12 bg-white rounded-lg border p-1 border-gray-100 flex items-center justify-center overflow-hidden">
-                     <img src={logoUrl} alt="Firm logo" className="max-w-full max-h-full object-contain" />
-                  </div>
-                )}
-                <input className={inputClass} style={inputStyle} value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://your-logo.png" />
-              </div>
-            </div>
-
             {/* Tagline */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5">Tagline</label>
               <input className={inputClass} style={inputStyle} value={tagline} onChange={e => setTagline(e.target.value)} placeholder="e.g. Trusted Chit Fund Manager" />
             </div>
 
-            {/* Theme Selection */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                <Palette size={13} /> Select Predefined Theme
+            {/* Color Profiles */}
+            <div className="pt-2">
+              <div className="flex items-center gap-1.5 mb-3 text-xs font-semibold uppercase tracking-wide">
+                <Palette size={13} /> Color Profile
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {THEMES.map(t => (
-                  <button key={t.id} 
-                    onClick={() => handleThemeChange(t.id)}
-                    className={`p-3 rounded-xl border-2 text-left transition-all ${themeId === t.id ? 'border-blue-500 shadow-sm' : 'border-gray-100'}`}
-                    style={{ background: t.bg }}>
-                    <div className="text-[10px] font-bold text-gray-800 mb-2 truncate">{t.name}</div>
-                    <div className="flex gap-1.5">
-                      <div className="w-5 h-5 rounded-md" style={{ background: t.primary }} />
-                      <div className="w-5 h-5 rounded-md" style={{ background: t.accent }} />
-                    </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {COLOR_PROFILES.map(p => (
+                  <button key={p.id} onClick={() => handleProfileChange(p.id)}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group"
+                    style={{
+                      borderColor: colorProfile === p.id ? 'var(--accent)' : 'var(--border)',
+                      background: colorProfile === p.id ? 'var(--accent-dim)' : 'var(--surface2)',
+                    }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 6, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                    <span className="text-[10px] font-bold uppercase tracking-tight text-center" 
+                      style={{ color: colorProfile === p.id ? 'var(--accent)' : 'var(--text2)' }}>
+                      {p.name.split(' ')[0]}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Font */}
             <div>
               <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
                 <Type size={13} /> Font
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {AVAILABLE_FONTS.map(f => (
-                  <button key={f.value} onClick={() => handleFontChange(f.value)} className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all" style={{ fontFamily: `'${f.value}', sans-serif`, borderColor: font === f.value ? 'var(--blue)' : 'var(--border)', background: font === f.value ? 'var(--blue-dim)' : 'var(--surface2)', color: font === f.value ? 'var(--blue)' : 'var(--text2)', fontWeight: font === f.value ? 700 : 400 }}>
+                  <button key={f.value} onClick={() => handleFontChange(f.value)} className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all" style={{ fontFamily: `'${f.value}', sans-serif`, borderColor: font === f.value ? 'var(--accent)' : 'var(--border)', background: font === f.value ? 'var(--accent-dim)' : 'var(--surface2)', color: font === f.value ? 'var(--accent)' : 'var(--text2)', fontWeight: font === f.value ? 700 : 400 }}>
                     {f.label}
                   </button>
                 ))}
