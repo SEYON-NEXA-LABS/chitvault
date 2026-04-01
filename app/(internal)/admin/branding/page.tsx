@@ -18,7 +18,6 @@ interface Firm {
   phone: string | null
   logo_url: string | null
   color_profile: string | null
-  tagline: string | null
   font: string | null
 }
 
@@ -49,7 +48,6 @@ export default function AdminBrandingPage() {
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [colorProfile, setColorProfile] = useState('indigo')
-  const [tagline, setTagline] = useState('Chit Fund Manager')
   const [font, setFont] = useState('Noto Sans')
   const [saving, setSaving] = useState(false)
 
@@ -69,13 +67,12 @@ export default function AdminBrandingPage() {
 
   useEffect(() => {
     if (selectedFirm) {
-      const { tagline, font, color_profile } = selectedFirm
+      const { font, color_profile } = selectedFirm
       
       setName(selectedFirm.name || '')
       setAddress(selectedFirm.address || '')
       setPhone(selectedFirm.phone || '')
       setColorProfile(color_profile || 'indigo')
-      setTagline(tagline || 'Chit Fund Manager')
       setFont(font || 'Noto Sans')
       
       applyBranding(font || 'Noto Sans', color_profile || 'indigo')
@@ -102,7 +99,6 @@ export default function AdminBrandingPage() {
       address: address.trim() || null,
       phone: phone.trim() || null,
       color_profile: colorProfile,
-      tagline: tagline.trim() || 'Chit Fund Manager',
       font,
     }).eq('id', selectedFirm.id)
     setSaving(false)
@@ -168,11 +164,6 @@ export default function AdminBrandingPage() {
               </div>
             </div>
 
-            {/* Tagline */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5">Tagline</label>
-              <input className={inputClass} style={inputStyle} value={tagline} onChange={e => setTagline(e.target.value)} placeholder="e.g. Trusted Chit Fund Manager" />
-            </div>
 
             {/* Color Profiles */}
             <div className="pt-2">

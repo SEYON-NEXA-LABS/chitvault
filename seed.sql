@@ -69,10 +69,10 @@ BEGIN
   SELECT id INTO staff_uuid FROM auth.users WHERE email = 'staff@dev.chitvault.local';
 
   -- Upsert Firm: "Demo Corp" with FIXED UUID
-  INSERT INTO public.firms (id, name, slug, owner_id, city, phone, tagline, theme_id)
-  VALUES (v_demo_firm_id, 'Demo Corp', 'demo-corp', admin_uuid, 'Madurai', '+91-98765-43210', 'Premium Chit Management Demo', 'theme2')
+  INSERT INTO public.firms (id, name, slug, owner_id, city, phone, theme_id)
+  VALUES (v_demo_firm_id, 'Demo Corp', 'demo-corp', admin_uuid, 'Madurai', '+91-98765-43210', 'theme2')
   ON CONFLICT (id) DO UPDATE 
-  SET name = EXCLUDED.name, slug = EXCLUDED.slug, owner_id = EXCLUDED.owner_id, city = EXCLUDED.city, phone = EXCLUDED.phone, tagline = EXCLUDED.tagline, theme_id = EXCLUDED.theme_id;
+  SET name = EXCLUDED.name, slug = EXCLUDED.slug, owner_id = EXCLUDED.owner_id, city = EXCLUDED.city, phone = EXCLUDED.phone, theme_id = EXCLUDED.theme_id;
 
   -- TARGETED CLEANUP: Delete only data for this firm (idempotency)
   -- Order: children first, then parents within the firm context

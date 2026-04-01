@@ -7,7 +7,7 @@ import { useFirm } from '@/lib/firm/context'
 import { fmt } from '@/lib/utils'
 import { Btn, Card, Loading, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Info, Settings2, Gavel } from 'lucide-react'
+import { Info, Settings2, Gavel, ArrowLeft } from 'lucide-react'
 import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
 
@@ -88,11 +88,16 @@ export default function GroupSettingsPage() {
     <div className="space-y-6 max-w-2xl pb-10">
       
       <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--border)' }}>
-        <div>
-           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50 mb-1">
-             <Settings2 size={12} /> Group Settings
-           </div>
-           <h1 className="text-2xl font-bold">{group.name} — Execution Rules</h1>
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push(`/groups/${groupId}`)} className="p-2.5 rounded-xl hover:bg-[var(--surface2)] transition-colors border" style={{ borderColor: 'var(--border)' }}>
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50 mb-1">
+               <Settings2 size={12} /> Group Settings
+             </div>
+             <h1 className="text-2xl font-bold">{group.name} — Execution Rules</h1>
+          </div>
         </div>
         <Btn onClick={() => router.push(`/groups/${groupId}`)} icon={Gavel}>View Ledger</Btn>
       </div>

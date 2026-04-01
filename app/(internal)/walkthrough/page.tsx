@@ -102,7 +102,7 @@ export default function AppJourneyPage() {
           index={2}
           icon={Building2}
           title="Setup a Chit Group"
-          description="Create a Group to define the rules: the total chit value (e.g. 5 Lakhs), the monthly installment, and the duration (e.g. 20 months). Choose your auction scheme: Dividend or Accumulation."
+          description="Define your rules: total value, duration, and installment. Choose between the DIVIDEND MODEL (where auction discounts are shared monthly) or the SURPLUS MODEL (where bid amounts are pooled into a group treasury for a larger final payout)."
           href="/groups"
           actionLabel="Create Group"
           navLabel="nav_groups"
@@ -123,7 +123,7 @@ export default function AppJourneyPage() {
           index={4}
           icon={Gavel}
           title="Monthly Auctions & Collections"
-          description="Every month, record the Auction winner and their bid amount. Then, collect Payments from every member. This builds your 'Digital Total' automatically."
+          description="Record current month bidding and outcomes. ChitVault automatically calculates the next month's dues in the Collection Registry by applying the relevant dividends or pooling the surplus according to your group scheme."
           href="/auctions"
           actionLabel="Record Auction"
           navLabel="nav_auctions"
@@ -143,7 +143,7 @@ export default function AppJourneyPage() {
           index={6}
           icon={Calculator}
           title="Final Prize Settlement"
-          description="When it's time to pay out the prize money, use the Settlement Utility. It calculates the final amount after all deductions and creates a persistent record for audit proof."
+          description="Use the Settlement Utility to finalize a group. Payouts follow the standard 'Average Payoff Rule' (Total Bids / Duration × Duration-1). This provides a mathematically fair terminal value for all members."
           href="/settlement"
           actionLabel="Calculate Payout"
           navLabel="nav_settlements"

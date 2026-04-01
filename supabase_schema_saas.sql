@@ -28,7 +28,6 @@ create table if not exists firms (
   theme_id        text default 'theme1',      -- id from THEMES list (DEPRECATED: Fixed via Profile)
   color_profile   text default 'indigo',      -- indigo | emerald | violet | crimson | graphite
   logo_url        text,                        -- hosted image URL
-  tagline         text default 'Chit Fund Manager',
   font            text default 'DM Sans',      -- Google Font name
   register_token  text unique,                 -- private registration link token
   created_at      timestamptz default now(),
@@ -42,11 +41,13 @@ create table if not exists firms (
 alter table firms add column if not exists primary_color  text default '#2563eb';
 alter table firms add column if not exists accent_color   text default '#1e40af';
 alter table firms add column if not exists theme_id       text default 'theme1';
+alter table firms add column if not exists color_profile  text default 'indigo';
 alter table firms add column if not exists logo_url       text;
-alter table firms add column if not exists tagline        text default 'Chit Fund Manager';
 alter table firms add column if not exists font           text default 'DM Sans';
 alter table firms add column if not exists register_token text unique;
 alter table firms add column if not exists address        text;
+alter table firms add column if not exists city           text;
+alter table firms add column if not exists phone          text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'firms_plan_chk') then
@@ -537,20 +538,20 @@ grant execute on function public.register_firm(text,text,text,text,text) to auth
 create or replace function public.get_firm_branding(p_slug text)
 returns table (
   name text, theme_id text, logo_url text,
-  tagline text, font text, plan_status text,
+  font text, plan_status text,
   color_profile text
 )
 language sql stable security definer set search_path = public as $$
-  select name, theme_id, logo_url, tagline, font, plan_status, color_profile
+  select name, theme_id, logo_url, font, plan_status, color_profile
   from firms where slug = p_slug
 $$;
 grant execute on function public.get_firm_branding(text) to anon, authenticated;
 
 -- Public RPC: validate register token
 create or replace function public.get_firm_by_register_token(p_token text)
-returns table (id uuid, name text, slug text, theme_id text, logo_url text, tagline text, color_profile text)
+returns table (id uuid, name text, slug text, theme_id text, logo_url text, color_profile text)
 language sql stable security definer set search_path = public as $$
-  select id, name, slug, theme_id, logo_url, tagline, color_profile
+  select id, name, slug, theme_id, logo_url, color_profile
   from firms where register_token = p_token
 $$;
 grant execute on function public.get_firm_by_register_token(text) to anon, authenticated;
@@ -745,7 +746,6 @@ create or replace function public.admin_create_firm(
   p_phone         text default null,
   p_plan          text default 'trial',
   p_color_profile text default 'indigo',
-  p_tagline       text default 'Chit Fund Manager',
   p_font          text default 'DM Sans'
 )
 returns uuid language plpgsql security definer set search_path = public as $$
@@ -760,8 +760,8 @@ bash
     raise exception 'SLUG_TAKEN';
   end if;
 
-  insert into firms (name, slug, owner_id, city, phone, plan, color_profile, tagline, font)
-  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_color_profile, p_tagline, p_font)
+  insert into firms (name, slug, owner_id, city, phone, plan, color_profile, font)
+  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_color_profile, p_font)
   returning id into v_firm_id;
 
   -- Create or link profile immediately
@@ -775,7 +775,7 @@ bash
   return v_firm_id;
 end;
 $$;
-grant execute on function public.admin_create_firm(text,text,uuid,text,text,text,text,text,text,text) to authenticated;
+grant execute on function public.admin_create_firm(text,text,uuid,text,text,text,text,text,text) to authenticated;
 
 -- ══════════════════════════════════════════════════════════════
 -- AUCTION RULES & FOREMAN COMMISSION (v1.3 additions)

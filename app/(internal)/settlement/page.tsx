@@ -223,7 +223,7 @@ export default function SettlementPage() {
             <Calculator size={24} style={{ color: 'var(--accent)' }} />
             {t('settlement_title')}
           </h1>
-          <p className="text-sm opacity-60">{t('settlement_desc')}</p>
+          <p className="text-sm opacity-60">Final prize money calculation and payoff registry based on group duration and historical averages.</p>
         </div>
         <div className="flex items-center gap-2">
            <Btn onClick={addEntry} icon={Plus} variant="secondary">{t('add_month')}</Btn>

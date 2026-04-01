@@ -47,7 +47,6 @@ export default function SettingsPage() {
   const [address,    setAddress]    = useState(firm?.address || '')
   const [phone,      setPhone]      = useState(firm?.phone || '')
   const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
-  const [tagline,    setTagline]    = useState(firm?.tagline || 'Chit Fund Manager')
   const [font,       setFont]       = useState(firm?.font || 'Noto Sans')
   const [regToken,   setRegToken]   = useState(firm?.register_token || '')
 
@@ -64,7 +63,6 @@ export default function SettingsPage() {
       setAddress(firm.address || '')
       setPhone(firm.phone || '')
       setColorProfile(firm.color_profile || 'indigo')
-      setTagline(firm.tagline || 'Chit Fund Manager')
       setFont(firm.font || 'Noto Sans')
       setRegToken(firm.register_token || '')
     }
@@ -95,7 +93,6 @@ export default function SettingsPage() {
       address:       address.trim() || null,
       phone:         phone.trim() || null,
       color_profile: colorProfile,
-      tagline:       tagline.trim() || 'Chit Fund Manager',
       font,
     }).eq('id', firm.id)
     setSaving(false)
@@ -185,14 +182,6 @@ export default function SettingsPage() {
           </div>
           <div className="p-5 space-y-5">
 
-            {/* Tagline */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>
-                Tagline (shown below business name on login)
-              </label>
-              <input className={inputClass} style={inputStyle} value={tagline}
-                onChange={e => setTagline(e.target.value)} placeholder="e.g. Trusted Chit Fund Manager" />
-            </div>
 
             {/* Color Profiles */}
             <div className="pt-2">

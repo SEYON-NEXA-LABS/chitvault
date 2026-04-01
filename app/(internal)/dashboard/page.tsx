@@ -235,8 +235,10 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 font-mono" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
                           {fmt(a.bid_amount)}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--success)', borderBottom: '1px solid var(--border)' }}>
-                          {fmt(a.dividend)}/m
+                        <td className="px-4 py-3 font-mono text-xs" style={{ borderBottom: '1px solid var(--border)' }}>
+                          {g?.auction_scheme === 'ACCUMULATION' 
+                            ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)} <span className="text-[9px] font-bold">SURPLUS</span></span>
+                            : <span style={{ color: 'var(--success)' }}>{fmt(a.dividend)}/m</span>}
                         </td>
                         <td className="px-4 py-3 text-xs" style={{ color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>
                           {fmtDate(a.auction_date)}

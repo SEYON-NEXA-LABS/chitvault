@@ -6,14 +6,13 @@ import { useFirm } from '@/lib/firm/context'
 
 interface BrandingContext {
   name: string
-  tagline: string
   font: string
   colorProfile: string
 }
 
 const Ctx = createContext<BrandingContext>({
   name: 'Seyon Chit Vault',
-  tagline: 'Chit Fund Manager', font: 'Noto Sans', colorProfile: 'indigo'
+  font: 'Noto Sans', colorProfile: 'indigo'
 })
 
 export function BrandingProvider({ children }: {
@@ -21,7 +20,6 @@ export function BrandingProvider({ children }: {
 }) {
   const { firm } = useFirm()
   const name = firm?.name || process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault'
-  const tagline = firm?.tagline || 'Chit Fund Manager'
   const font = firm?.font || 'Noto Sans'
   
   // Priority: 1. User Local Preference, 2. Firm Global Setting, 3. Default
@@ -48,7 +46,7 @@ export function BrandingProvider({ children }: {
   }, [firm?.name, firm?.logo_url, font, colorProfile])
 
   return (
-    <Ctx.Provider value={{ name, tagline, font, colorProfile }}>
+    <Ctx.Provider value={{ name, font, colorProfile }}>
       {children}
     </Ctx.Provider>
   )

@@ -9,7 +9,7 @@ import {
   Loading, Empty, Badge, StatCard, Btn
 } from '@/components/ui'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Printer, Phone, MapPin, Search, FileSpreadsheet } from 'lucide-react'
+import { Printer, Phone, MapPin, Search, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
 
@@ -86,16 +86,19 @@ export default function CollectionPage() {
       return totalBalance > 0.01 ? { member: m, person: m.persons, group: g, dues: mDues, totalBalance } : null;
     }).filter(Boolean);
 
-    // 2. Group by Person
+    // 2. Group by Person and calculate Level
     const personMap = new Map<number, any>();
     balances.forEach((item: any) => {
       const pId = item.person.id;
       if (!personMap.has(pId)) {
-        personMap.set(pId, { person: item.person, totalBalance: 0, items: [] });
+        personMap.set(pId, { person: item.person, totalBalance: 0, items: [], maxAgingMonths: 0 });
       }
       const pData = personMap.get(pId);
       pData.totalBalance += item.totalBalance;
       pData.items.push(item);
+      
+      const itemMaxMonths = item.dues.length;
+      if (itemMaxMonths > pData.maxAgingMonths) pData.maxAgingMonths = itemMaxMonths;
     });
 
     return Array.from(personMap.values());
@@ -155,7 +158,7 @@ export default function CollectionPage() {
         </div>
       </div>
 
-      <TableCard title={`Consolidated Collection Report — ${fmtDate(new Date().toISOString())}`} subtitle={`${filtered.length} persons with active dues`}>
+      <TableCard title={`Consolidated Collection Registry — ${fmtDate(new Date().toISOString())}`} subtitle="Daily registry of incoming payments from all active members for field collection.">
         <Table>
           <thead>
             <Tr>
@@ -171,7 +174,12 @@ export default function CollectionPage() {
             ) : filtered.map(x => (
               <Tr key={x.person.id}>
                 <Td>
-                   <div className="font-bold text-base">{x.person.name}</div>
+                   <div className="flex items-center gap-2">
+                      <div className="font-bold text-base">{x.person.name}</div>
+                      {x.maxAgingMonths >= 3 && <Badge variant="danger" className="animate-pulse flex items-center gap-1 py-0.5 px-1.5"><ShieldAlert size={10} /> {x.maxAgingMonths} mo</Badge>}
+                      {x.maxAgingMonths === 2 && <Badge variant="danger" className="flex items-center gap-1 opacity-80 py-0.5 px-1.5"><AlertTriangle size={10} /> {x.maxAgingMonths} mo</Badge>}
+                      {x.maxAgingMonths === 1 && <Badge variant="accent" className="flex items-center gap-1 opacity-70 py-0.5 px-1.5"><AlertCircle size={10} /> {x.maxAgingMonths} mo</Badge>}
+                   </div>
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Phone size={10} className="opacity-30" />
                       <a href={`tel:${x.person.phone}`} className="text-[11px] font-mono font-bold text-[var(--info)]">{x.person.phone || '—'}</a>

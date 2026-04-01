@@ -12,7 +12,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_payments: 'Payments',
     nav_cashbook: 'Daily Cash',
     nav_reports: 'Reports',
-    nav_collection: 'Collection Report',
+    nav_collection: 'Collection Registry',
     nav_manage: 'Manage',
     nav_team: 'Team',
     nav_settings: 'Settings',
@@ -20,6 +20,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_journey: 'App Journey',
     nav_settlements: 'Settlements',
     nav_reports_group: 'Reporting & Audit',
+    nav_defaulters: 'Defaulters',
     
     // Header
     signed_in_as: 'Signed in as',
@@ -110,7 +111,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_payments: 'பணம் செலுத்துதல்',
     nav_cashbook: 'தினசரி ரொக்கம்',
     nav_reports: 'அறிக்கைகள்',
-    nav_collection: 'வசூல் அறிக்கை',
+    nav_collection: 'வசூல் பட்டியல்',
     nav_manage: 'நிர்வாகம்',
     nav_team: 'குழு',
     nav_settings: 'அமைப்புகள்',
@@ -118,6 +119,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_journey: 'செயலி பயணம்',
     nav_settlements: 'பட்டுவாடா',
     nav_reports_group: 'அறிக்கைகள் மற்றும் தணிக்கை',
+    nav_defaulters: 'நிலுவைதாரர்கள்',
     
     // Header
     signed_in_as: 'உள்நுழைந்துள்ள மின்னஞ்சல்',
