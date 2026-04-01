@@ -66,6 +66,9 @@ function LoginForm() {
 
   async function handleRedirect(user: { id: string }) {
     try {
+      // 1. Refresh router to sync cookies/session with Server Components
+      router.refresh()
+
       const { data: profile, error: profileErr } = await supabase
         .from('profiles').select('firm_id, role').eq('id', user.id).single()
 
@@ -80,7 +83,8 @@ function LoginForm() {
       }
     } catch (err: any) {
       console.error('Login redirect failure:', err)
-      router.push('/dashboard')
+      // Fallback: Hard redirect to let middleware handle it
+      window.location.href = '/dashboard'
     }
   }
 
@@ -88,7 +92,7 @@ function LoginForm() {
   useEffect(() => {
     async function checkUser() {
       const { data } = await supabase.auth.getUser()
-      if (data?.user) handleRedirect(data.user)
+      if (data?.user) await handleRedirect(data.user)
     }
     checkUser()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,7 +104,7 @@ function LoginForm() {
     if (error || !user) { setError('Incorrect email or password.'); setLoading(false); return }
 
     setSuccess('Login successful! Redirecting...')
-    handleRedirect(user)
+    await handleRedirect(user)
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
