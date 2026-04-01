@@ -381,7 +381,7 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      <TableCard title="Collection Ledger (Person-Centric)" subtitle="Manage total dues and record payments across all tickets for a person">
+      <TableCard title="Collection Ledger (Person-Centric)" subtitle="Manage total individual dues, track payment history, and distribute lump-sum payments across all tickets.">
         <Table>
           <thead>
             <Tr>

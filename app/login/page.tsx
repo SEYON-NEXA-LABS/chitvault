@@ -10,7 +10,7 @@ import { Download } from 'lucide-react'
 
 interface FirmBranding {
   name: string; color_profile: string; logo_url: string | null
-  tagline: string; font: string
+  font: string
 }
 
 type Tab = 'signin' | 'forgot'
@@ -29,7 +29,7 @@ function LoginForm() {
   const [branding, setBranding] = useState<FirmBranding>({
     name: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
     color_profile: 'indigo', logo_url: null,
-    tagline: 'Chit Fund Manager', font: 'Noto Sans'
+    font: 'Noto Sans'
   })
 
   // Sign in form
@@ -49,7 +49,7 @@ function LoginForm() {
         if (data) {
           setBranding({
             name: data.name, color_profile: data.color_profile || 'indigo',
-            logo_url: data.logo_url, tagline: data.tagline || 'Chit Fund Manager',
+            logo_url: data.logo_url,
             font: data.font || 'Noto Sans'
           })
           applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
@@ -157,7 +157,6 @@ function LoginForm() {
             </div>
           )}
           <div style={{ fontSize: 26, fontWeight: 800, color: clr }}>{branding.name}</div>
-          <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 3 }}>{branding.tagline}</div>
         </div>
 
         <div style={sty.card}>

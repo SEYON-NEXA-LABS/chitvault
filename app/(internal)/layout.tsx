@@ -9,7 +9,8 @@ import { APP_BRAND, APP_NAME, cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
-  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor
+  LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
+  ShieldAlert, Phone, MapPin, Search, AlertTriangle
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
@@ -36,6 +37,7 @@ const NAV: NavItem[] = [
   { href: '/reports', label: 'nav_reports', icon: BarChart3 },
   { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
   { href: '/collection', label: 'nav_collection', icon: ClipboardList },
+  { href: '/defaulters', label: 'nav_defaulters', icon: ShieldAlert },
   { href: '/settlement', label: 'nav_settlements', icon: Calculator },
   { label: 'nav_manage', divider: true },
   { href: '/team', label: 'nav_team', icon: UserCog },
@@ -188,43 +190,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          <Link href="/dashboard" className="flex items-center gap-3 mb-2.5 hover:opacity-80 transition-opacity overflow-hidden">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden">
-              <img src="/icons/icon-192.png" alt="Logo" className="w-full h-full object-cover" />
+          <Link href="/dashboard" className="flex items-center gap-3.5 mb-2 group">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[var(--surface2)] border border-[var(--border)] group-hover:border-[var(--accent-border)] transition-all">
+              <img src="/icons/icon-192.png" alt="Logo" className="w-full h-full object-cover transition-all opacity-90 group-hover:opacity-100" />
             </div>
             <div className="flex flex-col truncate">
-              {switchedFirmId !== 'all' && (
-                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-[var(--accent)] leading-none mb-1">
-                  VIEWING FIRM
-                </span>
-              )}
-              <div className="font-bold text-lg leading-none" style={{ color: switchedFirmId !== 'all' ? 'var(--text)' : 'var(--accent)' }}>
+              <div className="font-extrabold text-base tracking-tight leading-tight group-hover:text-[var(--accent)] transition-colors">
                 {firm?.name || (switchedFirmId === 'all' ? APP_NAME : APP_NAME)}
               </div>
-              {firm?.tagline && (
-                <div className="text-[10px] font-medium opacity-40 truncate mt-1" style={{ color: 'var(--text)' }}>
-                  {firm.tagline}
-                </div>
-              )}
             </div>
           </Link>
 
           <div className="flex items-center gap-2">
-            {switchedFirmId === 'all' ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)]">
+            {role === 'superadmin' && switchedFirmId === 'all' ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)] uppercase tracking-wider">
                 GLOBAL
               </span>
             ) : (
               firm && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-bold"
-                  style={{ background: planColor[firm.plan] + '22', color: planColor[firm.plan] }}>
-                  {firm.plan.charAt(0).toUpperCase() + firm.plan.slice(1)}
+                <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border"
+                  style={{ background: planColor[firm.plan] + '11', color: planColor[firm.plan], borderColor: planColor[firm.plan] + '44' }}>
+                  {firm.plan}
                 </span>
               )
             )}
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: isOwner ? 'rgba(201,168,76,0.1)' : 'var(--info-dim)', color: isOwner ? 'var(--accent)' : 'var(--info)' }}>
-              {role === 'superadmin' ? '👑 Super' : (isOwner ? '👑 Admin' : '👤 Staff')}
+            <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-[var(--surface2)] border border-[var(--border)] text-[var(--text2)]">
+              {role === 'superadmin' ? 'Superadmin' : (isOwner ? 'Manager' : 'Staff')}
             </span>
           </div>
         </div>
@@ -252,10 +243,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
             return (
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-all"
-                style={active ? { background: 'var(--accent-dim)', color: 'var(--accent)' } : { color: 'var(--text2)' }}>
-                <Icon size={15} />
-                {t(item.label)}
+                className={cn(
+                  "group flex items-center gap-3.5 px-4 py-2.5 rounded-[12px] mb-1.5 text-sm font-semibold transition-all relative overflow-hidden",
+                  active 
+                    ? "bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(var(--accent-rgb),0.25)]" 
+                    : "text-[var(--text2)] hover:bg-[var(--surface3)] hover:text-[var(--text)]"
+                )}>
+                <Icon size={18} className={cn("transition-transform duration-300", active ? "scale-110" : "opacity-70 group-hover:opacity-100 group-hover:scale-110")} />
+                <span className="relative z-10 flex-1">{t(item.label)}</span>
+                {active && (
+                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80" />
+                )}
               </Link>
             )
           })}
@@ -365,7 +363,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               style={{ color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}>
               <Menu size={20} />
             </button>
-            <h1 className="font-display text-lg" style={{ color: 'var(--text)' }}>
+            <h1 className="text-sm font-bold tracking-tight text-[var(--text2)] uppercase">
               {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
             </h1>
           </div>

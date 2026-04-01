@@ -18,7 +18,6 @@ export interface Firm {
   phone:          string | null
   // Branding
   logo_url:       string | null
-  tagline:        string | null
   font:           string | null
   theme_id:       string | null
   color_profile:  string | null

@@ -133,13 +133,13 @@ function AdminDashboard() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [creating, setCreating]   = useState(false)
-  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', tagline:'Chit Fund Manager', font:'Noto Sans' })
+  const [newFirm, setNewFirm] = useState({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', font:'Noto Sans' })
   const [createErr, setCreateErr] = useState('')
 
   // Edit firm state
   const [editOpen, setEditOpen] = useState(false)
   const [editingFirm, setEditingFirm] = useState<Firm | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', slug: '', city: '', phone: '', tagline: '', font: '' })
+  const [editForm, setEditForm] = useState({ name: '', slug: '', city: '', phone: '', font: '' })
   
   // Quick invite state
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -165,7 +165,7 @@ function AdminDashboard() {
     setCreating(false)
     if (error) { setCreateErr(error === 'SLUG_TAKEN' ? 'A firm with this name already exists.' : error); return }
     setCreateOpen(false)
-    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', tagline:'Chit Fund Manager', font:'Noto Sans' })
+    setNewFirm({ name:'', city:'', phone:'', owner_email:'', owner_name:'', owner_pass:'', plan:'trial', color_profile:'indigo', font:'Noto Sans' })
     load()
   }
 
@@ -313,7 +313,7 @@ function AdminDashboard() {
                                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>{f.slug}.chitvault.app</div>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingFirm(f); setEditForm({ name: f.name, slug: f.slug, city: f.city||'', phone: f.phone||'', tagline: f.tagline||'', font: f.font||'Noto Sans' }); setEditOpen(true) }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md transition-colors" title="Edit">
+                                <button onClick={() => { setEditingFirm(f); setEditForm({ name: f.name, slug: f.slug, city: f.city||'', phone: f.phone||'', font: f.font||'Noto Sans' }); setEditOpen(true) }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md transition-colors" title="Edit">
                                   <Pencil size={12} />
                                 </button>
                                 <button onClick={() => { setInvitingFirm(f); setInviteOpen(true); setInviteLink(''); setInviteEmail('') }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--info)] transition-colors" title="Invite">

@@ -9,10 +9,10 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Settings2, TrendingDown, FileSpreadsheet } from 'lucide-react'
+import { Plus, Trash2, Settings2, TrendingDown, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
-import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person, Firm } from '@/types'
+import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person, Firm, Payment } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 export default function AuctionsPage() {
@@ -26,6 +26,7 @@ export default function AuctionsPage() {
   const [groups,      setGroups]      = useState<Group[]>([])
   const [members,     setMembers]     = useState<Member[]>([])
   const [auctions,    setAuctions]    = useState<Auction[]>([])
+  const [payments,    setPayments]    = useState<Payment[]>([])
   const [commissions, setCommissions] = useState<ForemanCommission[]>([])
   const [loading,     setLoading]     = useState(true)
   const [addOpen,     setAddOpen]     = useState(false)
@@ -40,6 +41,10 @@ export default function AuctionsPage() {
   const [calc,       setCalc]       = useState<AuctionCalculation | null>(null)
   const [calcError,  setCalcError]  = useState('')
   const [groupRules, setGroupRules] = useState<any>(null)
+  
+  const [winnerBalance, setWinnerBalance] = useState(0)
+  const [winnerAging, setWinnerAging] = useState(0)
+  const [acknowledge, setAcknowledge] = useState(false)
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -49,13 +54,15 @@ export default function AuctionsPage() {
     let mQ  = withFirmScope(supabase.from('members').select('*, persons(*)').in('status',['active','foreman']), targetId)
     let aQ  = withFirmScope(supabase.from('auctions').select('*, firms(name)'), targetId).order('month', { ascending: false })
     let fcQ = withFirmScope(supabase.from('foreman_commissions').select('*'), targetId).order('month')
-
-    const [g, m, a, fc] = await Promise.all([gQ, mQ, aQ, fcQ])
+    let pQ  = withFirmScope(supabase.from('payments').select('*'), targetId)
+    
+    const [g, m, a, fc, p] = await Promise.all([gQ, mQ, aQ, fcQ, pQ])
     
     setGroups(g.data || [])
     setMembers(m.data || [])
     setAuctions(a.data || [])
     setCommissions(fc.data || [])
+    setPayments(p.data || [])
 
     if (role === 'superadmin' && firms.length === 0) {
       const { data: f } = await supabase.from('firms').select('*').order('name')
@@ -100,9 +107,42 @@ export default function AuctionsPage() {
     setCalc(data)
   }
 
+  // Calculate winner balance on change
+  useEffect(() => {
+    if (!form.winner_id || !form.group_id) {
+      setWinnerBalance(0); setWinnerAging(0); setAcknowledge(false); return
+    }
+    const mem = members.find(m => m.id === +form.winner_id)
+    const grp = groups.find(g => g.id === +form.group_id)
+    if (!mem || !grp) return
+
+    const gAucs = auctions.filter(a => a.group_id === grp.id)
+    const mPays = payments.filter(p => p.member_id === mem.id && p.group_id === grp.id)
+    const currentMonth = Math.min(grp.duration, gAucs.length + 1)
+    
+    let totalDue = 0
+    let missedCount = 0
+    for (let m = 1; m <= currentMonth; m++) {
+      const prevAuc = gAucs.find(a => a.month === m - 1)
+      const div = prevAuc ? Number(prevAuc.dividend || 0) : 0
+      const due = Number(grp.monthly_contribution) - div
+      const paid = mPays.filter((p: any) => p.month === m).reduce((s: number, p: any) => s + Number(p.amount), 0)
+      if (due - paid > 0.01) {
+        totalDue += (due - paid)
+        missedCount++
+      }
+    }
+    setWinnerBalance(totalDue)
+    setWinnerAging(missedCount)
+    setAcknowledge(totalDue <= 0.01)
+  }, [form.winner_id, form.group_id, members, groups, auctions, payments])
+
   async function handleSave() {
     if (!form.group_id || !form.winner_id || !form.bid_amount) {
       show('Fill in group, winner and bid amount.', 'error'); return
+    }
+    if (winnerBalance > 0.01 && !acknowledge) {
+      show('Please acknowledge the member outstanding dues first.', 'error'); return
     }
     if (calcError) { show('Fix bid amount error first.', 'error'); return }
     setSaving(true)
@@ -184,7 +224,7 @@ export default function AuctionsPage() {
         </div>
       </div>
 
-      <TableCard title={t('auction_history')} subtitle="Consolidated list of recent auctions.">
+      <TableCard title="Auction History & Settlement" subtitle="Manage monthly bidding outcomes, calculate prize money, and track member dividends with precision.">
         {auctions.length === 0 
           ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
           : <Table>
@@ -316,9 +356,35 @@ export default function AuctionsPage() {
             <select className={inputClass} style={inputStyle} value={form.winner_id}
               onChange={e => setForm(f => ({...f, winner_id: e.target.value}))}>
               <option value="">Select winner</option>
-              {eligible.map(m => <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no})</option>)}
+              {eligible.map(m => {
+                // Quick balance check for dropdown label
+                const mPays = payments.filter((p: any) => p.member_id === m.id && p.group_id === +form.group_id)
+                const paidTotal = mPays.reduce((s: number, p: any) => s + Number(p.amount), 0)
+                // Note: Simplified check for dropdown to keep it fast
+                return <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no}) {paidTotal === 0 ? '⚠️ No Payments' : ''}</option>
+              })}
             </select>
           </Field>
+
+          {form.winner_id && winnerBalance > 0.01 && (
+            <div className="col-span-2 p-4 rounded-2xl border bg-danger-500/5 border-danger-500/20 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-danger-500/10 text-danger-500">
+                  <ShieldAlert size={20} />
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-danger-600 text-sm">Defaulter Warning</div>
+                  <div className="text-xs opacity-70">
+                    This member is <strong>{winnerAging} months</strong> behind with a total outstanding balance of <strong>{fmt(winnerBalance)}</strong>.
+                  </div>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-white/50 border border-danger-500/10 cursor-pointer select-none hover:bg-white transition-colors">
+                <input type="checkbox" checked={acknowledge} onChange={e => setAcknowledge(e.target.checked)} />
+                <span className="text-[10px] font-bold uppercase tracking-tight text-danger-700">I acknowledge these dues and wish to proceed</span>
+              </label>
+            </div>
+          )}
 
           {groupRules?.commission_recipient === 'foreman' && (
             <Field label="Foreman Member" className="col-span-2">
@@ -347,7 +413,11 @@ export default function AuctionsPage() {
               {[
                 { label: 'Net Payout',       value: fmt(calc.net_payout),      color: 'var(--success)' },
                 { label: 'Firm Comm.',  value: fmt(calc.commission_amt),  color: 'var(--danger)'  },
-                { label: 'Per Member Div',   value: fmt(calc.per_member_div),  color: 'var(--info)'  },
+                { 
+                  label: groupRules?.auction_scheme === 'ACCUMULATION' ? 'Group Surplus' : 'Per Member Div',   
+                  value: groupRules?.auction_scheme === 'ACCUMULATION' ? fmt(calc.bid_amount) : fmt(calc.per_member_div),  
+                  color: 'var(--info)'  
+                },
               ].map(r => (
                 <div key={r.label} className="bg-[var(--surface2)] p-2 rounded-xl text-center">
                    <div className="text-[10px] opacity-40 uppercase tracking-widest">{r.label}</div>

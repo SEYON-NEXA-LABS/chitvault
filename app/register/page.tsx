@@ -9,7 +9,7 @@ import { applyBranding } from '@/lib/branding/context'
 
 interface FirmByToken {
   id: string; name: string; slug: string
-  color_profile: string; logo_url: string | null; tagline: string
+  color_profile: string; logo_url: string | null
 }
 
 function RegisterForm() {

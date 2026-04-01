@@ -23,7 +23,6 @@ export async function registerFirm(params: {
   phone?: string;
   plan: string;
   color_profile: string;
-  tagline: string;
   font: string;
 }) {
   const supabase = createServerClient(cookies())
@@ -73,7 +72,6 @@ export async function registerFirm(params: {
     p_phone: params.phone || null,
     p_plan: params.plan,
     p_color_profile: params.color_profile,
-    p_tagline: params.tagline,
     p_font: params.font
   })
 
@@ -111,7 +109,6 @@ export async function updateFirmDetails(firmId: string, params: {
   slug: string;
   city?: string;
   phone?: string;
-  tagline?: string;
   font?: string;
 }) {
   const supabase = createServerClient(cookies())
@@ -128,7 +125,6 @@ export async function updateFirmDetails(firmId: string, params: {
     slug: params.slug,
     city: params.city || null,
     phone: params.phone || null,
-    tagline: params.tagline || null,
     font: params.font || 'Noto Sans'
   }).eq('id', firmId)
 

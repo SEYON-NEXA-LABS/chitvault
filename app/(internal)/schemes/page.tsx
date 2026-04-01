@@ -106,14 +106,14 @@ export default function SchemesGuidePage() {
           </div>
 
           <div className="p-4 rounded-xl border border-dashed flex items-start gap-4" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
-            <div className="p-2 rounded-lg bg-danger-400/10 text-danger-500"><TrendingDown size={20} /></div>
+            <div className="p-2 rounded-lg bg-info-400/10 text-info-500"><TrendingDown size={20} /></div>
             <div>
-              <h4 className="text-sm font-bold mb-1 underline decoration-red-500/30">The Closing Magic</h4>
-              <p className="text-xs opacity-70 leading-relaxed">
-                If Month 1 Surplus is ₹70k, Month 2 is ₹60k, and Month 3 is ₹50k... your pool now has ₹180k. 
-                Keep going until the Pool = **₹450,000**. 
-                Now, you have enough cash to pay 1 full member **without anyone paying another rupee!**
-              </p>
+              <h4 className="text-sm font-bold mb-1 underline decoration-blue-500/30">The Mathematical Definition</h4>
+              <ul className="text-xs opacity-70 space-y-2">
+                 <li>• **Installment**: Always fixed (e.g., ₹30,000)</li>
+                 <li>• **Surplus Pool**: Σ(Bids - Commissions)</li>
+                 <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Rem. Duration)</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -123,27 +123,27 @@ export default function SchemesGuidePage() {
       <Card title="🏆 Settlement & Payout Process" subtitle="How to finalize a winner's payout and record it">
          <div className="p-6 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
-                     <UserCheck size={24} />
-                  </div>
-                  <h4 className="font-bold text-sm">1. Link Member</h4>
-                  <p className="text-xs opacity-60">Select the winner. Their auction &quot;Net Payout&quot; will auto-fill as the base for the settlement.</p>
-               </div>
-               <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
-                     <Calculator size={24} />
-                  </div>
-                  <h4 className="font-bold text-sm">2. Apply 15-Mo Rule</h4>
-                  <p className="text-xs opacity-60">The total amount is divided by 15. The system then calculates the 14-month balance automatically.</p>
-               </div>
-               <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
-                     <Save size={24} />
-                  </div>
-                  <h4 className="font-bold text-sm">3. Save Record</h4>
-                  <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and proof of payout for the member.</p>
-               </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                   <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
+                      <UserCheck size={24} />
+                   </div>
+                   <h4 className="font-bold text-sm">1. Link Member</h4>
+                   <p className="text-xs opacity-60">Select the winner. Their verified &quot;Net Payout&quot; will auto-fill from the auction record.</p>
+                </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                   <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
+                      <Calculator size={24} />
+                   </div>
+                   <h4 className="font-bold text-sm">2. Average Payoff Rule</h4>
+                   <p className="text-xs opacity-60">Payout = (Total Bids / Duration) × (Duration - 1). This ensures a fair return based on group performance.</p>
+                </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                   <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
+                      <Save size={24} />
+                   </div>
+                   <h4 className="font-bold text-sm">3. Audit Record</h4>
+                   <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and legally valid proof of payoff.</p>
+                </div>
             </div>
 
             <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>

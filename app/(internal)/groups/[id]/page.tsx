@@ -12,7 +12,7 @@ import { downloadCSV } from '@/lib/utils/csv'
 import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { CSVImportModal } from '@/components/ui'
-import type { Group, Auction, Member, ForemanCommission, Person } from '@/types'
+import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules } from '@/types'
 
 export default function GroupLedgerPage() {
   const params = useParams()
@@ -24,7 +24,7 @@ export default function GroupLedgerPage() {
 
   const groupId = Number(params.id)
 
-  const [group, setGroup] = useState<Group | null>(null)
+  const [group, setGroup] = useState<GroupWithRules | null>(null)
   const [auctionHistory, setAuctionHistory] = useState<Auction[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [commissions, setCommissions] = useState<ForemanCommission[]>([])
@@ -376,6 +376,52 @@ export default function GroupLedgerPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-4 border-2" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[var(--accent)] text-white">
+                <Gavel size={18} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Auction Rules & Limits</div>
+                <div className="flex gap-4 mt-1">
+                  <div className="text-xs">
+                    <span className="opacity-50">Min Bid:</span> <strong className="font-mono">{fmt(group.chit_value * (group.min_bid_pct || 0.7))}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="opacity-50">Max Bid:</span> <strong className="font-mono">{fmt(group.chit_value * (group.max_bid_pct || 1.0))}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="opacity-50">Scheme:</span> <strong className="uppercase">{group.auction_scheme}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </Card>
+
+        <Card className="p-4 border-2" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)] border border-[var(--info-border)]">
+                <Calculator size={18} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Revenue & Commission</div>
+                <div className="flex gap-4 mt-1">
+                  <div className="text-xs">
+                    <span className="opacity-50">Type:</span> <strong className="uppercase">{group.commission_type?.replace(/_/g, ' ') || 'Percent of Chit'}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="opacity-50">Rate:</span> <strong className="font-mono">{group.commission_type === 'fixed_amount' ? fmt(group.commission_value) : `${group.commission_value}%`}</strong>
+                  </div>
+                  <div className="text-xs">
+                    <span className="opacity-50">Recipient:</span> <strong className="uppercase">{group.commission_recipient || 'Foreman'}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <StatCard label="Progress" value={`${monthsCompleted}/${totalMonths}`} color="info" />
         <StatCard label="Vacant" value={group.num_members - members.length} color="accent" />
@@ -393,76 +439,83 @@ export default function GroupLedgerPage() {
         <StatCard label="Earnings" value={fmt(totalComm)} color="info" />
       </div>
 
-      <Card title={t('auction_ledger')}>
+      <TableCard title={t('auction_ledger')}>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
+          <Table>
             <thead>
-              <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
-                <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Month</th>
-                <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Winner</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Bid</th>
-                <th className="hidden md:table-cell" style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Div/Surplus</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Payout</th>
-                <th className="hidden sm:table-cell" style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Each Pays</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Settlement</th>
-                <th className="only-print" style={{ padding: '12px 10px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase' }}>Signature</th>
-              </tr>
+              <Tr>
+                <Th>Month</Th>
+                <Th>Winner</Th>
+                <Th right>Bid Amt</Th>
+                <Th right className="hidden md:table-cell">
+                  {group.auction_scheme === 'ACCUMULATION' ? 'Discount Surplus' : 'Member Dividend'}
+                </Th>
+                <Th right>Net Payout</Th>
+                <Th right className="hidden lg:table-cell text-[var(--danger)]">Comm.</Th>
+                <Th right className="hidden sm:table-cell">Each Pays</Th>
+                <Th right>Settlement</Th>
+                <Th className="only-print">Signature</Th>
+              </Tr>
             </thead>
             <tbody>
               {auctionHistory.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 opacity-50 italic">No auctions held yet.</td></tr>
+                <Tr><Td colSpan={8} className="text-center py-12 opacity-50 italic">No auctions held yet.</Td></Tr>
               ) : auctionHistory.map((a) => {
                 const winner = members.find(m => m.id === a.winner_id)
+                const comm = commissions.find(c => c.auction_id === a.id)
                 const monthlyDue = group.chit_value / group.duration
                 const eachPays = monthlyDue - Number(a.dividend || 0)
                 return (
-                  <tr key={a.id} className="border-b last:border-0 hover:bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-                    <td style={{ padding: '12px 10px' }}><Badge variant="gray" className="font-mono text-[10px]">{fmtMonth(a.month, group.start_date)}</Badge></td>
-                    <td style={{ padding: '12px 10px' }}>
+                  <Tr key={a.id}>
+                    <Td><Badge variant="gray" className="font-mono text-[10px] bg-[var(--surface2)]">{fmtMonth(a.month, group.start_date)}</Badge></Td>
+                    <Td>
                       {winner ? (
                         <div className="flex flex-col">
                           <span className="text-xs font-bold truncate max-w-[80px] md:max-w-full">{winner.persons?.name}</span>
-                          <span className="text-[9px] opacity-40 italic">Ticket #{winner.ticket_no}</span>
+                          <span className="text-[9px] opacity-40 italic font-mono uppercase tracking-tighter">Ticket #{winner.ticket_no}</span>
                         </div>
                       ) : '—'}
-                    </td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-bold text-danger-500">{fmt(a.bid_amount)}</td>
-                    <td className="hidden md:table-cell font-mono text-right" style={{ padding: '12px 10px', color: 'var(--accent)' }}>
-                      {group.auction_scheme === 'ACCUMULATION' ? `+${fmt(Number(a.total_pot || 0) - Number(a.bid_amount || 0))}` : fmt(a.dividend)}
-                    </td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }} className="font-mono font-black text-success-500">{fmt(a.net_payout || a.bid_amount)}</td>
-                    <td className="hidden sm:table-cell font-mono font-bold text-right" style={{ padding: '12px 10px' }}>{fmt(eachPays)}</td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                    </Td>
+                    <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.bid_amount)}</Td>
+                    <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)]">
+                      {group.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.bid_amount)}` : fmt(a.dividend)}
+                    </Td>
+                    <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
+                    <Td right className="hidden lg:table-cell font-mono text-[var(--danger)]">
+                      {comm ? fmt(comm.commission_amt) : '—'}
+                    </Td>
+                    <Td right className="hidden sm:table-cell font-mono font-bold">{fmt(eachPays)}</Td>
+                    <Td right>
                       {a.is_payout_settled ? (
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-1 text-success-600 font-bold text-[10px]">
-                            <CheckCircle2 size={12} /> Settled
+                        <div className="flex flex-col items-end gap-0.5">
+                          <div className="flex items-center gap-1 text-[var(--success)] font-black text-[10px] uppercase tracking-wider">
+                            <CheckCircle2 size={11} className="shrink-0" /> Settled
                           </div>
-                          <div className="text-[10px] font-mono font-bold text-success-700">{fmt(a.payout_amount || a.net_payout || a.bid_amount)}</div>
-                          <div className="text-[9px] opacity-50">{fmtDate(a.payout_date)}</div>
-                          <div className="no-print mt-1">
-                            <Btn size="sm" variant="ghost" onClick={() => handlePrintVoucher(a)} icon={Printer}>Voucher</Btn>
+                          <div className="text-[10px] font-mono font-black opacity-80">{fmt(a.payout_amount || a.net_payout || a.bid_amount)}</div>
+                          <div className="text-[9px] opacity-40 font-mono">{fmtDate(a.payout_date)}</div>
+                          <div className="no-print mt-1.5 flex gap-1">
+                             <Btn size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => handlePrintVoucher(a)} icon={Printer}>Voucher</Btn>
                           </div>
                         </div>
                       ) : (
                         <div className="flex justify-end gap-1 no-print">
-                          {winner && <Btn size="sm" variant="primary" onClick={() => {
+                          {winner && <Btn size="sm" variant="primary" className="h-8 px-3 text-[11px]" onClick={() => {
                             setSettling(a)
                             setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.bid_amount) }))
                           }} icon={Wallet}>Settle</Btn>}
                         </div>
                       )}
-                    </td>
-                    <td className="only-print" style={{ padding: '12px 10px' }}>
+                    </Td>
+                    <Td className="only-print">
                       <div className="h-8 w-24 border-b border-black text-[8px] opacity-30 flex items-end justify-center">Sign Here</div>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 )
               })}
             </tbody>
-          </table>
+          </Table>
         </div>
-      </Card>
+      </TableCard>
 
       <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
         actions={

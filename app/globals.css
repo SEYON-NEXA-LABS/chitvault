@@ -18,28 +18,28 @@
    =============================== */
 :root, [data-theme="light"] {
   color-scheme: light;
-  --bg: #f6f8fc;
+  --bg: #fafafa;
   --surface: #ffffff;
-  --surface2: #f2f5fb;
-  --surface3: #e9edf6;
-  --border: #d2d8e6;
-  --text: #111827;
-  --text2: #4b5563;
-  --text3: #9aa3b2;
-  --shadow: 0 4px 12px rgba(17, 24, 39, 0.06);
+  --surface2: #f4f4f5;
+  --surface3: #e4e4e7;
+  --border: #e4e4e7;
+  --text: #09090b;
+  --text2: #52525b;
+  --text3: #a1a1aa;
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e1118;
-  --surface: #161a24;
-  --surface2: #1d2233;
-  --surface3: #262c44;
-  --border: #2e3555;
-  --text: #e8ecff;
-  --text2: #b3bbd6;
-  --text3: #7c84a6;
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --bg: #09090b;
+  --surface: #09090b;
+  --surface2: #18181b;
+  --surface3: #27272a;
+  --border: #27272a;
+  --text: #fafafa;
+  --text2: #a1a1aa;
+  --text3: #52525b;
+  --shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="system"] {
@@ -48,15 +48,15 @@
 @media (prefers-color-scheme: dark) {
   [data-theme="system"] {
     color-scheme: dark;
-    --bg: #0e1118;
-    --surface: #161a24;
-    --surface2: #1d2233;
-    --surface3: #262c44;
-    --border: #2e3555;
-    --text: #e8ecff;
-    --text2: #b3bbd6;
-    --text3: #7c84a6;
-    --shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --bg: #09090b;
+    --surface: #09090b;
+    --surface2: #18181b;
+    --surface3: #27272a;
+    --border: #27272a;
+    --text: #fafafa;
+    --text2: #a1a1aa;
+    --text3: #52525b;
+    --shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -78,94 +78,101 @@
 
 /* 🔵 Indigo Professional (Default) */
 :root, [data-color-profile="indigo"] {
-  --accent: #3a5ccc;
-  --accent-light: #6f8df0;
-  --accent-dim: rgba(58, 92, 204, 0.15);
-  --accent-border: rgba(58, 92, 204, 0.3);
-  --success: #148a5f;
-  --success-dim: #e2f4ed;
-  --danger: #d44343;
-  --danger-dim: #fdeaea;
-  --info: #2563eb;
-  --info-dim: #e9efff;
+  --accent: #2563eb;
+  --accent-rgb: 37, 99, 235;
+  --accent-light: #60a5fa;
+  --accent-dim: rgba(37, 99, 235, 0.1);
+  --accent-border: rgba(37, 99, 235, 0.2);
+  --success: #10b981;
+  --success-dim: #ecfdf5;
+  --danger: #ef4444;
+  --danger-dim: #fef2f2;
+  --info: #3b82f6;
+  --info-dim: #eff6ff;
 }
 
 /* 🟢 Emerald Calm (Finance) */
 [data-color-profile="emerald"] {
-  --accent: #0f766e;
-  --accent-light: #2dd4bf;
-  --accent-dim: rgba(15, 118, 110, 0.15);
-  --accent-border: rgba(15, 118, 110, 0.3);
-  --success: #15803d;
-  --success-dim: #dcfce7;
-  --danger: #b91c1c;
-  --danger-dim: #fee2e2;
-  --info: #0369a1;
-  --info-dim: #e0f2fe;
+  --accent: #059669;
+  --accent-rgb: 5, 150, 105;
+  --accent-light: #34d399;
+  --accent-dim: rgba(5, 150, 105, 0.1);
+  --accent-border: rgba(5, 150, 105, 0.2);
+  --success: #059669;
+  --success-dim: #ecfdf5;
+  --danger: #dc2626;
+  --danger-dim: #fef2f2;
+  --info: #0891b2;
+  --info-dim: #ecfeff;
 }
 
 /* 🟣 Violet Modern */
 [data-color-profile="violet"] {
-  --accent: #6d28d9;
-  --accent-light: #8b5cf6;
-  --accent-dim: rgba(109, 40, 217, 0.15);
-  --accent-border: rgba(109, 40, 217, 0.3);
-  --success: #16a34a;
-  --success-dim: #dcfce7;
-  --danger: #dc2626;
-  --danger-dim: #fee2e2;
-  --info: #4f46e5;
+  --accent: #7c3aed;
+  --accent-rgb: 124, 58, 237;
+  --accent-light: #a78bfa;
+  --accent-dim: rgba(124, 58, 237, 0.1);
+  --accent-border: rgba(124, 58, 237, 0.2);
+  --success: #10b981;
+  --success-dim: #ecfdf5;
+  --danger: #ef4444;
+  --danger-dim: #fef2f2;
+  --info: #6366f1;
   --info-dim: #eef2ff;
 }
 
 /* 🔴 Crimson Authority */
 [data-color-profile="crimson"] {
-  --accent: #991b1b;
-  --accent-light: #ef4444;
-  --accent-dim: rgba(153, 27, 27, 0.15);
-  --accent-border: rgba(153, 27, 27, 0.3);
+  --accent: #dc2626;
+  --accent-rgb: 220, 38, 38;
+  --accent-light: #f87171;
+  --accent-dim: rgba(220, 38, 38, 0.1);
+  --accent-border: rgba(220, 38, 38, 0.2);
   --success: #166534;
   --success-dim: #dcfce7;
-  --danger: #7f1d1d;
-  --danger-dim: #fde8e8;
-  --info: #1e3a8a;
-  --info-dim: #e0e7ff;
+  --danger: #991b1b;
+  --danger-dim: #fef2f2;
+  --info: #2563eb;
+  --info-dim: #eff6ff;
 }
 
 /* ⚫ Graphite (Low-Distraction) */
 [data-color-profile="graphite"] {
-  --accent: #374151;
-  --accent-light: #6b7280;
-  --accent-dim: rgba(55, 65, 81, 0.15);
-  --accent-border: rgba(55, 65, 81, 0.3);
-  --success: #374151;
-  --success-dim: #f3f4f6;
-  --danger: #374151;
-  --danger-dim: #f3f4f6;
-  --info: #374151;
-  --info-dim: #f3f4f6;
+  --accent: #18181b;
+  --accent-rgb: 24, 24, 27;
+  --accent-light: #52525b;
+  --accent-dim: rgba(24, 24, 27, 0.05);
+  --accent-border: rgba(24, 24, 27, 0.1);
+  --success: #18181b;
+  --success-dim: #f4f4f5;
+  --danger: #18181b;
+  --danger-dim: #f4f4f5;
+  --info: #18181b;
+  --info-dim: #f4f4f5;
 }
 
 /* 🔵 Slate Blue (Enterprise) */
 [data-color-profile="slate-blue"] {
   --accent: #475569;
+  --accent-rgb: 71, 85, 105;
   --accent-light: #64748b;
-  --accent-dim: #f1f5f9;
-  --accent-border: rgba(71, 85, 105, 0.3);
+  --accent-dim: rgba(71, 85, 105, 0.1);
+  --accent-border: rgba(71, 85, 105, 0.2);
   --success: #166534;
   --success-dim: #e5f3eb;
-  --danger: #7f1d1d;
-  --danger-dim: #f6eaea;
-  --info: #1e40af;
-  --info-dim: #e8edfb;
+  --danger: #991b1b;
+  --danger-dim: #fef2f2;
+  --info: #2563eb;
+  --info-dim: #eff6ff;
 }
 
 /* 🔘 Warm Gray (Legal/Audit) */
 [data-color-profile="warm-gray"] {
   --accent: #52525b;
+  --accent-rgb: 82, 82, 91;
   --accent-light: #71717a;
-  --accent-dim: #f4f4f5;
-  --accent-border: rgba(82, 82, 91, 0.3);
+  --accent-dim: rgba(82, 82, 91, 0.1);
+  --accent-border: rgba(82, 82, 91, 0.2);
   --success: #365314;
   --success-dim: #ecf5dd;
   --danger: #7c2d12;
@@ -176,84 +183,90 @@
 
 /* 🟢 Muted Teal (Finance/Trust) */
 [data-color-profile="muted-teal"] {
-  --accent: #115e59;
-  --accent-light: #2f7f79;
-  --accent-dim: #e6f4f1;
-  --accent-border: rgba(17, 94, 89, 0.3);
-  --success: #14532d;
-  --success-dim: #e3f2ea;
-  --danger: #7f1d1d;
-  --danger-dim: #f7eaea;
-  --info: #164e63;
-  --info-dim: #e6f1f5;
+  --accent: #0d9488;
+  --accent-rgb: 13, 148, 136;
+  --accent-light: #2dd4bf;
+  --accent-dim: rgba(13, 148, 136, 0.1);
+  --accent-border: rgba(13, 148, 136, 0.2);
+  --success: #059669;
+  --success-dim: #ecfdf5;
+  --danger: #be123c;
+  --danger-dim: #fff1f2;
+  --info: #0891b2;
+  --info-dim: #ecfeff;
 }
 
 /* 🌌 Deep Indigo (Executive) */
 [data-color-profile="deep-indigo"] {
-  --accent: #312e81;
+  --accent: #3730a3;
+  --accent-rgb: 55, 48, 163;
   --accent-light: #4f46e5;
-  --accent-dim: #eef2ff;
-  --accent-border: rgba(49, 46, 129, 0.3);
-  --success: #14532d;
+  --accent-dim: rgba(55, 48, 163, 0.1);
+  --accent-border: rgba(55, 48, 163, 0.2);
+  --success: #065f46;
   --success-dim: #dcfce7;
-  --danger: #7f1d1d;
-  --danger-dim: #fdeCEA;
+  --danger: #9f1239;
+  --danger-dim: #fff1f2;
   --info: #1e3a8a;
   --info-dim: #e0e7ff;
 }
 
 /* 🟫 Muted Bronze (Industrial) */
 [data-color-profile="bronze"] {
-  --accent: #7c4a1d;
-  --accent-light: #a16207;
-  --accent-dim: #f5efe6;
-  --accent-border: rgba(124, 74, 29, 0.3);
-  --success: #365314;
+  --accent: #92400e;
+  --accent-rgb: 146, 64, 14;
+  --accent-light: #b45309;
+  --accent-dim: rgba(146, 64, 14, 0.08);
+  --accent-border: rgba(146, 64, 14, 0.15);
+  --success: #166534;
   --success-dim: #edf5de;
-  --danger: #7c2d12;
-  --danger-dim: #fceae4;
+  --danger: #991b1b;
+  --danger-dim: #fef2f2;
   --info: #78350f;
   --info-dim: #f5ece6;
 }
 
 /* ⚫ Charcoal (Analyst Mode) */
 [data-color-profile="charcoal"] {
-  --accent: #1f2933;
-  --accent-light: #4b5563;
-  --accent-dim: #f3f4f6;
-  --accent-border: rgba(31, 41, 51, 0.3);
-  --success: #1f2933;
-  --success-dim: #f3f4f6;
-  --danger: #1f2933;
-  --danger-dim: #f3f4f6;
-  --info: #1f2933;
-  --info-dim: #f3f4f6;
+  --accent: #18181b;
+  --accent-rgb: 24, 24, 27;
+  --accent-light: #52525b;
+  --accent-dim: rgba(24, 24, 27, 0.05);
+  --accent-border: rgba(24, 24, 27, 0.1);
+  --success: #18181b;
+  --success-dim: #f4f4f5;
+  --danger: #18181b;
+  --danger-dim: #f4f4f5;
+  --info: #18181b;
+  --info-dim: #f4f4f5;
 }
 
 /* 🛠️ Steel Blue (Ops) */
 [data-color-profile="steel-blue"] {
   --accent: #334155;
+  --accent-rgb: 51, 65, 85;
   --accent-light: #64748b;
-  --accent-dim: #edf2f7;
-  --accent-border: rgba(51, 65, 85, 0.3);
-  --success: #166534;
+  --accent-dim: rgba(51, 65, 85, 0.1);
+  --accent-border: rgba(51, 65, 85, 0.2);
+  --success: #059669;
   --success-dim: #e7f3ec;
-  --danger: #7f1d1d;
-  --danger-dim: #f7eaea;
-  --info: #1e40af;
-  --info-dim: #e8edfb;
+  --danger: #be123c;
+  --danger-dim: #fff1f2;
+  --info: #2563eb;
+  --info-dim: #eff6ff;
 }
 
 /* 🏛️ Muted Olive (Institutional) */
 [data-color-profile="muted-olive"] {
   --accent: #3f6212;
-  --accent-light: #6b8e23;
-  --accent-dim: #eff6e7;
-  --accent-border: rgba(63, 98, 18, 0.3);
-  --success: #365314;
+  --accent-rgb: 63, 98, 18;
+  --accent-light: #65a30d;
+  --accent-dim: rgba(63, 98, 18, 0.1);
+  --accent-border: rgba(63, 98, 18, 0.2);
+  --success: #166534;
   --success-dim: #edf5de;
-  --danger: #7f1d1d;
-  --danger-dim: #f6eaea;
+  --danger: #991b1b;
+  --danger-dim: #fef2f2;
   --info: #3f6212;
   --info-dim: #eff6e7;
 }
