@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
@@ -188,8 +189,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
             <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white">
-                <LayoutDashboard size={20} />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden border shadow-sm" style={{ borderColor: 'var(--border)' }}>
+                <Image src="/icons/icon-512.png" alt={APP_NAME} width={36} height={36} className="w-full h-full object-cover" />
               </div>
               <span className="font-bold tracking-tight uppercase" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
             </Link>

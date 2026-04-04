@@ -33,7 +33,7 @@ interface CollectionItem {
 }
 
 export default function CollectionPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { firm } = useFirm()
   const router = useRouter()
   const { t } = useI18n()
@@ -92,7 +92,7 @@ export default function CollectionPage() {
       }
 
       const totalBalance = mDues.reduce((s, d) => s + d.balance, 0);
-      return totalBalance > 0.01 ? { member: m, person: m.persons, dues: mDues, totalBalance, overdueCount: mDues.length } : null;
+      return totalBalance > 0.01 ? { member: m, person: m.persons, group: g, dues: mDues, totalBalance, overdueCount: mDues.length } : null;
     }).filter(Boolean) as any[];
 
     // 2. Group by Person
