@@ -32,6 +32,7 @@ function SettlementPage() {
   const { firm, role, can } = useFirm()
   
   const searchParams = useSearchParams()
+  const router = useRouter()
   const qGroupId = searchParams.get('groupId')
 
   const [entries, setEntries] = useState<Entry[]>([
@@ -197,6 +198,8 @@ function SettlementPage() {
       setTargetMonths(selectedMem.groups.duration)
     }
 
+    if (!firm) return;
+
     // Load auctions where this member is winner
     const { data: aucs } = await withFirmScope(
        supabase
@@ -262,7 +265,7 @@ function SettlementPage() {
 
   return (
     <div className="space-y-6 max-w-5xl pb-20">
-       <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 mb-2 gap-4" style={{ borderColor: 'var(--border)' }}>
+       <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 mb-2 gap-4" style={{ borderColor: 'var(--border)' }} id="tour-settle-title">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Calculator size={24} style={{ color: 'var(--accent)' }} />
@@ -273,7 +276,7 @@ function SettlementPage() {
         <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 md:pb-0">
            <Btn onClick={() => router.push('/settlement/history')} icon={History} variant="secondary">Audit Log</Btn>
            <Btn onClick={addEntry} icon={Plus} variant="secondary">{t('add_month')}</Btn>
-           <Btn onClick={handleSave} icon={Save} loading={saving} variant="primary">{t('save_record')}</Btn>
+           <Btn onClick={handleSave} icon={Save} loading={saving} variant="primary" id="tour-settle-btn">{t('save_record')}</Btn>
         </div>
       </div>
 
@@ -281,61 +284,63 @@ function SettlementPage() {
         
         {/* Entry Table (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
-          <Card title={t('monthly_entry')} subtitle={t('entry_desc')}>
-            <Table>
-              <thead>
-                <tr>
-                  <Th className="w-12">#</Th>
-                  <Th>{t('date')}</Th>
-                  <Th right>{t('amount')} (₹)</Th>
-                  <Th right>{t('balance')} (₹)</Th>
-                  <Th className="w-20 text-center">{t('action')}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry, index) => (
-                  <Tr key={index}>
-                    <Td><span className="text-xs opacity-50 font-mono">#{String(index+1).padStart(2,'0')}</span></Td>
-                    <Td>
-                      <input
-                        type="date"
-                        className="bg-transparent border-none outline-none text-sm w-full p-0"
-                        style={{ color: 'var(--text)' }}
-                        value={entry.date}
-                        onChange={e => updateEntry(index, "date", e.target.value)}
-                      />
-                    </Td>
-                    <Td right>
-                      <input
-                        type="number"
-                        className="bg-transparent border-none outline-none text-right font-bold w-full p-0"
-                        style={{ color: 'var(--text)' }}
-                        value={entry.amount || ''}
-                        placeholder="0"
-                        onChange={e => updateEntry(index, "amount", e.target.value)}
-                      />
-                    </Td>
-                    <Td right className="font-mono text-xs opacity-80">
-                      {fmt(balances[index]?.running)}
-                    </Td>
-                    <Td className="text-center">
-                      {can('deleteSettlement') && (
-                        <button onClick={() => removeEntry(index)} 
-                          className="p-1.5 hover:bg-danger-500/10 hover:text-danger-500 rounded transition-colors text-xs opacity-30 hover:opacity-100">
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-            <div className="mt-4 flex justify-center border-t py-4" style={{ borderColor: 'var(--border)' }}>
-               <button onClick={addEntry} className="text-xs flex items-center gap-1 font-semibold opacity-50 hover:opacity-100 transition-opacity">
-                  <Plus size={14} /> {t('add_month').toUpperCase()}
-               </button>
-            </div>
-          </Card>
+          <div id="tour-settle-list">
+            <Card title={t('monthly_entry')} subtitle={t('entry_desc')}>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th className="w-12">#</Th>
+                    <Th>{t('date')}</Th>
+                    <Th right>{t('amount')} (₹)</Th>
+                    <Th right>{t('balance')} (₹)</Th>
+                    <Th className="w-20 text-center">{t('action')}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry, index) => (
+                    <Tr key={index}>
+                      <Td><span className="text-xs opacity-50 font-mono">#{String(index+1).padStart(2,'0')}</span></Td>
+                      <Td>
+                        <input
+                          type="date"
+                          className="bg-transparent border-none outline-none text-sm w-full p-0"
+                          style={{ color: 'var(--text)' }}
+                          value={entry.date}
+                          onChange={e => updateEntry(index, "date", e.target.value)}
+                        />
+                      </Td>
+                      <Td right>
+                        <input
+                          type="number"
+                          className="bg-transparent border-none outline-none text-right font-bold w-full p-0"
+                          style={{ color: 'var(--text)' }}
+                          value={entry.amount || ''}
+                          placeholder="0"
+                          onChange={e => updateEntry(index, "amount", e.target.value)}
+                        />
+                      </Td>
+                      <Td right>
+                         {fmt(balances[index]?.running)}
+                      </Td>
+                      <Td className="text-center">
+                        {can('deleteSettlement') && (
+                          <button onClick={() => removeEntry(index)} 
+                            className="p-1.5 hover:bg-danger-500/10 hover:text-danger-500 rounded transition-colors text-xs opacity-30 hover:opacity-100">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+              <div className="mt-4 flex justify-center border-t py-4" style={{ borderColor: 'var(--border)' }}>
+                 <button onClick={addEntry} className="text-xs flex items-center gap-1 font-semibold opacity-50 hover:opacity-100 transition-opacity">
+                    <Plus size={14} /> {t('add_month').toUpperCase()}
+                 </button>
+              </div>
+            </Card>
+          </div>
 
           {/* History Section */}
           <Card 

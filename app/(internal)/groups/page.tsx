@@ -188,13 +188,13 @@ export default function GroupsPage() {
         </tr>
       </thead>
       <tbody>
-        {list.map(g => {
+        {list.map((g, idx) => {
           const s = groupStats(g)
           return (
             <Tr key={g.id}>
               {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
               <Td>
-                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors">
+                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
                   {g.name}
                 </Link>
               </Td>
@@ -252,15 +252,17 @@ export default function GroupsPage() {
           <h1 className="text-3xl font-black text-[var(--text)]">{t('active_groups')}</h1>
           <div className="flex gap-2">
             {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
-            {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('new_group')}</Btn>}
+            {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus} id="tour-group-add">{t('new_group')}</Btn>}
           </div>
         </div>
       }>
-        {active.length === 0
-          ? <Empty icon="🏦" text="No active groups. Create your first group." action={
-            <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
-          } />
-          : <GroupTable list={active} showArchBtn={false} />}
+          <div id="tour-group-list">
+            {active.length === 0
+              ? <Empty icon="🏦" text="No active groups. Create your first group." action={
+                <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
+              } />
+              : <GroupTable list={active} showArchBtn={false} />}
+          </div>
       </TableCard>
 
       {/* Completed */}

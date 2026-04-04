@@ -193,13 +193,13 @@ export default function CollectionPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" id="tour-coll-stat">
         <StatCard label="Total Reach" value={fmt(stats.totalOut)} color="danger" />
         <StatCard label="Pending Visits" value={filtered.length} color="accent" />
         <StatCard label="Critical (>3m)" value={stats.critical} color="danger" />
       </div>
 
-      <div className="flex gap-4 items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex gap-4 items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }} id="tour-coll-search">
         <div className="flex-1 relative">
            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
             placeholder="Search name, phone, area..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -212,7 +212,7 @@ export default function CollectionPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
          {filtered.length === 0 ? (
            <div className="col-span-full"><Empty text="Clean slate! No pending collections." /></div>
-         ) : filtered.map(x => (
+         ) : filtered.map((x, idx) => (
            <div key={x.person.id} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
               <div className="p-5 flex-1">
                  <div className="flex justify-between items-start gap-3 mb-4">
@@ -257,6 +257,7 @@ export default function CollectionPage() {
                    setPayModal(x);
                 }}
                 className="w-full py-4 bg-[var(--accent)] text-white font-bold text-sm uppercase tracking-widest hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
+                id={idx === 0 ? "tour-coll-pay" : undefined}
               >
                  <CreditCard size={18} />
                  Record Collection

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
@@ -42,6 +42,14 @@ interface PersonSummary {
 }
 
 export default function PaymentsPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <PaymentsPageContent />
+    </Suspense>
+  )
+}
+
+function PaymentsPageContent() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
@@ -389,7 +397,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2" id="tour-pay-title">
         <h1 className="text-2xl font-black text-[var(--text)]">Payments Ledger</h1>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -401,7 +409,7 @@ export default function PaymentsPage() {
         <StatCard label="Total Persons" value={personSummaries.length} color="accent" />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }} id="tour-pay-filter">
         <div className="flex-1 relative">
            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
             placeholder="Search name or phone..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -496,7 +504,7 @@ export default function PaymentsPage() {
                 <Td right>
                   <div className="flex gap-1 justify-end">
                     <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
-                    <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => {
+                    <Btn size="sm" variant="primary" icon={CreditCard} id="tour-pay-add" onClick={() => {
                         setPayForm({ amount: String(s.overallTotalBalance), date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
                         setPayModal(s);
                     }}>Collect</Btn>
