@@ -329,7 +329,14 @@ function ReportsPageContent() {
           {selectedGroupId && <ReportGroupEnrollment groupId={Number(selectedGroupId)} members={members} groups={groups} auctions={filteredAuctions} />}
         </div>
       )
-      default: return null
+      default: return (
+        <div className="p-12 text-center bg-[var(--surface2)] rounded-[32px] border border-dashed border-[var(--border)]">
+          <AlertTriangle size={48} className="mx-auto mb-4 opacity-20" />
+          <h2 className="text-xl font-bold mb-2">Report Not Found</h2>
+          <p className="text-sm opacity-50 mb-6">The report you are looking for does not exist or has been archived.</p>
+          <Btn onClick={() => setActiveReport(null)}>Return to Hub</Btn>
+        </div>
+      )
     }
   }
 

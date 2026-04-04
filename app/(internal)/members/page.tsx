@@ -11,7 +11,7 @@ import {
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
-import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
+import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
 import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin, Download, Upload, FileSpreadsheet } from 'lucide-react'
@@ -57,6 +57,7 @@ export default function MembersPage() {
   const [payForm,  setPayForm]  = useState({ amount: '', payment_date: new Date().toISOString().substring(0, 10), mode: 'Cash', month: '' })
   const [isEditing, setIsEditing] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial && members.length === 0) setLoading(true)
@@ -81,9 +82,52 @@ export default function MembersPage() {
       setFirms(f || [])
     }
     setLoading(false)
+    setSelectedIds(new Set())
   }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
+
+  const toggleSelect = (id: number) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+  }
+
+  const toggleAll = (ids: number[]) => {
+    if (selectedIds.size === ids.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(ids))
+  }
+
+  async function handleBulkStatusUpdate(newStatus: MemberStatus) {
+    if (selectedIds.size === 0 || !isOwner) return
+    if (!confirm(`Update status to ${newStatus} for ${selectedIds.size} selected members?`)) return
+    
+    setSaving(true)
+    const { error } = await supabase.from('members').update({ status: newStatus }).in('id', Array.from(selectedIds))
+    
+    if (error) showToast(error.message, 'error')
+    else {
+      showToast(`${selectedIds.size} members updated!`, 'success')
+      load()
+    }
+    setSaving(false)
+  }
+
+  async function handleBulkMoveToTrash() {
+    if (selectedIds.size === 0 || !can('deleteMember')) return
+    if (!confirm(`Move ${selectedIds.size} selected tickets to trash?`)) return
+    
+    setSaving(true)
+    const { error } = await supabase.from('members').update({ deleted_at: new Date() }).in('id', Array.from(selectedIds))
+    
+    if (error) showToast(error.message, 'error')
+    else {
+      showToast(`${selectedIds.size} tickets moved to trash!`, 'success')
+      load()
+    }
+    setSaving(false)
+  }
 
   useEffect(() => {
     if (payMember) {
@@ -337,7 +381,7 @@ export default function MembersPage() {
       amount: +payForm.amount,
       payment_date: payForm.payment_date,
       mode: payForm.mode as any,
-      status: isPartial ? 'partial' : 'paid',
+      status: isPartial ? 'paid' : 'paid',
       amount_due: amountDue,
       balance_due: balanceDue,
       payment_type: isPartial ? 'partial' : 'full',
@@ -429,13 +473,13 @@ export default function MembersPage() {
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between gap-4 flex-wrap bg-[var(--surface)] p-2 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border)' }}>
          <div className="flex items-center gap-4 px-2">
             <h1 className="text-2xl font-black text-[var(--text)]">{t('member_directory')}</h1>
             <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-               <Chip active={view === 'people'} onClick={() => setView('people')}>{t('all_people')}</Chip>
-               <Chip active={view === 'groups'} onClick={() => setView('groups')}>{t('by_groups')}</Chip>
+               <Chip active={view === 'people'} onClick={() => { setView('people'); setSelectedIds(new Set()) }}>{t('all_people')}</Chip>
+               <Chip active={view === 'groups'} onClick={() => { setView('groups'); setSelectedIds(new Set()) }}>{t('by_groups')}</Chip>
             </div>
          </div>
          <div className="flex flex-1 gap-2 items-center justify-end px-2">
@@ -460,6 +504,9 @@ export default function MembersPage() {
         <TableCard title={`Total Registry (${filteredPeople.length} People)`} subtitle="All unique individuals registered in the system.">
           <Table>
             <thead><tr>
+              <Th className="w-10">
+                 <input type="checkbox" checked={selectedIds.size === filteredPeople.length && filteredPeople.length > 0} onChange={() => toggleAll(filteredPeople.map(p => p.id))} />
+              </Th>
               {isSuper && <Th>Firm</Th>}
               <Th>{t('register_person')}</Th>
               <Th className="hidden md:table-cell">{t('phone')}</Th>
@@ -468,30 +515,34 @@ export default function MembersPage() {
               <Th right>Action</Th>
             </tr></thead>
             <tbody>
-              {filteredPeople.map(c => (
-                <Tr key={c.id}>
-                  {isSuper && <Td><Badge variant="gray">{(c as any).firms?.name || '—'}</Badge></Td>}
-                  <Td>
-                    <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--accent)] ml-1">({c.nickname})</span>}</div>
-                    <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
-                  </Td>
-                  <Td className="hidden md:table-cell font-mono text-xs">{c.phone || '—'}</Td>
-                  <Td className="hidden sm:table-cell">
-                    {c.activeCount > 0 ? <Badge variant="info">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
-                  </Td>
-                  <Td>
-                     <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                        {fmt(c.totalBalance)}
-                     </div>
-                     {c.totalPaid > 0 && <div className="text-[9px] opacity-40">Paid: {fmt(c.totalPaid)}</div>}
-                  </Td>
-                  <Td right>
-                    <div className="flex gap-1.5 justify-end">
-                      <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--info)' }}>Profile</Btn>
-                    </div>
-                  </Td>
-                </Tr>
-              ))}
+              {filteredPeople.map(c => {
+                const isSelected = selectedIds.has(c.id)
+                return (
+                  <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
+                    <Td><input type="checkbox" checked={isSelected} onChange={() => toggleSelect(c.id)} /></Td>
+                    {isSuper && <Td><Badge variant="gray">{(c as any).firms?.name || '—'}</Badge></Td>}
+                    <Td onClick={() => toggleSelect(c.id)}>
+                      <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--accent)] ml-1">({c.nickname})</span>}</div>
+                      <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
+                    </Td>
+                    <Td className="hidden md:table-cell font-mono text-xs" onClick={() => toggleSelect(c.id)}>{c.phone || '—'}</Td>
+                    <Td className="hidden sm:table-cell" onClick={() => toggleSelect(c.id)}>
+                      {c.activeCount > 0 ? <Badge variant="info">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
+                    </Td>
+                    <Td onClick={() => toggleSelect(c.id)}>
+                       <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                          {fmt(c.totalBalance)}
+                       </div>
+                       {c.totalPaid > 0 && <div className="text-[9px] opacity-40">Paid: {fmt(c.totalPaid)}</div>}
+                    </Td>
+                    <Td right>
+                      <div className="flex gap-1.5 justify-end">
+                        <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--info)' }}>Profile</Btn>
+                      </div>
+                    </Td>
+                  </Tr>
+                )
+              })}
             </tbody>
           </Table>
         </TableCard>
@@ -499,6 +550,8 @@ export default function MembersPage() {
         <div className="space-y-4">
            {allGroups.filter(g => g.status !== 'archived').map(g => {
               const gMembers = members.filter(m => m.group_id === g.id)
+              const gSelectedCount = gMembers.filter(m => selectedIds.has(m.id)).length
+              
               return (
                 <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} tickets enrolled`}
                   actions={
@@ -509,6 +562,9 @@ export default function MembersPage() {
                   }>
                   <Table>
                       <thead><tr>
+                        <Th className="w-10">
+                           <input type="checkbox" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
+                        </Th>
                         <Th>Ticket</Th>
                         <Th>{t('register_person')}</Th>
                         <Th className="hidden md:table-cell">{t('phone')}</Th>
@@ -516,37 +572,74 @@ export default function MembersPage() {
                         <Th>Action</Th>
                       </tr></thead>
                       <tbody>
-                        {gMembers.map(m => (
-                          <Tr key={m.id}>
-                            <Td className="font-mono font-bold">#{m.ticket_no}</Td>
-                            <Td className="font-semibold">
-                               {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--accent)] ml-1 opacity-70">({m.persons.nickname})</span>}
-                               {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
-                            </Td>
-                            <Td className="hidden md:table-cell text-xs">{m.persons?.phone}</Td>
-                            <Td className="hidden sm:table-cell">
-                               {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
-                            </Td>
-                            <Td>
-                               <div className="flex gap-1">
-                                  <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>{t('record_payment')}</Btn>
-                                  <Btn size="sm" variant="ghost" icon={Info} onClick={() => { 
-                                     const p = persons.find(x => x.id === m.person_id)
-                                     if(p) {
-                                        setDetailContact({ ...p, tickets: [], totalPaid: 0, totalBalance: 0, activeCount: 0, pastCount: 0 })
-                                        setEditForm({ name: p.name, nickname: p.nickname||'', phone: p.phone||'', address: p.address||'' })
-                                     }
-                                  }}>Profile</Btn>
-                               </div>
-                            </Td>
-                          </Tr>
-                        ))}
+                        {gMembers.map(m => {
+                          const isSelected = selectedIds.has(m.id)
+                          return (
+                            <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
+                              <Td><input type="checkbox" checked={isSelected} onChange={() => toggleSelect(m.id)} /></Td>
+                              <Td className="font-mono font-bold" onClick={() => toggleSelect(m.id)}>#{m.ticket_no}</Td>
+                              <Td className="font-semibold" onClick={() => toggleSelect(m.id)}>
+                                 {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--accent)] ml-1 opacity-70">({m.persons.nickname})</span>}
+                                 {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
+                              </Td>
+                              <Td className="hidden md:table-cell text-xs" onClick={() => toggleSelect(m.id)}>{m.persons?.phone}</Td>
+                              <Td className="hidden sm:table-cell" onClick={() => toggleSelect(m.id)}>
+                                 {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
+                              </Td>
+                              <Td>
+                                 <div className="flex gap-1">
+                                    <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>{t('record_payment')}</Btn>
+                                    <Btn size="sm" variant="ghost" icon={Info} onClick={() => { 
+                                       const p = persons.find(x => x.id === m.person_id)
+                                       if(p) {
+                                          setDetailContact({ ...p, tickets: [], totalPaid: 0, totalBalance: 0, activeCount: 0, pastCount: 0 })
+                                          setEditForm({ name: p.name, nickname: p.nickname||'', phone: p.phone||'', address: p.address||'' })
+                                          setIsEditing(false)
+                                       }
+                                    }}>Profile</Btn>
+                                 </div>
+                              </Td>
+                            </Tr>
+                          )
+                        })}
                       </tbody>
                   </Table>
                 </TableCard>
               )
            })}
         </div>
+      )}
+
+      {/* Floating ActionBar */}
+      {selectedIds.size > 0 && (
+         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
+            <div className="bg-[var(--surface)] border border-[var(--accent)] shadow-2xl rounded-2xl p-2 px-4 flex items-center gap-6 backdrop-blur-md">
+               <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-sm">
+                     {selectedIds.size}
+                  </div>
+                  <div className="text-sm font-bold opacity-60 uppercase tracking-widest">{view === 'people' ? 'People' : 'Members'}</div>
+               </div>
+               <div className="h-8 w-px bg-[var(--border)]" />
+               <div className="flex items-center gap-2">
+                  {view === 'people' ? (
+                     <Btn variant="danger" size="sm" icon={Trash2} onClick={() => {
+                        if(confirm(`Move ${selectedIds.size} people and ALL their tickets to trash?`)) {
+                           // Implement bulk person delete if needed, or just warn
+                           showToast('Bulk person delete coming soon', 'success')
+                        }
+                     }}>Trash All</Btn>
+                  ) : (
+                    <>
+                      <Btn variant="primary" size="sm" icon={UserCheck} onClick={() => handleBulkStatusUpdate('active')}>Mark Active</Btn>
+                      <Btn variant="secondary" size="sm" onClick={() => handleBulkStatusUpdate('defaulter')}>Mark Defaulter</Btn>
+                      <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkMoveToTrash}>Trash All</Btn>
+                    </>
+                  )}
+                  <Btn variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect</Btn>
+               </div>
+            </div>
+         </div>
       )}
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member" size="lg">

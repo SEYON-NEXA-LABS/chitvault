@@ -3,174 +3,183 @@
 import React from "react"
 import { Card, Btn, Badge } from "@/components/ui"
 import {
-  UserPlus, Users, Gavel, CreditCard,
-  Calculator, ChevronRight, CheckCircle2,
-  ArrowRight, BookOpen, Building2, Landmark, Shield
+  LayoutDashboard, Search, Users, Gavel, 
+  CreditCard, Smartphone, ShieldCheck, 
+  ChevronRight, ArrowRight, Zap, Target,
+  Compass, Activity, Shield, Calculator
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useI18n } from "@/lib/i18n/context"
-
-import { useToast } from "@/lib/hooks/useToast"
 
 export default function AppJourneyPage() {
   const router = useRouter()
   const { t } = useI18n()
 
-  const Step = ({ index, title, description, icon: Icon, href, actionLabel, navLabel, ownerOnly }: any) => (
-    <div className="relative pl-12 pb-12 last:pb-0">
-      {/* Connector Line */}
-      <div className="absolute left-[20px] top-[40px] bottom-0 w-[2px] bg-[var(--border)] last:hidden" />
+  const Chapter = ({ index, title, subtitle, description, icon: Icon, href, actionLabel, color, features }: any) => (
+    <div className="relative mb-24 last:mb-0 group">
+      {/* Dynamic Background Orb */}
+      <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-10 group-hover:opacity-20 transition-opacity duration-700" 
+        style={{ background: color }} />
 
-      {/* Number Badge */}
-      <div className="absolute left-0 top-0 w-10 h-10 rounded-full border-2 border-[var(--accent)] bg-[var(--surface)] flex items-center justify-center font-bold text-[var(--accent)] z-10">
-        {index}
-      </div>
+      <div className="flex flex-col lg:flex-row gap-12 items-start relative z-10">
+        {/* Left: Index & Connector */}
+        <div className="flex flex-row lg:flex-col items-center gap-4">
+           <div className="w-16 h-16 rounded-[24px] flex items-center justify-center text-2xl font-black border-2 transition-all group-hover:scale-110 shadow-xl"
+             style={{ background: 'var(--surface)', borderColor: color, color: color }}>
+             0{index}
+           </div>
+           <div className="h-[2px] w-12 lg:w-[2px] lg:h-48 bg-gradient-to-b from-transparent via-[var(--border)] to-transparent opacity-50" />
+        </div>
 
-      <Card className="p-6 hover:border-[var(--accent)] transition-all group overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex-1 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)]">
-                <Icon size={20} />
+        {/* Right: Content Card */}
+        <div className="flex-1">
+          <div className="mb-4 flex items-center gap-3">
+             <div className="p-2.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] shadow-inner" style={{ color }}>
+                <Icon size={24} />
+             </div>
+             <div>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-0.5">Phase 0{index}</h4>
+                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text)' }}>{title}</h2>
+             </div>
+          </div>
+
+          <p className="text-lg font-medium opacity-60 mb-8 max-w-2xl leading-relaxed">
+            {description}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {features.map((f: string, i: number) => (
+              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] group/feat hover:border-[var(--accent-border)] transition-colors">
+                <div className="w-2 h-2 rounded-full transition-all group-hover/feat:scale-150" style={{ background: color }} />
+                <span className="text-sm font-bold opacity-80">{f}</span>
               </div>
-              <h3 className="text-lg font-bold uppercase tracking-tight">{title}</h3>
-              {ownerOnly && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--danger-dim)] text-[var(--danger)] text-[10px] font-black uppercase tracking-tighter border border-[var(--red-border)]">
-                  <Shield size={10} /> Owner Required
-                </div>
-              )}
-            </div>
-            <p className="text-sm opacity-70 leading-relaxed max-w-2xl">
-              {description}
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Badge variant="gray" className="text-[10px]">Step {index} of 6</Badge>
-              <Badge variant="info" className="text-[10px] flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-info-400" />
-                Sidebar Link: {t(navLabel)}
-              </Badge>
-            </div>
+            ))}
           </div>
-          <div className="shrink-0">
-            <Btn icon={ArrowRight} onClick={() => router.push(href)} variant="secondary" size="sm">
-              {actionLabel}
-            </Btn>
-          </div>
-        </div>
 
-        {/* Subtle Background Icon */}
-        <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-          <Icon size={120} />
+          <div className="flex items-center gap-4">
+            <Btn variant="primary" onClick={() => router.push(href)} className="px-8 py-4 !rounded-2xl shadow-xl hover:shadow-2xl transition-all h-auto">
+              {actionLabel} <ArrowRight className="ml-2" size={18} />
+            </Btn>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-30">
+               Audit Protocol Ready // Secure Layer
+            </div>
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   )
 
   return (
-    <div className="max-w-4xl mx-auto py-8">
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+      {/* Immersive Background */}
+      <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[var(--accent)] opacity-[0.03] blur-[150px] -z-10" />
+      <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-[var(--danger)] opacity-[0.02] blur-[150px] -z-10" />
 
-      {/* Header section */}
-      <div className="text-center mb-16 space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-bold uppercase tracking-widest border border-[var(--accent-border)]">
-          <BookOpen size={14} />
-          Complete Workflow Guide
-        </div>
-        <h1 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
-          The ChitVault <span style={{ color: 'var(--accent)' }}>Journey</span>
-        </h1>
-        <p className="text-base opacity-60 max-w-xl mx-auto">
-          From creating your first contact to settling the final payout.
-          Follow these 5 steps to master your digital chit fund.
-        </p>
-      </div>
-
-      {/* Vertical Timeline */}
-      <div className="space-y-4">
-
-        <Step
-          index={1}
-          icon={UserPlus}
-          title="Create the Person (Contact)"
-          description="Every member starts as a Person record. This separates their identity (name, phone) from their chit tickets. Only the Firm Owner can add new contacts to the system."
-          href="/members"
-          actionLabel="Add Contacts"
-          navLabel="nav_members"
-          ownerOnly={true}
-        />
-
-        <Step
-          index={2}
-          icon={Building2}
-          title="Setup a Chit Group"
-          description="Define your rules: total value, duration, and installment. Choose between the DIVIDEND MODEL (where auction discounts are shared monthly) or the SURPLUS MODEL (where bid amounts are pooled into a group treasury for a larger final payout)."
-          href="/groups"
-          actionLabel="Create Group"
-          navLabel="nav_groups"
-        />
-
-        <Step
-          index={3}
-          icon={Users}
-          title="Onboarding Members"
-          description="Now, link your Persons to the Group. This assigns them a Ticket Number (e.g. Member #05). This structural change is restricted to Owners; staff must be promoted to assist here."
-          href="/groups"
-          actionLabel="Manage Members"
-          navLabel="nav_groups"
-          ownerOnly={true}
-        />
-
-        <Step
-          index={4}
-          icon={Gavel}
-          title="Monthly Auctions & Collections"
-          description="Record current month bidding and outcomes. ChitVault automatically calculates the next month's dues in the Collection Registry by applying the relevant dividends or pooling the surplus according to your group scheme."
-          href="/auctions"
-          actionLabel="Record Auction"
-          navLabel="nav_auctions"
-        />
-
-        <Step
-          index={5}
-          icon={Landmark}
-          title="The Integrated Cash Audit"
-          description="At the end of the day or week, record your physical note counts (Denominations). The app will automatically compare this to your Digital Total (Collections - Payouts) and flag any discrepancies immediately."
-          href="/cashbook"
-          actionLabel="Audit Cash"
-          navLabel="nav_cashbook"
-        />
-
-        <Step
-          index={6}
-          icon={Calculator}
-          title="Final Prize Settlement"
-          description="Use the Settlement Utility to finalize a group. Payouts follow the standard 'Average Payoff Rule' (Total Bids / Duration × Duration-1). You can bind calculations to a specific member for official records, or use 'Manual Mode' as a quick scratchpad."
-          href="/settlement"
-          actionLabel="Calculate Payout"
-          navLabel="nav_settlements"
-        />
-
-      </div>
-
-      {/* Conclusion & Next Steps */}
-      <div className="mt-16 p-8 rounded-3xl border text-center space-y-6 overflow-hidden relative" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-        <div className="relative z-10">
-          <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: 'var(--success)' }} />
-          <h2 className="text-2xl font-bold">You&apos;re all set!</h2>
-          <p className="text-sm opacity-60 max-w-md mx-auto">
-            Following these steps ensures your firm data remains clean, auditable, and easy to manage for your staff.
-          </p>
-          <div className="flex gap-4 justify-center pt-4">
-            <Btn variant="primary" onClick={() => router.push('/dashboard')}>Go to Dashboard</Btn>
-            <Btn variant="secondary" onClick={() => router.push('/schemes')}>Math Guide</Btn>
+      <div className="max-w-6xl mx-auto px-6 py-24">
+        {/* Epic Header */}
+        <div className="max-w-3xl mb-32 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] shadow-sm">
+            <Zap size={16} className="text-[var(--accent)]" />
+            <span className="text-xs font-black uppercase tracking-[0.2em] opacity-60">System Overhaul v2.4</span>
+            <div className="w-[1px] h-3 bg-[var(--border)]" />
+            <span className="text-[10px] font-mono font-bold text-[var(--accent)]">EST. {new Date().getFullYear()}</span>
           </div>
+
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9]" style={{ color: 'var(--text)' }}>
+            The Ultimate <br />
+            <span className="italic" style={{ color: 'var(--accent)' }}>ChitVault</span> Journey
+          </h1>
+
+          <p className="text-xl md:text-2xl font-medium opacity-50 leading-relaxed max-w-2xl">
+            Experience the next generation of financial management. From global discovery to field-optimized collections, your ultimate journey begins here.
+          </p>
         </div>
 
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 p-4 opacity-5">
-          <Landmark size={120} />
+        {/* The Chapters */}
+        <div className="space-y-12">
+          <Chapter
+            index={1}
+            color="var(--accent)"
+            icon={Target}
+            title="The Pulse of Profit"
+            description="Experience real-time intelligence. Our modernized Analytics Engine transforms raw numbers into a visual heartbeat, letting you monitor collection trends and outstanding risks in a single glance."
+            features={["Real-time Collection Toggles", "Aging Debt Analytics", "Growth Projections"]}
+            href="/dashboard"
+            actionLabel="View Dashboard"
+          />
+
+          <Chapter
+            index={2}
+            color="#ec4899"
+            icon={Search}
+            title="Global Discovery"
+            description="Total control via Zero Friction commerce. Utilize the Ctrl+K Command Palette to teleport across People, Groups, and Reports instantly. Your entire ecosystem is now just a keystroke away."
+            features={["Omni-search Interface", "Predictive Navigation", "Instant Action Shortcuts"]}
+            href="/dashboard"
+            actionLabel="Test Search"
+          />
+
+          <Chapter
+            index={3}
+            color="var(--info)"
+            icon={Calculator}
+            title="Smart Allocation"
+            description="Complexity simplified. ChitVault's new Smart Logic automatically distributes consolidated payments across multiple tickets, ensuring the oldest dues are cleared first without manual intervention."
+            features={["Auto-Month Distribution", "Lump Sum Processing", "Dispute-free Ledgers"]}
+            href="/payments"
+            actionLabel="Manage Payments"
+          />
+
+          <Chapter
+            index={4}
+            color="var(--success)"
+            icon={Smartphone}
+            title="Field Supremacy"
+            description="Empower your field agents with the Collection Hub. Mobile-optimized touch surfaces and 1-tap WhatsApp reminders ensure maximum collection rates with minimum effort."
+            features={["Mobile-first Registry", "1-Tap WhatsApp Alerts", "Instant Cash Recording"]}
+            href="/collection"
+            actionLabel="Field Hub"
+          />
+
+          <Chapter
+            index={5}
+            color="var(--danger)"
+            icon={ShieldCheck}
+            title="The Secure Vault"
+            description="Total Governance. With multi-select bulk actions and the new Trash System, you can archive, restore, and audit at scale with confidence. Every byte is tracked, every action is reversible."
+            features={["Bulk Status Updates", "Recovery Trash Bin", "System Audit Trails"]}
+            href="/trash"
+            actionLabel="Governance"
+          />
+        </div>
+
+        {/* Epic Footer */}
+        <div className="mt-32 p-12 md:p-24 rounded-[64px] relative overflow-hidden text-center group" 
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-dim)] to-transparent opacity-40 group-hover:opacity-60 transition-opacity duration-700" />
+          
+          <div className="relative z-10 space-y-8">
+            <div className="w-24 h-24 rounded-[32px] bg-[var(--surface)] border border-[var(--border)] shadow-2xl flex items-center justify-center mx-auto transition-transform group-hover:scale-110 duration-500">
+               <Shield className="text-[var(--accent)]" size={40} />
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight">Your Digital Fortress is <br /> Ready for Scale.</h2>
+            <p className="text-lg opacity-60 max-w-xl mx-auto">
+              You are now operating at Alpha-9 efficiency. The journey has just begun, but your foundation is unbreakable.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+              <Btn variant="primary" onClick={() => router.push('/dashboard')} className="px-10 py-5 !rounded-3xl text-lg shadow-2xl h-auto">Launch Command Center</Btn>
+              <div className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">System Protocol Active</div>
+            </div>
+          </div>
+
+          {/* Background Decorative Icon */}
+          <Activity size={300} className="absolute -bottom-20 -right-20 opacity-[0.03] rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
+        </div>
+
+        <div className="mt-12 text-center opacity-30 text-[9px] font-black uppercase tracking-[0.5em]">
+          Powered by Seyon Nexa Labs • Ultimate Edition 
         </div>
       </div>
-
     </div>
   )
 }

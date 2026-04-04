@@ -12,6 +12,7 @@ import {
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive
 } from 'lucide-react'
+import { CommandPalette, TourProvider } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
@@ -161,225 +162,116 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : null
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+    <TourProvider>
+      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+        {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      <aside className={cn(
-        'fixed top-0 left-0 bottom-0 z-50 w-60 flex flex-col transition-transform duration-300 border-r no-print',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-
-        {/* Firm header */}
-        <div className="px-4 py-4 border-b space-y-3" style={{ borderColor: 'var(--border)' }}>
-          {/* Superadmin Firm Switcher */}
-          {role === 'superadmin' && (
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Active Workspace</label>
-              <select
-                value={switchedFirmId}
-                onChange={(e) => setSwitchedFirmId(e.target.value as any)}
-                className="w-full bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold transition-all focus:ring-1 focus:ring-[var(--accent)] outline-none"
-                style={{ color: switchedFirmId === 'all' ? 'var(--text)' : 'var(--accent)' }}
-              >
-                <option value="all">🌐 Platform Overview</option>
-                <optgroup label="Manage Firms">
-                  {firms.map(f => (
-                    <option key={f.id} value={f.id}>🏢 {f.name}</option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-          )}
-
-          <Link href="/dashboard" className="flex items-center gap-3.5 mb-2 group">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[var(--surface2)] border border-[var(--border)] group-hover:border-[var(--accent-border)] transition-all">
-              <img src="/icons/icon-192.png" alt="Logo" className="w-full h-full object-cover transition-all opacity-90 group-hover:opacity-100" />
-            </div>
-            <div className="flex flex-col truncate">
-              <div className="font-extrabold text-base tracking-tight leading-tight group-hover:text-[var(--accent)] transition-colors">
-                {firm?.name || (switchedFirmId === 'all' ? APP_NAME : APP_NAME)}
+        <aside className={cn(
+          'fixed top-0 left-0 bottom-0 z-50 w-60 flex flex-col transition-transform duration-300 border-r no-print',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white">
+                <LayoutDashboard size={20} />
               </div>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-2">
-            {role === 'superadmin' && switchedFirmId === 'all' ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)] uppercase tracking-wider">
-                GLOBAL
-              </span>
-            ) : (
-              firm && (
-                <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border"
-                  style={{ background: planColor[firm.plan] + '11', color: planColor[firm.plan], borderColor: planColor[firm.plan] + '44' }}>
-                  {firm.plan}
-                </span>
-              )
-            )}
-            <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-[var(--surface2)] border border-[var(--border)] text-[var(--text2)]">
-              {role === 'superadmin' ? 'Superadmin' : (isOwner ? 'Manager' : 'Staff')}
-            </span>
+              <span className="font-bold tracking-tight uppercase" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
+            </Link>
           </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-3">
-          {NAV.map((item, i) => {
-            // Dividers
-            if ('divider' in item && item.divider) {
+          
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+            {NAV.map((item, i) => {
+              if (item.divider) return <div key={i} className="my-4 h-px bg-[var(--border)] opacity-50" />
+              if (item.ownerOnly && !isOwner) return null
+              if (item.superAdminOnly && role !== 'superadmin') return null
+              
+              const Icon = item.icon
+              const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href!))
+              
               return (
-                <div key={i} className="text-xs uppercase tracking-widest px-2 pt-4 pb-1" style={{ color: 'var(--text3)' }}>{t(item.label)}</div>
+                <Link
+                  key={i}
+                  href={item.href!}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all',
+                    active 
+                      ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]' 
+                      : 'text-[var(--text2)] hover:bg-[var(--surface2)]'
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Icon size={18} />
+                  {t(item.label)}
+                </Link>
               )
-            }
+            })}
+          </nav>
 
-            if (!('href' in item)) return null
-
-            const isSuper = role === 'superadmin'
-
-            // Visibility Logic
-            if (item.superAdminOnly && !isSuper) return null // Hide superadmin-only from others
-            if (item.ownerOnly && !isOwner && !isSuper) return null // Hide owner-only from staff (unless superadmin)
-
-            // Note: Superadmin sees everything, so we don't return null for them here
-            const Icon = item.icon!
-            const href = item.href as string;
-            const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-            return (
-              <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "group flex items-center gap-3.5 px-4 py-2.5 rounded-[12px] mb-1.5 text-sm font-semibold transition-all relative overflow-hidden",
-                  active
-                    ? "bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(var(--accent-rgb),0.25)]"
-                    : "text-[var(--text2)] hover:bg-[var(--surface3)] hover:text-[var(--text)]"
-                )}>
-                <Icon size={18} className={cn("transition-transform duration-300", active ? "scale-110" : "opacity-70 group-hover:opacity-100 group-hover:scale-110")} />
-                <span className="relative z-10 flex-1">{t(item.label)}</span>
-                {active && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80" />
-                )}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {isInstallable && (
-          <div className="px-3 pb-3">
-            <button onClick={install}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
-              style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 12px var(--accent-border)' }}>
-              <Download size={15} />
-              Install App
-            </button>
-          </div>
-        )}
-
-        {hasPin && (
-          <div className="px-3 pb-3">
-            <button onClick={lock}
-              title="Lock Session"
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-bold transition-all"
-              style={{ background: 'var(--success)', color: 'white', boxShadow: '0 4px 12px var(--success-dim)' }}>
-              <Lock size={14} />
-              Lock Session
-            </button>
-          </div>
-        )}
-
-        <div className="mt-auto border-t p-4 space-y-4" style={{ borderColor: 'var(--border)' }}>
-          {/* Customization Quick Tools (Moved from Header) */}
-          <div className="flex items-center justify-between gap-1 p-1 rounded-xl bg-[var(--surface2)] border" style={{ borderColor: 'var(--border)' }}>
-            {/* Theme Cycle */}
-            <button onClick={toggleTheme} className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
-              style={{ color: theme === 'system' ? 'var(--accent)' : 'var(--text2)' }}
-              title={`Theme: ${theme.toUpperCase()}`}>
-              {theme === 'light' && <Sun size={14} />}
-              {theme === 'dark' && <Moon size={14} />}
-              {theme === 'system' && <Monitor size={14} />}
-            </button>
-
-            <div className="w-[1px] h-4 bg-[var(--border)]" />
-
-            {/* Language Switch */}
-            <button onClick={() => setLang(lang === 'en' ? 'ta' : 'en')} title="Switch Language"
-              className="px-2 py-1 rounded-lg hover:bg-[var(--surface3)] transition-colors text-[10px] font-bold"
-              style={{ color: 'var(--accent)' }}>
-              {lang === 'en' ? 'தமிழ்' : 'EN'}
-            </button>
-
-            <div className="w-[1px] h-4 bg-[var(--border)]" />
-
-            {/* Font Size */}
-            <div className="flex items-center">
-              <button onClick={() => adjustFont(-1)} title="Smaller font" className="w-6 h-6 flex items-center justify-center text-[10px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A-</button>
-              <button onClick={() => adjustFont(1)} title="Larger font" className="w-6 h-6 flex items-center justify-center text-[12px] font-bold hover:bg-[var(--surface3)] rounded-lg" style={{ color: 'var(--text2)' }}>A+</button>
-            </div>
-
-            <div className="w-[1px] h-4 bg-[var(--border)]" />
-
-            {/* Monochrome */}
-            <button onClick={toggleMono} title="Monochrome Mode"
-              className="p-1.5 rounded-lg hover:bg-[var(--surface3)] transition-colors"
-              style={{ color: monochrome ? 'var(--accent)' : 'var(--text3)' }}>
-              <Palette size={14} />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-[var(--surface2)] group relative border"
-            style={{ borderColor: 'rgba(0,0,0,0)', background: 'transparent' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
-              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-              {userEmail ? userEmail.substring(0, 2).toUpperCase() : '??'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-bold uppercase tracking-wider opacity-40 mb-0.5">{role === 'superadmin' ? 'Platform' : (isOwner ? 'Manager' : 'Staff')}</div>
-              <div className="text-[12px] font-bold uppercase truncate" style={{ color: 'var(--text)' }}>
-                {userEmail}
+          <div className="p-4 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between px-2">
+              <button 
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)]"
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => adjustFont(-1)} className="p-1 text-xs opacity-50 hover:opacity-100">A-</button>
+                <button onClick={() => adjustFont(1)} className="p-1 text-base opacity-50 hover:opacity-100">A+</button>
               </div>
+              <button 
+                onClick={toggleMono}
+                className={cn('p-2 rounded-lg hover:bg-[var(--surface2)]', monochrome ? 'text-[var(--accent)]' : 'text-[var(--text2)]')}
+              >
+                <Palette size={18} />
+              </button>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-                title={t('sign_out')}
-                className="p-1.5 rounded-lg hover:bg-[var(--danger-dim)] hover:text-[var(--danger)] shrink-0"
-                style={{ color: 'var(--text3)' }}>
-                <LogOut size={14} />
+            
+            <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-lg bg-[var(--surface3)] text-[var(--text2)]">
+                  <UserCog size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold truncate" style={{ color: 'var(--text)' }}>{userEmail}</p>
+                  <p className="text-[10px] opacity-60 uppercase font-black">{role}</p>
+                </div>
+              </div>
+              <button 
+                onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+                className="w-full py-2 rounded-xl bg-[var(--danger-dim)] text-[var(--danger)] text-xs font-bold hover:opacity-80 transition-opacity"
+              >
+                {t('sign_out')}
               </button>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between px-2">
-            <div className="text-[10px] font-bold tracking-[0.2em] opacity-40 uppercase">
-              {APP_NAME} v{process.env.NEXT_PUBLIC_APP_VERSION}
-            </div>
-          </div>
-          <div className="mt-2 px-2">
-            <div className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-              Powered by {APP_DEVELOPER}
-            </div>
-          </div>
-        </div>
-      </aside>
+        </aside>
 
-      <div className="flex-1 flex flex-col lg:ml-60">
-        <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 border-b no-print"
-          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden" onClick={() => setSidebarOpen(true)}
-              style={{ color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              <Menu size={20} />
-            </button>
-            <h1 className="text-sm font-bold tracking-tight text-[var(--text2)] uppercase">
-              {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
-              <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
-                style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
-                ⚠ Trial: {trialDaysLeft}d left
-              </div>
-            )}
-            {/* Options toolstrip moved to sidebar footer */}
-          </div>
-        </header>
-        <main className="flex-1 p-5 overflow-auto">{children}</main>
+        <div className="flex-1 flex flex-col lg:ml-60">
+          <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 border-b no-print"
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-3">
+              <button className="lg:hidden" onClick={() => setSidebarOpen(true)}
+                style={{ color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <Menu size={20} />
+              </button>
+              <h1 className="text-sm font-bold tracking-tight text-[var(--text2)] uppercase">
+                {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
+                <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
+                  style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
+                  ⚠ Trial: {trialDaysLeft}d left
+                </div>
+              )}
+            </div>
+          </header>
+          <main className="flex-1 p-5 overflow-auto">{children}</main>
+          <CommandPalette />
+        </div>
       </div>
-    </div>
+    </TourProvider>
   )
 }
