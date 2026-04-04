@@ -4,10 +4,11 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
-import { StatCard, Card, Loading, Badge, LineAnalytics, PieDistribution, OnboardingWidget } from '@/components/ui'
+import { fmt, fmtDate, fmtMonth, getToday } from '@/lib/utils'
+import { StatCard, Card, Loading, Badge, LineAnalytics, PieDistribution, OnboardingWidget, TableCard, Table, Th, Td, Tr, Btn } from '@/components/ui'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { inputClass, inputStyle } from '@/components/ui'
+import { ArrowRight } from 'lucide-react'
 import type { Group, Member, Auction, Payment, Firm } from '@/types'
 
 export default function DashboardPage() {
@@ -31,7 +32,7 @@ export default function DashboardPage() {
         withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId),
         withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
         withFirmScope(supabase.from('auctions').select('*'), targetId).order('id', { ascending: false }).limit(10),
-        withFirmScope(supabase.from('payments').select('*'), targetId),
+        withFirmScope(supabase.from('payments').select('*'), targetId).order('payment_date', { ascending: false }),
       ])
 
       setGroups(g.data || [])
@@ -48,11 +49,11 @@ export default function DashboardPage() {
     load()
   }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
-  const { stats, chartData, groupDist, onboardingSteps } = useMemo(() => {
+  const { stats, chartData, groupDist, modeDist, statusDist, onboardingSteps } = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
     
     // 1. Today's Collections
-    const today = new Date().toISOString().split('T')[0]
+    const today = getToday()
     const todayColl = payments.filter(p => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0)
 
     // 2. Pending Collections
@@ -87,20 +88,64 @@ export default function DashboardPage() {
       return d.toISOString().substring(0, 7) // YYYY-MM
     })
 
-    const collectionTrends = last6Months.map(month => {
-      const amt = payments
-        .filter(p => p.payment_date?.startsWith(month))
+    const collectionTrends = last6Months.map(monthStr => {
+      const [y, m] = monthStr.split('-').map(Number)
+      
+      // Actual
+      const actual = payments
+        .filter(p => p.payment_date?.startsWith(monthStr))
         .reduce((sum, p) => sum + Number(p.amount), 0)
-      return { month: month.substring(5), amount: amt }
+
+      // Expected (Target)
+      let expected = 0
+      groups.forEach(g => {
+        if (!g.start_date) return
+        const gStart = new Date(g.start_date)
+        const auctionNum = (y - gStart.getFullYear()) * 12 + (m - gStart.getMonth())
+        
+        if (auctionNum >= 1 && auctionNum <= g.duration) {
+          const installment = Number(g.chit_value) / g.duration
+          const baseTotal = installment * g.num_members
+          const auc = auctions.find(a => a.group_id === g.id && a.month === auctionNum)
+          
+          if (auc) {
+            expected += baseTotal - (Number(auc.dividend) * g.num_members)
+          } else {
+            // Assume full installment if auction not yet recorded for this month
+            expected += baseTotal
+          }
+        }
+      })
+
+      return { month: monthStr.substring(5), actual, expected: Math.max(0, expected) }
     })
 
-    // 5. Group Distribution
-    const distData = [
-      { name: 'Dividend (Comm)', value: groups.filter(g => g.auction_scheme === 'DIVIDEND').length },
-      { name: 'Accumulation', value: groups.filter(g => g.auction_scheme === 'ACCUMULATION').length }
-    ]
+    // 5. Collection Mode Distribution
+    const modes = ['Cash', 'UPI', 'Bank Transfer']
+    const modeDist = modes.map(m => ({
+      name: m,
+      value: payments.filter(p => p.mode === m).reduce((s, p) => s + Number(p.amount), 0)
+    })).filter(d => d.value > 0)
 
-    // 6. Onboarding Steps
+    // 6. Member Status Distribution
+    const statuses = [
+      { key: 'active', label: 'Active', color: 'var(--success)' },
+      { key: 'defaulter', label: 'Defaulters', color: 'var(--danger)' },
+      { key: 'exited', label: 'Exited', color: 'var(--text3)' },
+      { key: 'foreman', label: 'Foreman', color: 'var(--info)' }
+    ]
+    const statusDist = statuses.map(s => ({
+      name: s.label,
+      value: members.filter(m => m.status === s.key).length
+    })).filter(d => d.value > 0)
+
+    // 7. Group Distribution
+    const distData = [
+      { name: 'Dividend', value: groups.filter(g => g.auction_scheme === 'DIVIDEND').length },
+      { name: 'Accumulation', value: groups.filter(g => g.auction_scheme === 'ACCUMULATION').length }
+    ].filter(d => d.value > 0)
+
+    // 8. Onboarding Steps
     const onboardingSteps = [
       { id: '1', title: 'Create a Group', desc: 'Set up your first chit scheme', link: '/groups', completed: groups.length > 0 },
       { id: '2', title: 'Add Members', desc: 'Register at least 5 people', link: '/members', completed: members.length >= 5 },
@@ -112,6 +157,8 @@ export default function DashboardPage() {
       stats: { totalChitValue, todayColl, totalPending, defaulters },
       chartData: collectionTrends,
       groupDist: distData,
+      modeDist,
+      statusDist,
       onboardingSteps
     }
   }, [groups, members, auctions, payments])
@@ -119,7 +166,7 @@ export default function DashboardPage() {
 
   if (loading) return <Loading />
 
-  const isNewFirm = !chartData.some(d => d.amount > 0) || chartData.length < 2
+  const isNewFirm = !chartData.some(d => d.actual > 0) || chartData.length < 2
 
   return (
     <div className="space-y-6">
@@ -137,7 +184,7 @@ export default function DashboardPage() {
             </h2>
             <p className="text-lg opacity-40 font-medium mt-2">Here is what is happening with your chit funds today.</p>
         </div>
-        {(isNewFirm || !chartData.every(c => c.amount > 0)) && (
+        {(isNewFirm || !chartData.every(c => c.actual > 0)) && (
           <div className="lg:col-span-1" id="tour-onboarding">
             <OnboardingWidget steps={onboardingSteps} />
           </div>
@@ -147,7 +194,9 @@ export default function DashboardPage() {
       {/* Primary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" id="tour-stats">
         <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="accent" />
-        <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
+        <Link href="/reports?type=today_collection" className="block transition-transform hover:scale-[1.02]">
+          <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
+        </Link>
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
           <StatCard label="Total Pending" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="danger" />
         </Link>
@@ -157,19 +206,36 @@ export default function DashboardPage() {
       </div>
 
       {/* Visual Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-analytics">
-        <div className="lg:col-span-2">
-          <LineAnalytics 
-            title="Monthly Collection Trend" 
-            data={chartData} 
-            dataKey="amount" 
-            xKey="month" 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="tour-analytics">
+        <div className="lg:col-span-2 md:col-span-2">
+          {chartData.every(d => (d.actual || 0) === 0 && (d.expected || 0) === 0) ? (
+            <Card className="h-[300px] flex flex-col items-center justify-center border-dashed">
+               <div className="text-3xl mb-2">📊</div>
+               <div className="text-xs font-bold uppercase opacity-40">No Collection Trends Yet</div>
+               <p className="text-[10px] mt-1 opacity-60 px-10 text-center">Charts will populate once you record member payments or auctions.</p>
+            </Card>
+          ) : (
+            <LineAnalytics 
+              title="Monthly Collection Trends" 
+              data={chartData} 
+              dataKey="actual"
+              expectedKey="expected"
+              xKey="month" 
+            />
+          )}
+        </div>
+        <div className="lg:col-span-1">
+          <PieDistribution 
+            title="Collection Modes" 
+            data={modeDist} 
+            dataKey="value" 
+            nameKey="name" 
           />
         </div>
         <div className="lg:col-span-1">
           <PieDistribution 
-            title="Group Scheme Mix" 
-            data={groupDist} 
+            title="Member Health" 
+            data={statusDist} 
             dataKey="value" 
             nameKey="name" 
           />
@@ -271,56 +337,94 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5">
-        <Card className="overflow-hidden">
-          <div className="px-5 py-4 border-b font-semibold text-sm"
-               style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-            Recent Auctions
-          </div>
-          {auctions.length === 0
-            ? <div className="px-5 py-10 text-center text-sm" style={{ color: 'var(--text3)' }}>No auctions yet</div>
-            : <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ background: 'var(--surface2)' }}>
-                    {['Group','Month','Winner','Bid','Dividend','Date'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide"
-                        style={{ color: 'var(--text3)', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {auctions.map(a => {
-                    const g = groups.find(x => x.id === a.group_id)
-                    const w = members.find(x => x.id === a.winner_id)
-                    return (
-                      <tr key={a.id} className="hover:bg-[var(--surface2)] transition-colors">
-                        <td className="px-4 py-3" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
-                          {g?.name || `Group #${a.group_id}`}
-                        </td>
-                        <td className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                          <Badge variant="info">{fmtMonth(a.month, g?.start_date)}</Badge>
-                        </td>
-                        <td className="px-4 py-3" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
-                          👑 {w?.persons?.name || '—'}
-                        </td>
-                        <td className="px-4 py-3 font-mono" style={{ color: 'var(--text)', borderBottom: '1px solid var(--border)' }}>
-                          {fmt(a.bid_amount)}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ borderBottom: '1px solid var(--border)' }}>
-                          {g?.auction_scheme === 'ACCUMULATION' 
-                            ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)} <span className="text-[9px] font-bold">SURPLUS</span></span>
-                            : <span style={{ color: 'var(--success)' }}>{fmt(a.dividend)}/m</span>}
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'var(--text2)', borderBottom: '1px solid var(--border)' }}>
-                          {fmtDate(a.auction_date)}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-          }
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Collections */}
+        <TableCard 
+          title="Recent Collections" 
+          subtitle="Showing latest member payments"
+          actions={<Link href="/reports?type=today_collection" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">Today&apos;s Detail</Link>}
+        >
+          {payments.length === 0 ? (
+            <div className="py-12 text-center opacity-40">
+               <div className="text-3xl mb-2">💸</div>
+               <div className="text-xs font-bold uppercase tracking-widest">No Payments Yet</div>
+               <p className="text-[10px] mt-1 px-10">Go to the Collection page to record your first payment.</p>
+            </div>
+          ) : (
+            <Table>
+              <thead>
+                <Tr>
+                  <Th>Date & Time</Th>
+                  <Th>Member / Mode</Th>
+                  <Th right>Amount</Th>
+                </Tr>
+              </thead>
+              <tbody>
+                {payments.slice(0, 5).map((p) => {
+                  const m = members.find(x => x.id === p.member_id)
+                  const entryTime = p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
+                  return (
+                    <Tr key={p.id}>
+                      <Td>
+                        <div className="text-xs font-bold">{fmtDate(p.payment_date)}</div>
+                        <div className="text-[9px] opacity-40 uppercase tracking-tighter">Entered at {entryTime}</div>
+                      </Td>
+                      <Td>
+                        <div className="text-xs font-semibold truncate max-w-[120px]">{m?.persons?.name || 'Manual Entry'}</div>
+                        <Badge variant="gray" className="text-[8px] py-0">{p.mode}</Badge>
+                      </Td>
+                      <Td right className="font-mono font-black text-[var(--success)]">{fmt(p.amount)}</Td>
+                    </Tr>
+                  )
+                })}
+              </tbody>
+            </Table>
+          )}
+        </TableCard>
+
+        {/* Recent Auctions */}
+        <TableCard 
+          title="Recent Auctions" 
+          subtitle="Latest bidding outcomes"
+          actions={<Link href="/reports?type=auction_sched" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">Schedule</Link>}
+        >
+          {auctions.length === 0 ? (
+            <div className="py-12 text-center opacity-40">
+               <div className="text-3xl mb-2">⚖️</div>
+               <div className="text-xs font-bold uppercase tracking-widest">No Auctions Held</div>
+               <p className="text-[10px] mt-1 px-10">Held auctions will appear here automatically.</p>
+            </div>
+          ) : (
+            <Table>
+              <thead>
+                <Tr>
+                  <Th>Group / Month</Th>
+                  <Th>Winner</Th>
+                  <Th right>Bid Amount</Th>
+                </Tr>
+              </thead>
+              <tbody>
+                {auctions.slice(0, 5).map((a) => {
+                  const g = groups.find(x => x.id === a.group_id)
+                  const w = members.find(x => x.id === a.winner_id)
+                  return (
+                    <Tr key={a.id}>
+                      <Td>
+                        <div className="text-xs font-bold truncate max-w-[100px]">{g?.name || 'Group'}</div>
+                        <Badge variant="info" className="text-[8px] py-0">{fmtMonth(a.month, g?.start_date)}</Badge>
+                      </Td>
+                      <Td>
+                        <div className="text-xs font-semibold truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</div>
+                        <div className="text-[9px] opacity-40 uppercase tracking-tighter">Ticket #{w?.ticket_no}</div>
+                      </Td>
+                      <Td right className="font-mono font-black text-[var(--text)]">{fmt(a.bid_amount)}</Td>
+                    </Tr>
+                  )
+                })}
+              </tbody>
+            </Table>
+          )}
+        </TableCard>
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
 import {
   TableCard, Table, Th, Td, Tr,
   Loading, Empty, Badge, StatCard, Btn, Modal, Field, Toast
@@ -48,7 +48,7 @@ export default function CollectionPage() {
   const [saving,   setSaving]   = useState(false)
 
   const [payModal, setPayModal] = useState<CollectionItem | null>(null)
-  const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
+  const [payForm,  setPayForm]  = useState({ amount: '', date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
 
   const load = useCallback(async () => {
     if (!firm) return
@@ -252,10 +252,10 @@ export default function CollectionPage() {
                  </div>
               </div>
               <button 
-                onClick={() => {
-                   setPayForm({ amount: String(x.totalBalance), date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
-                   setPayModal(x);
-                }}
+               onClick={() => {
+                  setPayForm({ amount: String(x.totalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
+                  setPayModal(x);
+               }}
                 className="w-full py-4 bg-[var(--accent)] text-white font-bold text-sm uppercase tracking-widest hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
                 id={idx === 0 ? "tour-coll-pay" : undefined}
               >

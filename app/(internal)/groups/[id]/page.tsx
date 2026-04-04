@@ -4,12 +4,12 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, cn, APP_NAME } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn, APP_NAME } from '@/lib/utils'
 import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer } from 'lucide-react'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { CSVImportModal } from '@/components/ui'
 import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules } from '@/types'
@@ -40,7 +40,7 @@ export default function GroupLedgerPage() {
   const [allPersons, setAllPersons] = useState<Person[]>([])
   const [importOpen, setImportOpen] = useState(false)
   const [settling, setSettling] = useState<Auction | null>(null)
-  const [settleForm, setSettleForm] = useState({ date: new Date().toISOString().split('T')[0], note: '', amount: '' })
+  const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '' })
   const [payoutOpen, setPayoutOpen] = useState(false)
 
   const load = useCallback(async (isInitial = false) => {
@@ -553,6 +553,7 @@ export default function GroupLedgerPage() {
                 </Td>
                 <Td right className="no-print">
                   <div className="flex justify-end gap-1">
+                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports?type=member_history&member_id=${m.id}`)} icon={History}>Ledger</Btn>
                     <Btn size="sm" variant="ghost" onClick={() => setSelectedMember(m.id)} icon={Info}>Details</Btn>
                     {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>Remove</Btn>}
                   </div>

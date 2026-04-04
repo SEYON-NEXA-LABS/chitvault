@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate } from '@/lib/utils'
+import { fmt, fmtDate, getToday } from '@/lib/utils'
 import { Btn, Card, StatCard, Loading, Empty, Toast, Modal, Badge } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { DENOMINATIONS } from '@/types'
@@ -33,7 +33,7 @@ export default function CashbookPage() {
   const isSuper = role === 'superadmin'
 
   // Form state
-  const [entryDate, setEntryDate]  = useState(new Date().toISOString().split('T')[0])
+  const [entryDate, setEntryDate]  = useState(getToday())
   const [staffId,   setStaffId]    = useState<string | null>(null)
   const [counts,    setCounts]     = useState<DenomCounts>(EMPTY_COUNTS())
   const [notes,     setNotes]      = useState('')
@@ -45,9 +45,10 @@ export default function CashbookPage() {
 
   // Range filter
   const [fromDate, setFromDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]
+    const d = new Date(); d.setDate(d.getDate() - 7); 
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0])
+  const [toDate, setToDate] = useState(getToday())
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -150,7 +151,7 @@ export default function CashbookPage() {
 
   // Stats
   const totalInRange = entries.reduce((s, e) => s + Number(e.total || 0), 0)
-  const todayTotal   = entries.filter(e => e.entry_date === new Date().toISOString().split('T')[0])
+  const todayTotal   = entries.filter(e => e.entry_date === getToday())
     .reduce((s, e) => s + Number(e.total || 0), 0)
   const entryCount = entries.length
 

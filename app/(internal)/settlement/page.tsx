@@ -4,7 +4,7 @@ import React, { useMemo, useState, useCallback, useEffect, Suspense } from "reac
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, Table, Th, Td, Tr, Badge, Loading, Btn, Field } from "@/components/ui"
 import { Calculator, Plus, Trash2, Save, User, ArrowRight, Layers, Calendar, AlertCircle, TrendingUp, CheckCircle2, History } from "lucide-react"
-import { fmt, fmtDate, cn } from "@/lib/utils"
+import { fmt, fmtDate, getToday, cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { useFirm } from "@/lib/firm/context"
 import { useI18n } from "@/lib/i18n/context"
@@ -36,7 +36,7 @@ function SettlementPage() {
   const qGroupId = searchParams.get('groupId')
 
   const [entries, setEntries] = useState<Entry[]>([
-    { date: new Date().toISOString().split('T')[0], amount: 0 }
+    { date: getToday(), amount: 0 }
   ])
   
   const [groups, setGroups] = useState<Group[]>([])
@@ -240,9 +240,9 @@ function SettlementPage() {
     setEntries(updated)
   }
 
-  const addEntry = () => {
-    setEntries([...entries, { date: new Date().toISOString().split('T')[0], amount: 0 }])
-  }
+  const addEntry = useCallback(() => {
+    setEntries(prev => [...prev, { date: getToday(), amount: 0 }])
+  }, [])
 
   const removeEntry = (index: number) => {
     if (!can('deleteSettlement')) return
