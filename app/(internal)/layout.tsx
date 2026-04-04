@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
-  ShieldAlert, Phone, MapPin, Search, AlertTriangle
+  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
@@ -41,6 +41,7 @@ const NAV: NavItem[] = [
   { href: '/settlement', label: 'nav_settlements', icon: Calculator },
   { label: 'nav_manage', divider: true },
   { href: '/team', label: 'nav_team', icon: UserCog },
+  { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
   { href: '/settings', label: 'nav_settings', icon: Settings },
   { label: 'nav_help', divider: true },
   { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },

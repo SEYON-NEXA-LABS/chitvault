@@ -10,6 +10,7 @@ import {
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
+import { logActivity } from '@/lib/utils/logger'
 import { downloadCSV } from '@/lib/utils/csv'
 import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
@@ -49,9 +50,9 @@ export default function GroupsPage() {
     const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [g, a, p] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).order('id'),
-      withFirmScope(supabase.from('auctions').select('group_id,month'), targetId),
-      withFirmScope(supabase.from('payments').select('group_id,status'), targetId),
+      withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).is('deleted_at', null).order('id'),
+      withFirmScope(supabase.from('auctions').select('group_id,month'), targetId).is('deleted_at', null),
+      withFirmScope(supabase.from('payments').select('group_id,status'), targetId).is('deleted_at', null),
     ])
     setGroups((g.data as any) || [])
     setAuctions((a.data as any) || [])
@@ -93,7 +94,7 @@ export default function GroupsPage() {
   async function loadArchived() {
     setArchLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
-    const { data } = await withFirmScope(supabase.from('groups').select('*, firms(name)').eq('status', 'archived'), targetId).order('id')
+    const { data } = await withFirmScope(supabase.from('groups').select('*, firms(name)').eq('status', 'archived'), targetId).is('deleted_at', null).order('id')
     setArchived(data || [])
     setArchLoading(false)
   }
@@ -158,10 +159,16 @@ export default function GroupsPage() {
 
   async function del(id: number) {
     if (!can('deleteGroup')) return
-    if (!confirm('EXTREME DANGER: Delete this group and ALL its members/auctions/payments forever?')) return
-    const { error } = await supabase.from('groups').delete().eq('id', id)
+    if (!confirm('Are you sure you want to move this group to trash? It will be retrievable for 90 days.')) return
+    const { error } = await supabase.from('groups').update({ deleted_at: new Date() }).eq('id', id)
     if (error) showToast(error.message, 'error')
-    else { showToast('Group permanently deleted'); load() }
+    else { 
+      showToast('Group moved to trash!'); 
+      if (firm) {
+        await logActivity(firm.id, 'GROUP_ARCHIVED', 'group', id, { id });
+      }
+      load() 
+    }
   }
 
   const GroupTable = ({ list, showArchBtn }: { list: Group[], showArchBtn: boolean }) => (

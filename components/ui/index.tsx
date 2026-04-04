@@ -74,16 +74,38 @@ export function Card({ title, subtitle, children, className, style }: {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, color = 'accent' }: {
+export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
   label: string; value: string | number; sub?: string
   color?: 'accent' | 'success' | 'danger' | 'info'
+  icon?: any
 }) {
   const colors = { accent: 'var(--accent)', success: 'var(--success)', danger: 'var(--danger)', info: 'var(--info)' }
+  const bgColors = { 
+    accent: 'var(--accent-dim)', 
+    success: 'var(--success-dim)', 
+    danger: 'var(--danger-dim)', 
+    info: 'var(--info-dim)' 
+  }
+  
   return (
     <Card className="p-5">
-      <div className="text-xs uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>{label}</div>
-      <div className="font-mono text-2xl font-semibold" style={{ color: colors[color] }}>{value}</div>
-      {sub && <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>{sub}</div>}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>{label}</div>
+          <div className="font-mono text-2xl font-semibold" style={{ color: colors[color] }}>{value}</div>
+          {sub && <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>{sub}</div>}
+        </div>
+        {Icon && (
+          <div className="p-2 rounded-xl border flex items-center justify-center" 
+            style={{ 
+              background: bgColors[color], 
+              borderColor: 'var(--border)',
+              color: colors[color] 
+            }}>
+            <Icon size={20} />
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

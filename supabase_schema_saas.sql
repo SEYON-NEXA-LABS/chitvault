@@ -777,9 +777,44 @@ end;
 $$;
 grant execute on function public.admin_create_firm(text,text,uuid,text,text,text,text,text,text) to authenticated;
 
+
 -- ══════════════════════════════════════════════════════════════
--- AUCTION RULES & FOREMAN COMMISSION (v1.3 additions)
+-- 11. GLOBAL SOFT-DELETE (TRASH/ARCHIVE) - v2.5 (90-Day Retention)
 -- ══════════════════════════════════════════════════════════════
+
+-- ── Add deleted_at column to all primary entities ────────────
+alter table groups        add column if not exists deleted_at timestamptz;
+alter table members       add column if not exists deleted_at timestamptz;
+alter table persons       add column if not exists deleted_at timestamptz;
+alter table auctions      add column if not exists deleted_at timestamptz;
+alter table payments      add column if not exists deleted_at timestamptz;
+alter table settlements   add column if not exists deleted_at timestamptz;
+alter table denominations add column if not exists deleted_at timestamptz;
+alter table profiles      add column if not exists deleted_at timestamptz;
+
+-- ── Create a periodic maintenance function ────────────────────
+-- Purges records from the "Trash" that are older than 90 days.
+-- Suggested execution: Cron job (pg_cron) or manual maintenance.
+create or replace function public.purge_old_trash()
+returns void 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+begin
+  -- Note: We only delete records that have a deleted_at timestamp older than 90 days.
+  delete from public.payments      where deleted_at < now() - interval '90 days';
+  delete from public.auctions      where deleted_at < now() - interval '90 days';
+  delete from public.settlements   where deleted_at < now() - interval '90 days';
+  delete from public.denominations where deleted_at < now() - interval '90 days';
+  delete from public.members       where deleted_at < now() - interval '90 days';
+  delete from public.persons       where deleted_at < now() - interval '90 days';
+  delete from public.profiles      where deleted_at < now() - interval '90 days';
+  delete from public.groups        where deleted_at < now() - interval '90 days';
+end;
+$$;
+
+grant execute on function public.purge_old_trash() to authenticated;
 
 -- ── Auction rules columns on groups table ────────────────────
 alter table groups

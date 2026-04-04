@@ -50,11 +50,11 @@ export default function AuctionsPage() {
     if (isInitial) setLoading(true)
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
 
-    let gQ  = withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status','closed'), targetId).order('name')
-    let mQ  = withFirmScope(supabase.from('members').select('*, persons(*)').in('status',['active','foreman']), targetId)
-    let aQ  = withFirmScope(supabase.from('auctions').select('*, firms(name)'), targetId).order('month', { ascending: false })
-    let fcQ = withFirmScope(supabase.from('foreman_commissions').select('*'), targetId).order('month')
-    let pQ  = withFirmScope(supabase.from('payments').select('*'), targetId)
+    let gQ  = withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status','closed'), targetId).is('deleted_at', null).order('name')
+    let mQ  = withFirmScope(supabase.from('members').select('*, persons(*)').in('status',['active','foreman']), targetId).is('deleted_at', null)
+    let aQ  = withFirmScope(supabase.from('auctions').select('*, firms(name)'), targetId).is('deleted_at', null).order('month', { ascending: false })
+    let fcQ = withFirmScope(supabase.from('foreman_commissions').select('*'), targetId).order('month') // No deleted_at on join table usually, but logic depends on parent
+    let pQ  = withFirmScope(supabase.from('payments').select('*'), targetId).is('deleted_at', null)
     
     const [g, m, a, fc, p] = await Promise.all([gQ, mQ, aQ, fcQ, pQ])
     
@@ -85,7 +85,7 @@ export default function AuctionsPage() {
     const foremanM   = members.filter(m => m.group_id === g.id && m.status === 'foreman')
 
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
-    const { data: rules } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).single()
+    const { data: rules } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).is('deleted_at', null).single()
     setGroupRules(rules)
     setEligible(gMembers)
     setForm(f => ({
@@ -190,19 +190,19 @@ export default function AuctionsPage() {
 
   async function del(id: number) {
     if (!can('deleteAuction')) return
-    if (!confirm('Are you sure you want to delete this auction? This will revert stats but might leave payment gaps.')) return
+    if (!confirm('Are you sure you want to move this auction to trash?')) return
     
     // Find auction for logging
     const auc = auctions.find(a => a.id === id);
     
-    const { error } = await supabase.from('auctions').delete().eq('id', id)
+    const { error } = await supabase.from('auctions').update({ deleted_at: new Date() }).eq('id', id)
     if (error) show(error.message, 'error')
     else { 
-      show('Auction deleted'); 
+      show('Auction moved to trash'); 
       if (auc && firm) {
         await logActivity(
           firm.id,
-          'AUCTION_DELETED',
+          'AUCTION_ARCHIVED',
           'auction',
           id,
           { month: auc.month, group_id: auc.group_id }

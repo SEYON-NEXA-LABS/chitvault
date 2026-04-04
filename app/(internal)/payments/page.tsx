@@ -71,10 +71,10 @@ export default function PaymentsPage() {
     const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [g, m, a, p] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId).order('name'),
-      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
-      withFirmScope(supabase.from('auctions').select('*'), targetId).order('month'),
-      withFirmScope(supabase.from('payments').select('*'), targetId).order('payment_date', { ascending: false }),
+      withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId).is('deleted_at', null).order('name'),
+      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).is('deleted_at', null),
+      withFirmScope(supabase.from('auctions').select('*'), targetId).is('deleted_at', null).order('month'),
+      withFirmScope(supabase.from('payments').select('*'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }),
     ])
     setGroups(g.data || [])
     setMembers(m.data || [])
@@ -332,21 +332,21 @@ export default function PaymentsPage() {
 
   async function handleDeletePayment(paymentId: number) {
     if (!can('deletePayment')) return;
-    if (!window.confirm('Are you sure you want to delete this payment record? This will increase the outstanding balance.')) return;
+    if (!window.confirm('Are you sure you want to move this payment record to trash?')) return;
     
     // Get details for logging BEFORE delete
     const payment = payments.find(p => p.id === paymentId);
     
     // Double-guard delete with firm_id for SaaS isolation
-    const { error } = await supabase.from('payments').delete().eq('id', paymentId).eq('firm_id', firm?.id);
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).eq('id', paymentId).eq('firm_id', firm?.id);
     if (error) {
       show(error.message, 'error');
     } else {
-      show('Payment reverted successfully!');
+      show('Payment moved to trash!');
       if (payment && firm) {
         await logActivity(
           firm.id,
-          'PAYMENT_DELETED',
+          'PAYMENT_ARCHIVED',
           'payment',
           paymentId,
           { amount: payment.amount, month: payment.month }

@@ -64,11 +64,11 @@ export default function MembersPage() {
     
     // Scoped Queries for Multi-Tenancy
     const [g, m, p, a, pay] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*, firms(name)'), targetId).order('name'),
-      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).order('ticket_no'),
-      withFirmScope(supabase.from('persons').select('*, firms(name)'), targetId).order('name'),
-      withFirmScope(supabase.from('auctions').select('*'), targetId).order('month'),
-      withFirmScope(supabase.from('payments').select('*'), targetId),
+      withFirmScope(supabase.from('groups').select('*, firms(name)'), targetId).is('deleted_at', null).order('name'),
+      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).is('deleted_at', null).order('ticket_no'),
+      withFirmScope(supabase.from('persons').select('*, firms(name)'), targetId).is('deleted_at', null).order('name'),
+      withFirmScope(supabase.from('auctions').select('*'), targetId).is('deleted_at', null).order('month'),
+      withFirmScope(supabase.from('payments').select('*'), targetId).is('deleted_at', null),
     ])
     setAllGroups(g.data || [])
     setMembers(m.data || [])
@@ -376,34 +376,46 @@ export default function MembersPage() {
 
   async function deleteMember(m: Member) {
     if (!can('deleteMember')) return
-    if (!confirm('Are you sure you want to remove this ticket?')) return
-    const { error } = await supabase.from('members').delete().eq('id', m.id)
+    if (!confirm('Are you sure you want to move this ticket to trash?')) return
+    const { error } = await supabase.from('members').update({ deleted_at: new Date() }).eq('id', m.id)
     if (error) showToast(error.message, 'error')
-    else { showToast('Ticket removed!'); setActionMember(null); load() }
+    else { 
+      showToast('Ticket moved to trash!'); 
+      setActionMember(null); 
+      load() 
+      
+      if (firm) {
+        await logActivity(firm.id, 'MEMBER_ARCHIVED', 'member', m.id, { ticket_no: m.ticket_no });
+      }
+    }
   }
 
   async function deletePerson(pId: number) {
     if (!can('deleteMember')) return
-    if (!confirm('Are you sure? This will remove the person and ALL their tickets across ALL groups!')) return
-    const { error } = await supabase.from('persons').delete().eq('id', pId)
-    if (error) showToast(error.message, 'error')
-    else { 
-      showToast('Person and all tickets removed!'); 
-      
-      // Log Activity
-      if (firm) {
-        await logActivity(
-          firm.id,
-          'MEMBER_DELETED',
-          'person',
-          pId,
-          { id: pId }
-        );
-      }
+    if (!confirm('Are you sure? This will move the person and ALL their tickets to trash!')) return
+    
+    // Soft delete the person
+    const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
+    if (pErr) { showToast(pErr.message, 'error'); return }
 
-      setDetailContact(null); 
-      load() 
+    // Soft delete all their members/tickets
+    await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)
+    
+    showToast('Person and tickets moved to trash!'); 
+    
+    // Log Activity
+    if (firm) {
+      await logActivity(
+        firm.id,
+        'MEMBER_ARCHIVED',
+        'person',
+        pId,
+        { id: pId }
+      );
     }
+
+    setDetailContact(null); 
+    load()
   }
 
   async function transferTicket(targetMember: Member, exitM: number, newP: { name: string, phone: string, address: string }) {

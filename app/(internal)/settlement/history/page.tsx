@@ -41,7 +41,7 @@ function SettlementHistoryPage() {
       withFirmScope(
         supabase.from('settlements').select('*, members(id, persons(name, phone), groups(id, name, duration))'),
         firm.id
-      ).order('created_at', { ascending: false }),
+      ).is('deleted_at', null).order('created_at', { ascending: false }),
       withFirmScope(
         supabase.from('groups').select('*').neq('status', 'archived'),
         firm.id
@@ -80,11 +80,11 @@ function SettlementHistoryPage() {
   }, [filtered])
 
   async function handleDelete(id: number) {
-    if (!can('deleteSettlement') || !confirm(t('delete_confirm'))) return
-    const { error } = await supabase.from('settlements').delete().eq('id', id).eq('firm_id', firm.id)
+    if (!firm || !can('deleteSettlement') || !confirm(t('delete_confirm'))) return
+    const { error } = await supabase.from('settlements').update({ deleted_at: new Date() }).eq('id', id).eq('firm_id', firm.id)
     if (error) return show(error.message, 'error')
-    show('Settlement record permanently removed')
-    logActivity(firm!.id, 'SETTLEMENT_DELETED', 'settlements', String(id))
+    show('Settlement record moved to trash/archive')
+    logActivity(firm.id, 'SETTLEMENT_ARCHIVED', 'settlements', String(id))
     loadData()
   }
 
