@@ -1,81 +1,88 @@
 -- ====================================================================
--- ChitVault Targeted Demo Seeding Script (Non-Destructive & Fixed ID)
+-- ChitVault Secure Demo Seeding Script (Non-Destructive & Fixed ID)
 -- 
--- PURPOSE:
--- 1. Syncs development auth users (admin, manager, staff).
--- 2. Creates/Updates "Demo Corp" with a STATIC UUID.
--- 3. Targets and REPLACES data ONLY for "Demo Corp" (idempotent).
--- 4. Seeds 3 months of history for realistic report testing.
---
--- TARGET USERS:
--- admin@dev.chitvault.local    / DevPass123! (Owner)  UUID: ba8a81ff-67cc-4d3b-bced-d96bbc88834c
--- manager@dev.chitvault.local  / DevPass123! (Owner)  UUID: 088857a0-cd2d-4bec-986b-047951357aef
--- staff@dev.chitvault.local    / DevPass123! (Staff)  UUID: b7568d38-f817-4aea-a394-d7e66b1cff83
+-- USAGE:
+-- 1. Replace 'CHANGE_ME_TO_A_SECURE_PASSWORD' with your desired password.
+-- 2. Run this script in the Supabase SQL Editor.
 -- ====================================================================
 
--- ── 1. AUTH SYNC: Create/Sync dev users in auth.* ──────────────────────
-do $auth_sync$
+do $config$
 DECLARE
-  admin_uuid uuid := 'ba8a81ff-67cc-4d3b-bced-d96bbc88834c'::uuid;
-  manager_uuid uuid := '088857a0-cd2d-4bec-986b-047951357aef'::uuid;
-  staff_uuid uuid := 'b7568d38-f817-4aea-a394-d7e66b1cff83'::uuid;
+  v_seed_password text := 'CHANGE_ME_TO_A_SECURE_PASSWORD'; 
+  superadmin_uuid uuid := '783e36ea-a791-4ce5-ae23-8f67c405a1d6'::uuid; -- Official Superadmin
+  admin_uuid      uuid := 'ba8a81ff-67cc-4d3b-bced-d96bbc88834c'::uuid; -- Dev Admin
+  manager_uuid    uuid := '088857a0-cd2d-4bec-986b-047951357aef'::uuid;
+  staff_uuid      uuid := 'b7568d38-f817-4aea-a394-d7e66b1cff83'::uuid;
 BEGIN
-  -- Admin
+  -- ── 1. AUTH SYNC: Create/Sync users in auth.* ──────────────────────
+  -- 1.1 Official Superadmin
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'seyonnexalabs@gmail.com') THEN
+    INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, superadmin_uuid, 'authenticated', 'authenticated', 'seyonnexalabs@gmail.com', crypt(v_seed_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
+    
+    INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+    VALUES (gen_random_uuid(), superadmin_uuid, format('{"sub":"%s","email":"seyonnexalabs@gmail.com"}', superadmin_uuid)::jsonb, 'email', superadmin_uuid, now(), now(), now());
+  END IF;
+
+  -- 1.2 Dev Admin
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@dev.chitvault.local') THEN
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, admin_uuid, 'authenticated', 'authenticated', 'admin@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, admin_uuid, 'authenticated', 'authenticated', 'admin@dev.chitvault.local', crypt(v_seed_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
     
     INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
     VALUES (gen_random_uuid(), admin_uuid, format('{"sub":"%s","email":"admin@dev.chitvault.local"}', admin_uuid)::jsonb, 'email', admin_uuid, now(), now(), now());
   END IF;
 
-  -- Manager
+  -- 1.3 Dev Manager
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'manager@dev.chitvault.local') THEN
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, manager_uuid, 'authenticated', 'authenticated', 'manager@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, manager_uuid, 'authenticated', 'authenticated', 'manager@dev.chitvault.local', crypt(v_seed_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
     
     INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
     VALUES (gen_random_uuid(), manager_uuid, format('{"sub":"%s","email":"manager@dev.chitvault.local"}', manager_uuid)::jsonb, 'email', manager_uuid, now(), now(), now());
   END IF;
 
-  -- Staff
+  -- 1.4 Dev Staff
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'staff@dev.chitvault.local') THEN
     INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, staff_uuid, 'authenticated', 'authenticated', 'staff@dev.chitvault.local', crypt('DevPass123!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
+    VALUES ('00000000-0000-0000-0000-000000000000'::uuid, staff_uuid, 'authenticated', 'authenticated', 'staff@dev.chitvault.local', crypt(v_seed_password, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
     
     INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
     VALUES (gen_random_uuid(), staff_uuid, format('{"sub":"%s","email":"staff@dev.chitvault.local"}', staff_uuid)::jsonb, 'email', staff_uuid, now(), now(), now());
   END IF;
 END
-$auth_sync$;
+$config$;
+
+
 
 -- ── 2. FIRM & TARGETED CLEANUP: Setup/Reset Demo Corp ───────────────────
 do $demo_seed$
 DECLARE
   v_demo_firm_id uuid := 'd0000000-0000-0000-0000-000000000001'::uuid;
+  superadmin_uuid uuid;
   admin_uuid uuid;
   manager_uuid uuid;
   staff_uuid uuid;
   g_div_id bigint;
   g_acc_id bigint;
   v_auc_id bigint;
-  p_ids bigint[];
   p_id bigint;
   i int;
 BEGIN
   -- Get user IDs
-  SELECT id INTO admin_uuid FROM auth.users WHERE email = 'admin@dev.chitvault.local';
-  SELECT id INTO manager_uuid FROM auth.users WHERE email = 'manager@dev.chitvault.local';
-  SELECT id INTO staff_uuid FROM auth.users WHERE email = 'staff@dev.chitvault.local';
+  SELECT id INTO superadmin_uuid FROM auth.users WHERE email = 'seyonnexalabs@gmail.com';
+  SELECT id INTO admin_uuid      FROM auth.users WHERE email = 'admin@dev.chitvault.local';
+  SELECT id INTO manager_uuid    FROM auth.users WHERE email = 'manager@dev.chitvault.local';
+  SELECT id INTO staff_uuid      FROM auth.users WHERE email = 'staff@dev.chitvault.local';
 
-  -- Upsert Firm: "Demo Corp" with FIXED UUID
-  INSERT INTO public.firms (id, name, slug, owner_id, city, phone, theme_id)
-  VALUES (v_demo_firm_id, 'Demo Corp', 'demo-corp', admin_uuid, 'Madurai', '+91-98765-43210', 'theme2')
+  -- Upsert Firm: "Seyon Demo Corp" (Owned by Superadmin)
+  INSERT INTO public.firms (id, name, slug, owner_id, city, phone, theme_id, color_profile, font)
+  VALUES (v_demo_firm_id, 'Seyon Demo Corp', 'seyon-demo', superadmin_uuid, 'Madurai', '+91-98765-43210', 'theme2', 'indigo', 'Outfit')
   ON CONFLICT (id) DO UPDATE 
   SET name = EXCLUDED.name, slug = EXCLUDED.slug, owner_id = EXCLUDED.owner_id, city = EXCLUDED.city, phone = EXCLUDED.phone, theme_id = EXCLUDED.theme_id;
 
   -- TARGETED CLEANUP: Delete only data for this firm (idempotency)
-  -- Order: children first, then parents within the firm context
+  -- ... existing deletes ...
   DELETE FROM public.activity_logs      WHERE firm_id = v_demo_firm_id;
   DELETE FROM public.denominations      WHERE firm_id = v_demo_firm_id;
   DELETE FROM public.foreman_commissions WHERE firm_id = v_demo_firm_id;
@@ -89,9 +96,10 @@ BEGIN
   -- Sync profiles
   INSERT INTO public.profiles (id, firm_id, full_name, role)
   VALUES 
-    (admin_uuid,   v_demo_firm_id, 'Admin Demo',   'owner'),
-    (manager_uuid, v_demo_firm_id, 'Manager Demo', 'owner'),
-    (staff_uuid,   v_demo_firm_id, 'Staff Demo',   'staff')
+    (superadmin_uuid, v_demo_firm_id, 'Seyon Boss', 'superadmin'),
+    (admin_uuid,      v_demo_firm_id, 'Admin Demo', 'owner'),
+    (manager_uuid,    v_demo_firm_id, 'Manager Demo', 'owner'),
+    (staff_uuid,      v_demo_firm_id, 'Staff Demo', 'staff')
   ON CONFLICT (id) DO UPDATE 
   SET firm_id = EXCLUDED.firm_id, full_name = EXCLUDED.full_name, role = EXCLUDED.role;
 
@@ -140,17 +148,18 @@ BEGIN
 
   -- MONTH 2:
   -- DIV Group Auction 2: Ticket 2 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
+  -- Marked as SETTLED for audit testing
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount, payout_note)
   VALUES (v_demo_firm_id, g_div_id, 2, (date_trunc('month', now()) - interval '2 months' + interval '10 days')::date, 
-    (SELECT id FROM members WHERE group_id = g_div_id AND ticket_no = 2), 20000.00, 100000.00, 7500.00, 15000.00)
+    (SELECT id FROM members WHERE group_id = g_div_id AND ticket_no = 2), 20000.00, 100000.00, 7500.00, 15000.00, true, (date_trunc('month', now()) - interval '2 months' + interval '20 days')::date, 15000.00, 'Demo Audit Record')
   RETURNING id INTO v_auc_id;
   INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_div_id, v_auc_id, 2, 100000.00, 20000.00, 80000.00, 'percent_of_chit', 5.00, 5000.00, 75000.00, 7500.00, 'Seed Month 2');
     
   -- ACC Group Auction 2: Ticket 2 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
   VALUES (v_demo_firm_id, g_acc_id, 2, (date_trunc('month', now()) - interval '2 months' + interval '12 days')::date, 
-    (SELECT id FROM members WHERE group_id = g_acc_id AND ticket_no = 2), 4000.00, 50000.00, 0.00, 43500.00)
+    (SELECT id FROM members WHERE group_id = g_acc_id AND ticket_no = 2), 4000.00, 50000.00, 0.00, 43500.00, true, (date_trunc('month', now()) - interval '2 months' + interval '22 days')::date, 43500.00)
   RETURNING id INTO v_auc_id;
   INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_acc_id, v_auc_id, 2, 50000.00, 4000.00, 4000.00, 'percent_of_chit', 5.00, 2500.00, 1500.00, 0.00, 'Seed Month 2');
@@ -189,7 +198,7 @@ BEGIN
   SELECT v_demo_firm_id, m.id, m.group_id, 2, grp.monthly_contribution / 2, (grp.start_date + interval '1 month' + interval '6 days')::date, 'Cash', 'paid', 'partial', grp.monthly_contribution, grp.monthly_contribution / 2, staff_uuid
   FROM public.members m JOIN public.groups grp ON m.group_id = grp.id WHERE m.firm_id = v_demo_firm_id AND m.ticket_no = 6;
 
-  -- Month 3 (Early entries)
+  -- Month 3 (Pending Dues demo - only tickets 1-3 paid)
   INSERT INTO public.payments (firm_id, member_id, group_id, month, amount, payment_date, mode, status, payment_type, amount_due, balance_due, collected_by)
   SELECT v_demo_firm_id, m.id, m.group_id, 3, grp.monthly_contribution, (grp.start_date + interval '2 months' + interval '5 days')::date, 'Bank Transfer', 'paid', 'full', grp.monthly_contribution, 0.00, staff_uuid
   FROM public.members m JOIN public.groups grp ON m.group_id = grp.id WHERE m.firm_id = v_demo_firm_id AND m.ticket_no <= 3;

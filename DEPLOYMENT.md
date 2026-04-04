@@ -2,13 +2,13 @@
 
 ## Architecture — Single Domain, Multi-Tenant
 
-All firms share one URL: **chitvault.app**
+All firms share one URL: **chitvault.in**
 
 ```
-chitvault.app          → Landing page
-chitvault.app/login    → All firms log in here (same URL)
-chitvault.app/register → New firm registration
-chitvault.app/admin    → Your super-admin dashboard
+chitvault.in          → Landing page
+chitvault.in/login    → All firms log in here (same URL)
+chitvault.in/register → New firm registration
+chitvault.in/admin    → Your super-admin dashboard
 
 Each user's firm_id on their profile automatically
 isolates their data via Supabase RLS.
@@ -17,34 +17,65 @@ No subdomains. No wildcard DNS. No per-client config.
 
 ---
 
-## Deploy to Railway (Starter Plan)
+## 🚀 Deploy to Hostinger (VPS + PM2)
+
+ChitVault uses a **Hybrid Cloud** setup:
+- **Web App**: Hosted on Hostinger (VPS) for low-latency web rendering.
+- **Database**: Hosted on Supabase for reliable auth and real-time data.
+
+### 1. Server Environment Setup
+Before deploying, ensure your Hostinger VPS has Node.js (v18+) and PM2 installed:
 
 ```bash
-# Install Railway CLI
-npm install -g railway
+# Update system
+sudo apt update && sudo apt upgrade -y
 
-# Login
-railway login
+# Install Node.js (via NVM recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+source ~/.bashrc
+nvm install 18
 
-# Deploy
+# Install PM2 (Process Manager)
+npm install -g pm2
+```
+
+### 2. Deploy Codebase
+SSH into your Hostinger VPS and run the following:
+
+```bash
+# Clone the repository
+git clone https://github.com/seyonnexalabs-cyber/chitvault.git
 cd chitvault
-railway up
 
-# Set env vars in Railway Dashboard → Your Project → Variables:
-#   NEXT_PUBLIC_SUPABASE_URL
-#   NEXT_PUBLIC_SUPABASE_ANON_KEY
-#   NEXT_PUBLIC_APP_NAME
-#   NEXT_PUBLIC_APP_URL
+# Install dependencies and build
+npm install
+npm run build
 ```
 
-### Add your custom domain (optional)
-```
-Railway Dashboard → Your Project → Settings → Domains
-Add: chitvault.app
-Add: www.chitvault.app
+### 3. Start the Production Server
+Use PM2 to ensure the Next.js app stays alive and restarts on failure:
 
-At your domain registrar, add:
-  CNAME  www  →  chitvault.up.railway.app
+```bash
+# Start Next.js on port 3000
+pm2 start npm --name "chitvault" -- start
+
+# Save PM2 process list
+pm2 save
+pm2 startup
+```
+
+### 4. Reverse Proxy & SSL (Nginx)
+Configure Nginx to point `chitvault.in` (port 80/443) to your Next.js app (port 3000):
+
+```bash
+# Install Nginx and Certbot
+sudo apt install nginx python3-certbot-nginx -y
+
+# Create Nginx config: /etc/nginx/sites-available/chitvault
+# Server block should proxy to http://localhost:3000
+
+# Enable SSL
+sudo certbot --nginx -d chitvault.in -d www.chitvault.in
 ```
 
 ---
@@ -53,7 +84,7 @@ At your domain registrar, add:
 
 1. Firm A registers → gets `firm_id = uuid-aaa`
 2. Firm B registers → gets `firm_id = uuid-bbb`
-3. Both log in at `chitvault.app/login`
+3. Both log in at `chitvault.in/login`
 4. After login, middleware reads `profiles.firm_id` from DB
 5. All Supabase queries are filtered by `firm_id` via RLS
 6. Firm A never sees Firm B's data — enforced at database level
@@ -64,7 +95,7 @@ At your domain registrar, add:
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/you/chitvault.git
+git clone https://github.com/seyonnexalabs-cyber/chitvault.git
 cd chitvault
 npm install
 
@@ -90,9 +121,9 @@ npm run dev
 
 | Action | URL |
 |---|---|
-| Landing page | `chitvault.up.railway.app` |
-| Sign in | `chitvault.up.railway.app/login` |
-| New firm registration | `chitvault.up.railway.app/register` |
-| After login | `chitvault.up.railway.app/dashboard` |
-| Admin panel (you only) | `chitvault.up.railway.app/admin` |
-| Staff invite link | `chitvault.up.railway.app/invite/<uuid>` |
+| Landing page | `chitvault.in` |
+| Sign in | `chitvault.in/login` |
+| New firm registration | `chitvault.in/register` |
+| After login | `chitvault.in/dashboard` |
+| Admin panel (you only) | `chitvault.in/admin` |
+| Staff invite link | `chitvault.in/invite/<uuid>` |

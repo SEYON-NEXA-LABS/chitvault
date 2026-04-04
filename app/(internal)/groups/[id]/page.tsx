@@ -372,6 +372,7 @@ export default function GroupLedgerPage() {
           {members.length < group.num_members && (
             <Btn variant="primary" onClick={() => setAddOpen(true)} icon={UserPlus}>Add Member</Btn>
           )}
+          <Btn variant="secondary" onClick={() => router.push(`/settlement?groupId=${groupId}`)} icon={Calculator}>{t('nav_settlements')}</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/groups/${groupId}/settings`)} icon={Settings2}>Settings</Btn>
         </div>
       </div>

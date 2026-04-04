@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Image from 'next/image'
+import { APP_DEVELOPER } from '@/lib/utils/index'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
@@ -224,11 +225,14 @@ function LoginForm() {
             </button>
           )}
 
-          {firmSlug && (
-            <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-              Powered by Seyon Chit Vault
+          <div style={{ marginTop: 28, opacity: 0.4 }}>
+            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text2)' }}>
+              Powered by {APP_DEVELOPER}
             </p>
-          )}
+            <p style={{ fontSize: 9, fontWeight: 600, marginTop: 4, opacity: 0.8, color: 'var(--text3)' }}>
+              v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+            </p>
+          </div>
         </div>
       </div>
     </div>

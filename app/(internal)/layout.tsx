@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { APP_BRAND, APP_NAME, cn } from '@/lib/utils'
+import { APP_BRAND, APP_DEVELOPER, APP_NAME, cn } from '@/lib/utils/index'
 import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
@@ -245,14 +245,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}
                 className={cn(
                   "group flex items-center gap-3.5 px-4 py-2.5 rounded-[12px] mb-1.5 text-sm font-semibold transition-all relative overflow-hidden",
-                  active 
-                    ? "bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(var(--accent-rgb),0.25)]" 
+                  active
+                    ? "bg-[var(--accent)] text-white shadow-[0_4px_12px_rgba(var(--accent-rgb),0.25)]"
                     : "text-[var(--text2)] hover:bg-[var(--surface3)] hover:text-[var(--text)]"
                 )}>
                 <Icon size={18} className={cn("transition-transform duration-300", active ? "scale-110" : "opacity-70 group-hover:opacity-100 group-hover:scale-110")} />
                 <span className="relative z-10 flex-1">{t(item.label)}</span>
                 {active && (
-                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-80" />
                 )}
               </Link>
             )
@@ -343,13 +343,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between px-2">
-            <div className="text-[10px] font-bold tracking-[0.2em] opacity-20 uppercase">
+            <div className="text-[10px] font-bold tracking-[0.2em] opacity-40 uppercase">
               {APP_NAME} v{process.env.NEXT_PUBLIC_APP_VERSION}
             </div>
           </div>
           <div className="mt-2 px-2">
-            <div className="text-[9px] font-medium opacity-20 uppercase tracking-widest">
-              Powered by SEYON NEXA LABS
+            <div className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+              Powered by {APP_DEVELOPER}
             </div>
           </div>
         </div>

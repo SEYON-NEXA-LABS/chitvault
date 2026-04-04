@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
 import { Btn, Badge, Card, Loading, Empty, Toast, Chip, Modal, Field, StatCard, Table, Th, Td, Tr, TableCard } from '@/components/ui'
@@ -44,6 +45,8 @@ export default function PaymentsPage() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
+  const searchParams = useSearchParams()
+  const qPersonId = searchParams.get('personId')
 
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
@@ -158,6 +161,24 @@ export default function PaymentsPage() {
 
     return Array.from(personMap.values());
   }, [members, groups, auctions, payments]);
+
+  // Handle URL-based Auto-selection (from Collection Registry)
+  useEffect(() => {
+    if (qPersonId && personSummaries.length > 0 && !payModal) {
+      const target = personSummaries.find(s => String(s.person.id) === qPersonId)
+      if (target && target.overallTotalBalance > 0.01) {
+        setPayForm({ 
+          amount: String(target.overallTotalBalance), 
+          date: new Date().toISOString().split('T')[0], 
+          mode: 'Cash', 
+          note: 'Quick collection from registry', 
+          isManual: false, 
+          manualAllocations: {} 
+        });
+        setPayModal(target);
+      }
+    }
+  }, [qPersonId, personSummaries.length, payModal])
 
   const filtered = useMemo(() => {
     return personSummaries.filter((s: PersonSummary) => {
@@ -316,7 +337,8 @@ export default function PaymentsPage() {
     // Get details for logging BEFORE delete
     const payment = payments.find(p => p.id === paymentId);
     
-    const { error } = await supabase.from('payments').delete().eq('id', paymentId);
+    // Double-guard delete with firm_id for SaaS isolation
+    const { error } = await supabase.from('payments').delete().eq('id', paymentId).eq('firm_id', firm?.id);
     if (error) {
       show(error.message, 'error');
     } else {

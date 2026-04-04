@@ -9,8 +9,9 @@ import {
   Loading, Empty, Badge, StatCard, Btn
 } from '@/components/ui'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Printer, Phone, MapPin, Search, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Printer, Phone, MapPin, Search, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle, MessageSquare, ExternalLink } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
+import { useRouter } from 'next/navigation'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
 
 interface MemberDue {
@@ -33,6 +34,7 @@ interface CollectionItem {
 export default function CollectionPage() {
   const supabase = createClient()
   const { firm } = useFirm()
+  const router = useRouter()
   const { t } = useI18n()
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
@@ -135,6 +137,16 @@ export default function CollectionPage() {
     });
     downloadCSV(csvData, 'collection_report');
   };
+  
+  const handleWhatsAppReminder = (p: any) => {
+    const phone = p.person.phone ? p.person.phone.replace(/[^\d]/g, '') : ''
+    if (!phone) return alert('No phone number found')
+    
+    const groupsList = p.items.map((it: any) => it.group.name).join(', ')
+    const text = `Hi ${p.person.name}, this is a reminder from ${firm?.name || 'Siva Chit Funds'}. Your total outstanding balance is ₹${p.totalBalance.toLocaleString('en-IN')}. Tickets: ${groupsList}. Please clear your dues. Thank you!`
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank')
+  }
 
   if (loading) return <Loading />
 
@@ -166,11 +178,12 @@ export default function CollectionPage() {
               <Th>Area / Address</Th>
               <Th>Group Breakdowns</Th>
               <Th right>Total Outstanding</Th>
+              <Th className="w-10 text-center">Action</Th>
             </Tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <Tr><Td colSpan={4}><Empty text="No pending collections found!" /></Td></Tr>
+              <Tr><Td colSpan={5}><Empty text="No pending collections found!" /></Td></Tr>
             ) : filtered.map(x => (
               <Tr key={x.person.id}>
                 <Td>
@@ -182,7 +195,10 @@ export default function CollectionPage() {
                    </div>
                    <div className="flex items-center gap-1.5 mt-0.5">
                       <Phone size={10} className="opacity-30" />
-                      <a href={`tel:${x.person.phone}`} className="text-[11px] font-mono font-bold text-[var(--info)]">{x.person.phone || '—'}</a>
+                      <a href={`tel:${x.person.phone}`} className="text-[11px] font-mono font-bold text-[var(--info)] mr-2">{x.person.phone || '—'}</a>
+                      <button onClick={() => handleWhatsAppReminder(x)} className="p-1 rounded text-[#25D366] hover:bg-[#25D366]/10 transition-colors" title="Send WhatsApp Reminder">
+                         <MessageSquare size={12} fill="currentColor" />
+                      </button>
                    </div>
                 </Td>
                 <Td>
@@ -214,6 +230,11 @@ export default function CollectionPage() {
                    <div className={cn("font-black font-mono text-lg", x.totalBalance > 10000 ? "text-[var(--danger)]" : "text-[var(--text)]")}>
                       {fmt(x.totalBalance)}
                    </div>
+                </Td>
+                <Td className="text-center">
+                   <Btn size="sm" variant="ghost" icon={ExternalLink} onClick={() => router.push(`/payments?personId=${x.person.id}`)}>
+                      Collect
+                   </Btn>
                 </Td>
               </Tr>
             ))}
