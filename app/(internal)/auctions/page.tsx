@@ -216,8 +216,14 @@ export default function AuctionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" id="tour-auction-title">
-        <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4" id="tour-auction-title">
+        <div>
+          <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
+          <p className="text-xs opacity-60 mt-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+            Owners and Staff can record auctions for all active groups.
+          </p>
+        </div>
         <div className="flex gap-2" id="tour-auction-add">
            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
            {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('record_auction')}</Btn>}
@@ -227,7 +233,11 @@ export default function AuctionsPage() {
       <TableCard title="Auction History & Settlement" subtitle="Manage monthly bidding outcomes, calculate prize money, and track member dividends with precision.">
         <div id="tour-auction-list">
           {auctions.length === 0 
-            ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
+            ? <Empty 
+                icon="⚖️" 
+                text="No auctions recorded. Owners and Staff can start by clicking 'Record Auction' below." 
+                action={can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>Record Auction</Btn>}
+              />
             : <Table>
                 <thead><tr>
                   {role === 'superadmin' && <Th>Firm</Th>}
