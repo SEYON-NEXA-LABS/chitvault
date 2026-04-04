@@ -5,6 +5,12 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth, getToday } from '@/lib/utils'
+import { 
+  Users, Layers, TrendingUp, DollarSign, Wallet, ShieldCheck, 
+  ArrowUpRight, ArrowDownRight, Clock, Info, ShieldAlert,
+  Building, BadgeCheck
+} from 'lucide-react'
+import { logActivity } from '@/lib/utils/logger'
 import { StatCard, Card, Loading, Badge, LineAnalytics, PieDistribution, OnboardingWidget, TableCard, Table, Th, Td, Tr, Btn } from '@/components/ui'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { inputClass, inputStyle } from '@/components/ui'
@@ -177,12 +183,31 @@ export default function DashboardPage() {
       </div>
 
       {/* Modern Greeting & Onboarding */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-welcome">
-        <div className="lg:col-span-2 flex flex-col justify-center">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" id="tour-welcome">
+        <div className="lg:col-span-3 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-2">
+               <BadgeCheck size={20} className="text-[var(--success)]" />
+               <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Verified Firm Instance</span>
+            </div>
             <h2 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
               Welcome back, <span className="text-[var(--accent)]">{firm?.name || 'Partner'}</span>
             </h2>
-            <p className="text-lg opacity-40 font-medium mt-2">Here is what is happening with your chit funds today.</p>
+            <div className="flex flex-wrap items-center gap-4 mt-4">
+               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
+                  <Building size={14} className="text-[var(--accent)]" />
+                  <span className="opacity-40">ID:</span>
+                  <span className="font-mono">{firm?.id.substring(0,8)}...</span>
+               </div>
+               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
+                  <Clock size={14} className="text-[var(--accent)]" />
+                  <span className="opacity-40">Since:</span>
+                  <span>{fmtDate(firm?.created_at)}</span>
+               </div>
+               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent)] text-[11px] font-bold uppercase tracking-wide text-[var(--accent)]">
+                  <BadgeCheck size={14} />
+                  <span>{firm?.plan} Enterprise</span>
+               </div>
+            </div>
         </div>
         {(isNewFirm || !chartData.every(c => c.actual > 0)) && (
           <div className="lg:col-span-1" id="tour-onboarding">

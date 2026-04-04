@@ -17,7 +17,7 @@ export const PERMISSIONS = {
   memberActions:['owner'] as UserRole[], // transfer, defaulter, foreman
 
   // Auctions
-  recordAuction: ['owner'] as UserRole[],
+  recordAuction: ['owner', 'staff'] as UserRole[],
   deleteAuction: ['owner'] as UserRole[],
   viewAuctions:  ['owner', 'staff'] as UserRole[],
 

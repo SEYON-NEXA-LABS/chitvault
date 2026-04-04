@@ -227,7 +227,7 @@ export default function TeamPage() {
         <div className="grid grid-cols-2 gap-0">
           {[
             { role: 'Owner', icon: '👑', color: 'var(--accent)', perms: ['Create & delete groups', 'Add & remove members', 'Record auctions', 'Record payments', 'All reports', 'Manage team & settings'] },
-            { role: 'Staff', icon: '👤', color: 'var(--info)', perms: ['View all groups', 'View all members', 'Record payments', 'Collection report', 'View reports', '— Cannot modify structure'] },
+            { role: 'Staff', icon: '👤', color: 'var(--info)', perms: ['View all groups', 'View all members', 'Record auctions', 'Record payments', 'Collection report', 'View reports', '— Cannot modify structure'] },
           ].map(r => (
             <div key={r.role} className="p-5 border-r last:border-0" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2 mb-3">
