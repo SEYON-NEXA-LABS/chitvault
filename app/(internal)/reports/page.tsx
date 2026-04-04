@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/utils/csv'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
@@ -68,8 +68,8 @@ function ReportsPageContent() {
 
   const [timeFilter, setTimeFilter] = useState<string>('all')
 
-  const { filteredAuctions, filteredPayments, filteredCommissions } = useMemo(() => {
-    if (timeFilter === 'all') return { filteredAuctions: auctions, filteredPayments: payments, filteredCommissions: commissions }
+  const { filteredAuctions, filteredPayments, filteredCommissions, filteredLogs } = useMemo(() => {
+    if (timeFilter === 'all') return { filteredAuctions: auctions, filteredPayments: payments, filteredCommissions: commissions, filteredLogs: activityLogs }
 
     const today = new Date()
     const currentYear = today.getFullYear()
@@ -97,15 +97,18 @@ function ReportsPageContent() {
     return {
       filteredAuctions: auctions.filter(a => isBetween(a.auction_date || a.created_at)),
       filteredPayments: payments.filter(p => isBetween(p.payment_date || p.created_at)),
-      filteredCommissions: commissions.filter(c => isBetween(c.created_at))
+      filteredCommissions: commissions.filter(c => isBetween(c.created_at)),
+      filteredLogs: activityLogs.filter(l => isBetween(l.created_at))
     }
-  }, [auctions, payments, commissions, timeFilter])
+  }, [auctions, payments, commissions, activityLogs, timeFilter])
 
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const type = searchParams.get('type')
+    const mid = searchParams.get('member_id')
     if (type) setActiveReport(type)
+    if (mid) setSelectedMemberId(mid || '')
   }, [searchParams])
 
   useEffect(() => {
@@ -156,7 +159,7 @@ function ReportsPageContent() {
 
     switch(activeReport) {
       case 'today_collection':
-        const todayStr = new Date().toISOString().split('T')[0]
+        const todayStr = getToday()
         csvData = payments.filter(p => p.payment_date === todayStr).map(p => {
           const m = members.find(x => x.id === p.member_id)
           const g = groups.find(x => x.id === p.group_id)
@@ -288,7 +291,7 @@ function ReportsPageContent() {
     switch (activeReport) {
       case 'today_collection': return <ReportTodayCollection payments={payments} members={members} groups={groups} />
       case 'reconciliation': return <ReportReconciliation payments={payments} denominations={denominations} />
-      case 'activity': return <ReportActivityLog logs={activityLogs} profiles={profiles} />
+      case 'activity': return <ReportActivityLog logs={filteredLogs} profiles={profiles} />
       case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} auctions={filteredAuctions} />
       case 'cashflow': return <ReportCashFlow payments={filteredPayments} auctions={filteredAuctions} />
       case 'dividend': return <ReportDividend groups={groups} auctions={filteredAuctions} />
@@ -410,17 +413,33 @@ function ReportsPageContent() {
                </button>
                <h1 className="text-2xl font-bold flex items-center gap-2">
                  {REPORTS.find(r => r.id === activeReport)?.title}
-                 {timeFilter !== 'all' && (
-                   <span className="text-xs ml-2 px-2 py-1 rounded-lg bg-info-100 text-info-800 uppercase font-semibold">
-                     {timeFilter === 'fy' ? 'Financial Year' : timeFilter.toUpperCase()} FILTER APPLIED
-                   </span>
-                 )}
                </h1>
             </div>
-            <div className="flex items-center gap-2">
-                <Btn variant="secondary" onClick={handleExportCSV} icon={FileSpreadsheet} title="Export to CSV">CSV</Btn>
-                <Btn variant="secondary" onClick={() => window.print()} icon={Printer} title="Print Report">Print</Btn>
-             </div>
+            
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider opacity-50">{t('date_filter')}:</label>
+                  <select 
+                    className={inputClass} 
+                    style={{ ...inputStyle, width: 'auto', padding: '4px 10px', fontSize: '12px' }} 
+                    value={timeFilter} 
+                    onChange={(e) => setTimeFilter(e.target.value)}
+                  >
+                    <option value="all">{t('all_time')}</option>
+                    <option value="fy">{t('financial_year') || 'Financial Year'}</option>
+                    <option value="q1">Q1 (Apr - Jun)</option>
+                    <option value="q2">Q2 (Jul - Sep)</option>
+                    <option value="q3">Q3 (Oct - Dec)</option>
+                    <option value="q4">Q4 (Jan - Mar)</option>
+                    <option value="month">Current Month</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 border-l pl-4" style={{ borderColor: 'var(--border)' }}>
+                   <Btn variant="secondary" onClick={handleExportCSV} icon={FileSpreadsheet} title="Export to CSV">CSV</Btn>
+                   <Btn variant="secondary" onClick={() => window.print()} icon={Printer} title="Print Report">Print</Btn>
+                </div>
+            </div>
           </div>
           {renderActiveReport()}
         </div>
@@ -921,8 +940,23 @@ function ReportReconciliation({ payments, denominations }: { payments: Payment[]
 }
 
 function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] }) {
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const totalPages = Math.ceil(logs.length / pageSize);
+  const displayLogs = logs.slice((page - 1) * pageSize, page * pageSize);
+
   return (
-    <TableCard title="System Activity Log" subtitle="Audit trail of critical system actions">
+    <TableCard 
+      title="System Activity Log" 
+      subtitle={`Audit trail of critical system actions (${logs.length} events)`}
+      actions={
+        <div className="flex items-center gap-3">
+           <Btn size="sm" variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>Prev</Btn>
+           <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Page {page} of {totalPages || 1}</span>
+           <Btn size="sm" variant="secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Btn>
+        </div>
+      }
+    >
       <Table>
         <thead><tr>
           <Th>Timestamp</Th>
@@ -932,9 +966,9 @@ function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] })
           <Th>Details</Th>
         </tr></thead>
         <tbody>
-          {logs.length === 0 ? (
-            <Tr><Td colSpan={5} className="text-center py-5">No activity recorded yet.</Td></Tr>
-          ) : logs.map(l => (
+          {displayLogs.length === 0 ? (
+            <Tr><Td colSpan={5} className="text-center py-5">No activity recorded for this period.</Td></Tr>
+          ) : displayLogs.map(l => (
             <Tr key={l.id}>
               <Td className="text-[10px] whitespace-nowrap">
                 <div className="flex items-center gap-1 opacity-60">
@@ -955,9 +989,9 @@ function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] })
               <Td className="text-[10px] opacity-40 font-mono">
                 {l.entity_type} {l.entity_id ? `#${l.entity_id}` : ''}
               </Td>
-              <Td className="text-xs">
-                <div className="max-w-[300px] truncate opacity-80">
-                  {l.metadata ? JSON.stringify(l.metadata) : '—'}
+              <Td className="text-[10px] py-2">
+                <div className="opacity-80 max-w-[400px] break-words whitespace-pre-wrap font-mono leading-relaxed">
+                  {l.metadata ? JSON.stringify(l.metadata, null, 2) : '—'}
                 </div>
               </Td>
             </Tr>
@@ -969,7 +1003,7 @@ function ReportActivityLog({ logs, profiles }: { logs: any[], profiles: any[] })
 }
 
 function ReportTodayCollection({ payments, members, groups }: { payments: Payment[], members: Member[], groups: Group[] }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getToday()
   const todayPayments = payments.filter(p => p.payment_date === today)
   
   const cashTotal = todayPayments.filter(p => p.mode === 'Cash').reduce((s, p) => s + Number(p.amount), 0)

@@ -54,3 +54,9 @@ export function fmtMonth(m: number, start?: string | null): string {
   const yr  = d.getFullYear().toString().slice(-2)
   return `M${m} (${mon}-${yr})`
 }
+
+// Get today's date in local YYYY-MM-DD format
+export function getToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}

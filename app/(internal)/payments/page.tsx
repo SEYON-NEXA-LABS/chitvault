@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
 import { Btn, Badge, Card, Loading, Empty, Toast, Chip, Modal, Field, StatCard, Table, Th, Td, Tr, TableCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -71,7 +71,7 @@ function PaymentsPageContent() {
   const [showOnlyPaid, setShowOnlyPaid] = useState(false)
 
   const [payModal, setPayModal] = useState<PersonSummary | null>(null)
-  const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
+  const [payForm,  setPayForm]  = useState({ amount: '', date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<number>>(new Set())
 
@@ -206,7 +206,7 @@ function PaymentsPageContent() {
       if (target && target.overallTotalBalance > 0.01) {
         setPayForm({ 
           amount: String(target.overallTotalBalance), 
-          date: new Date().toISOString().split('T')[0], 
+          date: getToday(), 
           mode: 'Cash', 
           note: 'Quick collection from registry', 
           isManual: false, 
@@ -239,7 +239,7 @@ function PaymentsPageContent() {
   }, [personSummaries, search, showOnlyPaid, dateRange, payments]);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getToday();
     const collectedToday = payments.filter((p: Payment) => p.payment_date === today).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
     
     let collectedInRange = 0;
@@ -505,7 +505,7 @@ function PaymentsPageContent() {
                   <div className="flex gap-1 justify-end">
                     <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
                     <Btn size="sm" variant="primary" icon={CreditCard} id="tour-pay-add" onClick={() => {
-                        setPayForm({ amount: String(s.overallTotalBalance), date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
+                        setPayForm({ amount: String(s.overallTotalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
                         setPayModal(s);
                     }}>Collect</Btn>
                   </div>

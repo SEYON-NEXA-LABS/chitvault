@@ -33,8 +33,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 // ── Line Analytics ─────────────────────────────────────────────────────────────
-export function LineAnalytics({ title, data, dataKey, xKey, height = 300 }: {
-  title: string; data: any[]; dataKey: string; xKey: string; height?: number
+export function LineAnalytics({ title, data, dataKey, expectedKey, xKey, height = 300 }: {
+  title: string; data: any[]; dataKey: string; expectedKey?: string; xKey: string; height?: number
 }) {
   return (
     <Card className="p-4 overflow-hidden">
@@ -59,13 +59,24 @@ export function LineAnalytics({ title, data, dataKey, xKey, height = 300 }: {
               axisLine={false} 
               tickLine={false} 
               tick={{ fill: 'var(--text3)', fontSize: 10 }}
-              tickFormatter={(v: number) => `₹${v/1000}k`}
+              tickFormatter={(v: number) => `₹${v >= 1000 ? (v/1000).toFixed(0) + 'k' : v}`}
             />
             <Tooltip content={<CustomTooltip />} />
+            {expectedKey && (
+              <Area 
+                type="monotone" 
+                dataKey={expectedKey} 
+                name="Target"
+                stroke="var(--border)" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                fill="transparent" 
+              />
+            )}
             <Area 
               type="monotone" 
               dataKey={dataKey} 
-              name="Value"
+              name="Actual"
               stroke="var(--accent)" 
               strokeWidth={3}
               fillOpacity={1} 
