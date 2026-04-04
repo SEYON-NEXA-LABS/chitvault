@@ -127,8 +127,8 @@ export default function SchemesGuidePage() {
                    <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
                       <UserCheck size={24} />
                    </div>
-                   <h4 className="font-bold text-sm">1. Link Member</h4>
-                   <p className="text-xs opacity-60">Select the winner. Their verified &quot;Net Payout&quot; will auto-fill from the auction record.</p>
+                    <h4 className="font-bold text-sm">1. Select Group or Member</h4>
+                    <p className="text-xs opacity-60">Bind to a specific member to auto-fill their won auctions, or use **Manual Calculation** for general-purpose &quot;What-if&quot; scenarios.</p>
                 </div>
                 <div className="flex flex-col items-center text-center space-y-2">
                    <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">

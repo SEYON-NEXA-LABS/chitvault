@@ -143,7 +143,7 @@ export default function AppJourneyPage() {
           index={6}
           icon={Calculator}
           title="Final Prize Settlement"
-          description="Use the Settlement Utility to finalize a group. Payouts follow the standard 'Average Payoff Rule' (Total Bids / Duration × Duration-1). This provides a mathematically fair terminal value for all members."
+          description="Use the Settlement Utility to finalize a group. Payouts follow the standard 'Average Payoff Rule' (Total Bids / Duration × Duration-1). You can bind calculations to a specific member for official records, or use 'Manual Mode' as a quick scratchpad."
           href="/settlement"
           actionLabel="Calculate Payout"
           navLabel="nav_settlements"

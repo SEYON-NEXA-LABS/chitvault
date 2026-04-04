@@ -98,7 +98,12 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     manual_calc: '-- Manual Calculation --',
     settlement_saved: 'Settlement saved successfully!',
     delete_confirm: 'Are you sure you want to delete this settlement record?',
-    payout_rule_note: 'The Average is calculated by dividing the total net amount by the target duration. The Settlement Payout represents the amount for (Duration - 1) months.'
+    payout_rule_note: 'The Average is calculated by dividing the total net amount by the target duration. The Settlement Payout represents the amount for (Duration - 1) months.',
+    select_group: 'Select Group',
+    all_groups: 'All Groups',
+    select_month: 'Select Winner Month',
+    already_settled: 'Already Settled',
+    payout_settled_msg: 'This auction payout is already marked as settled in the system.'
   },
   ta: {
     // Sidebar
@@ -197,6 +202,11 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     manual_calc: '-- கைமுறையாகக் கணக்கிடுதல் --',
     settlement_saved: 'பட்டுவாடா விபரம் சேமிக்கப்பட்டது!',
     delete_confirm: 'நிச்சயமாக இந்தப் பதிவை நீக்க வேண்டுமா?',
-    payout_rule_note: 'மொத்த நிகரத் தொகையை இலக்கு காலத்தால் வகுப்பதன் மூலம் சராசரி கணக்கிடப்படுகிறது. பட்டுவாடா தொகை என்பது (காலம் - 1) மாதங்களுக்கான தொகையைக் குறிக்கிறது.'
+    payout_rule_note: 'மொத்த நிகரத் தொகையை இலக்கு காலத்தால் வகுப்பதன் மூலம் சராசரி கணக்கிடப்படுகிறது. பட்டுவாடா தொகை என்பது (காலம் - 1) மாதங்களுக்கான தொகையைக் குறிக்கிறது.',
+    select_group: 'குழுவைத் தேர்ந்தெடுக்கவும்',
+    all_groups: 'அனைத்து குழுக்கள்',
+    select_month: 'வெற்றியாளர் மாதத்தைத் தேர்ந்தெடுக்கவும்',
+    already_settled: 'ஏற்கனவே பட்டுவாடா செய்யப்பட்டது',
+    payout_settled_msg: 'இந்த ஏலப் பட்டுவாடா ஏற்கனவே கணினியில் கணக்கிடப்பட்டு முடிவடைந்தது.'
   }
 };
