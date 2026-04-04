@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
+import Link from 'next/link'
 import { fmt, fmtDate, cn } from '@/lib/utils'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
@@ -26,6 +27,7 @@ export default function TrashPage() {
   // Data States
   const [data, setData] = useState<any[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
+  const [selectedIds, setSelectedIds] = useState<Set<any>>(new Set())
 
   const isAdmin = role === 'owner' || role === 'superadmin'
 
@@ -35,10 +37,11 @@ export default function TrashPage() {
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
 
     // Fetch all for counts
-    const tables = ['groups', 'members', 'persons', 'auctions', 'payments', 'settlements', 'denominations', 'profiles']
-    const queries = tables.map(table => 
-      withFirmScope(supabase.from(table).select('id', { count: 'exact' }), targetId).not('deleted_at', 'is', null)
-    )
+    const tables = ['groups', 'members', 'persons', 'auctions', 'payments', 'settlements', 'staff']
+    const queries = tables.map(tab => {
+        const table = tab === 'staff' ? 'profiles' : tab
+        return withFirmScope(supabase.from(table).select('id', { count: 'exact' }), targetId).not('deleted_at', 'is', null)
+    })
     
     const results = await Promise.all(queries)
     const newCounts: Record<string, number> = {}
@@ -48,8 +51,7 @@ export default function TrashPage() {
     setCounts(newCounts)
 
     // Fetch active tab data
-    let currentTable = activeTab
-    if (activeTab === 'staff') currentTable = 'profiles' as any
+    const currentTable = activeTab === 'staff' ? 'profiles' : activeTab
     
     let query = withFirmScope(supabase.from(currentTable).select('*'), targetId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
     
@@ -62,6 +64,7 @@ export default function TrashPage() {
     const { data: list } = await query
     setData(list || [])
     setLoading(false)
+    setSelectedIds(new Set())
   }, [supabase, isAdmin, role, switchedFirmId, firm, activeTab])
 
   useEffect(() => { load() }, [load])
@@ -82,6 +85,19 @@ export default function TrashPage() {
     load()
   }
 
+  async function handleBulkRestore() {
+    if (selectedIds.size === 0 || !isAdmin) return
+    if (!confirm(`Restore ${selectedIds.size} selected records?`)) return
+    
+    const targetTable = activeTab === 'staff' ? 'profiles' : activeTab
+    const { error } = await supabase.from(targetTable).update({ deleted_at: null }).in('id', Array.from(selectedIds))
+    
+    if (error) { show(error.message, 'error'); return }
+    
+    show(`${selectedIds.size} records restored!`, 'success')
+    load()
+  }
+
   async function handlePermanentDelete(id: any, table: string) {
      if (!isAdmin) return
      if (!confirm('EXTREME DANGER: This will permanently purge this record from the database. This action CANNOT be undone. Proceed?')) return
@@ -93,6 +109,31 @@ export default function TrashPage() {
      
      show('Permanently purged from database.', 'error')
      load()
+  }
+
+  async function handleBulkPurge() {
+    if (selectedIds.size === 0 || !isAdmin) return
+    if (!confirm(`EXTREMEM DANGER: Permanently purge ${selectedIds.size} selected records? THIS CANNOT BE UNDONE.`)) return
+    
+    const targetTable = activeTab === 'staff' ? 'profiles' : activeTab
+    const { error } = await supabase.from(targetTable).delete().in('id', Array.from(selectedIds))
+    
+    if (error) { show(error.message, 'error'); return }
+    
+    show(`${selectedIds.size} records permanently purged.`, 'error')
+    load()
+  }
+
+  const toggleSelect = (id: any) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+  }
+
+  const toggleAll = () => {
+    if (selectedIds.size === data.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(data.map(i => i.id)))
   }
 
   const daysLeft = (deletedAt: string) => {
@@ -112,11 +153,11 @@ export default function TrashPage() {
   )
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl pb-24">
       <div className="flex items-center justify-between gap-4 flex-wrap bg-[var(--surface)] p-4 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border)' }}>
         <div>
-          <h1 className="text-2xl font-black text-[var(--text)]">Trash & Recover (Archive)</h1>
-          <p className="text-xs opacity-50 mt-1 flex items-center gap-1.5"><Clock size={12}/> All deleted items are maintained for 90 days before permanent purging.</p>
+          <h1 className="text-2xl font-black text-[var(--text)]">Trash & Recover</h1>
+          <p className="text-xs opacity-50 mt-1 flex items-center gap-1.5"><Clock size={12}/> 90-day retention policy</p>
         </div>
         <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
            {(['groups', 'members', 'payments', 'auctions', 'settlements', 'staff'] as const).map(tab => (
@@ -130,16 +171,19 @@ export default function TrashPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <StatCard label="Total Items in Trash" value={Object.values(counts).reduce((a,b)=>a+b,0)} color="accent" />
          <StatCard label="Auto-Purge Policy" value="90 Days" color="info" />
-         <StatCard label="Recycled Capacity" value="2.4 MB" color="info" sub="Database optimization" />
+         <Link href="/reports?type=activity" className="block"><StatCard label="Recent Purges" value={0} color="info" sub="Audit activity log" /></Link>
       </div>
 
-      <TableCard title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Archive`} subtitle={`Browse and recover deleted ${activeTab} records.`}>
+      <TableCard title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Archive`} subtitle={`Manage deleted ${activeTab} records.`}>
         {loading ? <Loading /> : data.length === 0 ? (
           <Empty icon="🗑️" text={`The ${activeTab} trash is empty.`} />
         ) : (
           <Table>
             <thead>
               <Tr>
+                <Th className="w-10">
+                   <input type="checkbox" checked={selectedIds.size === data.length && data.length > 0} onChange={toggleAll} />
+                </Th>
                 <Th>Record Information</Th>
                 <Th>Deleted On</Th>
                 <Th>Retention</Th>
@@ -149,9 +193,13 @@ export default function TrashPage() {
             <tbody>
               {data.map(item => {
                 const remaining = daysLeft(item.deleted_at)
+                const isSelected = selectedIds.has(item.id)
                 return (
-                  <Tr key={item.id} className={cn(remaining < 7 ? "bg-danger-500/5" : "")}>
+                  <Tr key={item.id} className={cn(remaining < 7 ? "bg-danger-500/5" : "", isSelected ? "bg-[var(--accent-dim)]" : "")}>
                     <Td>
+                       <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(item.id)} />
+                    </Td>
+                    <Td onClick={() => toggleSelect(item.id)} className="cursor-pointer">
                       {activeTab === 'groups' && (
                         <div>
                           <div className="font-bold">{item.name}</div>
@@ -196,10 +244,10 @@ export default function TrashPage() {
                       <div className="flex items-center gap-2">
                          <div className="flex-1 h-1.5 w-16 bg-[var(--surface2)] rounded-full overflow-hidden">
                             <div className="h-full bg-[var(--info)]" style={{ width: `${(remaining/90)*100}%` }} />
-                         </div>
-                         <span className={cn("text-[10px] font-bold", remaining < 10 ? "text-[var(--danger)]" : "text-[var(--text2)]")}>
-                            {remaining} days left
-                         </span>
+                          </div>
+                          <span className={cn("text-[10px] font-bold", remaining < 10 ? "text-[var(--danger)]" : "text-[var(--text2)]")}>
+                             {remaining} days left
+                          </span>
                       </div>
                     </Td>
                     <Td right>
@@ -215,6 +263,26 @@ export default function TrashPage() {
           </Table>
         )}
       </TableCard>
+
+      {/* Floating ActionBar */}
+      {selectedIds.size > 0 && (
+         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
+            <div className="bg-[var(--surface)] border border-[var(--accent)] shadow-2xl rounded-2xl p-2 px-4 flex items-center gap-6 backdrop-blur-md">
+               <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-sm">
+                     {selectedIds.size}
+                  </div>
+                  <div className="text-sm font-bold opacity-60 uppercase tracking-widest">Selected</div>
+               </div>
+               <div className="h-8 w-px bg-[var(--border)]" />
+               <div className="flex items-center gap-2">
+                  <Btn variant="primary" size="sm" icon={RotateCcw} onClick={handleBulkRestore}>Restore All</Btn>
+                  <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkPurge}>Permanent Purge</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect</Btn>
+               </div>
+            </div>
+         </div>
+      )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}
     </div>

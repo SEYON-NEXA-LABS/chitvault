@@ -9,7 +9,7 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useFirm } from '@/lib/firm/context'
 import { logActivity } from '@/lib/utils/logger'
-import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
+import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
 
@@ -65,6 +65,7 @@ export default function PaymentsPage() {
   const [payModal, setPayModal] = useState<PersonSummary | null>(null)
   const [payForm,  setPayForm]  = useState({ amount: '', date: new Date().toISOString().split('T')[0], mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<number>>(new Set())
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial && groups.length === 0) setLoading(true)
@@ -86,9 +87,37 @@ export default function PaymentsPage() {
       setFirms(f || [])
     }
     setLoading(false)
+    setSelectedPaymentIds(new Set())
   }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
+
+  const togglePaymentSelect = (id: number) => {
+    const next = new Set(selectedPaymentIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedPaymentIds(next)
+  }
+
+  const toggleAllPayments = (ids: number[]) => {
+    if (selectedPaymentIds.size === ids.length) setSelectedPaymentIds(new Set())
+    else setSelectedPaymentIds(new Set(ids))
+  }
+
+  async function handleBulkDeletePayments() {
+    if (selectedPaymentIds.size === 0 || !can('deletePayment')) return
+    if (!confirm(`Move ${selectedPaymentIds.size} selected payments to trash?`)) return
+    
+    setSaving(true)
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).in('id', Array.from(selectedPaymentIds)).eq('firm_id', firm?.id)
+    
+    if (error) show(error.message, 'error')
+    else {
+      show(`${selectedPaymentIds.size} payments moved to trash!`, 'success')
+      load()
+    }
+    setSaving(false)
+  }
 
   const personSummaries: PersonSummary[] = useMemo(() => {
     // 1. Calculate membership-level summaries first
@@ -507,42 +536,71 @@ export default function PaymentsPage() {
                  </label>
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl border p-2" style={{ borderColor: 'var(--border)' }}>
-                {payModal.memberships.flatMap(m => m.dues.filter(d=>d.balance > 0.01).map(d => {
-                  const key = `${m.member.id}-${d.month}`;
-                  return (
-                    <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--surface2)] text-xs border border-transparent hover:border-[var(--border)] transition-all">
-                      <div className="flex-1">
-                         <div className="font-bold">{m.group.name} · {fmtMonth(d.month, m.group.start_date)}</div>
-                         <div className="text-[9px] opacity-40">Ticket #{m.member.ticket_no}</div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right min-w-[80px]">
-                           <div className="font-bold text-[var(--danger)]">{fmt(d.balance)}</div>
-                           <div className="text-[9px] opacity-40 font-mono">Bal: {fmt(d.amountDue)}</div>
+                {payModal.memberships.flatMap(ms => {
+                  // Pre-calculate running balances for highlighting
+                  const allDues = payModal.memberships.flatMap(m => m.dues.map(d => ({ ...d, memberId: m.member.id })))
+                    .sort((a, b) => a.month - b.month);
+                  
+                  let runningValue = Number(payForm.amount);
+                  const coveredMap = new Map<string, boolean>();
+                  for (const d of allDues) {
+                    if (runningValue >= d.balance - 0.01) {
+                      coveredMap.set(`${d.memberId}-${d.month}`, true);
+                      runningValue -= d.balance;
+                    } else break;
+                  }
+
+                  return ms.dues.filter(d => d.balance > 0.01).map(d => {
+                    const key = `${ms.member.id}-${d.month}`;
+                    const isCovered = coveredMap.get(key) && !payForm.isManual;
+
+                    return (
+                      <div key={key} className={cn(
+                        "flex items-center justify-between p-2.5 rounded-lg text-xs border transition-all",
+                        isCovered ? "bg-[var(--success-dim)] border-[var(--success)] shadow-sm" : "bg-[var(--surface2)] border-transparent"
+                      )}>
+                        <div className="flex-1">
+                           <div className="font-bold flex items-center gap-2">
+                             {ms.group.name} · {fmtMonth(d.month, ms.group.start_date)}
+                             {isCovered && <Badge variant="success" className="text-[8px] px-1 py-0 h-4">Covered</Badge>}
+                           </div>
+                           <div className="text-[9px] opacity-40">Ticket #{ms.member.ticket_no}</div>
                         </div>
-                        {payForm.isManual && (
-                          <div className="w-24">
-                             <input 
-                               className={inputClass} 
-                               style={{ ...inputStyle, padding: '4px 8px', fontSize: '11px' }} 
-                               type="number"
-                               placeholder="Amt"
-                               value={payForm.manualAllocations[key] || ''}
-                               onChange={e => {
-                                 const val = e.target.value;
-                                 setPayForm(f => {
-                                   const next = { ...f.manualAllocations, [key]: val };
-                                   const newTotal = Object.values(next).reduce((s, v) => s + Number(v || 0), 0);
-                                   return { ...f, manualAllocations: next, amount: String(newTotal) };
-                                 });
-                               }}
-                             />
+                        <div className="flex items-center gap-4">
+                          <div className="text-right min-w-[80px]">
+                             <div className={cn("font-bold", isCovered ? "text-[var(--success)]" : "text-[var(--danger)]")}>
+                               {fmt(d.balance)}
+                             </div>
+                             <div className="text-[9px] opacity-40 font-mono">Bal: {fmt(d.amountDue)}</div>
                           </div>
-                        )}
+                          {payForm.isManual ? (
+                            <div className="w-24">
+                               <input 
+                                 className={inputClass} 
+                                 style={{ ...inputStyle, padding: '4px 8px', fontSize: '11px' }} 
+                                 type="number"
+                                 placeholder="Amt"
+                                 value={payForm.manualAllocations[key] || ''}
+                                 onChange={e => {
+                                   const val = e.target.value;
+                                   setPayForm(f => {
+                                     const next = { ...f.manualAllocations, [key]: val };
+                                     const newTotal = Object.values(next).reduce((s, v) => s + Number(v || 0), 0);
+                                     return { ...f, manualAllocations: next, amount: String(newTotal) };
+                                   });
+                                 }}
+                               />
+                            </div>
+                          ) : (
+                            <Btn size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => {
+                              setPayForm(f => ({ ...f, amount: String(d.balance) }));
+                            }}>Set</Btn>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                }))}
+                    );
+                  });
+                })}
               </div>
             </div>
 
@@ -585,35 +643,50 @@ export default function PaymentsPage() {
       )}
 
       {historyModal && (
-        <Modal open={!!historyModal} onClose={() => setHistoryModal(null)} title="Consolidated Personal Ledger" size="lg">
+        <Modal open={!!historyModal} onClose={() => { setHistoryModal(null); setSelectedPaymentIds(new Set()) }} title="Consolidated Personal Ledger" size="lg">
           <div className="space-y-6">
-            <div className="text-center">
-               <div className="font-bold text-xl">{historyModal.person.name}</div>
-               <div className="text-xs opacity-50">Combined History for {historyModal.memberships.length} tickets</div>
+            <div className="flex items-center justify-between">
+               <div>
+                  <div className="font-bold text-xl">{historyModal.person.name}</div>
+                  <div className="text-xs opacity-50">Combined History for {historyModal.memberships.length} tickets</div>
+               </div>
+               {selectedPaymentIds.size > 0 && (
+                  <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkDeletePayments}>Delete ({selectedPaymentIds.size})</Btn>
+               )}
             </div>
             <div className="max-h-[50vh] overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
               <Table>
                 <thead>
                   <Tr>
+                    <Th className="w-10">
+                       <input type="checkbox" 
+                          checked={selectedPaymentIds.size === payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).length && selectedPaymentIds.size > 0} 
+                          onChange={() => {
+                             const pIds = payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).map(p => Number(p.id))
+                             toggleAllPayments(pIds)
+                          }} />
+                    </Th>
                     <Th>Date</Th>
                     <Th>Target Ticket/Month</Th>
                     <Th>Mode</Th>
                     <Th right>Amount</Th>
-                    {can('deletePayment') && <Th className="w-10">{""}</Th>}
+                    {can('deletePayment') && <Th right className="w-10">{""}</Th>}
                   </Tr>
                 </thead>
                 <tbody>
                   {payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).map(p => {
                     const group = groups.find(g => g.id === p.group_id);
+                    const isSelected = selectedPaymentIds.has(Number(p.id))
                     return (
-                      <Tr key={p.id}>
-                        <Td>{fmtDate(p.payment_date)}</Td>
-                        <Td className="text-xs">
+                      <Tr key={p.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
+                        <Td><input type="checkbox" checked={isSelected} onChange={() => togglePaymentSelect(Number(p.id))} /></Td>
+                        <Td onClick={() => togglePaymentSelect(Number(p.id))}>{fmtDate(p.payment_date)}</Td>
+                        <Td onClick={() => togglePaymentSelect(Number(p.id))} className="text-xs">
                            <div className="font-bold">{group?.name}</div>
                            <div className="opacity-50 text-[10px]">{fmtMonth(p.month, group?.start_date)}</div>
                         </Td>
-                        <Td><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
-                        <Td right className="font-bold text-[var(--success)]">{fmt(p.amount)}</Td>
+                        <Td onClick={() => togglePaymentSelect(Number(p.id))}><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
+                        <Td right className="font-bold text-[var(--success)]" onClick={() => togglePaymentSelect(Number(p.id))}>{fmt(p.amount)}</Td>
                         {can('deletePayment') && (
                           <Td right>
                             <button 

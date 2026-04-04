@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
-import { StatCard, Card, Loading, Badge } from '@/components/ui'
+import { StatCard, Card, Loading, Badge, LineAnalytics, PieDistribution, OnboardingWidget } from '@/components/ui'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { inputClass, inputStyle } from '@/components/ui'
 import type { Group, Member, Auction, Payment, Firm } from '@/types'
@@ -48,14 +48,14 @@ export default function DashboardPage() {
     load()
   }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
-  const stats = useMemo(() => {
+  const { stats, chartData, groupDist, onboardingSteps } = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
     
     // 1. Today's Collections
     const today = new Date().toISOString().split('T')[0]
     const todayColl = payments.filter(p => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0)
 
-    // 2. Pending Collections (logic similar to ReportUpcomingPay)
+    // 2. Pending Collections
     const totalPending = members.reduce((sum, member) => {
       const group = groups.find(g => g.id === member.group_id)
       if (!group || !['active', 'defaulter', 'foreman'].includes(member.status)) return sum
@@ -80,21 +80,72 @@ export default function DashboardPage() {
     // 3. Defaulter Count
     const defaulters = members.filter(m => m.status === 'defaulter').length
 
-    return { totalChitValue, todayColl, totalPending, defaulters }
+    // 4. Chart Data (Last 6 Months)
+    const last6Months = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date()
+      d.setMonth(d.getMonth() - (5 - i))
+      return d.toISOString().substring(0, 7) // YYYY-MM
+    })
+
+    const collectionTrends = last6Months.map(month => {
+      const amt = payments
+        .filter(p => p.payment_date?.startsWith(month))
+        .reduce((sum, p) => sum + Number(p.amount), 0)
+      return { month: month.substring(5), amount: amt }
+    })
+
+    // 5. Group Distribution
+    const distData = [
+      { name: 'Dividend (Comm)', value: groups.filter(g => g.auction_scheme === 'DIVIDEND').length },
+      { name: 'Accumulation', value: groups.filter(g => g.auction_scheme === 'ACCUMULATION').length }
+    ]
+
+    // 6. Onboarding Steps
+    const onboardingSteps = [
+      { id: '1', title: 'Create a Group', desc: 'Set up your first chit scheme', link: '/groups', completed: groups.length > 0 },
+      { id: '2', title: 'Add Members', desc: 'Register at least 5 people', link: '/members', completed: members.length >= 5 },
+      { id: '3', title: 'Start Auction', desc: 'Record your first monthly bidding', link: '/auctions', completed: auctions.length > 0 },
+      { id: '4', title: 'Collect Payments', desc: 'Record your first member payment', link: '/payments', completed: payments.length > 0 },
+    ]
+
+    return { 
+      stats: { totalChitValue, todayColl, totalPending, defaulters },
+      chartData: collectionTrends,
+      groupDist: distData,
+      onboardingSteps
+    }
   }, [groups, members, auctions, payments])
 
 
   if (loading) return <Loading />
 
+  const isNewFirm = !chartData.some(d => d.amount > 0) || chartData.length < 2
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black text-[var(--text)]">Dashboard</h1>
+        <h1 className="text-3xl font-black text-[var(--text)]">Dashboard Overview</h1>
+        {isSuper && <Badge variant="danger">SUPERADMIN VIEW</Badge>}
+      </div>
+
+      {/* Modern Greeting & Onboarding */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-welcome">
+        <div className="lg:col-span-2 flex flex-col justify-center">
+            <h2 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
+              Welcome back, <span className="text-[var(--accent)]">{firm?.name || 'Partner'}</span>
+            </h2>
+            <p className="text-lg opacity-40 font-medium mt-2">Here is what is happening with your chit funds today.</p>
+        </div>
+        {(isNewFirm || !chartData.every(c => c.amount > 0)) && (
+          <div className="lg:col-span-1" id="tour-onboarding">
+            <OnboardingWidget steps={onboardingSteps} />
+          </div>
+        )}
       </div>
 
       {/* Primary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" id="tour-stats">
         <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="accent" />
         <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
@@ -103,6 +154,26 @@ export default function DashboardPage() {
         <Link href="/reports?type=defaulters" className="block transition-transform hover:scale-[1.02]">
           <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="info" />
         </Link>
+      </div>
+
+      {/* Visual Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="tour-analytics">
+        <div className="lg:col-span-2">
+          <LineAnalytics 
+            title="Monthly Collection Trend" 
+            data={chartData} 
+            dataKey="amount" 
+            xKey="month" 
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <PieDistribution 
+            title="Group Scheme Mix" 
+            data={groupDist} 
+            dataKey="value" 
+            nameKey="name" 
+          />
+        </div>
       </div>
 
       {/* Group Overview Section */}

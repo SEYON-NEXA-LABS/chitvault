@@ -129,12 +129,13 @@ export function Th({ children, right, className }: { children: React.ReactNode; 
   )
 }
 
-export function Td({ children, right, className, style, colSpan }: {
-  children: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number
+export function Td({ children, right, className, style, colSpan, onClick }: {
+  children: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number; onClick?: () => void
 }) {
   return (
     <td colSpan={colSpan} className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
-      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', ...style }}>
+      onClick={onClick}
+      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', cursor: onClick ? 'pointer' : 'default', ...style }}>
       {children}
     </td>
   )
@@ -293,3 +294,7 @@ export function Chip({ active, onClick, children }: {
 }
 export * from './PinOverlay'
 export * from './CSVImportModal'
+export * from './CommandPalette'
+export * from './Charts'
+export * from './OnboardingWidget'
+export * from './Tour'
