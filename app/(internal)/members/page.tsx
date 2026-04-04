@@ -476,19 +476,19 @@ export default function MembersPage() {
     <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between gap-4 flex-wrap bg-[var(--surface)] p-2 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border)' }}>
          <div className="flex items-center gap-4 px-2">
-            <h1 className="text-2xl font-black text-[var(--text)]">{t('member_directory')}</h1>
-            <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+            <h1 className="text-2xl font-black text-[var(--text)]" id="tour-member-title">{t('member_directory')}</h1>
+            <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }} id="tour-member-views">
                <Chip active={view === 'people'} onClick={() => { setView('people'); setSelectedIds(new Set()) }}>{t('all_people')}</Chip>
                <Chip active={view === 'groups'} onClick={() => { setView('groups'); setSelectedIds(new Set()) }}>{t('by_groups')}</Chip>
             </div>
          </div>
          <div className="flex flex-1 gap-2 items-center justify-end px-2">
-            <div className="flex-1 max-w-sm relative">
+            <div className="flex-1 max-w-sm relative" id="tour-member-search">
                <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
                 placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
                <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2" id="tour-member-add">
                {isOwner && (
                   <>
                      <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>

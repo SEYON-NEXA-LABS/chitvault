@@ -53,20 +53,23 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   )
 }
 
-export function Card({ title, subtitle, children, className, style }: {
-  title?: React.ReactNode; subtitle?: React.ReactNode
+export function Card({ title, subtitle, headerAction, children, className, style }: {
+  title?: React.ReactNode; subtitle?: React.ReactNode; headerAction?: React.ReactNode
   children: React.ReactNode; className?: string; style?: React.CSSProperties
 }) {
   return (
     <div className={cn('rounded-2xl border', className)}
       style={{ background: 'var(--surface)', borderColor: 'var(--border)', ...style }}>
-      {(title || subtitle) && (
-        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          {title && <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>{title}</h3>}
-          {subtitle && <p className="text-xs opacity-60 mt-0.5" style={{ color: 'var(--text2)' }}>{subtitle}</p>}
+      {(title || subtitle || headerAction) && (
+        <div className="px-5 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+          <div>
+            {title && <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>{title}</h3>}
+            {subtitle && <p className="text-xs opacity-60 mt-0.5" style={{ color: 'var(--text2)' }}>{subtitle}</p>}
+          </div>
+          {headerAction && <div className="flex shrink-0 items-center gap-2">{headerAction}</div>}
         </div>
       )}
-      <div className={cn((title || subtitle) ? 'p-0' : 'p-0')}>
+      <div className={cn((title || subtitle || headerAction) ? 'p-0' : 'p-0')}>
         {children}
       </div>
     </div>

@@ -3,8 +3,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Btn } from './index'
-import { ChevronRight, ChevronLeft, X, Zap } from 'lucide-react'
+import { ChevronRight, ChevronLeft, X, Compass } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PATH_TO_TOUR } from '@/lib/tour/config'
+import { usePathname } from 'next/navigation'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface TourStep {
@@ -17,10 +19,12 @@ export interface TourStep {
 
 interface TourContextType {
   startTour: (steps: TourStep[]) => void;
+  startCurrentPageTour: () => void;
   stopTour: () => void;
   currentStep: number;
   totalSteps: number;
   isActive: boolean;
+  hasTourForPage: boolean;
 }
 
 const TourContext = createContext<TourContextType | null>(null)
@@ -33,15 +37,25 @@ export const useTour = () => {
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 export function TourProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const [steps, setSteps] = useState<TourStep[]>([])
   const [currentStep, setCurrentStep] = useState(0)
   const [isActive, setIsActive] = useState(false)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
+
+  const hasTourForPage = !!PATH_TO_TOUR[pathname]
   
   const startTour = (newSteps: TourStep[]) => {
     setSteps(newSteps)
     setCurrentStep(0)
     setIsActive(true)
+  }
+
+  const startCurrentPageTour = () => {
+    const pageSteps = PATH_TO_TOUR[pathname]
+    if (pageSteps) {
+      startTour(pageSteps)
+    }
   }
 
   const stopTour = () => {
@@ -87,7 +101,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, [isActive, currentStep, steps])
 
   return (
-    <TourContext.Provider value={{ startTour, stopTour, currentStep, totalSteps: steps.length, isActive }}>
+    <TourContext.Provider value={{ startTour, startCurrentPageTour, stopTour, currentStep, totalSteps: steps.length, isActive, hasTourForPage }}>
       {children}
       {isActive && steps[currentStep] && (
         <TourOverlay 
@@ -140,7 +154,7 @@ function TourOverlay({ step, rect, index, total, onNext, onPrev, onClose }: any)
         
         <div className="flex items-center justify-between mb-4">
            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] text-[9px] font-black uppercase tracking-widest">
-              <Zap size={10} />
+              <Compass size={10} className="animate-spin-slow" />
               Step {index + 1} / {total}
            </div>
            <button onClick={onClose} className="p-1 hover:bg-[var(--surface2)] rounded-full transition-colors">

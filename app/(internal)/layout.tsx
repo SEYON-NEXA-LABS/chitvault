@@ -10,13 +10,29 @@ import {
   LayoutDashboard, Users, UsersRound, Gavel,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
-  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive
+  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass
 } from 'lucide-react'
-import { CommandPalette, TourProvider } from '@/components/ui'
+import { CommandPalette, TourProvider, useTour } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
 import type { Firm, Profile, UserRole } from '@/types'
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function TourTrigger() {
+  const { startCurrentPageTour, hasTourForPage, isActive } = useTour()
+  if (!hasTourForPage || isActive) return null
+
+  return (
+    <button 
+      onClick={startCurrentPageTour}
+      className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] hover:border-[var(--accent)] transition-all"
+    >
+      <Compass size={14} className="text-[var(--accent)] group-hover:rotate-45 transition-transform" />
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Explore Page</span>
+    </button>
+  )
+}
 
 interface NavItem {
   href?: string
@@ -259,7 +275,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <TourTrigger />
               {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
                 <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
                   style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>

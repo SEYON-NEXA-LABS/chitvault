@@ -216,71 +216,73 @@ export default function AuctionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" id="tour-auction-title">
         <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2" id="tour-auction-add">
            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
            {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('record_auction')}</Btn>}
         </div>
       </div>
 
       <TableCard title="Auction History & Settlement" subtitle="Manage monthly bidding outcomes, calculate prize money, and track member dividends with precision.">
-        {auctions.length === 0 
-          ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
-          : <Table>
-              <thead><tr>
-                {role === 'superadmin' && <Th>Firm</Th>}
-                <Th>Group</Th>
-                <Th>Month</Th>
-                <Th className="hidden md:table-cell">Date</Th>
-                <Th>Winner</Th>
-                <Th right>Bid</Th>
-                <Th right className="hidden lg:table-cell">To Surplus</Th>
-                <Th right>Payout</Th>
-                <Th right className="hidden md:table-cell">Comm.</Th>
-                <Th right className="hidden sm:table-cell">Due</Th>
-                <Th>Action</Th>
-              </tr></thead>
-              <tbody>
-                {filteredAuctions.map(a => {
-                  const g  = groups.find(x => x.id === a.group_id)
-                  const w  = members.find(x => x.id === a.winner_id)
-                  const fc = commissions.find(c => c.auction_id === a.id)
-                  return (
-                    <Tr key={a.id}>
-                      {role === 'superadmin' && (
-                        <Td><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
-                      )}
-                      <Td><span className="font-semibold">{g?.name || `#${a.group_id}`}</span></Td>
-                      <Td><Badge variant="info">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
-                      <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
-                      <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
-                      <Td right>{fmt(a.bid_amount)}</Td>
-                      <Td right className="hidden lg:table-cell">
-                         {g?.auction_scheme === 'ACCUMULATION' 
-                           ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)}</span>
-                           : <span style={{ color: 'var(--text3)' }}>—</span>}
-                      </Td>
-                      <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
-                      <Td right className="hidden md:table-cell">
-                        {fc
-                          ? <span style={{ color: 'var(--danger)' }}>{fmt(fc.commission_amt)}</span>
-                          : <span style={{ color: 'var(--text3)' }}>—</span>}
-                      </Td>
-                      <Td right className="hidden sm:table-cell">
-                        {g ? <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - Number(a.dividend))}</span> : '—'}
-                      </Td>
-                      <Td>
-                        {can('deleteAuction') && (
-                          <Btn size="sm" variant="danger" onClick={() => del(a.id)} icon={Trash2}>Delete</Btn>
+        <div id="tour-auction-list">
+          {auctions.length === 0 
+            ? <Empty icon="⚖️" text="No auctions recorded. Start by clicking 'Record Auction'." />
+            : <Table>
+                <thead><tr>
+                  {role === 'superadmin' && <Th>Firm</Th>}
+                  <Th>Group</Th>
+                  <Th>Month</Th>
+                  <Th className="hidden md:table-cell">Date</Th>
+                  <Th>Winner</Th>
+                  <Th right>Bid</Th>
+                  <Th right className="hidden lg:table-cell">To Surplus</Th>
+                  <Th right>Payout</Th>
+                  <Th right className="hidden md:table-cell">Comm.</Th>
+                  <Th right className="hidden sm:table-cell">Due</Th>
+                  <Th>Action</Th>
+                </tr></thead>
+                <tbody>
+                  {filteredAuctions.map(a => {
+                    const g  = groups.find(x => x.id === a.group_id)
+                    const w  = members.find(x => x.id === a.winner_id)
+                    const fc = commissions.find(c => c.auction_id === a.id)
+                    return (
+                      <Tr key={a.id}>
+                        {role === 'superadmin' && (
+                          <Td><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
                         )}
-                      </Td>
-                    </Tr>
-                  )
-                })}
-              </tbody>
-            </Table>
-        }
+                        <Td><span className="font-semibold">{g?.name || `#${a.group_id}`}</span></Td>
+                        <Td><Badge variant="info">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
+                        <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
+                        <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
+                        <Td right>{fmt(a.bid_amount)}</Td>
+                        <Td right className="hidden lg:table-cell">
+                           {g?.auction_scheme === 'ACCUMULATION' 
+                             ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)}</span>
+                             : <span style={{ color: 'var(--text3)' }}>—</span>}
+                        </Td>
+                        <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
+                        <Td right className="hidden md:table-cell">
+                          {fc
+                            ? <span style={{ color: 'var(--danger)' }}>{fmt(fc.commission_amt)}</span>
+                            : <span style={{ color: 'var(--text3)' }}>—</span>}
+                        </Td>
+                        <Td right className="hidden sm:table-cell">
+                          {g ? <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - Number(a.dividend))}</span> : '—'}
+                        </Td>
+                        <Td>
+                          {can('deleteAuction') && (
+                            <Btn size="sm" variant="danger" onClick={() => del(a.id)} icon={Trash2}>Delete</Btn>
+                          )}
+                        </Td>
+                      </Tr>
+                    )
+                  })}
+                </tbody>
+              </Table>
+          }
+        </div>
       </TableCard>
 
       {commissions.length > 0 && (
