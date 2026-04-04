@@ -28,22 +28,22 @@ function ReportsPageContent() {
   const { t } = useI18n()
   
   const REPORTS = useMemo(() => [
-    { id: 'today_collection', category: 'Financial', title: 'Today\'s Collection', desc: 'Daily breakdown of cash, UPI and other payments', icon: History },
-    { id: 'pnl', category: 'Financial', title: t('report_pnl') || 'Profit & Loss (P&L)', desc: 'Summary of income versus expenses', icon: DollarSign },
-    { id: 'cashflow', category: 'Financial', title: 'Cash Flow Analysis', desc: 'Movement of money in and out', icon: TrendingUp },
-    { id: 'dividend', category: 'Financial', title: 'Dividend Performance', desc: 'Average dividend trends by group', icon: DollarSign },
+    { id: 'today_collection', category: t('cat_financial'), title: t('report_today_title'), desc: t('report_today_desc'), icon: History },
+    { id: 'pnl', category: t('cat_financial'), title: t('report_pnl_title'), desc: t('report_pnl_desc'), icon: DollarSign },
+    { id: 'cashflow', category: t('cat_financial'), title: t('report_cashflow_title'), desc: t('report_cashflow_desc'), icon: TrendingUp },
+    { id: 'dividend', category: t('cat_financial'), title: t('report_dividend_title'), desc: t('report_dividend_desc'), icon: DollarSign },
     
-    { id: 'upcoming_pay', category: 'Operational', title: t('upcoming_payments') || 'Upcoming & Pending Payments', desc: 'Pending collections for auction cycles', icon: Calendar },
-    { id: 'group_enrollment', category: 'Operational', title: 'Group Enrollment Report', desc: 'Member list and ticket details for a group', icon: Users },
-    { id: 'auction_sched', category: 'Operational', title: 'Auction Schedule', desc: 'Upcoming auctions for all active groups', icon: Calendar },
-    { id: 'group_ledger', category: 'Operational', title: 'Group Ledger', desc: 'Detailed transaction history for a single group', icon: FileText },
+    { id: 'upcoming_pay', category: t('cat_operational'), title: t('report_upcoming_title'), desc: t('report_upcoming_desc'), icon: Calendar },
+    { id: 'group_enrollment', category: t('cat_operational'), title: t('report_enrollment_title'), desc: t('report_enrollment_desc'), icon: Users },
+    { id: 'auction_sched', category: t('cat_operational'), title: t('report_auction_sched_title'), desc: t('report_auction_sched_desc'), icon: Calendar },
+    { id: 'group_ledger', category: t('cat_operational'), title: t('report_group_ledger_title'), desc: t('report_group_ledger_desc'), icon: FileText },
     
-    { id: 'member_history', category: 'Member-focused', title: 'Member Payment History', desc: 'Complete payment history for a specific member', icon: Users },
-    { id: 'defaulters', category: 'Member-focused', title: 'Defaulter Analysis', desc: 'High-risk members with defaults', icon: AlertTriangle },
-    { id: 'winners', category: 'Member-focused', title: 'Auction Winners', desc: 'Comprehensive list of won auctions', icon: CheckCircle },
+    { id: 'member_history', category: t('cat_member'), title: t('report_member_history_title'), desc: t('report_member_history_desc'), icon: Users },
+    { id: 'defaulters', category: t('cat_member'), title: t('report_defaulters_title'), desc: t('report_defaulters_desc'), icon: AlertTriangle },
+    { id: 'winners', category: t('cat_member'), title: t('report_winners_title'), desc: t('report_winners_desc'), icon: CheckCircle },
     
-    { id: 'reconciliation', category: 'Audit & Control', title: 'Daily Cash Reconciliation', desc: 'Compare member payments with cashbook entries', icon: FileText },
-    { id: 'activity', category: 'Audit & Control', title: 'System Activity Log', desc: 'Secure audit trail of all actions', icon: History },
+    { id: 'reconciliation', category: t('cat_audit'), title: t('report_reconciliation_title'), desc: t('report_reconciliation_desc'), icon: FileText },
+    { id: 'activity', category: t('cat_audit'), title: t('report_activity_title'), desc: t('report_activity_desc'), icon: History },
   ], [t])
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
@@ -365,10 +365,10 @@ function ReportsPageContent() {
               </select>
             </div>
           </div>
-          {['Financial', 'Operational', 'Member-focused'].map(category => (
+          {Array.from(new Set(REPORTS.map(r => r.category))).map(category => (
             <div key={category} className="mb-8">
               <h2 className="text-lg font-semibold mb-3 px-1 border-b pb-2" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-                {category} Reports
+                {category} {t('reports_suffix')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {REPORTS.filter(r => r.category === category).map(report => {

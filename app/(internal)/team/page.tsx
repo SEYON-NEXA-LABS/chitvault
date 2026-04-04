@@ -70,7 +70,7 @@ export default function TeamPage() {
     const { data: profiles } = await withFirmScope(
       supabase.from('profiles').select('id, full_name, role, status, created_at'),
       targetId
-    ).order('created_at')
+    ).is('deleted_at', null).order('created_at')
 
     setMembers(profiles || [])
 
@@ -154,10 +154,11 @@ export default function TeamPage() {
 
   async function removeMember(memberId: string) {
     if (memberId === currentUserId) { show("You can't remove yourself.", 'error'); return }
-    if (!confirm('Remove this staff member from your firm?')) return
-    await supabase.from('profiles').update({ firm_id: null, role: 'staff', status: 'active' }).eq('id', memberId)
-    show('Member removed.')
-    if (firm) await logActivity(firm.id, 'STAFF_REMOVED', 'profile', memberId)
+    if (!confirm('Are you sure you want to move this staff member to trash? Access will be revoked for 90 days.')) return
+    const { error } = await supabase.from('profiles').update({ deleted_at: new Date() }).eq('id', memberId)
+    if (error) { show(error.message, 'error'); return }
+    show('Member moved to trash.')
+    if (firm) await logActivity(firm.id, 'STAFF_ARCHIVED', 'profile', memberId)
     load()
   }
 

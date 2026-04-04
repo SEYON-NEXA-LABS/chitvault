@@ -21,6 +21,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_settlements: 'Settlements',
     nav_reports_group: 'Reporting & Audit',
     nav_defaulters: 'Defaulters',
+    nav_trash: 'Trash',
     
     // Header
     signed_in_as: 'Signed in as',
@@ -103,7 +104,52 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     all_groups: 'All Groups',
     select_month: 'Select Winner Month',
     already_settled: 'Already Settled',
-    payout_settled_msg: 'This auction payout is already marked as settled in the system.'
+    payout_settled_msg: 'This auction payout is already marked as settled in the system.',
+
+    // Reports
+    reports_hub: 'Reports Hub',
+    date_filter: 'Filter by Period',
+    all_time: 'All Time',
+    financial_year: 'Financial Year',
+    report_pnl: 'Profit & Loss (P&L)',
+    upcoming_payments: 'Upcoming & Pending Payments',
+
+    // Report Titles
+    report_today_title: 'Today\'s Collection',
+    report_pnl_title: 'Profit & Loss (P&L)',
+    report_cashflow_title: 'Cash Flow Analysis',
+    report_dividend_title: 'Dividend Performance',
+    report_upcoming_title: 'Upcoming & Pending Payments',
+    report_enrollment_title: 'Group Enrollment Report',
+    report_auction_sched_title: 'Auction Schedule',
+    report_group_ledger_title: 'Group Ledger',
+    report_member_history_title: 'Member Payment History',
+    report_defaulters_title: 'Defaulter Analysis',
+    report_winners_title: 'Auction Winners',
+    report_reconciliation_title: 'Daily Cash Reconciliation',
+    report_activity_title: 'System Activity Log',
+
+    // Report Descriptions
+    report_today_desc: 'Daily breakdown of cash, UPI and other payments',
+    report_pnl_desc: 'Summary of income versus expenses',
+    report_cashflow_desc: 'Movement of money in and out',
+    report_dividend_desc: 'Average dividend trends by group',
+    report_upcoming_desc: 'Pending collections for auction cycles',
+    report_enrollment_desc: 'Member list and ticket details for a group',
+    report_auction_sched_desc: 'Upcoming auctions for all active groups',
+    report_group_ledger_desc: 'Detailed transaction history for a single group',
+    report_member_history_desc: 'Complete payment history for a specific member',
+    report_defaulters_desc: 'High-risk members with defaults',
+    report_winners_desc: 'Comprehensive list of won auctions',
+    report_reconciliation_desc: 'Compare member payments with cashbook entries',
+    report_activity_desc: 'Secure audit trail of all actions',
+
+    // Categories
+    cat_financial: 'Financial',
+    cat_operational: 'Operational',
+    cat_member: 'Member-focused',
+    cat_audit: 'Audit & Control',
+    reports_suffix: 'Reports'
   },
   ta: {
     // Sidebar
@@ -125,6 +171,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_settlements: 'பட்டுவாடா',
     nav_reports_group: 'அறிக்கைகள் மற்றும் தணிக்கை',
     nav_defaulters: 'நிலுவைதாரர்கள்',
+    nav_trash: 'குப்பைத் தொட்டி / காப்பகம்',
     
     // Header
     signed_in_as: 'உள்நுழைந்துள்ள மின்னஞ்சல்',
@@ -207,6 +254,51 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     all_groups: 'அனைத்து குழுக்கள்',
     select_month: 'வெற்றியாளர் மாதத்தைத் தேர்ந்தெடுக்கவும்',
     already_settled: 'ஏற்கனவே பட்டுவாடா செய்யப்பட்டது',
-    payout_settled_msg: 'இந்த ஏலப் பட்டுவாடா ஏற்கனவே கணினியில் கணக்கிடப்பட்டு முடிவடைந்தது.'
+    payout_settled_msg: 'இந்த ஏலப் பட்டுவாடா ஏற்கனவே கணினியில் கணக்கிடப்பட்டு முடிவடைந்தது.',
+
+    // Reports
+    reports_hub: 'அறிக்கைகள் மையம்',
+    date_filter: 'கால இடைவெளி வடிகட்டி',
+    all_time: 'அனைத்து காலமும்',
+    financial_year: 'நிதியாண்டு',
+    report_pnl: 'லாப நட்டக் கணக்கு (P&L)',
+    upcoming_payments: 'வரவிருக்கும் மற்றும் நிலுவையில் உள்ள தவணைகள்',
+
+    // Report Titles
+    report_today_title: 'இன்றைய வசூல்',
+    report_pnl_title: 'லாப நட்டக் கணக்கு (P&L)',
+    report_cashflow_title: 'பணப்புழக்க ஆய்வு',
+    report_dividend_title: 'தள்ளுபடி செயல்பாடு',
+    report_upcoming_title: 'வரவிருக்கும் மற்றும் நிலுவையில் உள்ள தவணைகள்',
+    report_enrollment_title: 'குழு சேர்க்கை அறிக்கை',
+    report_auction_sched_title: 'ஏல அட்டவணை',
+    report_group_ledger_title: 'குழு பேரேடு',
+    report_member_history_title: 'உறுப்பினர் தவணை வரலாறு',
+    report_defaulters_title: 'நிலுவைதாரர் ஆய்வு',
+    report_winners_title: 'ஏல வெற்றியாளர்கள்',
+    report_reconciliation_title: 'தினசரி ரொக்க சரிபார்ப்பு',
+    report_activity_title: 'முறைமை செயல்பாட்டு பதிவு',
+
+    // Report Descriptions
+    report_today_desc: 'ரொக்கம், UPI மற்றும் பிற கட்டணங்களின் தினசரி விவரம்',
+    report_pnl_desc: 'வருமானம் மற்றும் செலவுகளின் சுருக்கம்',
+    report_cashflow_desc: 'பணத்தின் உள்வரும் மற்றும் வெளிச்செல்லும் இயக்கம்',
+    report_dividend_desc: 'குழு வாரியாக சராசரி தள்ளுபடி போக்குகள்',
+    report_upcoming_desc: 'ஏல சுழற்சிகளுக்கான நிலுவையில் உள்ள வசூல்கள்',
+    report_enrollment_desc: 'ஒரு குழுவிற்கான உறுப்பினர் பட்டியல் மற்றும் சீட்டு விவரங்கள்',
+    report_auction_sched_desc: 'அனைத்து நேரடி குழுக்களுக்கும் வரவிருக்கும் ஏலங்கள்',
+    report_group_ledger_desc: 'ஒற்றைக் குழுவிற்கான விரிவான பரிவர்த்தனை வரலாறு',
+    report_member_history_desc: 'ஒரு குறிப்பிட்ட உறுப்பினருக்கான முழுமையான தவணை வரலாறு',
+    report_defaulters_desc: 'தவணை கட்டாத அதிக அபாயமுள்ள உறுப்பினர்கள்',
+    report_winners_desc: 'வெற்றி பெற்ற ஏலங்களின் விரிவான பட்டியல்',
+    report_reconciliation_desc: 'உறுப்பினர் தவணைகளை ரொக்கப் புத்தகப் பதிவுகளுடன் ஒப்பிடுதல்',
+    report_activity_desc: 'அனைத்து செயல்களின் பாதுகாப்பான தணிக்கை பதிவு',
+
+    // Categories
+    cat_financial: 'நிதியியல்',
+    cat_operational: 'செயல்பாட்டு',
+    cat_member: 'உறுப்பினர்-சார்ந்த',
+    cat_audit: 'தணிக்கை மற்றும் கட்டுப்பாடு',
+    reports_suffix: 'அறிக்கைகள்'
   }
 };

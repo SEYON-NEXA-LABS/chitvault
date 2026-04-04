@@ -55,14 +55,17 @@ export default function CashbookPage() {
 
     const [dRes, pRes, payRes, setRes] = await Promise.all([
       withFirmScope(supabase.from('denominations').select('*'), targetId)
+        .is('deleted_at', null)
         .gte('entry_date', fromDate)
         .lte('entry_date', toDate)
         .order('entry_date', { ascending: false }),
       withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name'),
       withFirmScope(supabase.from('payments').select('amount'), targetId)
+        .is('deleted_at', null)
         .gte('payment_date', fromDate)
         .lte('payment_date', toDate),
       withFirmScope(supabase.from('settlements').select('total_amount, created_at'), targetId)
+        .is('deleted_at', null)
         .gte('created_at', fromDate + 'T00:00:00Z')
         .lte('created_at', toDate + 'T23:59:59Z')
     ])
@@ -136,10 +139,12 @@ export default function CashbookPage() {
 
   async function del(id: number) {
     if (!can('deleteCashEntry')) return
-    if (!confirm('Delete this cash entry?')) return
-    await supabase.from('denominations').delete().eq('id', id)
-    show('Deleted.')
-    if (firm) await logActivity(firm.id, 'CASH_ENTRY_DELETED', 'denominations', id)
+    if (!confirm('Are you sure you want to move this cash entry to trash?')) return
+    const { error } = await supabase.from('denominations').update({ deleted_at: new Date() }).eq('id', id)
+    if (error) { show(error.message, 'error'); return }
+
+    show('Moved to trash.')
+    if (firm) await logActivity(firm.id, 'CASH_ENTRY_ARCHIVED', 'denominations', id)
     load()
   }
 
