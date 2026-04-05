@@ -13,7 +13,7 @@
 | Auth        | Supabase Auth (email + password)  |
 | Styling     | Tailwind CSS + CSS Variables      |
 | Language    | TypeScript                        |
-| Deployment  | Railway (Starter Plan)        |
+| Deployment  | Hostinger (VPS)               |
 | Desktop     | Electron (optional .exe build)    |
 
 ---
@@ -209,7 +209,7 @@ chitvault-saas/
 ├── types/index.ts            → All TypeScript interfaces
 ├── middleware.ts             → Auth guard + firm check + admin guard
 ├── supabase_schema_saas.sql  → Full DB schema with RLS
-├── DEPLOYMENT.md             → Vercel deploy + domain setup guide
+├── DEPLOYMENT.md             → Hostinger deploy + domain setup guide
 └── .env.example              → Environment variables template
 ```
 
@@ -224,7 +224,7 @@ git checkout -b feat/sms-reminders
 git add .
 git commit -m "feat: add WhatsApp payment reminders"
 git push origin feat/sms-reminders
-# Open Pull Request on GitHub → merge to main → Vercel auto-deploys
+# Open Pull Request on GitHub → merge to main → Hostinger auto-deploys (via CI/CD)
 
 # Quick fix
 git add .
@@ -244,9 +244,7 @@ git push
 ## Deploy
 
 ```bash
-npm install -g railway
-railway login
-railway up
+# Refer to DEPLOYMENT.md for Hostinger VPS setup
 ```
 
 See `DEPLOYMENT.md` for full instructions including custom domain setup.

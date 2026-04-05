@@ -244,7 +244,7 @@ function AdminDashboard() {
           <div style={{ ...sty.card, borderLeft: '4px solid var(--danger)' }}>
             <div style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>☁️ Hosting Overhead</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--text)' }}>{fmtCurrency(revStats.hosting)}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Railway + Supabase (Yearly Cost)</div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>Hostinger + Supabase (Yearly Cost)</div>
           </div>
           <div style={{ ...sty.card, borderLeft: `4px solid ${revStats.profit > 0 ? 'var(--accent)' : 'var(--text3)'}`, background: revStats.profit > 0 ? 'rgba(201,168,76,0.05)' : 'var(--surface)' }}>
             <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>📈 Net Yearly Profit</div>
