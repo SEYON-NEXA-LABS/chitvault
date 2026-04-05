@@ -231,6 +231,7 @@ function LoginForm() {
             </p>
             <p style={{ fontSize: 9, fontWeight: 600, marginTop: 4, opacity: 0.8, color: 'var(--text3)' }}>
               v{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}
+              <span className="ml-2">({process.env.NEXT_PUBLIC_COMMIT_ID})</span>
             </p>
           </div>
         </div>

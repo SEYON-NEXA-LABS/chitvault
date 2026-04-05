@@ -5,10 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
 }
 
-export const APP_NAME  = process.env.NEXT_PUBLIC_APP_NAME  || 'ChitVault'
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'SEYON'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'
 export const APP_DEVELOPER = 'SEYON NEXA LABS'
-export const SUPPORT_EMAIL    = 'seyonnexalabs@gmail.com'
+export const SUPPORT_EMAIL = 'seyonnexalabs@gmail.com'
 export const SUPERADMIN_EMAIL = 'seyonnexalabs@gmail.com'
 
 // Format Indian Rupees
@@ -51,7 +52,7 @@ export function fmtMonth(m: number, start?: string | null): string {
   const d = new Date(start)
   d.setMonth(d.getMonth() + m - 1)
   const mon = d.toLocaleString('en-IN', { month: 'short' })
-  const yr  = d.getFullYear().toString().slice(-2)
+  const yr = d.getFullYear().toString().slice(-2)
   return `M${m} (${mon}-${yr})`
 }
 
