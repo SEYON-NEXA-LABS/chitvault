@@ -76,10 +76,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 navigator.serviceWorker.register('/sw.js');
               });
             } else {
-              // Always unregister in dev to stop service worker interference on localhost
+              // Always unregister AND clear caches in dev to stop service worker interference on localhost
               navigator.serviceWorker.getRegistrations().then(regs => {
                 for(let reg of regs) reg.unregister();
               });
+              if ('caches' in window) {
+                caches.keys().then(names => {
+                  for (let name of names) caches.delete(name);
+                });
+              }
             }
           }
         `}} />

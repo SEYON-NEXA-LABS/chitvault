@@ -13,7 +13,7 @@ import {
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass
 } from 'lucide-react'
-import { CommandPalette, TourProvider, useTour } from '@/components/ui'
+import { CommandPalette, TourProvider, useTour, NetworkStatus } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
@@ -180,6 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <TourProvider>
+      <NetworkStatus />
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
