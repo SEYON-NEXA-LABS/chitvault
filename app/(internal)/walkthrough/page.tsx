@@ -71,14 +71,14 @@ export default function AppReferenceGuide() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-           {[
+           {([
              ['Dividend Pool', pool, 'var(--info)'],
              ['Per Head Div', div, 'var(--success)'],
              ['Net Payable', payable, 'var(--accent)']
-           ].map(([label, val, color]) => (
+           ] as const).map(([label, val, color]) => (
              <div key={label} className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
                 <div className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">{label}</div>
-                <div className="text-xl font-mono font-black" style={{ color }}>₹{Math.max(0, val as number).toLocaleString()}</div>
+                <div className="text-xl font-mono font-black" style={{ color }}>₹{Math.max(0, val).toLocaleString()}</div>
              </div>
            ))}
         </div>
@@ -87,7 +87,7 @@ export default function AppReferenceGuide() {
   }
 
   const MathFormula = ({ title, formula, result }: any) => (
-    <div className="p-6 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] shadow-sm font-mono relative overflow-hidden group">
+    <div className="p-6 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] shadow-sm font-mono relative group">
       <div className="absolute top-0 right-0 p-2 opacity-5">
         <Calculator size={40} />
       </div>
@@ -103,8 +103,10 @@ export default function AppReferenceGuide() {
   )
 
   const LogicCard = ({ title, children, icon: Icon, color }: any) => (
-    <div className="p-8 rounded-[32px] border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-all group relative overflow-hidden">
-      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-5 transition-opacity group-hover:opacity-10" style={{ backgroundColor: color }} />
+    <div className="p-8 rounded-[32px] border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-all group relative">
+      <div className="absolute inset-0 rounded-[32px] overflow-hidden pointer-events-none">
+        <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-5 transition-opacity group-hover:opacity-10" style={{ backgroundColor: color }} />
+      </div>
       <div className="flex items-start gap-5 mb-6">
         <div className="p-3 rounded-2xl bg-[var(--surface2)] shadow-inner" style={{ color }}>
           <Icon size={24} />
