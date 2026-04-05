@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chitvault-v2';
+const CACHE_NAME = 'chitvault-v3'; // Bumped version to clear the "bad" RSC cache
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS = [
@@ -9,7 +9,6 @@ const ASSETS = [
   '/icons/icon-512.png'
 ];
 
-// Install: Cache core assets and the offline page
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -19,7 +18,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -31,34 +29,51 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: Smart Strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
-  // 1. Navigation (HTML): Network-First
+  // ── 1. Bypass Caching for special cases ──
+  // Do NOT cache Next.js internal data/RSC requests or Chrome extensions
+  if (
+    request.headers.get('RSC') || 
+    request.headers.get('Next-Router-State-Tree') ||
+    url.pathname.includes('_next/data') ||
+    url.protocol === 'chrome-extension:'
+  ) {
+    return;
+  }
+
+  // ── 2. Navigation (HTML): Network-First with Offline Fallback ──
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .catch(() => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            return cache.match(OFFLINE_URL);
-          });
-        })
+      fetch(request).catch(() => {
+        return caches.match(OFFLINE_URL);
+      })
     );
     return;
   }
 
-  // 2. Static Assets: Stale-While-Revalidate
-  // This serves from cache but updates in baseground
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, networkResponse.clone());
+  // ── 3. Static Assets: Stale-While-Revalidate ──
+  // Only cache GET requests for static assets
+  if (request.method === 'GET' && (
+      url.pathname.startsWith('/_next/static') || 
+      url.pathname.startsWith('/icons') ||
+      url.pathname.endsWith('.png') ||
+      url.pathname.endsWith('.jpg') ||
+      url.pathname.endsWith('.svg')
+  )) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        const fetchPromise = fetch(request).then((networkResponse) => {
+          if (networkResponse.ok) {
+            const cacheCopy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, cacheCopy));
+          }
+          return networkResponse;
         });
-        return networkResponse;
-      });
-      return cachedResponse || fetchPromise;
-    })
-  );
+        return cachedResponse || fetchPromise;
+      })
+    );
+  }
 });
