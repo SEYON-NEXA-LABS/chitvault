@@ -23,7 +23,7 @@ export default function SchemesGuidePage() {
 
   return (
     <div className="max-w-4xl space-y-8 pb-20">
-      
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <button onClick={() => router.back()} className="p-2.5 rounded-xl border hover:bg-[var(--surface2)] transition-colors">
@@ -37,47 +37,47 @@ export default function SchemesGuidePage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
+
         {/* Dividend Model */}
         <Card className="p-6 relative overflow-hidden group border-t-4 border-t-blue-500">
-           <Badge variant="info" className="mb-4">Option A</Badge>
-           <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
-           <p className="text-sm opacity-70 leading-relaxed mb-6">
-             In this model, the **Auction Discount** (the amount bid "away") is divided equally among all members every month. 
-             Members pay less than their target installment, sharing the profit immediately.
-           </p>
-           
-           <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
-              <ExampleRow label="Monthly Installment" dividend="₹30,000" accumulation="—" color="var(--text)" />
-              <ExampleRow label="Auction Discount" dividend="₹70,000" accumulation="—" color="var(--danger)" />
-              <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--success)" />
-              <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--info)" fontWeight="bold" />
-           </div>
-           
-           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-info-500">
-             <ShieldCheck size={14} /> Immediate savings for all members.
-           </div>
+          <Badge variant="info" className="mb-4">Option A</Badge>
+          <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
+          <p className="text-sm opacity-70 leading-relaxed mb-6">
+            In this model, the **Auction Discount** (the amount bid &quot;away&quot;) is divided equally among all members every month.
+            Members pay less than their target installment, sharing the profit immediately.
+          </p>
+
+          <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
+            <ExampleRow label="Monthly Installment" dividend="₹30,000" accumulation="—" color="var(--text)" />
+            <ExampleRow label="Auction Discount" dividend="₹70,000" accumulation="—" color="var(--danger)" />
+            <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--success)" />
+            <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--info)" fontWeight="bold" />
+          </div>
+
+          <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-info-500">
+            <ShieldCheck size={14} /> Immediate savings for all members.
+          </div>
         </Card>
 
         {/* Accumulation Model */}
         <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--accent)]">
-           <Badge variant="accent" className="mb-4">Option B</Badge>
-           <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
-           <p className="text-sm opacity-70 leading-relaxed mb-6">
-             Everyone pays the **Full Amount** every month. The **Auction Discount** is stored in a **Surplus Pool**. 
-             When the pool is large enough, it pays for the final months automatically!
-           </p>
+          <Badge variant="accent" className="mb-4">Option B</Badge>
+          <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
+          <p className="text-sm opacity-70 leading-relaxed mb-6">
+            Everyone pays the **Full Amount** every month. The **Auction Discount** is stored in a **Surplus Pool**.
+            When the pool is large enough, it pays for the final months automatically!
+          </p>
 
-           <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
-              <ExampleRow label="Monthly Installment" dividend="—" accumulation="₹30,000" color="var(--text)" />
-              <ExampleRow label="To Surplus Pool" dividend="—" accumulation="+ ₹70,000" color="var(--accent)" />
-              <ExampleRow label="Winner Payout" dividend="—" accumulation="₹380,000" color="var(--success)" />
-              <ExampleRow label="Member Pays This Month" dividend="—" accumulation="₹30,000" color="var(--info)" fontWeight="bold" />
-           </div>
+          <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
+            <ExampleRow label="Monthly Installment" dividend="—" accumulation="₹30,000" color="var(--text)" />
+            <ExampleRow label="To Surplus Pool" dividend="—" accumulation="+ ₹70,000" color="var(--accent)" />
+            <ExampleRow label="Winner Payout" dividend="—" accumulation="₹380,000" color="var(--success)" />
+            <ExampleRow label="Member Pays This Month" dividend="—" accumulation="₹30,000" color="var(--info)" fontWeight="bold" />
+          </div>
 
-           <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--accent)]">
-             <Target size={14} /> Group closes 3-5 months early.
-           </div>
+          <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--accent)]">
+            <Target size={14} /> Group closes 3-5 months early.
+          </div>
         </Card>
       </div>
 
@@ -110,9 +110,9 @@ export default function SchemesGuidePage() {
             <div>
               <h4 className="text-sm font-bold mb-1 underline decoration-blue-500/30">The Mathematical Definition</h4>
               <ul className="text-xs opacity-70 space-y-2">
-                 <li>• **Installment**: Always fixed (e.g., ₹30,000)</li>
-                 <li>• **Surplus Pool**: Σ(Auction Discounts - Firm Commissions)</li>
-                 <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Remaining Duration)</li>
+                <li>• **Installment**: Always fixed (e.g., ₹30,000)</li>
+                <li>• **Surplus Pool**: Σ(Auction Discounts - Firm Commissions)</li>
+                <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Remaining Duration)</li>
               </ul>
             </div>
           </div>
@@ -121,92 +121,92 @@ export default function SchemesGuidePage() {
 
       {/* Settlement Process */}
       <Card title="🏆 Settlement & Payout Process" subtitle="How to finalize a winner's payout and record it">
-         <div className="p-6 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="flex flex-col items-center text-center space-y-2">
-                   <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
-                      <UserCheck size={24} />
-                   </div>
-                    <h4 className="font-bold text-sm">1. Select Group or Member</h4>
-                    <p className="text-xs opacity-60">Bind to a specific member to auto-fill their won auctions, or use **Manual Calculation** for general-purpose &quot;What-if&quot; scenarios.</p>
-                </div>
-                <div className="flex flex-col items-center text-center space-y-2">
-                   <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
-                      <Calculator size={24} />
-                   </div>
-                   <h4 className="font-bold text-sm">2. Average Payoff Rule</h4>
-                   <p className="text-xs opacity-60">Payout = (Total Bids / Duration) × (Duration - 1). This ensures a fair return based on group performance.</p>
-                </div>
-                <div className="flex flex-col items-center text-center space-y-2">
-                   <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
-                      <Save size={24} />
-                   </div>
-                   <h4 className="font-bold text-sm">3. Audit Record</h4>
-                   <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and legally valid proof of payoff.</p>
-                </div>
+        <div className="p-6 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex flex-col items-center text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
+                <UserCheck size={24} />
+              </div>
+              <h4 className="font-bold text-sm">1. Select Group or Member</h4>
+              <p className="text-xs opacity-60">Bind to a specific member to auto-fill their won auctions, or use **Manual Calculation** for general-purpose &quot;What-if&quot; scenarios.</p>
             </div>
+            <div className="flex flex-col items-center text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
+                <Calculator size={24} />
+              </div>
+              <h4 className="font-bold text-sm">2. Average Payoff Rule</h4>
+              <p className="text-xs opacity-60">Payout = (Total Bids / Duration) × (Duration - 1). This ensures a fair return based on group performance.</p>
+            </div>
+            <div className="flex flex-col items-center text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
+                <Save size={24} />
+              </div>
+              <h4 className="font-bold text-sm">3. Audit Record</h4>
+              <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and legally valid proof of payoff.</p>
+            </div>
+          </div>
 
-            <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-               <h4 className="text-sm font-bold mb-3 underline decoration-[var(--accent)]/30">Why is this important?</h4>
-               <ul className="space-y-3">
-                  <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--accent)]">•</span>
-                     <span>**Transparency**: You can show the member exactly how their payout was derived using the handwritten chit rules.</span>
-                  </li>
-                  <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--accent)]">•</span>
-                     <span>**Accuracy**: Auto-fill prevents typing errors by pulling directly from verified auction outcomes.</span>
-                  </li>
-                  <li className="text-xs opacity-80 flex gap-2">
-                     <span className="text-[var(--accent)]">•</span>
-                     <span>**Compliance**: Persistent records ensure that if a member disputes a payout months later, you have the digital receipt.</span>
-                  </li>
-               </ul>
-            </div>
-         </div>
+          <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
+            <h4 className="text-sm font-bold mb-3 underline decoration-[var(--accent)]/30">Why is this important?</h4>
+            <ul className="space-y-3">
+              <li className="text-xs opacity-80 flex gap-2">
+                <span className="text-[var(--accent)]">•</span>
+                <span>**Transparency**: You can show the member exactly how their payout was derived using the handwritten chit rules.</span>
+              </li>
+              <li className="text-xs opacity-80 flex gap-2">
+                <span className="text-[var(--accent)]">•</span>
+                <span>**Accuracy**: Auto-fill prevents typing errors by pulling directly from verified auction outcomes.</span>
+              </li>
+              <li className="text-xs opacity-80 flex gap-2">
+                <span className="text-[var(--accent)]">•</span>
+                <span>**Compliance**: Persistent records ensure that if a member disputes a payout months later, you have the digital receipt.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </Card>
 
       {/* Commission Rules */}
       <Card title="💼 Firm Commission Types" subtitle="The different ways the foreman earns revenue">
-         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-               <div>
-                  <h4 className="text-sm font-bold flex items-center gap-2 mb-2">
-                    <span className="p-1 rounded bg-info-500/10 text-info-500 font-mono text-[10px]">NEW</span>
-                    % of Payout (Deducted)
-                  </h4>
-                  <p className="text-xs opacity-60 leading-relaxed">
-                    Ideal for Accumulation. If the winner gets ₹380,000, you deduct 1-5% (e.g. ₹3,800) as your fee before handing over the cheque. 
-                    Simple and profitable.
-                  </p>
-               </div>
-               <div>
-                  <h4 className="text-sm font-bold mb-2">% of Chit Value</h4>
-                  <p className="text-xs opacity-60 leading-relaxed">
-                    Standard 5%. You take ₹22,500 every month from the pot before distributing anything.
-                  </p>
-               </div>
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-bold flex items-center gap-2 mb-2">
+                <span className="p-1 rounded bg-info-500/10 text-info-500 font-mono text-[10px]">NEW</span>
+                % of Payout (Deducted)
+              </h4>
+              <p className="text-xs opacity-60 leading-relaxed">
+                Ideal for Accumulation. If the winner gets ₹380,000, you deduct 1-5% (e.g. ₹3,800) as your fee before handing over the cheque.
+                Simple and profitable.
+              </p>
             </div>
+            <div>
+              <h4 className="text-sm font-bold mb-2">% of Chit Value</h4>
+              <p className="text-xs opacity-60 leading-relaxed">
+                Standard 5%. You take ₹22,500 every month from the pot before distributing anything.
+              </p>
+            </div>
+          </div>
 
-            <div className="space-y-4">
-               <div>
-                  <h4 className="text-sm font-bold mb-2">% of Discount</h4>
-                  <p className="text-xs opacity-60 leading-relaxed">
-                    You take a cut of the bid amount. If someone bids ₹70,000 and your rate is 10%, you earn ₹7,000.
-                  </p>
-               </div>
-               <div>
-                  <h4 className="text-sm font-bold mb-2">Fixed Amount</h4>
-                  <p className="text-xs opacity-60 leading-relaxed">
-                    A flat fee (e.g. ₹500) per member or per auction. predictable and easy to explain.
-                  </p>
-               </div>
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-bold mb-2">% of Discount</h4>
+              <p className="text-xs opacity-60 leading-relaxed">
+                You take a cut of the bid amount. If someone bids ₹70,000 and your rate is 10%, you earn ₹7,000.
+              </p>
             </div>
-         </div>
+            <div>
+              <h4 className="text-sm font-bold mb-2">Fixed Amount</h4>
+              <p className="text-xs opacity-60 leading-relaxed">
+                A flat fee (e.g. ₹500) per member or per auction. predictable and easy to explain.
+              </p>
+            </div>
+          </div>
+        </div>
       </Card>
 
       <div className="flex justify-center pt-5">
-         <Btn variant="primary" icon={ArrowRight} onClick={() => router.push('/groups')}>Go to Groups</Btn>
+        <Btn variant="primary" icon={ArrowRight} onClick={() => router.push('/groups')}>Go to Groups</Btn>
       </div>
 
     </div>
