@@ -68,8 +68,8 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // 3. If on Protected route —> Enforce guards
-    if (!isPublic && !isOnboarding && !isInvite) {
+  // 3. If on Protected route —> Enforce guards
+    if (!isPublic && !isOnboarding && !isInvite && !isDenied) {
       // Admin-only areas
       if (isAdmin && profile?.role !== 'superadmin') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
