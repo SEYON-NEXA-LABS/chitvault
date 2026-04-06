@@ -43,13 +43,13 @@ export default function SchemesGuidePage() {
            <Badge variant="info" className="mb-4">Option A</Badge>
            <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
-             In this model, the &quot;Discount&quot; (bid amount) is divided equally among all members every month. 
+             In this model, the **Auction Discount** (the amount bid "away") is divided equally among all members every month. 
              Members pay less than their target installment, sharing the profit immediately.
            </p>
            
            <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
               <ExampleRow label="Monthly Installment" dividend="₹30,000" accumulation="—" color="var(--text)" />
-              <ExampleRow label="Winning Bid (Discount)" dividend="₹70,000" accumulation="—" color="var(--danger)" />
+              <ExampleRow label="Auction Discount" dividend="₹70,000" accumulation="—" color="var(--danger)" />
               <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--success)" />
               <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--info)" fontWeight="bold" />
            </div>
@@ -64,7 +64,7 @@ export default function SchemesGuidePage() {
            <Badge variant="accent" className="mb-4">Option B</Badge>
            <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
            <p className="text-sm opacity-70 leading-relaxed mb-6">
-             Everyone pays the **Full Amount** every month. The &quot;Bid&quot; is stored in a **Surplus Pool**. 
+             Everyone pays the **Full Amount** every month. The **Auction Discount** is stored in a **Surplus Pool**. 
              When the pool is large enough, it pays for the final months automatically!
            </p>
 

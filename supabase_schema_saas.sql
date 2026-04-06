@@ -208,7 +208,7 @@ create table if not exists auctions (
   month        int not null,
   auction_date date,
   winner_id    bigint references members(id) on delete set null,
-  bid_amount   numeric(12,2) not null,
+  auction_discount numeric(12,2) not null,
   total_pot    numeric(12,2) not null,
   dividend     numeric(12,2) not null,
   net_payout   numeric(12,2) default 0.0,
@@ -223,7 +223,7 @@ create table if not exists auctions (
   updated_at   timestamptz default now(),
   updated_by   uuid references auth.users(id),
   unique(firm_id, group_id, month),
-  constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0),
+  constraint auctions_amounts_nonneg_chk check (auction_discount >= 0 and total_pot >= 0 and dividend >= 0),
   constraint auctions_status_chk check (status in ('draft','confirmed'))
 );
 
@@ -858,8 +858,8 @@ create table if not exists foreman_commissions (
   auction_id      bigint references auctions(id) on delete cascade,
   month           int not null,
   chit_value      numeric(12,2) not null,
-  bid_amount      numeric(12,2) not null,
-  discount        numeric(12,2) not null,      -- total_pot - bid_amount
+  auction_discount numeric(12,2) not null,
+  discount        numeric(12,2) not null,      -- redundant but kept for back-compat with old logic
   commission_type text not null,
   commission_rate numeric(12,4) not null,      -- % or fixed
   commission_amt  numeric(12,2) not null,      -- final ₹ commission
@@ -898,7 +898,7 @@ create policy "fc_delete" on foreman_commissions for delete
 -- (bid limits enforced, commission deducted, dividend computed)
 create or replace function public.calculate_auction(
   p_group_id  bigint,
-  p_bid_amount numeric
+  p_auction_discount numeric
 )
 returns jsonb
 language plpgsql stable security definer set search_path = public
@@ -919,9 +919,9 @@ begin
   select * into g from groups where id = p_group_id and firm_id = my_firm_id();
   if not found then raise exception 'Group not found'; end if;
 
-  -- Logic: p_bid_amount IS the Discount Amount (the amount bid "away")
-  v_discount := p_bid_amount;
-  v_raw_payout := g.chit_value - p_bid_amount;
+  -- Logic: p_auction_discount IS the Discount Amount (the amount bid "away")
+  v_discount := p_auction_discount;
+  v_raw_payout := g.chit_value - p_auction_discount;
 
   -- Enforce bid range (Now comparing discount against floor/cap)
   v_min_bid := round(g.chit_value * g.min_bid_pct, 2);
@@ -964,7 +964,7 @@ begin
 
   return jsonb_build_object(
     'chit_value',      g.chit_value,
-    'bid_amount',      p_bid_amount,
+    'auction_discount', p_auction_discount,
     'min_bid',         v_min_bid,
     'max_bid',         v_max_bid,
     'discount',        v_discount,
@@ -991,7 +991,7 @@ create or replace function public.record_auction_with_commission(
   p_month         int,
   p_auction_date  date,
   p_winner_id     bigint,
-  p_bid_amount    numeric,
+  p_auction_discount numeric,
   p_foreman_member_id bigint default null,
   p_notes         text default null,
   p_status        text default 'confirmed',
@@ -1017,7 +1017,7 @@ begin
   v_firm_id := my_firm_id();
 
   -- Get full calculation (also validates bid range)
-  v_calc := public.calculate_auction(p_group_id, p_bid_amount);
+  v_calc := public.calculate_auction(p_group_id, p_auction_discount);
 
   -- Handle Existing Auction (Edit Mode)
   if p_auction_id is not null then
@@ -1027,7 +1027,7 @@ begin
     -- Reverse old confirmed impact if present
     if v_old_auction.status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
         update groups 
-        set accumulated_surplus = accumulated_surplus - v_old_auction.bid_amount
+        set accumulated_surplus = accumulated_surplus - v_old_auction.auction_discount
         where id = p_group_id;
     end if;
 
@@ -1035,7 +1035,7 @@ begin
     update auctions set
       auction_date = p_auction_date,
       winner_id = p_winner_id,
-      bid_amount = p_bid_amount,
+      auction_discount = p_auction_discount,
       total_pot = g.chit_value,
       dividend = (v_calc->>'per_member_div')::numeric,
       net_payout = (v_calc->>'net_payout')::numeric,
@@ -1050,10 +1050,10 @@ begin
     delete from foreman_commissions where auction_id = v_auction_id;
   else
     -- Standard Insert Mode
-    insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, status)
+    insert into auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, status)
     values (
       v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
-      p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric, p_status
+      p_auction_discount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric, p_status
     )
     returning id into v_auction_id;
   end if;
@@ -1061,13 +1061,13 @@ begin
   -- Insert foreman commission record (Fresh row)
   insert into foreman_commissions (
     firm_id, group_id, auction_id, month,
-    chit_value, bid_amount, discount,
+    chit_value, auction_discount, discount,
     commission_type, commission_rate, commission_amt,
     net_dividend, per_member_div,
     paid_to, foreman_member_id, notes, status
   ) values (
     v_firm_id, p_group_id, v_auction_id, p_month,
-    g.chit_value, p_bid_amount, (v_calc->>'discount')::numeric,
+    g.chit_value, p_auction_discount, (v_calc->>'discount')::numeric,
     (v_calc->>'commission_type')::text,
     (v_calc->>'commission_rate')::numeric,
     (v_calc->>'commission_amt')::numeric,
@@ -1082,7 +1082,7 @@ begin
   -- Apply confirmed impact if status is confirmed
   if p_status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
      update groups 
-     set accumulated_surplus = accumulated_surplus + p_bid_amount
+     set accumulated_surplus = accumulated_surplus + p_auction_discount
      where id = p_group_id;
   end if;
 

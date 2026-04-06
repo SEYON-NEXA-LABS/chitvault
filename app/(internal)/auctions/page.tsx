@@ -35,7 +35,7 @@ export default function AuctionsPage() {
 
   const [form, setForm] = useState({
     group_id: '', month: '', auction_date: '', winner_id: '',
-    bid_amount: '', foreman_member_id: '', notes: ''
+    auction_discount: '', foreman_member_id: '', notes: ''
   })
   const [editingId,  setEditingId]  = useState<number | null>(null)
   const [eligible,   setEligible]   = useState<Member[]>([])
@@ -91,19 +91,19 @@ export default function AuctionsPage() {
     setEligible(gMembers)
     setForm(f => ({
       ...f, group_id: groupId, month: String(confirmedCount + 1),
-      bid_amount: '', winner_id: '', foreman_member_id: foremanM[0]?.id?.toString() || '', notes: ''
+      auction_discount: '', winner_id: '', foreman_member_id: foremanM[0]?.id?.toString() || '', notes: ''
     }))
     setCalc(null); setCalcError('')
     setEditingId(null)
   }
 
   async function onBidChange(bid: string) {
-    setForm(f => ({ ...f, bid_amount: bid }))
+    setForm(f => ({ ...f, auction_discount: bid }))
     setCalc(null); setCalcError('')
     if (!bid || !form.group_id || isNaN(+bid)) return
     const { data, error } = await supabase.rpc('calculate_auction', {
       p_group_id:   +form.group_id,
-      p_bid_amount: +bid
+      p_auction_discount: +bid
     })
     if (error) { setCalcError(error.message); return }
     setCalc(data)
@@ -141,8 +141,8 @@ export default function AuctionsPage() {
   }, [form.winner_id, form.group_id, members, groups, auctions, payments])
 
   async function handleSave(status: 'draft' | 'confirmed' = 'confirmed') {
-    if (!form.group_id || !form.winner_id || !form.bid_amount) {
-      show('Fill in group, winner and bid amount.', 'error'); return
+    if (!form.group_id || !form.winner_id || !form.auction_discount) {
+      show('Fill in group, winner and auction discount.', 'error'); return
     }
     if (status === 'confirmed' && winnerBalance > 0.01 && !acknowledge) {
       show('Please acknowledge the member outstanding dues first.', 'error'); return
@@ -163,7 +163,7 @@ export default function AuctionsPage() {
       p_month:              +form.month,
       p_auction_date:       form.auction_date || null,
       p_winner_id:          +form.winner_id,
-      p_bid_amount:         +form.bid_amount,
+      p_auction_discount:   +form.auction_discount,
       p_foreman_member_id:  form.foreman_member_id ? +form.foreman_member_id : null,
       p_notes:              form.notes || '',
       p_status:             status,
@@ -182,7 +182,7 @@ export default function AuctionsPage() {
           { 
             group_id: form.group_id, 
             month: form.month, 
-            bid_amount: form.bid_amount,
+            auction_discount: form.auction_discount,
             status
           }
         );
@@ -208,7 +208,7 @@ export default function AuctionsPage() {
       month: String(a.month),
       auction_date: a.auction_date || '',
       winner_id: String(a.winner_id),
-      bid_amount: String(a.bid_amount),
+      auction_discount: String(a.auction_discount),
       foreman_member_id: commissions.find(c => c.auction_id === a.id)?.foreman_member_id?.toString() || '',
       notes: (a as any).notes || ''
     })
@@ -216,7 +216,7 @@ export default function AuctionsPage() {
     // Trigger calc
     const { data: cData } = await supabase.rpc('calculate_auction', {
       p_group_id:   a.group_id,
-      p_bid_amount: a.bid_amount
+      p_auction_discount: a.auction_discount
     })
     setCalc(cData)
     setAddOpen(true)
@@ -226,7 +226,7 @@ export default function AuctionsPage() {
     const data = auctions.map(a => ({
       Month: a.month,
       Group: groups.find(g => g.id === a.group_id)?.name || 'Unknown',
-      Bid: a.bid_amount,
+      Bid: a.auction_discount,
       Dividend: a.dividend,
       Payout: a.net_payout
     }))
@@ -273,7 +273,7 @@ export default function AuctionsPage() {
            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
            {can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => { 
               setEditingId(null); 
-              setForm({ group_id: '', month: '', auction_date: '', winner_id: '', bid_amount: '', foreman_member_id: '', notes: '' });
+              setForm({ group_id: '', month: '', auction_date: '', winner_id: '', auction_discount: '', foreman_member_id: '', notes: '' });
               setCalc(null);
               setAddOpen(true); 
            }} icon={Plus}>{t('record_auction')}</Btn>}
@@ -295,9 +295,9 @@ export default function AuctionsPage() {
                   <Th>Month</Th>
                   <Th className="hidden md:table-cell">Date</Th>
                   <Th>Winner</Th>
-                  <Th right>Bid</Th>
+                  <Th right>Discount</Th>
                   <Th right className="hidden lg:table-cell">To Surplus</Th>
-                  <Th right>Payout</Th>
+                  <Th right>Net Payout</Th>
                   <Th right className="hidden md:table-cell">Comm.</Th>
                   <Th right className="hidden sm:table-cell">Due</Th>
                   <Th>Action</Th>
@@ -325,13 +325,13 @@ export default function AuctionsPage() {
                         </Td>
                         <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
                         <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
-                        <Td right>{fmt(a.bid_amount)}</Td>
+                        <Td right>{fmt(a.auction_discount)}</Td>
                         <Td right className="hidden lg:table-cell">
                            {g?.auction_scheme === 'ACCUMULATION' 
-                             ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.bid_amount)}</span>
+                             ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.auction_discount)}</span>
                              : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </Td>
-                        <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
+                        <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
                         <Td right className="hidden md:table-cell">
                           {fc
                             ? <span style={{ color: 'var(--danger)' }}>{fmt(fc.commission_amt)}</span>
@@ -364,7 +364,7 @@ export default function AuctionsPage() {
           <Table>
             <thead><tr>
               {role === 'superadmin' && <Th>Firm</Th>}
-              {['Group','Month','Chit Value','Bid','Discount','Commission','Net Dividend','Per Member','Goes To'].map(h => <Th key={h}>{h}</Th>)}
+              {['Group','Month','Chit Value','Auction Discount','Total Sacrifice','Commission','Net Dividend','Per Member','Goes To'].map(h => <Th key={h}>{h}</Th>)}
             </tr></thead>
             <tbody>
               {filteredCommissions.map(fc => {
@@ -378,7 +378,7 @@ export default function AuctionsPage() {
                     <Td>{g?.name || '—'}</Td>
                     <Td><Badge variant="info">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
                     <Td right>{fmt(fc.chit_value)}</Td>
-                    <Td right>{fmt(fc.bid_amount)}</Td>
+                    <Td right>{fmt(fc.auction_discount)}</Td>
                     <Td right><span style={{ color: 'var(--danger)' }}>{fmt(fc.discount)}</span></Td>
                     <Td right>
                       <div style={{ color: 'var(--accent)' }}>{fmt(fc.commission_amt)}</div>
@@ -417,7 +417,7 @@ export default function AuctionsPage() {
           {groupRules && (
             <div className="col-span-2 p-3 rounded-xl text-xs flex gap-4 flex-wrap"
               style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
-              <span>🎯 Bid range: <strong style={{ color: 'var(--accent)' }}>{fmt(groupRules.chit_value * groupRules.min_bid_pct)} – {fmt(groupRules.chit_value * groupRules.max_bid_pct)}</strong></span>
+              <span>🎯 Discount range: <strong style={{ color: 'var(--accent)' }}>{fmt(groupRules.chit_value * groupRules.min_bid_pct)} – {fmt(groupRules.chit_value * groupRules.max_bid_pct)}</strong></span>
             </div>
           )}
 
@@ -477,7 +477,7 @@ export default function AuctionsPage() {
           <Field label="Auction Discount (₹)" className="col-span-2">
             <input className={inputClass}
               style={{ ...inputStyle, borderColor: calcError ? 'var(--danger)' : calc ? 'var(--success)' : undefined }}
-              type="number" value={form.bid_amount}
+              type="number" value={form.auction_discount}
               onChange={e => onBidChange(e.target.value)} />
             {calcError && <span className="text-[10px] mt-1" style={{ color: 'var(--danger)' }}>✗ {calcError}</span>}
           </Field>
@@ -491,7 +491,7 @@ export default function AuctionsPage() {
                 { label: 'Firm Comm.',  value: fmt(calc.commission_amt),  color: 'var(--danger)'  },
                 { 
                   label: groupRules?.auction_scheme === 'ACCUMULATION' ? 'Group Surplus' : 'Per Member Div',   
-                  value: groupRules?.auction_scheme === 'ACCUMULATION' ? fmt(calc.bid_amount) : fmt(calc.per_member_div),  
+                  value: groupRules?.auction_scheme === 'ACCUMULATION' ? fmt(calc.auction_discount) : fmt(calc.per_member_div),  
                   color: 'var(--info)'  
                 },
               ].map(r => (
