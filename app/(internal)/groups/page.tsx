@@ -336,10 +336,10 @@ export default function GroupsPage() {
               <Gavel size={14} /> Auction Rules & Commission
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Min Auction Discount (%)">
+              <Field label="Min Discount (Floor %)">
                 <input className={inputClass} style={inputStyle} type="number" value={form.min_bid_pct} onChange={e => setForm(f => ({ ...f, min_bid_pct: e.target.value }))} placeholder="5" />
               </Field>
-              <Field label="Max Auction Discount (%)">
+              <Field label="Max Discount (Cap %)">
                 <input className={inputClass} style={inputStyle} type="number" value={form.max_bid_pct} onChange={e => setForm(f => ({ ...f, max_bid_pct: e.target.value }))} placeholder="40" />
               </Field>
               <Field label="Commission Type">
@@ -354,8 +354,8 @@ export default function GroupsPage() {
               </Field>
             </div>
             <p className="text-[10px] opacity-40 mt-3 italic">
-              * The &quot;Min Auction Discount&quot; is usually your commission rate (e.g., 5%).
-              The winner must offer at least this amount to the group.
+              * The &quot;Min Discount&quot; is usually your commission rate (e.g., 5%).
+              The winner must sacrifice at least this amount to the group.
             </p>
           </div>
         </div>

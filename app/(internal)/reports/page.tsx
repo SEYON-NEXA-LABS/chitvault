@@ -198,9 +198,9 @@ function ReportsPageContent() {
             'Group': g?.name,
             'Month': fmtMonth(a.month, g?.start_date),
             'Winner': m?.persons?.name,
-            'Bid Amount': a.bid_amount,
+            'Auction Discount': a.auction_discount,
             'Dividend': a.dividend,
-            'Payout Amt': a.net_payout || a.bid_amount,
+            'Net Payout': a.net_payout || a.auction_discount,
             'Settled': a.is_payout_settled ? 'Yes' : 'No',
             'Settled Date': a.is_payout_settled ? fmtDate(a.payout_date) : 'N/A'
           }
@@ -486,11 +486,11 @@ function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions:
     <>
       <div className="grid grid-cols-3 gap-4 mb-4">
         <StatCard label="Total Inflow (Collections)" value={fmt(totalCollected)} color="success" />
-        <StatCard label="Total Outflow (Winner Payouts)" value={fmt(totalPaidOut)} color="danger" />
+        <StatCard label="Total Outflow (Net Payouts)" value={fmt(totalPaidOut)} color="danger" />
         <StatCard label="Net Cash Flow" value={fmt(netFlow)} color={netFlow >= 0 ? 'success' : 'danger'} />
       </div>
       <div className="p-4 rounded-xl border mb-5 text-sm" style={{ background: 'var(--surface2)', color: 'var(--text2)' }}>
-        Cash flow represents the liquid money collected from members versus the money paid out to auction winners. 
+        Cash flow represents the liquid money collected from members versus the actual net payouts handed to winners. 
       </div>
     </>
   )
@@ -662,7 +662,7 @@ function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { g
               <Tr key={auc.month}>
                 <Td><Badge variant="gray">{fmtMonth(auc.month, groups.find(gx=>gx.id===groupId)?.start_date)}</Badge></Td>
                 <Td>{w ? `👑 ${w.persons?.name || 'Member'}` : '—'}</Td>
-                <Td right style={{ color: 'var(--danger)' }}>{fmt(auc.bid_amount)}</Td>
+                <Td right style={{ color: 'var(--danger)' }}>{fmt(auc.auction_discount)}</Td>
                 <Td right style={{ color: 'var(--accent)' }}>{fmt(auc.dividend)}</Td>
                 <Td right style={{ color: 'var(--success)' }}>{fmt(monthPayments)}</Td>
               </Tr>
@@ -790,7 +790,7 @@ function ReportWinners({ auctions, groups, members, filter, onFilterChange }: { 
                   <Td className="font-semibold">👑 {m?.persons?.name || 'Unknown'}</Td>
                   <Td>{g?.name}</Td>
                   <Td><Badge variant="accent">{fmtMonth(a.month, g?.start_date)}</Badge></Td>
-                  <Td right className="font-mono font-bold text-success-600">{fmt(a.net_payout || a.bid_amount)}</Td>
+                  <Td right className="font-mono font-bold text-success-600">{fmt(a.net_payout || a.auction_discount)}</Td>
                   <Td>
                     {a.is_payout_settled 
                       ? <div className="flex flex-col text-[10px] text-success-600 font-bold"><span>✓ Settled</span><span className="opacity-50">{fmtDate(a.payout_date)}</span></div>

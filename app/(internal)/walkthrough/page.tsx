@@ -1,15 +1,11 @@
 'use client'
 
 import React, { useState } from "react"
-import { Card, Btn, Badge } from "@/components/ui"
+import { Btn, Badge } from "@/components/ui"
 import {
-  LayoutDashboard, Search, Users, Gavel, 
-  CreditCard, Smartphone, ShieldCheck, 
-  ChevronRight, ArrowRight, Zap, Target,
-  Compass, Activity, Shield, Calculator,
-  BookOpen, Brain, Network, Landmark,
-  History, Lock, Info, CheckCircle2,
-  TrendingUp, Scale, Settings
+  ArrowRight, ShieldCheck, Zap, 
+  Calculator, BookOpen, Shield, 
+  CheckCircle2, Printer
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useI18n } from "@/lib/i18n/context"
@@ -18,24 +14,12 @@ import { cn } from "@/lib/utils"
 export default function AppReferenceGuide() {
   const router = useRouter()
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState('analytics')
-
-  const TABS = [
-    { id: 'analytics', label: 'Intelligence', icon: Brain },
-    { id: 'architecture', label: 'Core Structure', icon: Network },
-    { id: 'math', label: 'The Math', icon: Calculator },
-    { id: 'ledger', label: 'Smart Ledger', icon: Landmark },
-    { id: 'field', label: 'Field Hub', icon: Smartphone },
-    { id: 'closure', label: 'Settlement', icon: History },
-    { id: 'governance', label: 'Security', icon: Lock },
-  ]
-
-  const [calc, setCalc] = useState({ total: 100000, bid: 80000, members: 20, commission: 5 })
+  const [calc, setCalc] = useState({ total: 100000, discount: 5000, members: 20, commission: 5 })
 
   const Term = ({ name, definition }: { name: string, definition: string }) => (
     <span className="group/term relative inline-block cursor-help border-b border-dotted border-[var(--accent)] text-[var(--accent)] font-bold px-1 transition-all hover:bg-[var(--accent-dim)] rounded">
       {name}
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl text-[10px] leading-relaxed text-[var(--text2)] opacity-0 pointer-events-none group-hover/term:opacity-100 transition-opacity z-[200] text-center backdrop-blur-xl">
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl text-[10px] leading-relaxed text-[var(--text2)] opacity-0 pointer-events-none group-hover/term:opacity-100 transition-opacity z-[50] text-center backdrop-blur-xl">
         <span className="block font-black uppercase tracking-widest text-[var(--accent)] mb-1">Definition</span>
         {definition}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-[var(--border)]" />
@@ -43,56 +27,13 @@ export default function AppReferenceGuide() {
     </span>
   )
 
-  const InteractiveCalculator = () => {
-    const commissionAmt = (calc.total * calc.commission) / 100
-    const pool = (calc.total - calc.bid) - commissionAmt
-    const div = pool / calc.members
-    const payable = (calc.total / calc.members) - div
-
-    return (
-      <div className="mt-8 p-8 rounded-[32px] bg-[var(--surface2)] border border-[var(--border)] shadow-inner">
-        <div className="flex items-center gap-3 mb-8">
-           <Calculator className="text-[var(--accent)]" size={20} />
-           <h4 className="text-sm font-black uppercase tracking-widest">Live Logic Simulator</h4>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-           {[['Total Value', 'total'], ['Winning Bid', 'bid'], ['Comm %', 'commission'], ['Members', 'members']].map(([label, key]) => (
-             <div key={key} className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-wider opacity-40">{label}</label>
-                <input 
-                  type="number" 
-                  value={(calc as any)[key]} 
-                  onChange={(e) => setCalc({ ...calc, [key]: Number(e.target.value) })}
-                  className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-bold text-[var(--accent)] focus:outline-none focus:border-[var(--accent)] transition-all"
-                />
-             </div>
-           ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-           {([
-             ['Dividend Pool', pool, 'var(--info)'],
-             ['Per Head Div', div, 'var(--success)'],
-             ['Net Payable', payable, 'var(--accent)']
-           ] as const).map(([label, val, color]) => (
-             <div key={label} className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-                <div className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">{label}</div>
-                <div className="text-xl font-mono font-black" style={{ color }}>₹{Math.max(0, val).toLocaleString()}</div>
-             </div>
-           ))}
-        </div>
-      </div>
-    )
-  }
-
   const MathFormula = ({ title, formula, result }: any) => (
-    <div className="p-6 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] shadow-sm font-mono relative group">
+    <div className="p-6 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] shadow-sm font-mono relative group mb-4">
       <div className="absolute top-0 right-0 p-2 opacity-5">
         <Calculator size={40} />
       </div>
       <h5 className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] mb-4">{title}</h5>
-      <div className="text-sm md:text-base lg:text-lg font-bold text-[var(--text)] mb-3 tracking-tight">
+      <div className="text-sm md:text-base font-bold text-[var(--text)] mb-3 tracking-tight">
         {formula}
       </div>
       <div className="flex items-center gap-2 text-xs opacity-60">
@@ -102,208 +43,189 @@ export default function AppReferenceGuide() {
     </div>
   )
 
-  const LogicCard = ({ title, children, icon: Icon, color }: any) => (
-    <div className="p-8 rounded-[32px] border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-all group relative">
-      <div className="absolute inset-0 rounded-[32px] overflow-hidden pointer-events-none">
-        <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-5 transition-opacity group-hover:opacity-10" style={{ backgroundColor: color }} />
-      </div>
-      <div className="flex items-start gap-5 mb-6">
-        <div className="p-3 rounded-2xl bg-[var(--surface2)] shadow-inner" style={{ color }}>
-          <Icon size={24} />
+  const ChapterHeader = ({ num, title, subtitle }: any) => (
+    <div className="mb-12 mt-20 first:mt-0">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-12 h-12 rounded-2xl bg-[var(--accent-dim)] border border-[var(--accent-border)] flex items-center justify-center text-[var(--accent)] font-black text-xl shadow-lg">
+          {num}
         </div>
-        <h3 className="text-xl font-black tracking-tight pt-1" style={{ color: 'var(--text)' }}>{title}</h3>
+        <div>
+          <h2 className="text-3xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>{title}</h2>
+          <p className="text-sm opacity-40 uppercase tracking-widest font-bold">{subtitle}</p>
+        </div>
       </div>
-      <div className="space-y-4 text-sm text-[var(--text2)] leading-relaxed font-medium">
-        {children}
-      </div>
+      <div className="h-1 w-20 bg-[var(--accent)] rounded-full opacity-20" />
     </div>
   )
 
   return (
-    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
       {/* Immersive Background Decor */}
       <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-[var(--accent)] opacity-[0.02] blur-[150px] -z-10" />
       <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-[var(--danger)] opacity-[0.02] blur-[150px] -z-10" />
 
-      <div className="max-w-7xl mx-auto px-6 py-20 lg:py-32">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row items-end justify-between gap-8 mb-20 animate-in fade-in slide-in-from-bottom-8 duration-700">
-           <div className="max-w-2xl space-y-6">
-             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-dim)] border border-[var(--accent-border)]">
-               <BookOpen size={14} className="text-[var(--accent)]" />
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">THE ULTIMATE REFERENCE</span>
+      <div className="max-w-4xl mx-auto px-6 py-20 lg:py-32">
+        
+        {/* Help Book Cover */}
+        <div className="space-y-8 mb-32">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-dim)] border border-[var(--accent-border)]">
+            <BookOpen size={14} className="text-[var(--accent)]" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">CHITVAULT HELP BOOK v2.5</span>
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.85]" style={{ color: 'var(--text)' }}>
+             The Auction <br />
+             <span className="italic opacity-30">Manual</span>
+          </h1>
+          <p className="text-xl font-medium opacity-50 leading-relaxed max-w-xl">
+            A narrative guide for firm owners and staff to master the auction process, from bidding floors to final payouts.
+          </p>
+          <div className="flex gap-4 items-center opacity-40 text-[10px] font-black uppercase tracking-widest pt-8 border-t" style={{ borderColor: 'var(--border)' }}>
+             <span>Audit-Ready Logic</span>
+             <span className="w-1 h-1 rounded-full bg-current" />
+             <span>Zero Manual Errors</span>
+             <span className="w-1 h-1 rounded-full bg-current" />
+             <span>Legal Compliance</span>
+          </div>
+        </div>
+
+        {/* Chapter 1: The Core Philosophy */}
+        <section id="chapter-1">
+          <ChapterHeader num="01" title="The System Philosophy" subtitle="Terminology & Integrity" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
+             <p>Our platform is built on the principle of <Term name="Mathematical Integrity" definition="Ensuring every rupee is accounted for by automating the distribution logic without human manual override." />. Unlike traditional ledgers, ChitVault uses an automated auction engine to calculate dividends.</p>
+             <p>The most important distinction in our system is the **Auction Discount**. In legacy systems, this might be called the "Winning Bid," but we use "Discount" because it accurately describes what the winner is sacrificing to the group.</p>
+             <div className="bg-[var(--surface2)] p-6 rounded-3xl border border-[var(--border)] shadow-inner my-8">
+                <h4 className="text-sm font-black uppercase tracking-widest text-[var(--accent)] mb-4">The Golden Rule</h4>
+                <p className="text-sm italic">The more a winner <Term name="Discounts" definition="The amount the auction winner 'sacrifices' from the total chit value in order to take the money early." />, the more <Term name="Dividends" definition="The share of the Auction Discount distributed back to each member of the group." /> the other members receive.</p>
              </div>
-             <h1 className="text-5xl lg:text-7xl font-black tracking-tighter leading-[0.9]" style={{ color: 'var(--text)' }}>
-               Mastering the <br />
-               <span className="italic opacity-60">ChitVault Ecosystem</span>
-             </h1>
-             <p className="text-lg font-medium opacity-50 leading-relaxed">
-               Welcome to the definitive manual. Every calculation, logic engine, and module flow defined in one high-fidelity functional reference.
-             </p>
-           </div>
-           
-           <div className="hidden lg:flex items-center gap-12 text-center pb-2">
-              <div>
-                <div className="text-3xl font-black" style={{ color: 'var(--text)' }}>100%</div>
-                <div className="text-[9px] font-black uppercase tracking-widest opacity-40">Audit Ready</div>
-              </div>
-              <div className="w-px h-10 bg-[var(--border)] opacity-30" />
-              <div>
-                <div className="text-3xl font-black" style={{ color: 'var(--accent)' }}>ZERO</div>
-                <div className="text-[9px] font-black uppercase tracking-widest opacity-40">Manual Errors</div>
-              </div>
-           </div>
-        </div>
+          </div>
+        </section>
 
-        {/* Dynamic Navigation Bar */}
-        <div className="sticky top-4 z-[100] mb-16 flex items-center justify-center">
-           <div className="bg-[var(--surface)]/80 backdrop-blur-xl border border-[var(--border)] p-1.5 rounded-[24px] shadow-2xl flex flex-wrap justify-center gap-1">
-              {TABS.map((tab) => {
-                const Icon = tab.icon
-                const active = activeTab === tab.id
+        {/* Chapter 2: The Infrastructure */}
+        <section id="chapter-2">
+          <ChapterHeader num="02" title="The Infrastructure" subtitle="Groups & Tickets" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
+             <p>Every auction happens within a <Term name="Chit Group" definition="A collection of members who contribute monthly to a shared pool." />. Each group has a fixed duration and total value.</p>
+             <p>Members hold <Term name="Tickets" definition="A specific slot or seat in a group. A single person can hold multiple tickets in the same group." />. Each ticket carries exactly one monthly installment responsibility and exactly one claim to an auction win.</p>
+          </div>
+        </section>
+
+        {/* Chapter 3: The Auction Rules */}
+        <section id="chapter-3">
+          <ChapterHeader num="03" title="Rules of the Auction" subtitle="Safety Floors & Caps" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
+             <p>To ensure fairness and firm sustainability, we enforce strict financial rules on every bidding cycle:</p>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
+                <div className="p-8 rounded-3xl bg-[var(--surface)] border border-[var(--border)] group hover:border-[var(--accent-border)] transition-all">
+                   <div className="w-10 h-10 rounded-xl bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent)] mb-4">
+                      <ShieldCheck size={20} />
+                   </div>
+                   <h4 className="font-black text-lg mb-2">The 5% Floor</h4>
+                   <p className="text-sm opacity-60 leading-relaxed">Most auctions have a <Term name="Min Discount" definition="The minimum amount a winner MUST sacrifice. This usually covers the firm's commission." />. In our standard groups, this is set to a 5% floor.</p>
+                </div>
+                <div className="p-8 rounded-3xl bg-[var(--surface)] border border-[var(--border)] group hover:border-[var(--danger-border)] transition-all">
+                   <div className="w-10 h-10 rounded-xl bg-[var(--danger-dim)] flex items-center justify-center text-[var(--danger)] mb-4">
+                      <Zap size={20} />
+                   </div>
+                   <h4 className="font-black text-lg mb-2">The 40% Cap</h4>
+                   <p className="text-sm opacity-60 leading-relaxed">To prevent members from bidding too high and losing their savings, we use a <Term name="Max Discount" definition="The maximum allowed sacrifice for a winner to ensure they still take home a reasonable amount of capital." /> cap of 40%.</p>
+                </div>
+             </div>
+
+             <div className="p-8 rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--surface2)]/50">
+                <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4 opacity-40">Foreman Commission</h4>
+                <p className="text-sm">The firm captures its commission from the auction discount first. By law, this is strictly capped at **5%** of the total chit value.</p>
+             </div>
+          </div>
+        </section>
+
+        {/* Chapter 4: The Math Laboratory */}
+        <section id="chapter-4">
+          <ChapterHeader num="04" title="The Math Laboratory" subtitle="Interactive Logic Simulator" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium mb-12">
+             <p>Understand the exact distribution flow by adjusting the values below. See how the <Term name="Sacrifice" definition="The portion of the chit value the winner gives up to take the payout." /> directly influences the per-member dividend.</p>
+          </div>
+
+          <div className="p-8 rounded-[32px] bg-[var(--surface2)] border border-[var(--border)] shadow-inner mb-12">
+             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                {[['Chit Value', 'total'], ['Auction Discount', 'discount'], ['Comm %', 'commission'], ['Members', 'members']].map(([label, key]) => (
+                  <div key={key} className="space-y-2">
+                     <label className="text-[10px] font-black uppercase tracking-wider opacity-40">{label}</label>
+                     <input 
+                       type="number" 
+                       value={(calc as any)[key]} 
+                       onChange={(e) => setCalc({ ...calc, [key]: Number(e.target.value) })}
+                       className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-bold text-[var(--accent)] focus:outline-none focus:border-[var(--accent)] transition-all"
+                     />
+                  </div>
+                ))}
+             </div>
+
+             {/* Calculation Logic Displayed Live */}
+             {(() => {
+                const commissionAmt = (calc.total * calc.commission) / 100
+                const netDividendPool = Math.max(0, calc.discount - commissionAmt)
+                const div = netDividendPool / calc.members
+                const payable = (calc.total / calc.members) - div
+                const winnerTakeHome = calc.total - calc.discount
+
                 return (
-                  <button 
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-[18px] text-xs font-bold transition-all",
-                      active ? "bg-[var(--accent)] text-white shadow-lg" : "text-[var(--text2)] hover:bg-[var(--surface2)]"
-                    )}
-                  >
-                    <Icon size={16} />
-                    <span>{tab.label}</span>
-                  </button>
+                  <div className="space-y-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+                           <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Group Benefit (Dividend Pool)</div>
+                           <div className="text-2xl font-mono font-black text-[var(--info)]">₹{netDividendPool.toLocaleString()}</div>
+                           <div className="text-[10px] opacity-40 mt-1">Split among {calc.members} members</div>
+                        </div>
+                        <div className="p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
+                           <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Winner&apos;s Net Payout</div>
+                           <div className="text-2xl font-mono font-black text-[var(--success)]">₹{winnerTakeHome.toLocaleString()}</div>
+                           <div className="text-[10px] opacity-40 mt-1">Amount after auction discount</div>
+                        </div>
+                     </div>
+                     
+                     <div className="bg-[var(--accent)]/10 p-6 rounded-3xl border border-[var(--accent-border)] flex items-center justify-between">
+                        <div>
+                           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] mb-1">Each Member Pays This Month</div>
+                           <div className="text-3xl font-black" style={{ color: 'var(--text)' }}>₹{Math.max(0, payable).toLocaleString()}</div>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                           <div className="text-[10px] font-black uppercase tracking-widest opacity-40">Saving vs Installment</div>
+                           <div className="text-xl font-bold text-[var(--success)]">₹{div.toLocaleString()}</div>
+                        </div>
+                     </div>
+                  </div>
                 )
-              })}
-           </div>
-        </div>
-
-        {/* Content Section: Intelligence & Decision Engine */}
-        {activeTab === 'analytics' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="Pulse Intelligence" icon={TrendingUp} color="var(--accent)">
-               <p>The dashboard is not just a display—it&apos;s a live Decision Engine. The pulse metrics calculate collection health in real-time, matching outstanding dues against your monthly targets.</p>
-               <ul className="space-y-3 pt-4">
-                  <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-[var(--success)]" /> <span>Aging Debt calculation up to 90 days.</span></li>
-                  <li className="flex items-center gap-3"><CheckCircle2 size={16} className="text-[var(--success)]" /> <span>Real-time Collection % vs Projection.</span></li>
-               </ul>
-             </LogicCard>
-             <LogicCard title="Decision Grids" icon={LayoutDashboard} color="var(--info)">
-               <p>Every grid is multi-threaded. Filter by group status, auction cycle, or individual member risk profile to identify bottlenecks before they affect cash flow.</p>
-               <div className="mt-4 p-4 rounded-xl bg-[var(--surface2)] text-[10px] uppercase font-bold tracking-widest opacity-60">
-                 System: Automated Decision Logic v2.4
-               </div>
-             </LogicCard>
+             })()}
           </div>
-        )}
+        </section>
 
-        {/* Content Section: Architecture & Hierarchy */}
-        {activeTab === 'architecture' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="The Ticket Model" icon={Users} color="#ec4899">
-               <p>At the core of ChitVault is the **Ticket**. A member doesn&apos;t just join a group; they own specific slots (tickets) within it. This allows one member to hold multiple interests in the same scheme.</p>
-             </LogicCard>
-             <LogicCard title="Group Schemes" icon={Scale} color="var(--success)">
-               <p>Defined by month, amount, and commission. Schemes govern the entire lifecycle of the fund, determining how dividend levels are capped and how bidding starts.</p>
-             </LogicCard>
-             <LogicCard title="Member Relations" icon={Compass} color="var(--accent)">
-               <p>Complete 360° visibility. Every member profile tracks total investment, historical bidding behavior, and current delinquency level across all their tickets.</p>
-             </LogicCard>
+        {/* Chapter 5: Settlement & Closing */}
+        <section id="chapter-5">
+          <ChapterHeader num="05" title="Settlement & Closing" subtitle="Finalizing the Month" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
+             <p>Recording an auction is the first step, but **Settlement** is the second. We separate these to ensure high-fidelity audits.</p>
+             <p>A <Term name="Confirmed Auction" definition="An auction that has its winner and discount recorded, calculating dividends for everyone." /> immediately updates the balances for all members, allowing them to pay their reduced installments.</p>
+             <p>A <Term name="Settled Payout" definition="The actual transfer of capital to the winner. This happens after checking their outstanding dues." /> marks the actual cash outflow for the winner&apos;s prize money.</p>
           </div>
-        )}
 
-        {/* Content Section: THE MATHEMATICAL CORE */}
-        {activeTab === 'math' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <MathFormula 
-                 title="Auction Dividend Pool" 
-                 formula={<>(Group Total - Winning Bid) - <Term name="Foreman Commission" definition="A fixed percentage fee (usually 5%) charged by the company for managing the pool." /></>} 
-                 result="The 'Discount' to be distributed among non-winners."
-               />
-               <MathFormula 
-                 title="Member Individual Dividend" 
-                 formula="Dividend Pool / Total Group Tickets" 
-                 result="The exact credit applied to next month's payment."
-               />
-               <MathFormula 
-                 title="Net Monthly Payable" 
-                 formula={<>Monthly Installment - <Term name="Member Dividend" definition="The share of interest profit earned by a member from an auction winner." /></>} 
-                 result="The final amount recorded in the ledger per ticket."
-               />
-               <MathFormula 
-                 title="Foreman Profitability" 
-                 formula="Fixed Commission % of Group Value" 
-                 result="Calculated per auction, independent of dividends."
-               />
-            </div>
-            
-            <InteractiveCalculator />
-
-            <div className="p-8 rounded-[32px] bg-[var(--surface2)] border-2 border-dashed border-[var(--border)] text-center max-w-2xl mx-auto">
-               <h4 className="text-sm font-black uppercase tracking-widest mb-4 opacity-100">Audit Truth</h4>
-               <p className="text-sm opacity-60 leading-relaxed">Every transaction is governed by these four axioms. No human override can bypass the mathematical integrity of the system.</p>
-            </div>
+          <div className="mt-12 space-y-4">
+             <MathFormula 
+               title="Winner Cash Out" 
+               formula="Total Chit Value - Auction Discount - (Personal Outstanding Dues)" 
+               result="The actual net payout amount recorded in the voucher."
+             />
+             <MathFormula 
+               title="Firm Income" 
+               formula="Σ(Foreman Commissions from all auctions)" 
+               result="The total operating revenue tracked in the Earnings report."
+             />
           </div>
-        )}
-
-        {/* Content Section: Smart Ledger Logic */}
-        {activeTab === 'ledger' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="Auto-Month Engine" icon={Landmark} color="var(--accent)">
-               <p>When a member pays a lump sum, ChitVault doesn&apos;t just &apos;add credit&apos;. The <Term name="Auto-Month" definition="An automated FIFO (First-In-First-Out) logic for clearing pending dues." /> engine scans for the **oldest pending month** and fills it first, then cascades down to the next.</p>
-               <div className="mt-6 flex items-center gap-4 text-xs font-bold opacity-80">
-                  <span className="p-2 rounded-lg bg-[var(--surface3)]">M1: PAID</span>
-                  <ArrowRight size={14} />
-                  <span className="p-2 rounded-lg bg-[var(--surface3)]">M2: PENDING</span>
-                  <ArrowRight size={14} />
-                  <span className="p-2 rounded-lg bg-[var(--surface3)] shadow-[0_0_10px_var(--accent-dim)]">M3: AUTO-FILL</span>
-               </div>
-             </LogicCard>
-             <LogicCard title="Consolidated Ledgers" icon={Activity} color="var(--warning)">
-               <p>A single member paying for 5 different tickets? Our Consolidated Ledger merges all ticket dues into a single screen, allowing one-tap bulk recording for the entire family or group of accounts.</p>
-             </LogicCard>
-          </div>
-        )}
-
-        {/* Content Section: Field Supremacy */}
-        {activeTab === 'field' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="Collection Registry" icon={Smartphone} color="var(--success)">
-               <p>Optimized for data-parity on the go. Field agents see instant totals, last-visited history, and one-tap collection logging. Real-time sync ensures the main office sees the cash before the agent leaves the door.</p>
-             </LogicCard>
-             <LogicCard title="Trigger Protocols" icon={Search} color="var(--accent)">
-               <p>WhatsApp Integration is more than a link. The system extracts the member&apos;s name, specific pending month, and exact total due, generating a <Term name="Dynamic Reminder" definition="A context-aware message pre-filled with the specific amounts and due dates for the member." /> in 100ms.</p>
-             </LogicCard>
-          </div>
-        )}
-
-        {/* Content Section: Settlement Physics */}
-        {activeTab === 'closure' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="Winner Payout Flow" icon={Calculator} color="var(--accent)">
-               <p>Settling an auction winner? The system automatically calculates: **Winning Bid - Total Dues - Interest/Penalty**. It generates a secure settlement voucher for the payout, ensuring total audit trail.</p>
-             </LogicCard>
-             <LogicCard title="Group Maturity" icon={CheckCircle2} color="var(--info)">
-               <p>At month-end, the system triggers the Maturity Protocol. It sweeps all non-winning tickets, creates a closure report, and generates the final payout amounts for all remaining members.</p>
-             </LogicCard>
-          </div>
-        )}
-
-        {/* Content Section: Governance & Security */}
-        {activeTab === 'governance' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <LogicCard title="The Trash System" icon={ShieldCheck} color="var(--danger)">
-               <p>Soft-delete architecture. When you delete a group or member, they move to the secure Trash bin. They can be restored with 100% data fidelity or audited for permanently removed assets.</p>
-             </LogicCard>
-             <LogicCard title="RLS & Audit Layers" icon={Lock} color="var(--accent)">
-               <p><Term name="RLS" definition="Row-Level Security: A database security layer that ensures Firm A can never see Firm B's data, even if they share the same server." /> ensures that Firm A can never see Firm B&apos;s data, even if they share the same server. Every action is logged with time-stamps and User ID tracking.</p>
-             </LogicCard>
-          </div>
-        )}
+        </section>
 
         {/* Epic Final Footer */}
-        <div className="mt-32 p-12 md:p-24 rounded-[64px] relative overflow-hidden text-center group" 
+        <div className="mt-40 p-12 md:p-24 rounded-[64px] relative overflow-hidden text-center group" 
           style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-dim)] to-transparent opacity-40" />
           
@@ -311,21 +233,19 @@ export default function AppReferenceGuide() {
             <div className="w-20 h-20 rounded-[28px] bg-[var(--surface)] border border-[var(--border)] shadow-2xl flex items-center justify-center mx-auto">
                <Shield className="text-[var(--accent)]" size={32} />
             </div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">The Ultimate Reference <br /> Is At Your Fingertips.</h2>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95]">Ready to Master <br /> Your Firm?</h2>
             <p className="text-lg opacity-60 max-w-xl mx-auto font-medium">
               You now have the technical ground truth for the Entire ChitVault Ecosystem. Use this knowledge to scale with absolute confidence.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
               <Btn variant="primary" onClick={() => router.push('/dashboard')} className="px-12 py-5 !rounded-3xl text-lg shadow-2xl h-auto">Launch Dashboard</Btn>
-              <div className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Reference Manual v2.4 Active</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Help Book v2.5 Reference Active</div>
             </div>
           </div>
-          
-          <BookOpen size={400} className="absolute -bottom-20 -right-20 opacity-[0.03] rotate-12 group-hover:rotate-0 transition-transform duration-1000" />
         </div>
 
-        <div className="mt-12 text-center opacity-30 text-[9px] font-black uppercase tracking-[0.5em]">
-          Powered by Seyon Nexa Labs • Ultimate Reference Edition 
+        <div className="mt-12 text-center opacity-20 text-[9px] font-black uppercase tracking-[0.5em]">
+          Powered by Seyon Nexa Labs • Ultimate Help Book Edition 
         </div>
       </div>
     </div>

@@ -392,7 +392,7 @@ export default function GroupLedgerPage() {
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
-                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Auction Rules (Discounts)</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Auction Discount Rules</div>
                   {isOwner && (
                     <button onClick={() => {
                       setRulesForm({
@@ -409,7 +409,7 @@ export default function GroupLedgerPage() {
                 </div>
                 <div className="flex gap-4 mt-1">
                   <div className="text-xs">
-                    <span className="opacity-50">Min Disc:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.min_bid_pct || 0.05))}</strong>
+                    <span className="opacity-50">Min Floor:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.min_bid_pct || 0.05))}</strong>
                     <span className="text-[9px] opacity-40 ml-1">({(group.min_bid_pct || 0.05)*100}%)</span>
                   </div>
                   <div className="text-xs">
@@ -506,11 +506,11 @@ export default function GroupLedgerPage() {
                         </div>
                       ) : '—'}
                     </Td>
-                    <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.bid_amount)}</Td>
+                    <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</Td>
                     <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)]">
-                      {group?.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.bid_amount)}` : fmt(a.dividend)}
+                      {group?.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.auction_discount)}` : fmt(a.dividend)}
                     </Td>
-                    <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
+                    <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
                     <Td right className="hidden lg:table-cell font-mono text-[var(--danger)]">
                       {comm ? fmt(comm.commission_amt) : '—'}
                     </Td>
@@ -521,7 +521,7 @@ export default function GroupLedgerPage() {
                           <div className="flex items-center gap-1 text-[var(--success)] font-black text-[10px] uppercase tracking-wider">
                             <CheckCircle2 size={11} className="shrink-0" /> Settled
                           </div>
-                          <div className="text-[10px] font-mono font-black opacity-80">{fmt(a.payout_amount || a.net_payout || a.bid_amount)}</div>
+                          <div className="text-[10px] font-mono font-black opacity-80">{fmt(a.payout_amount || a.net_payout || a.auction_discount)}</div>
                           <div className="text-[9px] opacity-40 font-mono">{fmtDate(a.payout_date)}</div>
                           <div className="no-print mt-1.5 flex gap-1">
                              <Btn size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => handlePrintVoucher(a)} icon={Printer}>Voucher</Btn>
@@ -531,7 +531,7 @@ export default function GroupLedgerPage() {
                         <div className="flex justify-end gap-1 no-print">
                           {a.status === 'confirmed' && winner && <Btn size="sm" variant="primary" className="h-8 px-3 text-[11px]" onClick={() => {
                             setSettling(a)
-                            setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.bid_amount) }))
+                            setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
                           }} icon={Wallet}>Settle</Btn>}
                           {a.status === 'draft' && <Badge variant="gray">Draft</Badge>}
                         </div>
@@ -710,11 +710,11 @@ export default function GroupLedgerPage() {
         <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Edit Group Auction Rules">
            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                 <Field label="Min Auction Discount (%)">
+                 <Field label="Min Discount (Floor %)">
                     <input className={inputClass} style={inputStyle} type="number" 
                        value={rulesForm.min_bid_pct} onChange={e => setRulesForm(f => ({ ...f, min_bid_pct: e.target.value }))} />
                  </Field>
-                 <Field label="Max Auction Discount (%)">
+                 <Field label="Max Discount (Cap %)">
                     <input className={inputClass} style={inputStyle} type="number" 
                        value={rulesForm.max_bid_pct} onChange={e => setRulesForm(f => ({ ...f, max_bid_pct: e.target.value }))} />
                  </Field>
@@ -733,8 +733,8 @@ export default function GroupLedgerPage() {
               </div>
               <div className="p-4 rounded-2xl bg-[var(--surface2)] text-[10px] space-y-2 opacity-60">
                  <p className="font-bold uppercase tracking-tight text-[var(--accent)]">Important Notes:</p>
-                 <p>• <strong>Min Auction Discount</strong> is usually your base commission (e.g., 5%). Bids lower than this will be rejected.</p>
-                 <p>• <strong>Max Auction Discount</strong> is the cap to prevent members from bidding too high and losing their savings (e.g., 40%).</p>
+                 <p>• <strong>Min Discount (Floor)</strong> is usually your base commission (e.g., 5%). Bids lower than this will be rejected.</p>
+                 <p>• <strong>Max Discount (Cap)</strong> is to prevent members from bidding too high and losing their savings (e.g., 40%).</p>
                  <p>• <strong>Foreman Commission</strong> is legally capped at <strong>5%</strong> of the total chit value.</p>
                  <p>• Changes will apply to all <strong>future</strong> confirmed auctions in this group.</p>
               </div>

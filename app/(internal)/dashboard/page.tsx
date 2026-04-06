@@ -425,7 +425,7 @@ export default function DashboardPage() {
                 <Tr>
                   <Th>Group / Month</Th>
                   <Th>Winner</Th>
-                  <Th right>Bid Amount</Th>
+                  <Th right>Auction Discount</Th>
                 </Tr>
               </thead>
               <tbody>
@@ -442,7 +442,7 @@ export default function DashboardPage() {
                         <div className="text-xs font-semibold truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</div>
                         <div className="text-[9px] opacity-40 uppercase tracking-tighter">Ticket #{w?.ticket_no}</div>
                       </Td>
-                      <Td right className="font-mono font-black text-[var(--text)]">{fmt(a.bid_amount)}</Td>
+                      <Td right className="font-mono font-black text-[var(--text)]">{fmt(a.auction_discount)}</Td>
                     </Tr>
                   )
                 })}

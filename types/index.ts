@@ -90,7 +90,7 @@ export interface Member {
 export interface Auction {
   id: number; firm_id: string; group_id: number; month: number
   auction_date: string | null; winner_id: number | null
-  bid_amount: number; total_pot: number; dividend: number;
+  auction_discount: number; total_pot: number; dividend: number;
   net_payout?: number;
   is_payout_settled: boolean
   payout_date: string | null
@@ -181,7 +181,7 @@ export interface ForemanCommission {
   auction_id:           number | null
   month:                number
   chit_value:           number
-  bid_amount:           number
+  auction_discount:     number
   discount:             number
   commission_type:      CommissionType
   commission_rate:      number
@@ -220,7 +220,7 @@ export interface Settlement {
 // Result from calculate_auction RPC
 export interface AuctionCalculation {
   chit_value:           number
-  bid_amount:           number
+  auction_discount:     number
   min_bid:              number
   max_bid:              number
   discount:             number
