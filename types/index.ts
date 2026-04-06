@@ -90,6 +90,7 @@ export interface Auction {
   payout_date: string | null
   payout_amount: number | null
   payout_note: string | null
+  status: 'draft' | 'confirmed'
   created_at: string
 }
 
@@ -184,6 +185,7 @@ export interface ForemanCommission {
   paid_to:              CommissionRecipient
   foreman_member_id:    number | null
   notes:                string | null
+  status:               'draft' | 'confirmed'
   created_at:           string
   created_by:           string | null
   updated_by:           string | null
