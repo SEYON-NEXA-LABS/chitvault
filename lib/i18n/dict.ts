@@ -68,7 +68,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     // Auctions
     auction_ledger: 'Auction Ledger',
     auction_month: 'Auction Month',
-    bid_amount: 'Bid Amount',
+    auction_discount: 'Auction Discount',
     bid_percentage: 'Bid %',
     winner: 'Winner',
     net_payout: 'Net Payout',
@@ -218,7 +218,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     // Auctions
     auction_ledger: 'ஏலப் பட்டியல்',
     auction_month: 'ஏல மாதம்',
-    bid_amount: 'ஏலத் தொகை',
+    auction_discount: 'ஏல தள்ளுபடி (டிஸ்கவுண்ட்)',
     bid_percentage: 'ஏலச் சதவீதம்',
     winner: 'வெற்றியாளர்',
     net_payout: 'நிகரப் தொகை',

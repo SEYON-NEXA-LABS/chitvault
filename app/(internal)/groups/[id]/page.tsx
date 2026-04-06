@@ -269,7 +269,7 @@ export default function GroupLedgerPage() {
 
           <div class="payout-box">
             <div class="label">NET PAYOUT AMOUNT</div>
-            <div class="amount">${fmt(auc.net_payout || auc.bid_amount)}</div>
+            <div className="amount font-black text-4xl">{fmt(auc.net_payout || auc.auction_discount)}</div>
             <div style="font-size: 12px; margin-top: 10px;">(Rupees equivalent calculated as per group rules)</div>
           </div>
 
@@ -632,7 +632,7 @@ export default function GroupLedgerPage() {
         <div className="space-y-4">
           <div className="p-4 bg-[var(--accent-dim)] rounded-2xl border border-[var(--accent)]">
             <div className="text-[10px] uppercase font-bold text-[var(--accent)] mb-1">Total Payout Amount</div>
-            <div className="text-2xl font-black">{fmt(settling?.net_payout || settling?.bid_amount || 0)}</div>
+            <div className="text-2xl font-black">{fmt(settling?.net_payout || settling?.auction_discount || 0)}</div>
           </div>
 
           <Field label="Amount Paid">

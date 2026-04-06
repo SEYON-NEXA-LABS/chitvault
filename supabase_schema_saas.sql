@@ -217,6 +217,7 @@ create table if not exists auctions (
   payout_date       date,
   payout_amount     numeric(12,2),
   payout_note       text,
+  notes             text,
   status       text default 'confirmed',
   created_at   timestamptz default now(),
   created_by   uuid references auth.users(id),
@@ -233,6 +234,7 @@ alter table auctions add column if not exists is_payout_settled   boolean defaul
 alter table auctions add column if not exists payout_date        date;
 alter table auctions add column if not exists payout_amount      numeric(12,2);
 alter table auctions add column if not exists payout_note        text;
+alter table auctions add column if not exists notes              text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'auctions_group_firm_fk') then
