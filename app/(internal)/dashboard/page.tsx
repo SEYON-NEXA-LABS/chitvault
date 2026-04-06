@@ -53,7 +53,7 @@ export default function DashboardPage() {
       setLoading(false)
     }
     load()
-  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length, groups.length])
 
   const { stats, chartData, groupDist, modeDist, statusDist, onboardingSteps } = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)

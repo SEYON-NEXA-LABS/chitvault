@@ -130,56 +130,56 @@ BEGIN
   -- ── 5. AUCTIONS: Seed 3 Months History ───────────────────────────
   -- MONTH 1: 
   -- DIV Group Auction 1: Ticket 1 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
   VALUES (v_demo_firm_id, g_div_id, 1, (date_trunc('month', now()) - interval '3 months' + interval '10 days')::date, 
     (SELECT id FROM members WHERE group_id = g_div_id AND ticket_no = 1), 15000.00, 100000.00, 8000.00, 10000.00, true, (date_trunc('month', now()) - interval '3 months' + interval '15 days')::date, 10000.00)
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_div_id, v_auc_id, 1, 100000.00, 15000.00, 85000.00, 'percent_of_chit', 5.00, 5000.00, 80000.00, 8000.00, 'Seed Month 1');
     
   -- ACC Group Auction 1: Ticket 1 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
   VALUES (v_demo_firm_id, g_acc_id, 1, (date_trunc('month', now()) - interval '3 months' + interval '12 days')::date, 
     (SELECT id FROM members WHERE group_id = g_acc_id AND ticket_no = 1), 5000.00, 50000.00, 0.00, 42500.00, true, (date_trunc('month', now()) - interval '3 months' + interval '16 days')::date, 42500.00)
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_acc_id, v_auc_id, 1, 50000.00, 5000.00, 5000.00, 'percent_of_chit', 5.00, 2500.00, 2500.00, 0.00, 'Seed Month 1');
   UPDATE public.groups SET accumulated_surplus = accumulated_surplus + 5000 WHERE id = g_acc_id;
 
   -- MONTH 2:
   -- DIV Group Auction 2: Ticket 2 Wins
   -- Marked as SETTLED for audit testing
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount, payout_note)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount, payout_note)
   VALUES (v_demo_firm_id, g_div_id, 2, (date_trunc('month', now()) - interval '2 months' + interval '10 days')::date, 
     (SELECT id FROM members WHERE group_id = g_div_id AND ticket_no = 2), 20000.00, 100000.00, 7500.00, 15000.00, true, (date_trunc('month', now()) - interval '2 months' + interval '20 days')::date, 15000.00, 'Demo Audit Record')
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_div_id, v_auc_id, 2, 100000.00, 20000.00, 80000.00, 'percent_of_chit', 5.00, 5000.00, 75000.00, 7500.00, 'Seed Month 2');
     
   -- ACC Group Auction 2: Ticket 2 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, is_payout_settled, payout_date, payout_amount)
   VALUES (v_demo_firm_id, g_acc_id, 2, (date_trunc('month', now()) - interval '2 months' + interval '12 days')::date, 
     (SELECT id FROM members WHERE group_id = g_acc_id AND ticket_no = 2), 4000.00, 50000.00, 0.00, 43500.00, true, (date_trunc('month', now()) - interval '2 months' + interval '22 days')::date, 43500.00)
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_acc_id, v_auc_id, 2, 50000.00, 4000.00, 4000.00, 'percent_of_chit', 5.00, 2500.00, 1500.00, 0.00, 'Seed Month 2');
   UPDATE public.groups SET accumulated_surplus = accumulated_surplus + 4000 WHERE id = g_acc_id;
 
   -- MONTH 3:
   -- DIV Group Auction 3: Ticket 3 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout)
   VALUES (v_demo_firm_id, g_div_id, 3, (date_trunc('month', now()) - interval '1 month' + interval '10 days')::date, 
     (SELECT id FROM members WHERE group_id = g_div_id AND ticket_no = 3), 25000.00, 100000.00, 7000.00, 20000.00)
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_div_id, v_auc_id, 3, 100000.00, 25000.00, 75000.00, 'percent_of_chit', 5.00, 5000.00, 70000.00, 7000.00, 'Seed Month 3');
     
   -- ACC Group Auction 3: Ticket 3 Wins
-  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
+  INSERT INTO public.auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout)
   VALUES (v_demo_firm_id, g_acc_id, 3, (date_trunc('month', now()) - interval '1 month' + interval '12 days')::date, 
     (SELECT id FROM members WHERE group_id = g_acc_id AND ticket_no = 3), 6000.00, 50000.00, 0.00, 41500.00)
   RETURNING id INTO v_auc_id;
-  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, bid_amount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
+  INSERT INTO public.foreman_commissions (firm_id, group_id, auction_id, month, chit_value, auction_discount, discount, commission_type, commission_rate, commission_amt, net_dividend, per_member_div, notes)
   VALUES (v_demo_firm_id, g_acc_id, v_auc_id, 3, 50000.00, 6000.00, 6000.00, 'percent_of_chit', 5.00, 2500.00, 3500.00, 0.00, 'Seed Month 3');
   UPDATE public.groups SET accumulated_surplus = accumulated_surplus + 6000 WHERE id = g_acc_id;
 

@@ -111,8 +111,8 @@ export default function SchemesGuidePage() {
               <h4 className="text-sm font-bold mb-1 underline decoration-blue-500/30">The Mathematical Definition</h4>
               <ul className="text-xs opacity-70 space-y-2">
                  <li>• **Installment**: Always fixed (e.g., ₹30,000)</li>
-                 <li>• **Surplus Pool**: Σ(Bids - Commissions)</li>
-                 <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Rem. Duration)</li>
+                 <li>• **Surplus Pool**: Σ(Auction Discounts - Firm Commissions)</li>
+                 <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Remaining Duration)</li>
               </ul>
             </div>
           </div>

@@ -55,12 +55,22 @@ function SettlementPage() {
 
   const isSuper = role === 'superadmin'
 
+  const onGroupChange = useCallback((gId: string) => {
+    setSelectedGroupId(gId)
+    setSelectedMemberId('')
+    setSelectedAuctionId('')
+    setAuctions([])
+    
+    const grp = groups.find(g => String(g.id) === gId)
+    if (grp) setTargetMonths(grp.duration)
+  }, [groups])
+
   // Handle Query Param Auto-select
   useEffect(() => {
     if (qGroupId && groups.length > 0) {
       onGroupChange(qGroupId)
     }
-  }, [qGroupId, groups.length])
+  }, [qGroupId, groups.length, onGroupChange])
 
   /* ---------------- Calculations ---------------- */
 
@@ -175,16 +185,6 @@ function SettlementPage() {
      show('Settlement deleted')
      logActivity(firm.id, 'SETTLEMENT_DELETED', 'settlements', String(id))
      load()
-  }
-
-  const onGroupChange = (gId: string) => {
-    setSelectedGroupId(gId)
-    setSelectedMemberId('')
-    setSelectedAuctionId('')
-    setAuctions([])
-    
-    const grp = groups.find(g => String(g.id) === gId)
-    if (grp) setTargetMonths(grp.duration)
   }
 
   const onMemberChange = async (mId: string) => {

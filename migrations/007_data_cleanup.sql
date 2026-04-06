@@ -17,14 +17,23 @@ UPDATE public.groups
 SET discount_cap_pct = max_bid_pct;
 
 -- ── SCHEMA REFACTOR: BID_AMOUNT TO AUCTION_DISCOUNT ─────────────
+-- Idempotent check for 'auctions' table
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'auctions' AND column_name = 'bid_amount') THEN
+    ALTER TABLE auctions RENAME COLUMN bid_amount TO auction_discount;
+  END IF;
+END $$;
 
--- Rename columns in auctions
-ALTER TABLE auctions 
-RENAME COLUMN bid_amount TO auction_discount;
+ALTER TABLE auctions ADD COLUMN IF NOT EXISTS notes text;
 
--- Rename columns in foreman_commissions
-ALTER TABLE foreman_commissions 
-RENAME COLUMN bid_amount TO auction_discount;
+-- Idempotent check for 'foreman_commissions' table
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'foreman_commissions' AND column_name = 'bid_amount') THEN
+    ALTER TABLE foreman_commissions RENAME COLUMN bid_amount TO auction_discount;
+  END IF;
+END $$;
 
 -- Re-apply updated RPCs with new terminology
 DROP FUNCTION IF EXISTS public.calculate_auction(bigint, numeric);

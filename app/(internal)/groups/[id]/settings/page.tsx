@@ -63,7 +63,7 @@ export default function GroupSettingsPage() {
     if (!bid || !group) return
     const { data } = await supabase.rpc('calculate_auction', {
       p_group_id:   groupId,
-      p_bid_amount: +bid
+      p_auction_discount: +bid
     })
     setPreview(data)
   }

@@ -93,7 +93,7 @@ export default function AppReferenceGuide() {
           <ChapterHeader num="01" title="The System Philosophy" subtitle="Terminology & Integrity" />
           <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
              <p>Our platform is built on the principle of <Term name="Mathematical Integrity" definition="Ensuring every rupee is accounted for by automating the distribution logic without human manual override." />. Unlike traditional ledgers, ChitVault uses an automated auction engine to calculate dividends.</p>
-             <p>The most important distinction in our system is the **Auction Discount**. In legacy systems, this might be called the "Winning Bid," but we use "Discount" because it accurately describes what the winner is sacrificing to the group.</p>
+             <p>The most important distinction in our system is the **Auction Discount**. In legacy systems, this might be called the &quot;Winning Bid,&quot; but we use &quot;Discount&quot; because it accurately describes what the winner is sacrificing to the group.</p>
              <div className="bg-[var(--surface2)] p-6 rounded-3xl border border-[var(--border)] shadow-inner my-8">
                 <h4 className="text-sm font-black uppercase tracking-widest text-[var(--accent)] mb-4">The Golden Rule</h4>
                 <p className="text-sm italic">The more a winner <Term name="Discounts" definition="The amount the auction winner 'sacrifices' from the total chit value in order to take the money early." />, the more <Term name="Dividends" definition="The share of the Auction Discount distributed back to each member of the group." /> the other members receive.</p>
@@ -114,7 +114,7 @@ export default function AppReferenceGuide() {
         <section id="chapter-3">
           <ChapterHeader num="03" title="Rules of the Auction" subtitle="Safety Floors & Caps" />
           <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
-             <p>To ensure fairness and firm sustainability, we enforce strict financial rules on every bidding cycle:</p>
+             <p>To ensure fairness and firm sustainability, we enforce strict financial rules on every auction cycle:</p>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
                 <div className="p-8 rounded-3xl bg-[var(--surface)] border border-[var(--border)] group hover:border-[var(--accent-border)] transition-all">
@@ -144,7 +144,7 @@ export default function AppReferenceGuide() {
         <section id="chapter-4">
           <ChapterHeader num="04" title="The Math Laboratory" subtitle="Interactive Logic Simulator" />
           <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium mb-12">
-             <p>Understand the exact distribution flow by adjusting the values below. See how the <Term name="Sacrifice" definition="The portion of the chit value the winner gives up to take the payout." /> directly influences the per-member dividend.</p>
+             <p>Understand the exact distribution flow by adjusting the values below. See how the <Term name="Auction Discount" definition="The portion of the chit value the winner 'sacrifices' in order to take the payout early." /> directly influences the per-member dividend.</p>
           </div>
 
           <div className="p-8 rounded-[32px] bg-[var(--surface2)] border border-[var(--border)] shadow-inner mb-12">
@@ -195,6 +195,12 @@ export default function AppReferenceGuide() {
                            <div className="text-xl font-bold text-[var(--success)]">₹{div.toLocaleString()}</div>
                         </div>
                      </div>
+
+                     {/* Accumulation Note */}
+                     <div className="bg-success-500/5 p-4 rounded-xl border border-success-500/20 text-[10px] leading-relaxed opacity-60">
+                        <span className="font-bold text-[var(--success)] uppercase tracking-widest mr-2">Accumulation Mode:</span>
+                        In this mode, the dividend above (₹{div.toLocaleString()}) is NOT deducted. Members pay the full installment, and the dividend is added to the Surplus Pool for early closure.
+                     </div>
                   </div>
                 )
              })()}
@@ -221,6 +227,33 @@ export default function AppReferenceGuide() {
                formula="Σ(Foreman Commissions from all auctions)" 
                result="The total operating revenue tracked in the Earnings report."
              />
+          </div>
+        </section>
+
+        {/* Chapter 6: The Accumulation (Surplus) Model */}
+        <section id="chapter-6">
+          <ChapterHeader num="06" title="Accumulation & Closing" subtitle="The Surplus Pool Bonus" />
+          <div className="prose prose-invert prose-sm max-w-none space-y-6 text-[var(--text2)] text-lg leading-relaxed font-medium">
+             <p>As an alternative to monthly dividends, the **Accumulation Scheme** (Surplus Model) prioritizes the final group exit. In this mode, no individual dividends are paid monthly.</p>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
+                <div className="p-8 rounded-3xl bg-[var(--surface2)] border border-[var(--border)] transition-all">
+                   <div className="w-10 h-10 rounded-xl bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent)] mb-4 font-black">₹</div>
+                   <h4 className="font-black text-lg mb-2">Zero Monthly Dividends</h4>
+                   <p className="text-sm opacity-60 leading-relaxed">Members pay the full installment every month. There is no immediate reduction in savings.</p>
+                </div>
+                <div className="p-8 rounded-3xl bg-[var(--surface2)] border border-[var(--border)] transition-all">
+                   <div className="w-10 h-10 rounded-xl bg-success-500/10 flex items-center justify-center text-[var(--success)] mb-4">
+                      <Zap size={20} />
+                   </div>
+                   <h4 className="font-black text-lg mb-2">Early Closure Benefit</h4>
+                   <p className="text-sm opacity-60 leading-relaxed">All auction discounts are pooled together. Once this **Surplus Pool** covers the total remaining commitments, the group closes early (3-5 months ahead of schedule).</p>
+                </div>
+             </div>
+          </div>
+
+          <div className="p-8 rounded-3xl border-2 border-dashed border-[var(--success)] bg-success-500/5">
+             <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4 text-success-500">The Accumulation Rule</h4>
+             <p className="text-sm">Group Closure happens when: <br/>**Total Surplus Pool ≥ (Monthly Collection × Remaining Months)**.</p>
           </div>
         </section>
 
