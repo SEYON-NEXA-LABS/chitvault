@@ -300,15 +300,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Install
                 </button>
               )}
-              {hasPin && (
+              {hasPin ? (
                 <button 
                   onClick={lock}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] text-[var(--text2)] border border-[var(--border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] text-[var(--text2)] border border-[var(--border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white"
                   title="Lock Vault"
                 >
                   <Lock size={14} />
-                  Lock
+                  <span className="hidden sm:inline">Lock</span>
                 </button>
+              ) : (
+                <Link 
+                  href="/settings#lock-config"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-bold transition-all hover:bg-orange-500 hover:text-white shadow-sm"
+                  title="Secure Your Vault"
+                >
+                  <ShieldAlert size={14} />
+                  <span className="hidden sm:inline">Set Lock</span>
+                </Link>
               )}
               <TourTrigger />
               {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (

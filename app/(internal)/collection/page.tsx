@@ -185,7 +185,9 @@ export default function CollectionPage() {
     const phone = p.person.phone ? p.person.phone.replace(/[^\d]/g, '') : ''
     if (!phone) return show('No phone number found', 'error')
     
-    const text = `Hi ${p.person.name}, Reminder from ${firm?.name}. Outstanding: ₹${p.totalBalance.toLocaleString('en-IN')}. Please clear your dues at the earliest. Thank you!`
+    const isAcc = (p as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION')
+    const term = isAcc ? 'Pending Contribution' : 'Outstanding Due'
+    const text = `Hi ${p.person.name}, Reminder from ${firm?.name}. ${term}: ₹${p.totalBalance.toLocaleString('en-IN')}. Please clear it at the earliest. Thank you!`
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
   }
@@ -239,7 +241,9 @@ export default function CollectionPage() {
 
                  <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
                     <div>
-                       <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">To Collect</div>
+                       <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
+                         {(x as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION') ? 'To Collect (Contr.)' : 'To Collect (Due)'}
+                       </div>
                        <div className="text-xl font-black text-[var(--danger)]">{fmt(x.totalBalance)}</div>
                     </div>
                     <div className="flex gap-2">

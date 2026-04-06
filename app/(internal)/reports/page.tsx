@@ -649,11 +649,21 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
 function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { groups: Group[], groupId: number, members: Member[], auctions: Auction[], payments: Payment[] }) {
   const grpAuctions = auctions.filter(a => a.group_id === groupId).sort((a,b) => a.month - b.month)
   const grpPayments = payments.filter(p => p.group_id === groupId)
+  const g = groups.find(x => x.id === groupId)
+  const isAcc = g?.auction_scheme === 'ACCUMULATION'
   
   return (
     <TableCard title="Group Ledger (Summary per month)">
       <Table>
-        <thead><tr><Th>Month</Th><Th>Winner</Th><Th right>Winner Payout (Bid)</Th><Th right>Dividend</Th><Th right>Total Collections</Th></tr></thead>
+        <thead>
+          <tr>
+            <Th>Month</Th>
+            <Th>Winner</Th>
+            <Th right>Winner Payout (Bid)</Th>
+            <Th right>{isAcc ? 'Discount Surplus' : 'Dividend'}</Th>
+            <Th right>Total Collections</Th>
+          </tr>
+        </thead>
         <tbody>
           {grpAuctions.map(auc => {
             const w = members.find(m => m.id === auc.winner_id)

@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { PinOverlay } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface PinLockContextType {
   isLocked: boolean
@@ -11,6 +12,7 @@ interface PinLockContextType {
   lock: () => void
   unlock: (pin: string) => boolean
   setPin: (newPin: string | null) => void
+  clearLock: () => Promise<void>
   isElectron: boolean
 }
 
@@ -20,6 +22,8 @@ export function PinLockProvider({ children }: { children: React.ReactNode }) {
   const [isLocked, setIsLocked] = useState(false)
   const [hasPin, setHasPin] = useState(false)
   const [isElectron, setIsElectron] = useState(false)
+  const supabase = createClient()
+  const router = useRouter()
 
   useEffect(() => {
     const electron = (window as any).electronAPI?.isElectron === true
@@ -58,11 +62,19 @@ export function PinLockProvider({ children }: { children: React.ReactNode }) {
       setIsLocked(false)
     }
   }
+  
+  const clearLock = async () => {
+    localStorage.removeItem('desktop_pin')
+    setHasPin(false)
+    setIsLocked(false)
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const showOverlay = isLocked && !isPublicPage
 
   return (
-    <PinLockContext.Provider value={{ isLocked, hasPin, lock, unlock, setPin, isElectron }}>
+    <PinLockContext.Provider value={{ isLocked, hasPin, lock, unlock, setPin, clearLock, isElectron }}>
       {showOverlay && <PinOverlay onUnlock={unlock} />}
       <div className={cn(
         "transition-all duration-300",

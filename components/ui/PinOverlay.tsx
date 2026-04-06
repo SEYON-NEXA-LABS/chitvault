@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Lock, Delete, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Lock, Delete, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePinLock } from '@/lib/lock/context'
 
 interface PinOverlayProps {
   onUnlock: (pin: string) => boolean
@@ -11,6 +12,8 @@ interface PinOverlayProps {
 export function PinOverlay({ onUnlock }: PinOverlayProps) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const { clearLock } = usePinLock()
 
   // Auto-submit when 4 digits are entered
   useEffect(() => {
@@ -126,6 +129,22 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
             Invalid Entry. Access Denied.
           </div>
         )}
+
+        <div className="absolute -bottom-12 left-0 right-0 text-center">
+            <button 
+              onClick={async () => {
+                if (confirm('For security, this will sign you out and clear local device settings. You will need to log in again to set a new PIN. Continue?')) {
+                  setResetting(true)
+                  await clearLock()
+                }
+              }}
+              disabled={resetting}
+              className="group flex items-center justify-center gap-1.5 mx-auto text-[10px] font-bold uppercase tracking-wider text-white/40 hover:text-white transition-colors"
+            >
+              <AlertCircle size={12} className="opacity-50 group-hover:opacity-100" />
+              {resetting ? 'Resetting...' : 'Forgot PIN? Reset Private Vault'}
+            </button>
+        </div>
       </div>
 
       {/* Re-use the shake animation from Global or add local inline */}

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
 import { usePwa } from '@/lib/pwa/context'
+import { usePinLock } from '@/lib/lock/context'
 import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2, Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +23,7 @@ function LoginForm() {
   const supabase = createClient()
   const firmSlug = searchParams.get('firm')
   const { install, isInstallable } = usePwa()
+  const { hasPin } = usePinLock()
 
   const [tab, setTab] = useState<Tab>('signin')
   const [loading, setLoading] = useState(false)
@@ -68,12 +70,12 @@ function LoginForm() {
       if (!profile) {
         router.push('/onboarding')
       } else if (profile.role === 'superadmin') {
-        router.push('/admin')
+        router.push(searchParams.get('next') || '/admin')
       } else {
-        router.push('/dashboard')
+        router.push(searchParams.get('next') || '/dashboard')
       }
     } catch (err) {
-      window.location.href = '/dashboard'
+      window.location.href = searchParams.get('next') || '/dashboard'
     }
   }
 
@@ -303,8 +305,17 @@ function LoginForm() {
             )}
           </div>
 
-          <div className="mt-12 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white">
+          <div className="mt-12 text-center space-y-4">
+            {!hasPin && (
+              <button 
+                onClick={() => router.push('/settings#lock-config')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-black uppercase tracking-widest hover:bg-orange-500/20 transition-all"
+              >
+                <ShieldCheck size={14} />
+                Secure Device &bull; Set Lock
+              </button>
+            )}
+            <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white opacity-40">
               Secured by 256-bit Hash
             </p>
           </div>

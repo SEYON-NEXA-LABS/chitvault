@@ -477,7 +477,9 @@ export default function GroupLedgerPage() {
                 </Th>
                 <Th right>Net Payout</Th>
                 <Th right className="hidden lg:table-cell text-[var(--danger)]">Comm.</Th>
-                <Th right className="hidden sm:table-cell">Each Pays</Th>
+                <Th right className="hidden sm:table-cell">
+                  {group.auction_scheme === 'ACCUMULATION' ? 'Monthly Contr.' : 'Each Pays'}
+                </Th>
                 <Th right>Settlement</Th>
                 <Th className="only-print">Signature</Th>
               </Tr>
