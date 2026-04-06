@@ -12,8 +12,28 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
+    // Log the error
     console.error('APP_ERROR:', error)
+
+    // Automatic recovery for ChunkLoadError
+    const isChunkError = 
+      error.message?.includes('ChunkLoadError') || 
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('Failed to fetch dynamically imported module')
+
+    if (isChunkError) {
+      const storageKey = 'chitvault_chunk_reload_count'
+      const reloadCount = parseInt(sessionStorage.getItem(storageKey) || '0', 10)
+
+      if (reloadCount < 2) {
+        sessionStorage.setItem(storageKey, (reloadCount + 1).toString())
+        console.warn(`ChunkLoadError detected. Attempting recovery (Attempt ${reloadCount + 1})...`)
+        window.location.reload()
+      } else {
+        console.error('ChunkLoadError recovery failed after multiple attempts.')
+        // We stop reloading to avoid infinite loops and let the user see the error UI
+      }
+    }
   }, [error])
  
   return (

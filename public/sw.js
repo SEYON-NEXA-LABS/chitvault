@@ -1,8 +1,7 @@
-const CACHE_NAME = 'chitvault-v3'; // Bumped version to clear the "bad" RSC cache
+const CACHE_NAME = 'chitvault-v4'; // Bumped for ChunkLoadError recovery
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS = [
-  '/',
   OFFLINE_URL,
   '/manifest.webmanifest',
   '/icons/icon-192.png',

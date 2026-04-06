@@ -13,6 +13,23 @@ export default function GlobalError({
   useEffect(() => {
     // Log error to an observability service
     console.error('GLOBAL_ERROR:', error)
+
+    // Automatic recovery for ChunkLoadError
+    const isChunkError = 
+      error.message?.includes('ChunkLoadError') || 
+      error.message?.includes('Loading chunk') ||
+      error.message?.includes('Failed to fetch dynamically imported module')
+
+    if (isChunkError) {
+      const storageKey = 'chitvault_chunk_reload_count'
+      const reloadCount = parseInt(sessionStorage.getItem(storageKey) || '0', 10)
+
+      if (reloadCount < 2) {
+        sessionStorage.setItem(storageKey, (reloadCount + 1).toString())
+        console.warn(`ChunkLoadError (Global) detected. Attempting recovery (Attempt ${reloadCount + 1})...`)
+        window.location.reload() // Force reload via manifestation recovery
+      }
+    }
   }, [error])
  
   return (
