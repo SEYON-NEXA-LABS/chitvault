@@ -34,7 +34,7 @@ interface CollectionItem {
 
 export default function CollectionPage() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm } = useFirm()
+  const { firm, profile } = useFirm()
   const router = useRouter()
   const { t } = useI18n()
   const { toast, show, hide } = useToast()
@@ -164,6 +164,7 @@ export default function CollectionPage() {
         payment_date: payForm.date,
         mode: payForm.mode,
         payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
+        collected_by: profile?.id || null,
         note: payForm.note
       });
     }

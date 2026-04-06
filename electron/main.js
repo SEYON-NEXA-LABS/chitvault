@@ -91,8 +91,8 @@ async function createWindow() {
     shell.openExternal(url); return { action: 'deny' }
   })
 
-  // DevTools in dev
-  if (isDev) mainWindow.webContents.openDevTools()
+  // DevTools - usually only needed manually
+  // if (isDev) mainWindow.webContents.openDevTools()
 
   mainWindow.on('closed', () => { mainWindow = null })
 }

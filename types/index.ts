@@ -121,6 +121,7 @@ export interface Payment {
   mode:         'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
   status:       'paid' | 'pending' | 'partial'
   collected_by: string | null
+  profiles?: { full_name: string | null }
   created_at:   string
 }
 

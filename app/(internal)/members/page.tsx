@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, cn } from '@/lib/utils'
@@ -27,8 +28,9 @@ interface Contact extends Person {
 }
 
 export default function MembersPage() {
+  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can, switchedFirmId } = useFirm()
+  const { firm, profile, role, can, switchedFirmId } = useFirm()
   const isSuper = role === 'superadmin'
   const { t } = useI18n()
   const { toast, show: showToast, hide: hideToast } = useToast()
@@ -46,7 +48,6 @@ export default function MembersPage() {
   const [firms,  setFirms]  = useState<Firm[]>([])
 
   const [addOpen,       setAddOpen]       = useState(false)
-  const [detailContact, setDetailContact] = useState<Contact | null>(null)
   const [actionMember,  setActionMember]  = useState<Member | null>(null)
   const [payMember,     setPayMember]     = useState<Member | null>(null)
   const [saving,        setSaving]        = useState(false)
@@ -331,37 +332,11 @@ export default function MembersPage() {
       load()
     }
   }
-
   async function updateContact() {
-    if (!detailContact) return
     setSaving(true)
     const { data: authData } = await supabase.auth.getUser()
-    const { error } = await supabase.from('persons')
-      .update({ 
-        name: editForm.name, 
-        nickname: editForm.nickname,
-        phone: editForm.phone, 
-        address: editForm.address,
-        updated_by: authData.user?.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', detailContact.id)
-      
-    if (error) { showToast(error.message, 'error'); setSaving(false); return }
-    showToast('Contact updated!')
-    
-    // Log Activity
-    if (firm) {
-      await logActivity(
-        firm.id,
-        'MEMBER_UPDATED',
-        'person',
-        detailContact.id,
-        { name: editForm.name }
-      );
-    }
-
-    setSaving(false); setIsEditing(false); setDetailContact(null); load()
+    // This is now handled in the detail page, but keeping a stub for directory consistency if needed
+    setSaving(false); setIsEditing(false); load()
   }
 
   async function savePay() {
@@ -385,7 +360,7 @@ export default function MembersPage() {
       amount_due: amountDue,
       balance_due: balanceDue,
       payment_type: isPartial ? 'partial' : 'full',
-      collected_by: null,
+      collected_by: profile?.id || null,
     }
     const { error } = await supabase.from('payments').insert(payload)
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
@@ -433,32 +408,13 @@ export default function MembersPage() {
       }
     }
   }
-
   async function deletePerson(pId: number) {
     if (!can('deleteMember')) return
     if (!confirm('Are you sure? This will move the person and ALL their tickets to trash!')) return
-    
-    // Soft delete the person
     const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
     if (pErr) { showToast(pErr.message, 'error'); return }
-
-    // Soft delete all their members/tickets
     await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)
-    
     showToast('Person and tickets moved to trash!'); 
-    
-    // Log Activity
-    if (firm) {
-      await logActivity(
-        firm.id,
-        'MEMBER_ARCHIVED',
-        'person',
-        pId,
-        { id: pId }
-      );
-    }
-
-    setDetailContact(null); 
     load()
   }
 
@@ -537,7 +493,7 @@ export default function MembersPage() {
                     </Td>
                     <Td right>
                       <div className="flex gap-1.5 justify-end">
-                        <Btn size="sm" variant="ghost" icon={Info} onClick={() => { setDetailContact(c); setEditForm({ name: c.name, nickname: c.nickname || '', phone: c.phone || '', address: c.address || '' }); setIsEditing(false) }} style={{ color: 'var(--info)' }}>Profile</Btn>
+                        <Btn size="sm" variant="ghost" icon={Info} onClick={() => router.push(`/members/${c.id}`)} style={{ color: 'var(--info)' }}>Profile</Btn>
                       </div>
                     </Td>
                   </Tr>
@@ -589,14 +545,7 @@ export default function MembersPage() {
                               <Td>
                                  <div className="flex gap-1">
                                     <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>{t('record_payment')}</Btn>
-                                    <Btn size="sm" variant="ghost" icon={Info} onClick={() => { 
-                                       const p = persons.find(x => x.id === m.person_id)
-                                       if(p) {
-                                          setDetailContact({ ...p, tickets: [], totalPaid: 0, totalBalance: 0, activeCount: 0, pastCount: 0 })
-                                          setEditForm({ name: p.name, nickname: p.nickname||'', phone: p.phone||'', address: p.address||'' })
-                                          setIsEditing(false)
-                                       }
-                                    }}>Profile</Btn>
+                                    <Btn size="sm" variant="ghost" icon={Info} onClick={() => router.push(`/members/${m.person_id}`)}>Profile</Btn>
                                  </div>
                               </Td>
                             </Tr>
@@ -623,17 +572,18 @@ export default function MembersPage() {
                <div className="h-8 w-px bg-[var(--border)]" />
                <div className="flex items-center gap-2">
                   {view === 'people' ? (
-                     <Btn variant="danger" size="sm" icon={Trash2} onClick={() => {
-                        if(confirm(`Move ${selectedIds.size} people and ALL their tickets to trash?`)) {
-                           // Implement bulk person delete if needed, or just warn
-                           showToast('Bulk person delete coming soon', 'success')
-                        }
-                     }}>Trash All</Btn>
+                     can('deleteMember') && (
+                        <Btn variant="danger" size="sm" icon={Trash2} onClick={() => {
+                           if(confirm(`Move ${selectedIds.size} people and ALL their tickets to trash?`)) {
+                              showToast('Bulk person delete coming soon', 'success')
+                           }
+                        }}>Trash All</Btn>
+                     )
                   ) : (
                     <>
                       <Btn variant="primary" size="sm" icon={UserCheck} onClick={() => handleBulkStatusUpdate('active')}>Mark Active</Btn>
                       <Btn variant="secondary" size="sm" onClick={() => handleBulkStatusUpdate('defaulter')}>Mark Defaulter</Btn>
-                      <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkMoveToTrash}>Trash All</Btn>
+                      {can('deleteMember') && <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkMoveToTrash}>Trash All</Btn>}
                     </>
                   )}
                   <Btn variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect</Btn>
@@ -724,60 +674,6 @@ export default function MembersPage() {
             <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
               <Btn variant="secondary" onClick={() => setPayMember(null)}>Cancel</Btn>
               <Btn variant="primary" loading={saving} onClick={savePay}>{t('record_payment')}</Btn>
-            </div>
-          </Modal>
-        )
-      })()}
-
-      {detailContact && (() => {
-        const c = detailContact
-        return (
-          <Modal open={!!detailContact} onClose={() => setDetailContact(null)} title={isEditing ? `Edit: ${c.name}` : `${c.name} Profile`} size="lg">
-            {!isEditing ? (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div className="bg-[var(--surface2)] p-4 rounded-2xl">
-                      <div className="flex items-center gap-3 mb-4">
-                         <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{c.name.charAt(0)}</div>
-                         <div><div className="font-bold text-lg">{c.name}</div><div className="text-sm opacity-50 flex items-center gap-1"><Phone size={12}/> {c.phone}</div></div>
-                      </div>
-                      <div className="text-xs flex items-center gap-1 opacity-50"><MapPin size={12}/> {c.address}</div>
-                   </div>
-                   <div className="bg-[var(--accent-dim)] p-4 rounded-2xl flex flex-col justify-center">
-                      <div className="text-xs uppercase tracking-widest opacity-50 mb-1">Total Paid</div>
-                      <div className="text-3xl font-black text-[var(--accent)]">{fmt(c.totalPaid)}</div>
-                   </div>
-                </div>
-                <div className="space-y-3">
-                   <div className="text-xs font-bold uppercase tracking-wider opacity-50">{t('active_tickets')}</div>
-                   <div className="grid gap-2">
-                      {c.tickets.map(m => {
-                         const g = allGroups.find(x => x.id === m.group_id)
-                         if (!g || g.status === 'archived') return null
-                         return (
-                            <div key={m.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                               <div className="flex items-center gap-3"><UserCheck size={16} className="text-[var(--info)]"/><div><div className="font-bold text-sm">{g.name} <span className="opacity-40 ml-1">#{m.ticket_no}</span></div></div></div>
-                               <Btn size="sm" variant="ghost" onClick={() => { setPayMember(m); setDetailContact(null) }}>{t('record_payment')}</Btn>
-                            </div>
-                         )
-                      })}
-                   </div>
-                </div>
-              </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} /></Field>
-                  <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={editForm.nickname} onChange={e => setEditForm(f => ({...f, nickname: e.target.value}))} /></Field>
-                  <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={editForm.phone} type="tel" maxLength={10} onChange={e => setEditForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} /></Field>
-                  <Field label={t('address')}><input className={inputClass} style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({...f, address: e.target.value}))} /></Field>
-                </div>
-            )}
-            <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-              {isEditing ? (
-                 <><Btn variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Btn><Btn variant="primary" loading={saving} onClick={updateContact}>Save Profile</Btn></>
-              ) : (
-                 <><Btn variant="secondary" onClick={() => setDetailContact(null)}>Close</Btn>{can('editMember') && <Btn variant="primary" icon={Edit} onClick={() => setIsEditing(true)}>Edit Profile</Btn>}{can('deleteMember') && <Btn variant="danger" icon={Trash2} onClick={() => deletePerson(c.id)}>Delete</Btn>}</>
-              )}
             </div>
           </Modal>
         )

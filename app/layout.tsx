@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
   description: 'Chit Fund Management Software',
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-512.png' },
-  manifest: '/manifest.webmanifest'
 }
 
 export const viewport: Viewport = {
@@ -27,7 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#2563eb" />
         {/* Blocking script to prevent theme flickering */}
         <script dangerouslySetInnerHTML={{

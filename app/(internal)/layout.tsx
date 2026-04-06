@@ -13,7 +13,7 @@ import {
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass
 } from 'lucide-react'
-import { CommandPalette, TourProvider, useTour, NetworkStatus } from '@/components/ui'
+import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { usePwa } from '@/lib/pwa/context'
@@ -264,6 +264,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {t('sign_out')}
               </button>
+
+              {isInstallable && (
+                <button 
+                  onClick={install}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-bold border border-[var(--accent-border)] hover:bg-[var(--accent)] hover:text-white transition-all shadow-sm"
+                >
+                  <Download size={14} />
+                  Install App
+                </button>
+              )}
             </div>
           </div>
         </aside>
@@ -281,6 +291,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h1>
             </div>
             <div className="flex items-center gap-4">
+              {isInstallable && (
+                <button 
+                  onClick={install}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white lg:hidden"
+                >
+                  <Download size={14} />
+                  Install
+                </button>
+              )}
+              {hasPin && (
+                <button 
+                  onClick={lock}
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] text-[var(--text2)] border border-[var(--border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white"
+                  title="Lock Vault"
+                >
+                  <Lock size={14} />
+                  Lock
+                </button>
+              )}
               <TourTrigger />
               {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
                 <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
@@ -290,7 +319,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           </header>
-          <main className="flex-1 p-5 overflow-auto">{children}</main>
+          <main className="flex-1 p-5 overflow-auto pb-24 lg:pb-5">{children}</main>
+          <BottomNav onMenuClick={() => setSidebarOpen(true)} />
           <CommandPalette />
         </div>
       </div>

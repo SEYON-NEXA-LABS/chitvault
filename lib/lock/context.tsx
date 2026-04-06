@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { PinOverlay } from '@/components/ui'
+import { cn } from '@/lib/utils'
+import { usePathname } from 'next/navigation'
 
 interface PinLockContextType {
   isLocked: boolean
@@ -30,6 +32,9 @@ export function PinLockProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const pathname = usePathname()
+  const isPublicPage = ['/login', '/register', '/reset-password', '/onboarding'].includes(pathname)
+
   const lock = () => {
     if (hasPin) setIsLocked(true)
   }
@@ -54,10 +59,15 @@ export function PinLockProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const showOverlay = isLocked && !isPublicPage
+
   return (
     <PinLockContext.Provider value={{ isLocked, hasPin, lock, unlock, setPin, isElectron }}>
-      {isLocked && <PinOverlay onUnlock={unlock} />}
-      <div className={isLocked ? 'blur-md pointer-events-none' : ''}>
+      {showOverlay && <PinOverlay onUnlock={unlock} />}
+      <div className={cn(
+        "transition-all duration-300",
+        showOverlay ? "opacity-0 pointer-events-none scale-95" : "opacity-100 scale-100"
+      )}>
         {children}
       </div>
     </PinLockContext.Provider>

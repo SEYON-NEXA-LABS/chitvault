@@ -344,7 +344,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between bg-[var(--surface2)] p-4 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
               <div>
                 <div className="text-sm font-semibold">Requirement PIN on Startup</div>
-                <p className="text-xs opacity-60">Secure your session with a 4-6 digit code.</p>
+                <p className="text-xs opacity-60">Secure your session with a 4-digit code.</p>
               </div>
               <div className="flex items-center gap-2">
                 {hasPin ? (
@@ -359,28 +359,30 @@ export default function SettingsPage() {
               <div className="flex gap-2">
                 <Btn variant="secondary" size="sm" onClick={() => setPinChange(true)}>Change PIN</Btn>
                 <Btn variant="secondary" size="sm" onClick={() => { setPin(null); show('PIN Disabled') }}>Disable PIN</Btn>
-                <Btn variant="primary" size="sm" onClick={lock}>Lock Now</Btn>
+                <Btn variant="primary" size="sm" onClick={lock} className="!bg-[var(--accent)] !text-white !font-black !px-6 shadow-lg shadow-[var(--accent-dim)]">
+                   Lock Vault Now
+                </Btn>
               </div>
             )}
 
             {(pinChange || !hasPin) && (
               <div className="space-y-3 p-4 bg-accent/5 rounded-xl border border-accent/20">
-                <label className="text-xs font-bold text-accent uppercase tracking-wider block">Set New 4-6 Digit PIN</label>
+                <label className="text-xs font-bold text-accent uppercase tracking-wider block">Set New 4-Digit PIN</label>
                 <div className="flex gap-2">
                   <input
                     type="password"
-                    maxLength={6}
+                    maxLength={4}
                     className={inputClass}
-                    style={{ ...inputStyle, width: 120, letterSpacing: 8, textAlign: 'center' }}
+                    style={{ ...inputStyle, width: 100, letterSpacing: 8, textAlign: 'center', fontSize: 18 }}
                     value={pinInput}
                     onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
-                    placeholder="••••••"
+                    placeholder="••••"
                   />
-                  <Btn variant="primary" size="sm" disabled={pinInput.length < 4} onClick={() => {
+                  <Btn variant="primary" size="sm" disabled={pinInput.length !== 4} onClick={() => {
                     setPin(pinInput)
                     setPinInput('')
                     setPinChange(false)
-                    show('PIN Saved Successfully!')
+                    show('4-Digit PIN Saved Successfully!')
                   }}>Save PIN</Btn>
                   {hasPin && <Btn variant="secondary" size="sm" onClick={() => { setPinChange(false); setPinInput('') }}>Cancel</Btn>}
                 </div>

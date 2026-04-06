@@ -20,6 +20,7 @@
   color-scheme: light;
   --bg: #fafafa;
   --surface: #ffffff;
+  --surface-rgb: 255, 255, 255;
   --surface2: #f4f4f5;
   --surface3: #e4e4e7;
   --border: #e4e4e7;
@@ -33,6 +34,7 @@
   color-scheme: dark;
   --bg: #09090b;
   --surface: #09090b;
+  --surface-rgb: 9, 9, 11;
   --surface2: #18181b;
   --surface3: #27272a;
   --border: #27272a;
@@ -50,6 +52,7 @@
     color-scheme: dark;
     --bg: #09090b;
     --surface: #09090b;
+    --surface-rgb: 9, 9, 11;
     --surface2: #18181b;
     --surface3: #27272a;
     --border: #27272a;
@@ -270,6 +273,33 @@
   --info: #3f6212;
   --info-dim: #eff6e7;
 }
+
+/* ── Premium Aesthetics ─────────────────────────────────────────────────────── */
+.mesh-gradient {
+  background: 
+    radial-gradient(at 0% 0%, hsla(253,16%,12%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,25%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,25%,1) 0, transparent 50%), 
+    radial-gradient(at 0% 100%, hsla(321,0%,0%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 100%, hsla(220,100%,20%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 100%, hsla(0,0%,0%,1) 0, transparent 50%);
+  background-size: 100% 100%;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
 
 /* ── Base ─────────────────────────────────────────────────── */
 body {

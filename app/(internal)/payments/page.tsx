@@ -51,7 +51,7 @@ export default function PaymentsPage() {
 
 function PaymentsPageContent() {
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, can, switchedFirmId } = useFirm()
+  const { firm, profile, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
   const searchParams = useSearchParams()
   const qPersonId = searchParams.get('personId')
@@ -285,6 +285,7 @@ function PaymentsPageContent() {
           payment_date: payForm.date,
           mode: payForm.mode,
           payment_type: (due.amountPaid + amt) >= due.amountDue ? 'full' : 'partial',
+          collected_by: profile?.id || null,
           note: payForm.note
         });
       }
@@ -313,6 +314,7 @@ function PaymentsPageContent() {
           payment_date: payForm.date,
           mode: payForm.mode,
           payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
+          collected_by: profile?.id || null,
           note: payForm.note
         });
       }
@@ -334,6 +336,7 @@ function PaymentsPageContent() {
             payment_date: payForm.date,
             mode: payForm.mode,
             payment_type: remaining >= ms.group.monthly_contribution ? 'full' : 'partial',
+            collected_by: profile?.id || null,
             note: payForm.note
           });
         }

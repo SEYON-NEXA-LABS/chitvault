@@ -40,7 +40,7 @@ export function LineAnalytics({ title, data, dataKey, expectedKey, xKey, height 
     <Card className="p-4 overflow-hidden">
       <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-40">{title}</h3>
       <div style={{ width: '100%', height }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -97,7 +97,7 @@ export function PieDistribution({ title, data, dataKey, nameKey, height = 300 }:
     <Card className="p-4 overflow-hidden">
       <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-40">{title}</h3>
       <div style={{ width: '100%', height }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
@@ -134,7 +134,7 @@ export function BarAnalytics({ title, data, dataKey, xKey, height = 300 }: {
     <Card className="p-4 overflow-hidden">
       <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-40">{title}</h3>
       <div style={{ width: '100%', height }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
             <XAxis 
