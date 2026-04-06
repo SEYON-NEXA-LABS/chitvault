@@ -820,9 +820,9 @@ grant execute on function public.purge_old_trash() to authenticated;
 
 -- ── Auction rules columns on groups table ────────────────────
 alter table groups
-  add column if not exists min_bid_pct            numeric(5,4) default 0.70,   -- 70% of chit_value
-  add column if not exists max_bid_pct            numeric(5,4) default 1.00,   -- 100% of chit_value
-  add column if not exists discount_cap_pct       numeric(5,4) default 1.00,   -- max discount as % of chit_value
+  add column if not exists min_bid_pct            numeric(5,4) default 0.05,   -- 5% of chit_value
+  add column if not exists max_bid_pct            numeric(5,4) default 0.40,   -- 40% of chit_value
+  add column if not exists discount_cap_pct       numeric(5,4) default 0.40,   -- max discount as % of chit_value
   add column if not exists commission_type        text         default 'percent_of_chit',
   -- percent_of_chit | percent_of_discount | fixed_amount
   add column if not exists commission_value       numeric(12,2) default 5.00,
@@ -919,45 +919,37 @@ begin
   select * into g from groups where id = p_group_id and firm_id = my_firm_id();
   if not found then raise exception 'Group not found'; end if;
 
+  -- Logic: p_bid_amount IS the Discount Amount (the amount bid "away")
+  v_discount := p_bid_amount;
+  v_raw_payout := g.chit_value - p_bid_amount;
+
+  -- Enforce bid range (Now comparing discount against floor/cap)
   v_min_bid := round(g.chit_value * g.min_bid_pct, 2);
   v_max_bid := round(g.chit_value * g.max_bid_pct, 2);
 
   -- Enforce bid range
-  if p_bid_amount < v_min_bid then
-    raise exception 'Bid ₹% is below minimum allowed ₹%', p_bid_amount, v_min_bid;
+  if v_discount < v_min_bid then
+    raise exception 'Auction discount ₹% is below minimum allowed ₹%', v_discount, v_min_bid;
   end if;
-  if p_bid_amount > v_max_bid then
-    raise exception 'Bid ₹% exceeds maximum allowed ₹%', p_bid_amount, v_max_bid;
-  end if;
-
-  v_discount := g.chit_value - p_bid_amount;
-
-  -- Enforce discount cap
-  v_cap := round(g.chit_value * g.discount_cap_pct, 2);
-  if v_discount > v_cap then
-    raise exception 'Discount ₹% exceeds cap ₹% (% of chit value)', v_discount, v_cap, (g.discount_cap_pct * 100);
-  end if;
-
-  -- Raw Payout logic (varies by scheme)
-  if g.auction_scheme = 'ACCUMULATION' then
-     v_raw_payout := g.chit_value - p_bid_amount; -- Winner gets pot minus bid
-  else
-     v_raw_payout := p_bid_amount; -- "Winning Bid" is what they take
+  if v_discount > v_max_bid then
+    raise exception 'Auction discount ₹% exceeds maximum allowed ₹%', v_discount, v_max_bid;
   end if;
 
   -- Calculate foreman commission
-  case g.commission_type
-    when 'percent_of_chit'     then v_commission := round(g.chit_value * g.commission_value / 100, 2);
-    when 'percent_of_discount' then v_commission := round(v_discount    * g.commission_value / 100, 2);
-    when 'percent_of_payout'   then v_commission := round(v_raw_payout * g.commission_value / 100, 2);
-    when 'fixed_amount'        then v_commission := g.commission_value;
-    else v_commission := 0;
-  end case;
+  CASE g.commission_type
+    WHEN 'percent_of_chit'     THEN v_commission := round(g.chit_value * g.commission_value / 100, 2);
+    WHEN 'percent_of_discount' THEN v_commission := round(v_discount    * g.commission_value / 100, 2);
+    WHEN 'percent_of_payout'   THEN v_commission := round(v_raw_payout * g.commission_value / 100, 2);
+    WHEN 'fixed_amount'        THEN v_commission := g.commission_value;
+    ELSE v_commission := 0;
+  END CASE;
 
-  v_net_payout := v_raw_payout - v_commission;
-
-  -- Dividend logic: Calculate surplus for both, but distribute only if DIVIDEND scheme
-  v_net_div := v_discount - v_commission;
+  -- Standard Logic: 
+  -- 1. Winner takes Payout = Chit - Discount
+  -- 2. Group gets Dividend = Discount - Commission
+  v_net_payout := v_raw_payout; 
+  v_net_div    := v_discount - v_commission;
+  
   if v_net_div < 0 then v_net_div := 0; end if;
 
   if g.auction_scheme = 'ACCUMULATION' then

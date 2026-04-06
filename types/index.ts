@@ -48,6 +48,12 @@ export interface Group {
   start_date: string | null; status: GroupStatus; 
   auction_scheme: 'DIVIDEND'|'ACCUMULATION';
   accumulated_surplus: number;
+  min_bid_pct: number;
+  max_bid_pct: number;
+  discount_cap_pct: number;
+  commission_type: 'percent_of_chit' | 'percent_of_discount' | 'percent_of_payout' | 'fixed_amount';
+  commission_value: number;
+  commission_recipient: 'foreman' | 'firm';
   created_at: string
   created_by: string | null
   updated_at: string | null

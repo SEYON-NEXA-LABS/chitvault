@@ -479,7 +479,7 @@ function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commiss
 
 function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions: Auction[] }) {
   const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0)
-  const totalPaidOut = auctions.reduce((s, a) => s + Number(a.bid_amount), 0)
+  const totalPaidOut = auctions.reduce((s, a) => s + Number(a.net_payout || a.payout_amount || 0), 0)
   const netFlow = totalCollected - totalPaidOut
 
   return (
