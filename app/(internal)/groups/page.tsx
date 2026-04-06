@@ -103,6 +103,18 @@ export default function GroupsPage() {
 
   async function handleSave() {
     if (!firm) return
+
+    // Standard 5% cap for foreman commission
+    const commVal = +form.commission_value || 0
+    if (form.commission_type === 'percent_of_chit' && commVal > 5) {
+      showToast('Foreman commission cannot exceed 5% of the chit value', 'error')
+      return
+    }
+    if (form.commission_type === 'fixed_amount' && form.chit_value && commVal > (+form.chit_value * 0.05)) {
+      showToast('Foreman commission cannot exceed 5% of the chit value (' + fmt(+form.chit_value * 0.05) + ')', 'error')
+      return
+    }
+
     setSaving(true)
     const { data: userData } = await supabase.auth.getUser()
     const { error } = await supabase.from('groups').insert({
@@ -168,12 +180,12 @@ export default function GroupsPage() {
     if (!confirm('Are you sure you want to move this group to trash? It will be retrievable for 90 days.')) return
     const { error } = await supabase.from('groups').update({ deleted_at: new Date() }).eq('id', id)
     if (error) showToast(error.message, 'error')
-    else { 
-      showToast('Group moved to trash!'); 
+    else {
+      showToast('Group moved to trash!');
       if (firm) {
         await logActivity(firm.id, 'GROUP_ARCHIVED', 'group', id, { id });
       }
-      load() 
+      load()
     }
   }
 
@@ -262,13 +274,13 @@ export default function GroupsPage() {
           </div>
         </div>
       }>
-          <div id="tour-group-list">
-            {active.length === 0
-              ? <Empty icon="🏦" text="No active groups. Create your first group." action={
-                <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
-              } />
-              : <GroupTable list={active} showArchBtn={false} />}
-          </div>
+        <div id="tour-group-list">
+          {active.length === 0
+            ? <Empty icon="🏦" text="No active groups. Create your first group." action={
+              <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
+            } />
+            : <GroupTable list={active} showArchBtn={false} />}
+        </div>
       </TableCard>
 
       {/* Completed */}
@@ -332,9 +344,9 @@ export default function GroupsPage() {
               </Field>
               <Field label="Commission Type">
                 <select className={inputClass} style={inputStyle} value={form.commission_type} onChange={e => setForm(f => ({ ...f, commission_type: e.target.value }))}>
-                   <option value="percent_of_chit">Percent of Chit Value</option>
-                   <option value="percent_of_discount">Percent of Auction Discount</option>
-                   <option value="fixed_amount">Fixed Amount</option>
+                  <option value="percent_of_chit">Percent of Chit Value</option>
+                  <option value="percent_of_discount">Percent of Auction Discount</option>
+                  <option value="fixed_amount">Fixed Amount</option>
                 </select>
               </Field>
               <Field label="Commission Value">
@@ -342,7 +354,7 @@ export default function GroupsPage() {
               </Field>
             </div>
             <p className="text-[10px] opacity-40 mt-3 italic">
-              * The "Min Auction Discount" is usually your commission rate (e.g., 5%). 
+              * The &quot;Min Auction Discount&quot; is usually your commission rate (e.g., 5%).
               The winner must offer at least this amount to the group.
             </p>
           </div>

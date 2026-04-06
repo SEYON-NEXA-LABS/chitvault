@@ -735,11 +735,23 @@ export default function GroupLedgerPage() {
                  <p className="font-bold uppercase tracking-tight text-[var(--accent)]">Important Notes:</p>
                  <p>• <strong>Min Auction Discount</strong> is usually your base commission (e.g., 5%). Bids lower than this will be rejected.</p>
                  <p>• <strong>Max Auction Discount</strong> is the cap to prevent members from bidding too high and losing their savings (e.g., 40%).</p>
+                 <p>• <strong>Foreman Commission</strong> is legally capped at <strong>5%</strong> of the total chit value.</p>
                  <p>• Changes will apply to all <strong>future</strong> confirmed auctions in this group.</p>
               </div>
               <div className="flex justify-end gap-3 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
                  <Btn variant="secondary" onClick={() => setRulesOpen(false)}>Cancel</Btn>
                  <Btn variant="primary" loading={saving} onClick={async () => {
+                    // Standard 5% cap for foreman commission
+                    const commVal = +rulesForm.commission_value || 0
+                    if (rulesForm.commission_type === 'percent_of_chit' && commVal > 5) {
+                       showToast('Foreman commission cannot exceed 5% of the chit value', 'error')
+                       return
+                    }
+                    if (rulesForm.commission_type === 'fixed_amount' && group.chit_value && commVal > (group.chit_value * 0.05)) {
+                       showToast('Foreman commission cannot exceed 5% of the chit value (' + fmt(group.chit_value * 0.05) + ')', 'error')
+                       return
+                    }
+
                     setSaving(true);
                     const { error } = await supabase.from('groups').update({
                        min_bid_pct: (+rulesForm.min_bid_pct) / 100,
