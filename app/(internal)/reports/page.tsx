@@ -69,7 +69,17 @@ function ReportsPageContent() {
   const [timeFilter, setTimeFilter] = useState<string>('all')
 
   const { filteredAuctions, filteredPayments, filteredCommissions, filteredLogs } = useMemo(() => {
-    if (timeFilter === 'all') return { filteredAuctions: auctions, filteredPayments: payments, filteredCommissions: commissions, filteredLogs: activityLogs }
+    const confirmedAuctions = auctions.filter(a => a.status === 'confirmed')
+    const confirmedComms = commissions.filter(c => c.status === 'confirmed')
+
+    if (timeFilter === 'all') {
+      return { 
+        filteredAuctions: confirmedAuctions, 
+        filteredPayments: payments, 
+        filteredCommissions: confirmedComms, 
+        filteredLogs: activityLogs 
+      }
+    }
 
     const today = new Date()
     const currentYear = today.getFullYear()
@@ -95,12 +105,12 @@ function ReportsPageContent() {
     const isBetween = (d: string | null) => d ? ((d.substring(0, 10) >= s) && (d.substring(0, 10) < e)) : false
 
     return {
-      filteredAuctions: auctions.filter(a => isBetween(a.auction_date || a.created_at)),
+      filteredAuctions: confirmedAuctions.filter(a => isBetween(a.auction_date || a.created_at)),
       filteredPayments: payments.filter(p => isBetween(p.payment_date || p.created_at)),
-      filteredCommissions: commissions.filter(c => isBetween(c.created_at)),
+      filteredCommissions: confirmedComms.filter(c => isBetween(c.created_at)),
       filteredLogs: activityLogs.filter(l => isBetween(l.created_at))
     }
-  }, [auctions, payments, commissions, activityLogs, timeFilter])
+  }, [auctions, commissions, payments, activityLogs, timeFilter])
 
   const searchParams = useSearchParams()
 
@@ -180,17 +190,19 @@ function ReportsPageContent() {
         ]
         break
       case 'winners':
-        csvData = filteredAuctions.map(a => {
+        csvData = filteredAuctions.filter(a => a.winner_id != null).map(a => {
+          const m = members.find(x => x.id === a.winner_id)
           const g = groups.find(x => x.id === a.group_id)
-          const w = members.find(x => x.id === a.winner_id)
           return {
-            Month: a.month,
-            Group: g?.name,
-            Winner: w?.persons?.name,
+            'Auction Date': fmtDate(a.auction_date || a.created_at),
+            'Group': g?.name,
+            'Month': fmtMonth(a.month, g?.start_date),
+            'Winner': m?.persons?.name,
             'Bid Amount': a.bid_amount,
-            Dividend: a.dividend,
-            Payout: a.net_payout,
-            'Auction Date': a.auction_date || '—'
+            'Dividend': a.dividend,
+            'Payout Amt': a.net_payout || a.bid_amount,
+            'Settled': a.is_payout_settled ? 'Yes' : 'No',
+            'Settled Date': a.is_payout_settled ? fmtDate(a.payout_date) : 'N/A'
           }
         })
         break
@@ -199,7 +211,7 @@ function ReportsPageContent() {
           const g = groups.find(x => x.id === m.group_id)
           if (!g) return false
           const paid = filteredPayments.filter(p => p.member_id === m.id).reduce((sum, p) => sum + Number(p.amount), 0)
-          const expected = (g.monthly_contribution * Math.min(g.duration, 5)) // Simplified logic for demo
+          const expected = (g.monthly_contribution * Math.min(g.duration, 5)) 
           return paid < expected
         }).map(m => {
           const g = groups.find(x => x.id === m.group_id)
@@ -216,11 +228,9 @@ function ReportsPageContent() {
         if (!selectedGroupId) { alert('Please select a group first'); return }
         const grp = groups.find(g => g.id === Number(selectedGroupId))
         const grpMems = members.filter(m => m.group_id === Number(selectedGroupId))
-        
-        // Clubbing logic for CSV
         const clubMapCsv = new Map<number, any>()
         grpMems.forEach(m => {
-          const auc = auctions.find(a => a.group_id === m.group_id && a.winner_id === m.id)
+          const auc = filteredAuctions.find(a => a.group_id === m.group_id && a.winner_id === m.id)
           if (!clubMapCsv.has(m.person_id)) {
             clubMapCsv.set(m.person_id, { 
               name: m.persons?.name, 
@@ -250,21 +260,6 @@ function ReportsPageContent() {
           'Won Months': p.wonMonths.join(', ') || '—',
           'Pending Tickets': p.pending.sort((a:number,b:number)=>a-b).map((t:number)=>`#${t}`).join(', ') || 'None'
         }))
-        break
-      case 'winners':
-        csvData = auctions.filter(a => a.winner_id != null).map(a => {
-          const m = members.find(x => x.id === a.winner_id)
-          const g = groups.find(x => x.id === a.group_id)
-          return {
-            'Auction Date': fmtDate(a.created_at),
-            'Group': g?.name,
-            'Month': `M${a.month}`,
-            'Winner': m?.persons?.name,
-            'Payout Amt': a.net_payout || a.bid_amount,
-            'Settled': a.is_payout_settled ? 'Yes' : 'No',
-            'Settled Date': a.is_payout_settled ? fmtDate(a.payout_date) : 'N/A'
-          }
-        })
         break
       case 'activity':
         csvData = activityLogs.map(l => ({

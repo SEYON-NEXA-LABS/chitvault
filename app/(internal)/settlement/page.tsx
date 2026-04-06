@@ -205,7 +205,8 @@ function SettlementPage() {
        supabase
          .from('auctions')
          .select('*')
-         .eq('winner_id', Number(mId)),
+         .eq('winner_id', Number(mId))
+         .eq('status', 'confirmed'),
        firm.id
     ).order('month', { ascending: false })
     

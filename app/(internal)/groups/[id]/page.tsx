@@ -347,10 +347,12 @@ export default function GroupLedgerPage() {
 
   if (loading || !group) return <Loading />
 
-  const totalDividends = auctionHistory.reduce((s, a) => s + Number(a.dividend || 0), 0)
-  const totalPayouts = auctionHistory.reduce((s, a) => s + Number(a.net_payout || 0), 0)
-  const totalComm = commissions.reduce((s, c) => s + Number(c.commission_amt || 0), 0)
-  const monthsCompleted = auctionHistory.length
+  const confirmedAucs = auctionHistory.filter(a => a.status === 'confirmed')
+  const totalDividends = confirmedAucs.reduce((s, a) => s + Number(a.dividend || 0), 0)
+  const totalPayouts = confirmedAucs.reduce((s, a) => s + Number(a.net_payout || 0), 0)
+  const confirmedComms = commissions.filter(c => c.status === 'confirmed')
+  const totalComm = confirmedComms.reduce((s, c) => s + Number(c.commission_amt || 0), 0)
+  const monthsCompleted = confirmedAucs.length
   const totalMonths = group.duration
 
   return (
@@ -468,7 +470,12 @@ export default function GroupLedgerPage() {
                 const eachPays = monthlyDue - Number(a.dividend || 0)
                 return (
                   <Tr key={a.id}>
-                    <Td><Badge variant="gray" className="font-mono text-[10px] bg-[var(--surface2)]">{fmtMonth(a.month, group.start_date)}</Badge></Td>
+                    <Td>
+                       <div className="flex flex-col">
+                          <Badge variant={a.status === 'draft' ? 'gray' : 'info'} className="font-mono text-[10px] bg-[var(--surface2)]">{fmtMonth(a.month, group?.start_date)}</Badge>
+                          {a.status === 'draft' && <span className="text-[8px] font-bold text-[var(--accent)] mt-1 uppercase tracking-tighter">Draft Plan</span>}
+                       </div>
+                    </Td>
                     <Td>
                       {winner ? (
                         <div className="flex flex-col">
@@ -479,7 +486,7 @@ export default function GroupLedgerPage() {
                     </Td>
                     <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.bid_amount)}</Td>
                     <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)]">
-                      {group.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.bid_amount)}` : fmt(a.dividend)}
+                      {group?.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.bid_amount)}` : fmt(a.dividend)}
                     </Td>
                     <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.bid_amount)}</Td>
                     <Td right className="hidden lg:table-cell font-mono text-[var(--danger)]">
@@ -500,10 +507,11 @@ export default function GroupLedgerPage() {
                         </div>
                       ) : (
                         <div className="flex justify-end gap-1 no-print">
-                          {winner && <Btn size="sm" variant="primary" className="h-8 px-3 text-[11px]" onClick={() => {
+                          {a.status === 'confirmed' && winner && <Btn size="sm" variant="primary" className="h-8 px-3 text-[11px]" onClick={() => {
                             setSettling(a)
                             setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.bid_amount) }))
                           }} icon={Wallet}>Settle</Btn>}
+                          {a.status === 'draft' && <Badge variant="gray">Draft</Badge>}
                         </div>
                       )}
                     </Td>
@@ -547,7 +555,7 @@ export default function GroupLedgerPage() {
                 <Td className="hidden sm:table-cell">{m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}</Td>
                 <Td>
                   {(() => {
-                    const auc = auctionHistory.find(a => a.winner_id === m.id)
+                    const auc = auctionHistory.find(a => a.winner_id === m.id && a.status === 'confirmed')
                     return auc ? <Badge variant="accent">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
                   })()}
                 </Td>

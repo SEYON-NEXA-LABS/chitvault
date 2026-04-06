@@ -217,12 +217,14 @@ create table if not exists auctions (
   payout_date       date,
   payout_amount     numeric(12,2),
   payout_note       text,
+  status       text default 'confirmed',
   created_at   timestamptz default now(),
   created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
   updated_by   uuid references auth.users(id),
   unique(firm_id, group_id, month),
-  constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0)
+  constraint auctions_amounts_nonneg_chk check (bid_amount >= 0 and total_pot >= 0 and dividend >= 0),
+  constraint auctions_status_chk check (status in ('draft','confirmed'))
 );
 
 -- Migration: add net_payout & settlement columns to auctions
@@ -866,11 +868,13 @@ create table if not exists foreman_commissions (
   paid_to         text default 'foreman',      -- foreman | firm
   foreman_member_id bigint references members(id) on delete set null,
   notes           text,
+  status          text default 'confirmed',
   created_at      timestamptz default now(),
   created_by      uuid references auth.users(id),
   updated_at      timestamptz default now(),
   updated_by      uuid references auth.users(id),
-  unique(firm_id, group_id, month)
+  unique(firm_id, group_id, month),
+  constraint fc_status_chk check (status in ('draft','confirmed'))
 );
 
 alter table foreman_commissions enable row level security;
@@ -997,7 +1001,9 @@ create or replace function public.record_auction_with_commission(
   p_winner_id     bigint,
   p_bid_amount    numeric,
   p_foreman_member_id bigint default null,
-  p_notes         text default null
+  p_notes         text default null,
+  p_status        text default 'confirmed',
+  p_auction_id    bigint default null
 )
 returns jsonb
 language plpgsql security definer set search_path = public
@@ -1006,6 +1012,7 @@ declare
   g            groups%rowtype;
   v_calc       jsonb;
   v_auction_id bigint;
+  v_old_auction auctions%rowtype;
   v_firm_id    uuid;
 begin
   if not is_firm_owner() then
@@ -1020,21 +1027,52 @@ begin
   -- Get full calculation (also validates bid range)
   v_calc := public.calculate_auction(p_group_id, p_bid_amount);
 
-  -- Insert auction
-  insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout)
-  values (
-    v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
-    p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric
-  )
-  returning id into v_auction_id;
+  -- Handle Existing Auction (Edit Mode)
+  if p_auction_id is not null then
+    select * into v_old_auction from auctions where id = p_auction_id and firm_id = v_firm_id;
+    if not found then raise exception 'Original auction record not found'; end if;
 
-  -- Insert foreman commission record
+    -- Reverse old confirmed impact if present
+    if v_old_auction.status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
+        update groups 
+        set accumulated_surplus = accumulated_surplus - v_old_auction.bid_amount
+        where id = p_group_id;
+    end if;
+
+    -- Update existing auction
+    update auctions set
+      auction_date = p_auction_date,
+      winner_id = p_winner_id,
+      bid_amount = p_bid_amount,
+      total_pot = g.chit_value,
+      dividend = (v_calc->>'per_member_div')::numeric,
+      net_payout = (v_calc->>'net_payout')::numeric,
+      status = p_status,
+      updated_at = now()
+    where id = p_auction_id;
+    
+    v_auction_id := p_auction_id;
+
+    -- Update or Delete Foreman Commission
+    -- We can just delete and let it recreate to ensure all fields are fresh
+    delete from foreman_commissions where auction_id = v_auction_id;
+  else
+    -- Standard Insert Mode
+    insert into auctions (firm_id, group_id, month, auction_date, winner_id, bid_amount, total_pot, dividend, net_payout, status)
+    values (
+      v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
+      p_bid_amount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric, p_status
+    )
+    returning id into v_auction_id;
+  end if;
+
+  -- Insert foreman commission record (Fresh row)
   insert into foreman_commissions (
     firm_id, group_id, auction_id, month,
     chit_value, bid_amount, discount,
     commission_type, commission_rate, commission_amt,
     net_dividend, per_member_div,
-    paid_to, foreman_member_id, notes
+    paid_to, foreman_member_id, notes, status
   ) values (
     v_firm_id, p_group_id, v_auction_id, p_month,
     g.chit_value, p_bid_amount, (v_calc->>'discount')::numeric,
@@ -1045,11 +1083,12 @@ begin
     (v_calc->>'per_member_div')::numeric,
     g.commission_recipient,
     p_foreman_member_id,
-    p_notes
+    p_notes,
+    p_status
   );
 
-  -- IF ACCUMULATION scheme: Update group surplus pooled balance
-  if g.auction_scheme = 'ACCUMULATION' then
+  -- Apply confirmed impact if status is confirmed
+  if p_status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
      update groups 
      set accumulated_surplus = accumulated_surplus + p_bid_amount
      where id = p_group_id;
