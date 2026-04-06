@@ -584,7 +584,7 @@ export default function GroupLedgerPage() {
                 <Td right className="no-print">
                   <div className="flex justify-end gap-1">
                     <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports?type=member_history&member_id=${m.id}`)} icon={History}>Ledger</Btn>
-                    <Btn size="sm" variant="ghost" onClick={() => setSelectedMember(m.id)} icon={Info}>Details</Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/members/${m.person_id}`)} icon={Info}>Profile</Btn>
                     {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>Remove</Btn>}
                   </div>
                 </Td>
