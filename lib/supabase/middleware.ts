@@ -36,10 +36,10 @@ export async function updateSession(request: NextRequest) {
   const isInvite = pathname.startsWith('/invite')
   const isDenied = pathname === '/access-denied'
 
-  // Not logged in — allow public pages, invite links, and access-denied
   if (!user && !isPublic && !isInvite && !isDenied) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('next', pathname + request.nextUrl.search)
     return NextResponse.redirect(url)
   }
 

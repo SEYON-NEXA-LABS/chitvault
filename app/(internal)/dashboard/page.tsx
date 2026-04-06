@@ -223,7 +223,7 @@ export default function DashboardPage() {
           <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
         </Link>
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Total Pending" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="danger" />
+          <StatCard label="Pending Collections" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="danger" />
         </Link>
         <Link href="/reports?type=defaulters" className="block transition-transform hover:scale-[1.02]">
           <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="info" />
@@ -322,12 +322,12 @@ export default function DashboardPage() {
 
                       <div className="grid grid-cols-2 gap-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
                         <div>
-                          <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--text3)' }}>
-                            Contribution
-                          </span>
-                          <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
-                            {fmt(g.monthly_contribution)} /m
-                          </span>
+                          <div className="text-[10px] uppercase opacity-40 font-bold tracking-wider">
+                            {isAcc ? 'Monthly Contr.' : 'Each Pays'}
+                          </div>
+                          <div className="text-xl font-black" style={{ color: 'var(--text)' }}>
+                            {fmt(Number(g.monthly_contribution))}
+                          </div>
                         </div>
                         {isAcc ? (
                           <div>

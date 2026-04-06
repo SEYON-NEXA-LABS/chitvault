@@ -533,14 +533,18 @@ function PaymentsPageContent() {
                 </div>
               </div>
               <div className="text-right">
-                 <div className="text-[10px] uppercase opacity-40">Total Outstanding</div>
+                 <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
+                   {payModal.memberships.some(m => m.group.auction_scheme === 'ACCUMULATION') ? 'To Collect (Contr.)' : 'To Collect (Due)'}
+                 </div>
                  <div className="text-xl font-black text-[var(--danger)]">{fmt(payModal.overallTotalBalance)}</div>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
-                 <div className="text-xs font-bold uppercase opacity-40">Outstanding Dues</div>
+                 <div className="text-xs font-bold uppercase opacity-40">
+                    {payModal.memberships.some(m => m.group.auction_scheme === 'ACCUMULATION') ? 'Pending Contributions' : 'Outstanding Dues'}
+                 </div>
                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
                     <input type="checkbox" checked={payForm.isManual} onChange={e => setPayForm(f => ({ ...f, isManual: e.target.checked }))} />
                     <span className="font-bold">Manual Allocation</span>

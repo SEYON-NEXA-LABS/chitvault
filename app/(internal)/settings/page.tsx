@@ -336,7 +336,7 @@ export default function SettingsPage() {
 
           {/* App PIN Lock (Web & Desktop) */}
           <hr style={{ borderColor: 'var(--border)' }} />
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2 scroll-mt-20" id="lock-config">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
               <Lock size={12} /> App PIN Lock
             </div>
