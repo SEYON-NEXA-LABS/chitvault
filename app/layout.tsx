@@ -64,6 +64,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </FirmProvider>
         <script dangerouslySetInnerHTML={{
           __html: `
+          // Automatic recovery for Next.js ChunkLoadError
+          window.addEventListener('error', function(e) {
+            if (e.message && (e.message.indexOf('ChunkLoadError') !== -1 || e.message.indexOf('Loading chunk') !== -1)) {
+              console.warn('ChunkLoadError detected, forcing reload...');
+              window.location.reload();
+            }
+          }, true);
+
           window.deferredPrompt = null;
           window.addEventListener('beforeinstallprompt', function(e) {
             e.preventDefault();
