@@ -474,7 +474,7 @@ export default function AuctionsPage() {
             </Field>
           )}
 
-          <Field label="Winning Bid (₹)" className="col-span-2">
+          <Field label="Auction Discount (₹)" className="col-span-2">
             <input className={inputClass}
               style={{ ...inputStyle, borderColor: calcError ? 'var(--danger)' : calc ? 'var(--success)' : undefined }}
               type="number" value={form.bid_amount}

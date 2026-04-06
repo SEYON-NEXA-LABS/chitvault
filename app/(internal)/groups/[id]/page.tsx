@@ -42,6 +42,11 @@ export default function GroupLedgerPage() {
   const [settling, setSettling] = useState<Auction | null>(null)
   const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '' })
   const [payoutOpen, setPayoutOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [rulesForm, setRulesForm] = useState({ 
+    min_bid_pct: '', max_bid_pct: '', 
+    commission_type: '', commission_value: '' 
+  })
 
   const load = useCallback(async (isInitial = false) => {
     if (!firm) return
@@ -380,19 +385,36 @@ export default function GroupLedgerPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4 border-2" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
+        <Card className="p-4 border-2 relative group-hover:border-[var(--accent)] transition-all" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-[var(--accent)] text-white">
                 <Gavel size={18} />
               </div>
               <div className="flex-1">
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Auction Rules & Limits</div>
+                <div className="flex justify-between items-start">
+                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Auction Rules (Discounts)</div>
+                  {isOwner && (
+                    <button onClick={() => {
+                      setRulesForm({
+                        min_bid_pct: String((group.min_bid_pct || 0.05) * 100),
+                        max_bid_pct: String((group.max_bid_pct || 0.40) * 100),
+                        commission_type: group.commission_type || 'percent_of_chit',
+                        commission_value: String(group.commission_value || 5)
+                      });
+                      setRulesOpen(true);
+                    }} className="p-1 hover:bg-white/50 rounded-md transition-colors text-[var(--accent)]">
+                      <Settings2 size={14} />
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-4 mt-1">
                   <div className="text-xs">
-                    <span className="opacity-50">Min Bid:</span> <strong className="font-mono">{fmt(group.chit_value * (group.min_bid_pct || 0.7))}</strong>
+                    <span className="opacity-50">Min Disc:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.min_bid_pct || 0.05))}</strong>
+                    <span className="text-[9px] opacity-40 ml-1">({(group.min_bid_pct || 0.05)*100}%)</span>
                   </div>
                   <div className="text-xs">
-                    <span className="opacity-50">Max Bid:</span> <strong className="font-mono">{fmt(group.chit_value * (group.max_bid_pct || 1.0))}</strong>
+                    <span className="opacity-50">Max Cap:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.max_bid_pct || 0.40))}</strong>
+                    <span className="text-[9px] opacity-40 ml-1">({(group.max_bid_pct || 0.40)*100}%)</span>
                   </div>
                   <div className="text-xs">
                     <span className="opacity-50">Scheme:</span> <strong className="uppercase">{group.auction_scheme}</strong>
@@ -449,7 +471,7 @@ export default function GroupLedgerPage() {
               <Tr>
                 <Th>Month</Th>
                 <Th>Winner</Th>
-                <Th right>Bid Amt</Th>
+                <Th right>Auction Discount</Th>
                 <Th right className="hidden md:table-cell">
                   {group.auction_scheme === 'ACCUMULATION' ? 'Discount Surplus' : 'Member Dividend'}
                 </Th>
@@ -683,6 +705,60 @@ export default function GroupLedgerPage() {
         title="Bulk Enroll Members"
         requiredFields={['Name', 'Ticket No']}
       />
+
+      {rulesOpen && (
+        <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Edit Group Auction Rules">
+           <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                 <Field label="Min Auction Discount (%)">
+                    <input className={inputClass} style={inputStyle} type="number" 
+                       value={rulesForm.min_bid_pct} onChange={e => setRulesForm(f => ({ ...f, min_bid_pct: e.target.value }))} />
+                 </Field>
+                 <Field label="Max Auction Discount (%)">
+                    <input className={inputClass} style={inputStyle} type="number" 
+                       value={rulesForm.max_bid_pct} onChange={e => setRulesForm(f => ({ ...f, max_bid_pct: e.target.value }))} />
+                 </Field>
+                 <Field label="Commission Type" className="col-span-2">
+                    <select className={inputClass} style={inputStyle} value={rulesForm.commission_type} 
+                       onChange={e => setRulesForm(f => ({ ...f, commission_type: e.target.value }))}>
+                       <option value="percent_of_chit">Percent of Chit Value</option>
+                       <option value="percent_of_discount">Percent of Auction Discount</option>
+                       <option value="fixed_amount">Fixed Amount</option>
+                    </select>
+                 </Field>
+                 <Field label="Commission Value" className="col-span-2">
+                    <input className={inputClass} style={inputStyle} type="number" 
+                       value={rulesForm.commission_value} onChange={e => setRulesForm(f => ({ ...f, commission_value: e.target.value }))} />
+                 </Field>
+              </div>
+              <div className="p-4 rounded-2xl bg-[var(--surface2)] text-[10px] space-y-2 opacity-60">
+                 <p className="font-bold uppercase tracking-tight text-[var(--accent)]">Important Notes:</p>
+                 <p>• <strong>Min Auction Discount</strong> is usually your base commission (e.g., 5%). Bids lower than this will be rejected.</p>
+                 <p>• <strong>Max Auction Discount</strong> is the cap to prevent members from bidding too high and losing their savings (e.g., 40%).</p>
+                 <p>• Changes will apply to all <strong>future</strong> confirmed auctions in this group.</p>
+              </div>
+              <div className="flex justify-end gap-3 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+                 <Btn variant="secondary" onClick={() => setRulesOpen(false)}>Cancel</Btn>
+                 <Btn variant="primary" loading={saving} onClick={async () => {
+                    setSaving(true);
+                    const { error } = await supabase.from('groups').update({
+                       min_bid_pct: (+rulesForm.min_bid_pct) / 100,
+                       max_bid_pct: (+rulesForm.max_bid_pct) / 100,
+                       commission_type: rulesForm.commission_type,
+                       commission_value: +rulesForm.commission_value
+                    }).eq('id', groupId);
+                    setSaving(false);
+                    if (error) showToast(error.message, 'error');
+                    else {
+                       showToast('Auction rules updated!');
+                       setRulesOpen(false);
+                       load();
+                    }
+                 }}>Save Rules</Btn>
+              </div>
+           </div>
+        </Modal>
+      )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>

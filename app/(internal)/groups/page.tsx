@@ -41,7 +41,9 @@ export default function GroupsPage() {
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
     monthly_contribution: '', start_date: '',
-    auction_scheme: 'ACCUMULATION' as 'DIVIDEND' | 'ACCUMULATION'
+    auction_scheme: 'ACCUMULATION' as 'DIVIDEND' | 'ACCUMULATION',
+    min_bid_pct: '5', max_bid_pct: '40',
+    commission_type: 'percent_of_chit', commission_value: '5'
   })
   const [saving, setSaving] = useState(false)
 
@@ -114,7 +116,11 @@ export default function GroupsPage() {
       firm_id: firm.id,
       auction_scheme: form.auction_scheme,
       accumulated_surplus: 0,
-      created_by: userData.user?.id
+      created_by: userData.user?.id,
+      min_bid_pct: (+form.min_bid_pct || 5) / 100,
+      max_bid_pct: (+form.max_bid_pct || 40) / 100,
+      commission_type: form.commission_type,
+      commission_value: +form.commission_value
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
@@ -312,6 +318,34 @@ export default function GroupsPage() {
           <Field label="Duration (Months)"><input className={inputClass} style={inputStyle} value={form.duration} type="number" onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" /></Field>
           <Field label="Monthly Installment (₹)"><input className={inputClass} style={inputStyle} value={form.monthly_contribution} type="number" onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" /></Field>
           <Field label="Start Date"><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></Field>
+
+          <div className="col-span-1 md:col-span-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-xs font-black uppercase tracking-widest opacity-40 mb-3 flex items-center gap-2">
+              <Gavel size={14} /> Auction Rules & Commission
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Min Auction Discount (%)">
+                <input className={inputClass} style={inputStyle} type="number" value={form.min_bid_pct} onChange={e => setForm(f => ({ ...f, min_bid_pct: e.target.value }))} placeholder="5" />
+              </Field>
+              <Field label="Max Auction Discount (%)">
+                <input className={inputClass} style={inputStyle} type="number" value={form.max_bid_pct} onChange={e => setForm(f => ({ ...f, max_bid_pct: e.target.value }))} placeholder="40" />
+              </Field>
+              <Field label="Commission Type">
+                <select className={inputClass} style={inputStyle} value={form.commission_type} onChange={e => setForm(f => ({ ...f, commission_type: e.target.value }))}>
+                   <option value="percent_of_chit">Percent of Chit Value</option>
+                   <option value="percent_of_discount">Percent of Auction Discount</option>
+                   <option value="fixed_amount">Fixed Amount</option>
+                </select>
+              </Field>
+              <Field label="Commission Value">
+                <input className={inputClass} style={inputStyle} type="number" value={form.commission_value} onChange={e => setForm(f => ({ ...f, commission_value: e.target.value }))} placeholder="5" />
+              </Field>
+            </div>
+            <p className="text-[10px] opacity-40 mt-3 italic">
+              * The "Min Auction Discount" is usually your commission rate (e.g., 5%). 
+              The winner must offer at least this amount to the group.
+            </p>
+          </div>
         </div>
         <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
           <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
