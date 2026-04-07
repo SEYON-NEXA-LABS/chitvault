@@ -516,7 +516,12 @@ export default function GroupLedgerPage() {
                     <Td right className="hidden lg:table-cell font-mono text-[var(--danger)]">
                       {comm ? fmt(comm.commission_amt) : '—'}
                     </Td>
-                    <Td right className="hidden sm:table-cell font-mono font-bold">{fmt(eachPays)}</Td>
+                    <Td right className="hidden sm:table-cell font-mono font-bold">
+                      {fmt(eachPays)}
+                      <div className="text-[8px] opacity-30">
+                        {group.auction_scheme === 'ACCUMULATION' ? 'fixed contr.' : 'after div.'}
+                      </div>
+                    </Td>
                     <Td right>
                       {a.is_payout_settled ? (
                         <div className="flex flex-col items-end gap-0.5">

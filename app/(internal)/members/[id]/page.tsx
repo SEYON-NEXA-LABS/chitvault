@@ -199,7 +199,7 @@ export default function MemberDetailPage() {
             <div className="text-2xl font-black text-[var(--success)]">{fmt(stats.totalPaid)}</div>
           </div>
           <div className="p-5 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-sm flex flex-col justify-center">
-            <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Total Due</div>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Total Outstanding</div>
             <div className={cn("text-2xl font-black", stats.totalBalance > 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
               {fmt(stats.totalBalance)}
             </div>
@@ -281,7 +281,7 @@ export default function MemberDetailPage() {
                 <Th right>Amount Paid</Th>
                 <Th className="hidden sm:table-cell">Mode</Th>
                 <Th className="hidden md:table-cell">Reference</Th>
-                <Th right>Balance</Th>
+                <Th right>Outstanding</Th>
               </Tr>
             </thead>
             <tbody>
@@ -298,7 +298,9 @@ export default function MemberDetailPage() {
                     <Td className="font-mono text-xs">{fmtDate(p.payment_date)}</Td>
                     <Td>
                       <div className="font-bold text-xs">{g?.name || 'Unknown'}</div>
-                      <div className="text-[10px] opacity-40">Ticket #{m?.ticket_no}</div>
+                      <div className="text-[10px] opacity-40">
+                        {g?.auction_scheme === 'ACCUMULATION' ? 'Ticket Contribution' : 'Amount Due'}
+                      </div>
                     </Td>
                     <Td><Badge variant="gray">Month {p.month}</Badge></Td>
                     <Td right className="font-black text-[var(--success)]">{fmt(p.amount)}</Td>

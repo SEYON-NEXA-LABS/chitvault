@@ -18,16 +18,22 @@ export default function GlobalError({
     const isChunkError = 
       error.message?.includes('ChunkLoadError') || 
       error.message?.includes('Loading chunk') ||
-      error.message?.includes('Failed to fetch dynamically imported module')
+      error.message?.includes('Failed to fetch') ||
+      error.message?.includes('Unexpected token \'<\'')
 
     if (isChunkError) {
       const storageKey = 'chitvault_chunk_reload_count'
-      const reloadCount = parseInt(sessionStorage.getItem(storageKey) || '0', 10)
+      const reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}')
+      const now = Date.now()
 
-      if (reloadCount < 2) {
-        sessionStorage.setItem(storageKey, (reloadCount + 1).toString())
-        console.warn(`ChunkLoadError (Global) detected. Attempting recovery (Attempt ${reloadCount + 1})...`)
-        window.location.reload() // Force reload via manifestation recovery
+      if (now - reloadData.last > 60000) reloadData.count = 0
+
+      if (reloadData.count < 3) {
+        reloadData.count++
+        reloadData.last = now
+        sessionStorage.setItem(storageKey, JSON.stringify(reloadData))
+        console.warn(`System: Global Recovery Attempt ${reloadData.count}...`)
+        window.location.reload()
       }
     }
   }, [error])

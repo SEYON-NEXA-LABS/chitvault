@@ -54,9 +54,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ── 3. Static Assets: Stale-While-Revalidate ──
-  // Only cache GET requests for static assets
+  // Only cache GET requests for images/icons
+  // We EXCLUDE '/_next/static' to prevent ChunkLoadError and deployment drift
   if (request.method === 'GET' && (
-      url.pathname.startsWith('/_next/static') || 
       url.pathname.startsWith('/icons') ||
       url.pathname.endsWith('.png') ||
       url.pathname.endsWith('.jpg') ||

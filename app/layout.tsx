@@ -64,13 +64,57 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </FirmProvider>
         <script dangerouslySetInnerHTML={{
           __html: `
-          // Automatic recovery for Next.js ChunkLoadError
-          window.addEventListener('error', function(e) {
-            if (e.message && (e.message.indexOf('ChunkLoadError') !== -1 || e.message.indexOf('Loading chunk') !== -1)) {
-              console.warn('ChunkLoadError detected, forcing reload...');
-              window.location.reload();
+          // ── Robust Self-Healing for Next.js ChunkLoadErrors & Displacement Drift ──
+          (function() {
+            var storageKey = 'chitvault_chunk_reload_count';
+            
+            function handleRecovery(errorMessage) {
+              // Ensure we don't catch unrelated errors
+              var isChunkError = 
+                errorMessage && (
+                  errorMessage.indexOf('ChunkLoadError') !== -1 || 
+                  errorMessage.indexOf('Loading chunk') !== -1 ||
+                  errorMessage.indexOf('Failed to fetch') !== -1 ||
+                  errorMessage.indexOf('Unexpected token \'<\'') !== -1
+                );
+
+              if (isChunkError) {
+                var now = Date.now();
+                var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
+                
+                // Reset counter if the last error was more than 1 minute ago
+                if (now - reloadData.last > 60000) {
+                  reloadData.count = 0;
+                }
+
+                if (reloadData.count < 3) {
+                  reloadData.count++;
+                  reloadData.last = now;
+                  sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
+                  
+                  console.warn('System: Critical Asset Mismatch Detected. Attempting Self-Healing (Attempt ' + reloadData.count + ')...');
+                  
+                  // If we're on attempt 2 or 3, try to unregister service worker first to clear deep cache
+                  if (reloadData.count > 1 && 'serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                      for(var i = 0; i < regs.length; i++) regs[i].unregister();
+                      window.location.reload(true);
+                    }).catch(function() { window.location.reload(true); });
+                  } else {
+                    window.location.reload(true);
+                  }
+                } else {
+                  console.error('System: Automatic recovery failed after maximum attempts. Please check network connectivity.');
+                }
+              }
             }
-          }, true);
+
+            window.addEventListener('error', function(e) { handleRecovery(e.message); }, true);
+            window.addEventListener('unhandledrejection', function(e) { 
+              var msg = (e.reason && e.reason.message) || String(e.reason);
+              handleRecovery(msg); 
+            });
+          })();
 
           window.deferredPrompt = null;
           window.addEventListener('beforeinstallprompt', function(e) {
