@@ -58,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 errorMessage.indexOf('ChunkLoadError') !== -1 || 
                 errorMessage.indexOf('Loading chunk') !== -1 ||
                 errorMessage.indexOf('Failed to fetch') !== -1 ||
-                errorMessage.indexOf('Unexpected token \\'<\\'') !== -1
+                errorMessage.indexOf("Unexpected token '<'") !== -1
               );
               if (isChunkError) {
                 var now = Date.now();
@@ -72,10 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   if (reloadData.count > 1 && 'serviceWorker' in navigator) {
                     navigator.serviceWorker.getRegistrations().then(function(regs) {
                       for(var i = 0; i < regs.length; i++) regs[i].unregister();
-                      window.location.reload(true);
-                    }).catch(function() { window.location.reload(true); });
+                      window.location.reload();
+                    }).catch(function() { window.location.reload(); });
                   } else {
-                    window.location.reload(true);
+                    window.location.reload();
                   }
                 }
               }
@@ -116,12 +116,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 navigator.serviceWorker.register('/sw.js');
               });
             } else {
-              navigator.serviceWorker.getRegistrations().then(regs => {
-                for(let reg of regs) reg.unregister();
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for(var i = 0; i < regs.length; i++) regs[i].unregister();
               });
               if ('caches' in window) {
-                caches.keys().then(names => {
-                  for (let name of names) caches.delete(name);
+                caches.keys().then(function(names) {
+                  for (var i = 0; i < names.length; i++) caches.delete(names[i]);
                 });
               }
             }

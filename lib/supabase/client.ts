@@ -8,9 +8,14 @@ let client: ReturnType<typeof createBrowserClient> | undefined;
 export const createClient = () => {
   if (client) return client;
   
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Critical: Supabase Configuration Missing.");
+    return {} as any; // Prevent hard crash
+  }
+
   client = createBrowserClient(
-    supabaseUrl!,
-    supabaseKey!,
+    supabaseUrl,
+    supabaseKey,
   );
   
   return client;
