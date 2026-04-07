@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chitvault-v4'; // Bumped for ChunkLoadError recovery
+const CACHE_NAME = 'chitvault-v5'; // Bumped for critical head-level recovery activation
 const OFFLINE_URL = '/offline.html';
 
 const ASSETS = [

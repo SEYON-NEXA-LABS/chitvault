@@ -48,6 +48,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google Fonts preconnect for fast dynamic font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* ── Early-Activation Self-Healing for ChunkLoadErrors ── */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+          (function() {
+            var storageKey = 'chitvault_chunk_reload_count';
+            function handleRecovery(errorMessage) {
+              var isChunkError = errorMessage && (
+                errorMessage.indexOf('ChunkLoadError') !== -1 || 
+                errorMessage.indexOf('Loading chunk') !== -1 ||
+                errorMessage.indexOf('Failed to fetch') !== -1 ||
+                errorMessage.indexOf('Unexpected token \\'<\\'') !== -1
+              );
+              if (isChunkError) {
+                var now = Date.now();
+                var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
+                if (now - reloadData.last > 60000) reloadData.count = 0;
+                if (reloadData.count < 3) {
+                  reloadData.count++;
+                  reloadData.last = now;
+                  sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
+                  console.warn('System: Asset Mismatch. Self-Healing in progress...');
+                  if (reloadData.count > 1 && 'serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(regs) {
+                      for(var i = 0; i < regs.length; i++) regs[i].unregister();
+                      window.location.reload(true);
+                    }).catch(function() { window.location.reload(true); });
+                  } else {
+                    window.location.reload(true);
+                  }
+                }
+              }
+            }
+            window.addEventListener('error', function(e) { handleRecovery(e.message); }, true);
+            window.addEventListener('unhandledrejection', function(e) { 
+              var msg = (e.reason && e.reason.message) || String(e.reason);
+              handleRecovery(msg); 
+            });
+          })();
+        `}} />
       </head>
       <body className={`${noto.variable} ${notoTamil.variable}`}>
         <FirmProvider>
@@ -62,60 +101,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </I18nProvider>
           </BrandingProvider>
         </FirmProvider>
+
         <script dangerouslySetInnerHTML={{
           __html: `
-          // ── Robust Self-Healing for Next.js ChunkLoadErrors & Displacement Drift ──
-          (function() {
-            var storageKey = 'chitvault_chunk_reload_count';
-            
-            function handleRecovery(errorMessage) {
-              // Ensure we don't catch unrelated errors
-              var isChunkError = 
-                errorMessage && (
-                  errorMessage.indexOf('ChunkLoadError') !== -1 || 
-                  errorMessage.indexOf('Loading chunk') !== -1 ||
-                  errorMessage.indexOf('Failed to fetch') !== -1 ||
-                  errorMessage.indexOf('Unexpected token \'<\'') !== -1
-                );
-
-              if (isChunkError) {
-                var now = Date.now();
-                var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
-                
-                // Reset counter if the last error was more than 1 minute ago
-                if (now - reloadData.last > 60000) {
-                  reloadData.count = 0;
-                }
-
-                if (reloadData.count < 3) {
-                  reloadData.count++;
-                  reloadData.last = now;
-                  sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
-                  
-                  console.warn('System: Critical Asset Mismatch Detected. Attempting Self-Healing (Attempt ' + reloadData.count + ')...');
-                  
-                  // If we're on attempt 2 or 3, try to unregister service worker first to clear deep cache
-                  if (reloadData.count > 1 && 'serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(regs) {
-                      for(var i = 0; i < regs.length; i++) regs[i].unregister();
-                      window.location.reload(true);
-                    }).catch(function() { window.location.reload(true); });
-                  } else {
-                    window.location.reload(true);
-                  }
-                } else {
-                  console.error('System: Automatic recovery failed after maximum attempts. Please check network connectivity.');
-                }
-              }
-            }
-
-            window.addEventListener('error', function(e) { handleRecovery(e.message); }, true);
-            window.addEventListener('unhandledrejection', function(e) { 
-              var msg = (e.reason && e.reason.message) || String(e.reason);
-              handleRecovery(msg); 
-            });
-          })();
-
           window.deferredPrompt = null;
           window.addEventListener('beforeinstallprompt', function(e) {
             e.preventDefault();
@@ -128,7 +116,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 navigator.serviceWorker.register('/sw.js');
               });
             } else {
-              // Always unregister AND clear caches in dev to stop service worker interference on localhost
               navigator.serviceWorker.getRegistrations().then(regs => {
                 for(let reg of regs) reg.unregister();
               });
