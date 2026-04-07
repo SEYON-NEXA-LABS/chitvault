@@ -296,10 +296,10 @@ export default function AuctionsPage() {
                   <Th className="hidden md:table-cell">Date</Th>
                   <Th>Winner</Th>
                   <Th right>Discount</Th>
-                  <Th right className="hidden lg:table-cell">To Surplus</Th>
+                  <Th right className="hidden lg:table-cell">Surplus / Div.</Th>
                   <Th right>Net Payout</Th>
                   <Th right className="hidden md:table-cell">Comm.</Th>
-                  <Th right className="hidden sm:table-cell">Due</Th>
+                  <Th right className="hidden sm:table-cell">Each Pays</Th>
                   <Th>Action</Th>
                 </tr></thead>
                 <tbody>
