@@ -99,13 +99,12 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
           {sub && <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>{sub}</div>}
         </div>
         {Icon && (
-          <div className="p-2 rounded-xl border flex items-center justify-center" 
+          <div className="p-3 rounded-2xl flex items-center justify-center transition-all bg-[var(--surface2)]" 
             style={{ 
               background: bgColors[color], 
-              borderColor: 'var(--border)',
               color: colors[color] 
             }}>
-            <Icon size={20} />
+            <Icon size={24} strokeWidth={2.5} />
           </div>
         )}
       </div>
@@ -255,11 +254,11 @@ export function Empty({ icon: Icon = '📭', title, text, subtitle, action }: {
   return (
     <div className="flex flex-col items-center justify-center text-center gap-3 py-16 px-6 select-none animate-in fade-in zoom-in-95 duration-500">
       <div className="relative group">
-         <div className="w-20 h-20 rounded-[1.5rem] bg-[var(--surface2)] border-2 border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-2 shadow-sm relative z-10">
+         <div className="w-24 h-24 rounded-[2rem] bg-[var(--surface2)] flex items-center justify-center text-[var(--accent)] mb-4 relative z-10 transition-all">
             {typeof Icon === 'string' ? (
-               <span className="text-4xl opacity-50">{Icon}</span>
+               <span className="text-5xl opacity-50">{Icon}</span>
             ) : (
-               <Icon size={32} strokeWidth={1.5} className="opacity-40" />
+               <Icon size={40} strokeWidth={1} className="opacity-30" />
             )}
          </div>
       </div>

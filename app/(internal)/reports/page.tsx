@@ -9,10 +9,11 @@ import { downloadCSV } from '@/lib/utils/csv'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge, Loading, Btn, Card, Field } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
-import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet } from 'lucide-react'
+import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet, ShieldCheck } from 'lucide-react'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { useTerminology } from '@/lib/hooks/useTerminology'
 import type { Group, Member, Auction, Payment, ForemanCommission, Firm } from '@/types'
+import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 
 
 export default function ReportsPage() {
@@ -34,6 +35,7 @@ function ReportsPageContent() {
     { id: 'pnl', category: t('cat_financial'), title: 'Firm Income (P&L)', desc: 'Summary of company commissions and revenue', icon: DollarSign },
     { id: 'cashflow', category: t('cat_financial'), title: t('report_cashflow_title'), desc: t('report_cashflow_desc'), icon: TrendingUp },
     { id: 'dividend', category: t('cat_financial'), title: term.isAccOnly ? 'Surplus Accumulation' : term.isDivOnly ? t('report_dividend_title') : 'Member Benefit Analysis', desc: t('report_dividend_desc'), icon: TrendingUp },
+    { id: 'auction_insights', category: t('cat_financial'), title: 'Winner Intelligence', desc: 'Early Bird analytics & high-discount borrower profiles', icon: ShieldCheck },
     
     { id: 'upcoming_pay', category: t('cat_operational'), title: t('report_upcoming_title'), desc: t('report_upcoming_desc'), icon: Calendar },
     { id: 'group_enrollment', category: t('cat_operational'), title: t('report_enrollment_title'), desc: t('report_enrollment_desc'), icon: Users },
@@ -318,6 +320,7 @@ function ReportsPageContent() {
       )
       case 'defaulters': return <ReportDefaulters members={members} groups={groups} auctions={filteredAuctions} />
       case 'winners': return <ReportWinners auctions={filteredAuctions} groups={groups} members={members} filter={winnerFilter} onFilterChange={setWinnerFilter} />
+      case 'auction_insights': return <ReportWinnerIntelligence auctions={filteredAuctions} groups={groups} members={members} payments={payments} />
       case 'group_enrollment': return (
         <div>
            <Field label="Select Group" className="mb-4 max-w-sm no-print">
@@ -1196,6 +1199,126 @@ function ReportTodayCollection({ payments, members, groups }: { payments: Paymen
           </tbody>
         </Table>
       </TableCard>
+    </div>
+  )
+}
+
+function ReportWinnerIntelligence({ auctions, groups, members, payments }: { auctions: Auction[], groups: Group[], members: Member[], payments: Payment[] }) {
+  const confirmed = auctions.filter(a => a.status === 'confirmed' && a.winner_id != null)
+  
+  const insights = useMemo(() => {
+    const personAgg = new Map<number, any>()
+
+    confirmed.forEach(a => {
+      const g = groups.find(gx => gx.id === a.group_id)
+      const m = members.find(mx => mx.id === a.winner_id)
+      if (!g || !m) return
+
+      const isEarly = a.month <= (g.duration / 4)
+      const discount = Number(a.auction_discount)
+      const pId = m.person_id
+
+      if (!personAgg.has(pId)) {
+        personAgg.set(pId, { 
+          person: m.persons, 
+          wins: [], 
+          totalDiscount: 0, 
+          earlyBirdCount: 0,
+          health: 'success'
+        })
+      }
+
+      const node = personAgg.get(pId)
+      node.wins.push({ auction: a, group: g, isEarly })
+      node.totalDiscount += discount
+      if (isEarly) node.earlyBirdCount++
+      
+      const status = getMemberFinancialStatus(m, g, confirmed.filter(ax => ax.group_id === g.id), payments.filter(px => px.member_id === m.id))
+      if (status.balance > 0.01) node.health = 'danger'
+    })
+
+    const persons = Array.from(personAgg.values()).sort((a,b) => b.totalDiscount - a.totalDiscount)
+    const earlyBirds = confirmed.filter(a => {
+      const g = groups.find(gx => gx.id === a.group_id)
+      return g ? (a.month <= (g.duration / 4)) : false
+    }).sort((a, b) => b.auction_discount - a.auction_discount)
+
+    return { persons, earlyBirds }
+  }, [confirmed, groups, members, payments])
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard label="Total Early Birds" value={insights.earlyBirds.length} color="info" />
+        <StatCard label="High-Stake Borrowers" value={insights.persons.filter(p => p.totalDiscount > 50000).length} color="danger" />
+        <StatCard label="Avg. Winner Default Risk" value={Math.round((insights.persons.filter(p => p.health === 'danger').length / (insights.persons.length || 1)) * 100) + '%'} color="accent" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TableCard title="Early Bird Registry" subtitle="Members who took payouts within the first 25% of the chit cycle.">
+          <Table>
+            <thead>
+              <tr>
+                <Th>Winner / Group</Th>
+                <Th>Month</Th>
+                <Th right>Discount Taken</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {insights.earlyBirds.slice(0, 10).map(a => {
+                const g = groups.find(gx => gx.id === a.group_id)
+                const m = members.find(mx => mx.id === a.winner_id)
+                return (
+                  <Tr key={a.id}>
+                    <Td>
+                      <div className="font-bold">{m?.persons?.name}</div>
+                      <div className="text-[10px] opacity-40 uppercase">{g?.name}</div>
+                    </Td>
+                    <Td>
+                      <Badge variant="info" className="text-[10px]">{a.month} / {g?.duration}</Badge>
+                    </Td>
+                    <Td right className="font-mono font-black text-[var(--danger)]">{fmt(a.auction_discount)}</Td>
+                  </Tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        </TableCard>
+
+        <TableCard title="Top Borrowers by Person" subtitle="Individuals ranked by the total volume of discounts (bids) taken across all tickets.">
+          <Table>
+            <thead>
+              <tr>
+                <Th>Individual</Th>
+                <Th className="text-center">Early Wins</Th>
+                <Th right>Total Discounts</Th>
+                <Th right>Health</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {insights.persons.slice(0, 10).map(pData => (
+                <Tr key={pData.person.id}>
+                  <Td>
+                    <div className="font-bold">{pData.person.name}</div>
+                    <div className="text-[10px] opacity-40 uppercase">{pData.wins.length} Total Tickets Won</div>
+                  </Td>
+                  <Td className="text-center">
+                    {pData.earlyBirdCount > 0 ? (
+                      <Badge variant="danger" className="font-black animate-pulse">{pData.earlyBirdCount}</Badge>
+                    ) : '—'}
+                  </Td>
+                  <Td right className="font-mono font-black text-[var(--accent)]">{fmt(pData.totalDiscount)}</Td>
+                  <Td right>
+                    <Badge variant={pData.health === 'success' ? 'success' : 'danger'}>
+                      {pData.health === 'success' ? 'Healthy' : 'Arrears'}
+                    </Badge>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </TableCard>
+      </div>
     </div>
   )
 }
