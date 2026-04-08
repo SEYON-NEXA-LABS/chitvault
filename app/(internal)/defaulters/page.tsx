@@ -252,7 +252,7 @@ export default function DefaultersPage() {
         <div>
           <h4 className="text-sm font-black uppercase tracking-widest text-[var(--text)] italic">Understanding Arrears by Scheme</h4>
           <p className="text-xs opacity-50 mt-1 leading-relaxed max-w-2xl font-medium uppercase tracking-tighter">
-            **Dividend Scheme**: Members are considered in arrears for the current month if their auction hasn't occurred yet, as the dividend is not yet applied.
+            **Dividend Scheme**: Members are considered in arrears for the current month if their auction hasn&apos;t occurred yet, as the dividend is not yet applied.
             **Accumulation Scheme**: Future months are never considered arrears. Only completed auction months contribute to the outstanding balance.
           </p>
         </div>

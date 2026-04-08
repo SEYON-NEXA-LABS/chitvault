@@ -216,7 +216,7 @@ export default function DashboardPage() {
       onboardingSteps,
       winnerInsights
     }
-  }, [groups, members, auctions, payments])
+  }, [groups, members, auctions, payments, firm, t])
 
 
   if (loading) return <Loading />
