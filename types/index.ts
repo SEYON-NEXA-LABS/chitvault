@@ -22,6 +22,7 @@ export interface Firm {
   theme_id:       string | null
   color_profile:  string | null
   register_token: string | null
+  enabled_schemes: string[]
   created_at:     string
   created_by:     string | null
   updated_at:     string | null
@@ -72,6 +73,7 @@ export interface Person {
   created_by: string | null
   updated_at: string | null
   updated_by: string | null
+  firms?: { name: string }
 }
 
 export interface Member {
@@ -95,6 +97,7 @@ export interface Auction {
   is_payout_settled: boolean
   payout_date: string | null
   payout_amount: number | null
+  payout_mode: string | null
   payout_note: string | null
   status: 'draft' | 'confirmed'
   created_at: string

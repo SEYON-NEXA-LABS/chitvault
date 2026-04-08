@@ -30,7 +30,7 @@ type BtnVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost'
 
 export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, children, className, ...props }: {
   variant?: BtnVariant; size?: 'sm' | 'md' | 'lg'
-  icon?: any; loading?: boolean; children: React.ReactNode; className?: string
+  icon?: any; loading?: boolean; children?: React.ReactNode; className?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-[13px]', md: 'px-4 py-2 text-[15px]', lg: 'px-5 py-3 text-base' }
@@ -114,41 +114,41 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
-export function Table({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Table({ children, className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
     <div className={cn('overflow-x-auto', className)}>
-      <table className="w-full border-collapse text-sm">{children}</table>
+      <table className="w-full border-collapse text-sm" {...props}>{children}</table>
     </div>
   )
 }
 
-export function Th({ children, right, className }: { children: React.ReactNode; right?: boolean; className?: string }) {
+export function Th({ children, right, className, ...props }: { children?: React.ReactNode; right?: boolean } & React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wide text-left whitespace-nowrap',
       right && 'text-right', className)}
-      style={{ background: 'var(--surface2)', color: 'var(--text3)', borderBottom: '1px solid var(--border)' }}>
+      style={{ background: 'var(--surface2)', color: 'var(--text3)', borderBottom: '1px solid var(--border)' }}
+      {...props}>
       {children}
     </th>
   )
 }
 
-export function Td({ children, right, className, style, colSpan, onClick }: {
-  children: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number; onClick?: () => void
-}) {
+export function Td({ children, right, className, style, colSpan, onClick, ...props }: {
+  children?: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number; onClick?: () => void
+} & React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
     <td colSpan={colSpan} className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
       onClick={onClick}
-      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', cursor: onClick ? 'pointer' : 'default', ...style }}>
+      style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', cursor: onClick ? 'pointer' : 'default', ...style }}
+      {...props}>
       {children}
     </td>
   )
 }
 
-export function Tr({ children, className, style }: {
-  children: React.ReactNode; className?: string; style?: React.CSSProperties
-}) {
+export function Tr({ children, className, style, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr className={cn('transition-colors hover:bg-[var(--surface2)]', className)} style={style}>
+    <tr className={cn('transition-colors hover:bg-[var(--surface2)]', className)} style={style} {...props}>
       {children}
     </tr>
   )
@@ -248,17 +248,36 @@ export function Loading({ text = 'Loading...' }: { text?: string }) {
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
-export function Empty({ icon = '📭', text, action }: {
-  icon?: string; text: string; action?: React.ReactNode
+export function Empty({ icon: Icon = '📭', title, text, subtitle, action }: {
+  icon?: any; title?: string; text?: string; subtitle?: string; action?: React.ReactNode
 }) {
+  const mainTitle = title || text;
   return (
-    <div className="flex flex-col items-center gap-3 py-16" style={{ color: 'var(--text3)' }}>
-      <div className="text-4xl opacity-40">{icon}</div>
-      <p className="text-sm">{text}</p>
-      {action}
+    <div className="flex flex-col items-center justify-center text-center gap-3 py-16 px-6 select-none animate-in fade-in zoom-in-95 duration-500">
+      <div className="relative group">
+         <div className="w-20 h-20 rounded-[1.5rem] bg-[var(--surface2)] border-2 border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-2 shadow-sm relative z-10">
+            {typeof Icon === 'string' ? (
+               <span className="text-4xl opacity-50">{Icon}</span>
+            ) : (
+               <Icon size={32} strokeWidth={1.5} className="opacity-40" />
+            )}
+         </div>
+      </div>
+      <div className="max-w-xs space-y-1">
+        <h3 className="text-lg font-black text-[var(--text)] tracking-tight opacity-90 italic">
+           {mainTitle || 'No Records'}
+        </h3>
+        {subtitle && (
+          <p className="text-xs font-medium opacity-40 leading-relaxed tracking-wide px-4">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   )
 }
+
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 export function Toast({ msg, type, onClose }: {

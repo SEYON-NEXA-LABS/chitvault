@@ -61,3 +61,11 @@ export function getToday(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+/**
+ * Appends the auction scheme to the group name for display.
+ */
+export function getGroupDisplayName(g: { name: string, auction_scheme: string }, t: (key: string) => string) {
+  const scheme = g.auction_scheme === 'ACCUMULATION' ? t('accumulation') : t('dividend')
+  return `${g.name} (${scheme})`
+}

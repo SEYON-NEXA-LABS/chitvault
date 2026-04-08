@@ -4,10 +4,10 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, cn } from '@/lib/utils'
+import { fmt, fmtDate, cn, getToday } from '@/lib/utils'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, Chip
+  Modal, Field, Loading, Empty, Toast
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -15,9 +15,10 @@ import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Plus, Trash2, MoreHorizontal, CreditCard, Info, Edit, User, UserCheck, History, Phone, MapPin, Download, Upload, FileSpreadsheet } from 'lucide-react'
+import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet } from 'lucide-react'
 import { CSVImportModal } from '@/components/ui'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 
 interface Contact extends Person {
   tickets: Member[];
@@ -43,7 +44,6 @@ export default function MembersPage() {
   const [loading,   setLoading]   = useState(true)
   
   const [view,   setView]   = useState<'people' | 'groups'>('people')
-  const [filter, setFilter] = useState<number | 'all'>('all')
   const [search, setSearch] = useState('')
   const [firms,  setFirms]  = useState<Firm[]>([])
 
@@ -54,9 +54,7 @@ export default function MembersPage() {
   const [addTab,        setAddTab]        = useState<'new'|'existing'>('new')
 
   const [form, setForm] = useState({ name:'', nickname: '', phone:'', address:'', group_id:'', num_tickets: '1', existing_id: '' })
-  const [editForm, setEditForm] = useState({ name:'', nickname: '', phone:'', address:'' })
   const [payForm,  setPayForm]  = useState({ amount: '', payment_date: new Date().toISOString().substring(0, 10), mode: 'Cash', month: '' })
-  const [isEditing, setIsEditing] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
@@ -177,22 +175,16 @@ export default function MembersPage() {
          .filter(pay => pMembers.some(m => m.id === pay.member_id))
          .reduce((s, pay) => s + Number(pay.amount), 0)
 
-       // Consolidated Balance Calculation
+       // Consolidated Balance Calculation using standardized logic
        let totalBalance = 0;
        pMembers.forEach(m => {
           const group = allGroups.find(g => g.id === m.group_id);
           if (!group || group.status === 'archived') return;
-          const gAucs = auctions.filter(a => a.group_id === group.id);
-          const mPays = payments.filter(pay => pay.member_id === m.id && pay.group_id === group.id);
-          const currentMonth = Math.min(group.duration, gAucs.length + 1);
+          const gAucs = auctions.filter(a => Number(a.group_id) === Number(group.id));
+          const mPays = payments.filter(pay => Number(pay.member_id) === Number(m.id) && Number(pay.group_id) === Number(group.id));
           
-          for (let month = 1; month <= currentMonth; month++) {
-            const auc = gAucs.find(a => a.month === month);
-            const dividend = auc ? Number(auc.dividend || 0) : 0;
-            const amountDue = Number(group.monthly_contribution) - dividend;
-            const amountPaid = mPays.filter(pay => pay.month === month).reduce((s, p) => s + Number(p.amount), 0);
-            totalBalance += Math.max(0, amountDue - amountPaid);
-          }
+          const financial = getMemberFinancialStatus(m, group, gAucs, mPays);
+          totalBalance += financial.balance;
        });
 
        return {
@@ -211,6 +203,15 @@ export default function MembersPage() {
     (c.phone && c.phone.includes(search))
   ).sort((a,b) => b.activeCount - a.activeCount || a.name.localeCompare(b.name))
 
+  const summaryStats = useMemo(() => {
+    return {
+      totalPeople: contacts.length,
+      activeTickets: contacts.reduce((s, c) => s + c.activeCount, 0),
+      totalOutstanding: contacts.reduce((s, c) => s + c.totalBalance, 0),
+      totalPaid: contacts.reduce((s, c) => s + c.totalPaid, 0)
+    }
+  }, [contacts])
+
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
     if (addTab === 'new' && (!form.name || !form.phone)) { showToast('Name and Phone are required', 'error'); return }
@@ -218,7 +219,8 @@ export default function MembersPage() {
     if (!form.group_id) { showToast('Please select a group', 'error'); return }
 
     setSaving(true)
-    const { data: authData } = await supabase.auth.getUser()
+    const { data: authData, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !authData.user) { showToast('Authentication error!', 'error'); setSaving(false); return }
     
     let personId = Number(form.existing_id);
 
@@ -244,7 +246,6 @@ export default function MembersPage() {
     const groupId = Number(form.group_id);
     const numTickets = Number(form.num_tickets);
     
-    // Get current max ticket number for this group
     const { data: existingMems } = await supabase.from('members').select('ticket_no').eq('group_id', groupId);
     const maxTicket = existingMems?.reduce((max: number, m: { ticket_no: number }) => Math.max(max, m.ticket_no), 0) || 0;
 
@@ -263,14 +264,7 @@ export default function MembersPage() {
       showToast(mErr.message, 'error');
     } else {
       showToast(`Enrolled in group with ${numTickets} ticket(s)!`, 'success');
-      // Log Activity
-      await logActivity(
-        firm.id,
-        'MEMBER_CREATED',
-        'person',
-        personId,
-        { group_id: groupId, tickets: numTickets }
-      );
+      await logActivity(firm.id, 'MEMBER_CREATED', 'person', personId, { group_id: groupId, tickets: numTickets });
       setAddOpen(false)
       setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
       load()
@@ -283,14 +277,8 @@ export default function MembersPage() {
   const handleExport = () => {
     if (!isOwner && !isSuper) return
     const data = filteredPeople.map(p => ({
-      ID: p.id,
-      Name: p.name,
-      Nickname: p.nickname || '',
-      Phone: p.phone || '',
-      Address: p.address || '',
-      'Active Tickets': p.activeCount,
-      'Total Paid': p.totalPaid,
-      'Balance Due': p.totalBalance
+      ID: p.id, Name: p.name, Nickname: p.nickname || '', Phone: p.phone || '', Address: p.address || '',
+      'Active Tickets': p.activeCount, 'Total Paid': p.totalPaid, 'Balance Due': p.totalBalance
     }))
     downloadCSV(data, 'people_directory')
   }
@@ -298,50 +286,35 @@ export default function MembersPage() {
   const handleExportGroup = (g: Group) => {
     const gMembers = members.filter(m => m.group_id === g.id).sort((a,b) => a.ticket_no - b.ticket_no)
     const data = gMembers.map(m => ({
-      'Ticket No': m.ticket_no,
-      Member: m.persons?.name,
-      Nickname: m.persons?.nickname || '',
-      Phone: m.persons?.phone || '',
-      Status: m.status
+      'Ticket No': m.ticket_no, Member: m.persons?.name, Nickname: m.persons?.nickname || '', Phone: m.persons?.phone || '', Status: m.status
     }))
     downloadCSV(data, `enrollment_${g.name.toLowerCase().replace(/\s+/g,'_')}`)
   }
 
   const handleImport = async (data: any[]) => {
     if (!firm) return
-    const { data: { user } } = await supabase.auth.getUser()
-    
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) { showToast('Authentication error!', 'error'); return }
     const payload = data.map(row => ({
       firm_id: firm.id,
       name: (row.Name || row.name)?.trim(),
       nickname: (row.Nickname || row.nickname)?.trim() || null,
       phone: (row.Phone || row.phone)?.toString()?.replace(/\D/g,'') || null,
       address: (row.Address || row.address)?.trim() || null,
-      created_by: user?.id,
-      updated_by: user?.id,
-      updated_at: new Date().toISOString()
+      created_by: user?.id, updated_by: user?.id, updated_at: new Date().toISOString()
     }))
 
-    const { error } = await supabase.from('persons').upsert(payload, {
-      onConflict: 'firm_id,name,phone',
-    })
-    
+    const { error } = await supabase.from('persons').upsert(payload, { onConflict: 'firm_id,name,phone' })
     if (error) showToast(error.message, 'error')
-    else {
-      showToast(`Successfully imported ${data.length} persons!`, 'success')
-      load()
-    }
-  }
-  async function updateContact() {
-    setSaving(true)
-    const { data: authData } = await supabase.auth.getUser()
-    // This is now handled in the detail page, but keeping a stub for directory consistency if needed
-    setSaving(false); setIsEditing(false); load()
+    else { showToast(`Successfully imported ${data.length} persons!`, 'success'); load() }
   }
 
   async function savePay() {
     if (!payMember || !payForm.month || !payForm.amount) { showToast('Missing details', 'error'); return }
     setSaving(true)
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) { showToast('Authentication error!', 'error'); setSaving(false); return }
+
     const group = allGroups.find(g => g.id === payMember.group_id)
     const amountDue = group?.monthly_contribution || 0
     const alreadyPaid = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id && p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0)
@@ -349,111 +322,139 @@ export default function MembersPage() {
     const isPartial = balanceDue > 0
 
     const payload: Omit<Payment, 'id'|'created_at'> = {
-      firm_id: payMember.firm_id,
-      member_id: payMember.id,
-      group_id: payMember.group_id,
-      month: +payForm.month,
-      amount: +payForm.amount,
-      payment_date: payForm.payment_date,
-      mode: payForm.mode as any,
-      status: isPartial ? 'paid' : 'paid',
-      amount_due: amountDue,
-      balance_due: balanceDue,
-      payment_type: isPartial ? 'partial' : 'full',
+      firm_id: payMember.firm_id, member_id: payMember.id, group_id: payMember.group_id,
+      month: +payForm.month, amount: +payForm.amount, payment_date: payForm.payment_date, mode: payForm.mode as any,
+      status: 'paid', amount_due: amountDue, balance_due: balanceDue, payment_type: isPartial ? 'partial' : 'full',
       collected_by: profile?.id || null,
     }
     const { error } = await supabase.from('payments').insert(payload)
     if (error) { showToast(error.message, 'error'); setSaving(false); return }
 
     if (!isPartial) {
-      await supabase.from('payments')
-        .update({ status: 'paid', balance_due: 0 })
-        .eq('member_id', payMember.id)
-        .eq('group_id', payMember.group_id)
-        .eq('month', +payForm.month)
+      await supabase.from('payments').update({ status: 'paid', balance_due: 0 })
+        .eq('member_id', payMember.id).eq('group_id', payMember.group_id).eq('month', +payForm.month)
     }
 
     showToast('Payment recorded successfully!', 'success')
-    
-    // Log Activity
     if (firm) {
-      await logActivity(
-        firm.id,
-        'PAYMENT_RECORDED',
-        'payment',
-        null,
-        { 
-          person_name: payMember.persons?.name, 
-          amount: payForm.amount, 
-          month: payForm.month 
-        }
-      );
+      await logActivity(firm.id, 'PAYMENT_RECORDED', 'payment', null, { person_name: payMember.persons?.name, amount: payForm.amount, month: payForm.month });
     }
-
     setPayMember(null); setSaving(false); load()
   }
 
-  async function deleteMember(m: Member) {
-    if (!can('deleteMember')) return
-    if (!confirm('Are you sure you want to move this ticket to trash?')) return
-    const { error } = await supabase.from('members').update({ deleted_at: new Date() }).eq('id', m.id)
-    if (error) showToast(error.message, 'error')
-    else { 
-      showToast('Ticket moved to trash!'); 
-      setActionMember(null); 
-      load() 
-      
-      if (firm) {
-        await logActivity(firm.id, 'MEMBER_ARCHIVED', 'member', m.id, { ticket_no: m.ticket_no });
-      }
-    }
-  }
   async function deletePerson(pId: number) {
     if (!can('deleteMember')) return
     if (!confirm('Are you sure? This will move the person and ALL their tickets to trash!')) return
     const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
     if (pErr) { showToast(pErr.message, 'error'); return }
     await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)
-    showToast('Person and tickets moved to trash!'); 
-    load()
-  }
-
-  async function transferTicket(targetMember: Member, exitM: number, newP: { name: string, phone: string, address: string }) {
-     if (!firm) return
-     setSaving(true)
-     // This would now need to create a NEW person or find existing then link to a NEW member
-     showToast('Transfer needs Person selection/creation logic. Coming soon.', 'success')
-     setSaving(false)
+    showToast('Person and tickets moved to trash!'); load()
   }
 
   if (loading) return <Loading />
 
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between gap-4 flex-wrap bg-[var(--surface)] p-2 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border)' }}>
-         <div className="flex items-center gap-4 px-2">
-            <h1 className="text-2xl font-black text-[var(--text)]" id="tour-member-title">{t('member_directory')}</h1>
-            <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }} id="tour-member-views">
-               <Chip active={view === 'people'} onClick={() => { setView('people'); setSelectedIds(new Set()) }}>{t('all_people')}</Chip>
-               <Chip active={view === 'groups'} onClick={() => { setView('groups'); setSelectedIds(new Set()) }}>{t('by_groups')}</Chip>
+      {/* Redesigned Header Section */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-[var(--text)] tracking-tight">
+            {t('member_directory')}
+          </h1>
+          <p className="text-xs font-medium opacity-40 mt-1 uppercase tracking-widest leading-loose">
+            Manage your customer registry and ticket enrollments
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex p-1 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+            <button 
+              onClick={() => { setView('people'); setSelectedIds(new Set()) }}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                view === 'people' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+              )}
+              style={view === 'people' ? { borderColor: 'var(--border)' } : {}}
+            >
+              {t('all_people')}
+            </button>
+            <button 
+              onClick={() => { setView('groups'); setSelectedIds(new Set()) }}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                view === 'groups' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+              )}
+              style={view === 'groups' ? { borderColor: 'var(--border)' } : {}}
+            >
+              {t('by_groups')}
+            </button>
+          </div>
+          {view === 'people' && can('addMember') && (
+            <div className="flex gap-2">
+               <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet}>CSV</Btn>
+               <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload}>Import</Btn>
             </div>
-         </div>
-         <div className="flex flex-1 gap-2 items-center justify-end px-2">
-            <div className="flex-1 max-w-sm relative" id="tour-member-search">
-               <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
-                placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
-               <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
-            </div>
-            <div className="flex gap-2" id="tour-member-add">
-               {isOwner && (
-                  <>
-                     <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>
-                     <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload} title={t('import_people')}>Import</Btn>
-                  </>
-               )}
-               {can('addMember') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>{t('register_person')}</Btn>}
-            </div>
-         </div>
+          )}
+          {can('addMember') && (
+            <Btn variant="primary" onClick={() => setAddOpen(true)} icon={Plus}>
+              {t('register_person')}
+            </Btn>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Summary Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-4">
+             <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)]"><User size={18}/></div>
+             <Badge variant="accent">Registry</Badge>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-[var(--text)]">{summaryStats.totalPeople}</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Persons</div>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between mb-4">
+             <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)]"><UserCheck size={18}/></div>
+             <Badge variant="info">Subscribers</Badge>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-[var(--text)]">{summaryStats.activeTickets}</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Tickets</div>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+           <div className="flex items-center justify-between mb-4">
+             <div className="p-2 rounded-lg bg-[var(--danger-dim)] text-[var(--danger)]"><CreditCard size={18}/></div>
+             <Badge variant="danger">Market Debt</Badge>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalOutstanding)}</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Outstanding</div>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+           <div className="flex items-center justify-between mb-4">
+             <div className="p-2 rounded-lg bg-[var(--success-dim)] text-[var(--success)]"><History size={18}/></div>
+             <Badge variant="success">Life Time</Badge>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalPaid)}</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Paid</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative group">
+         <input 
+            className="w-full bg-[var(--surface)] border-2 rounded-2xl p-4 pl-12 font-bold text-sm focus:border-[var(--accent)] transition-all outline-none"
+            style={{ borderColor: 'var(--border)' }}
+            placeholder="Search by name, phone, or address..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+         />
+         <Plus className="absolute left-4 top-1/2 -translate-y-1/2 rotate-45 opacity-30" size={20} />
       </div>
 
       {view === 'people' ? (
@@ -468,52 +469,74 @@ export default function MembersPage() {
               <Th className="hidden md:table-cell">{t('phone')}</Th>
               <Th className="hidden sm:table-cell">{t('active_tickets')}</Th>
               <Th>{t('total_outstanding')}</Th>
-              <Th right>Action</Th>
+              <Th right>{t('action')}</Th>
             </tr></thead>
             <tbody>
               {filteredPeople.map(c => {
                 const isSelected = selectedIds.has(c.id)
                 return (
-                  <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
-                    <Td><input type="checkbox" checked={isSelected} onChange={() => toggleSelect(c.id)} /></Td>
-                    {isSuper && <Td><Badge variant="gray">{(c as any).firms?.name || '—'}</Badge></Td>}
-                    <Td onClick={() => toggleSelect(c.id)}>
-                      <div className="font-bold text-[var(--text)]">{c.name} {c.nickname && <span className="text-[var(--accent)] ml-1">({c.nickname})</span>}</div>
-                      <div className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5"><MapPin size={10}/> {c.address || 'No address'}</div>
+                  <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/50 transition-colors cursor-pointer")} onClick={() => toggleSelect(c.id)}>
+                    <Td><input type="checkbox" checked={isSelected} readOnly /></Td>
+                    {isSuper && <Td><Badge variant="gray">{c.firms?.name || '—'}</Badge></Td>}
+                    <Td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-bold text-xs uppercase overflow-hidden shrink-0">
+                          {c.name.substring(0, 2)}
+                        </div>
+                        <div>
+                          <div className="font-bold text-[var(--text)] tracking-tight leading-tight">
+                            {c.name} {c.nickname && <span className="text-[var(--accent)] font-medium text-xs ml-1 opacity-70">({c.nickname})</span>}
+                          </div>
+                          <div className="text-[10px] opacity-40 flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || 'No address registered'}</div>
+                        </div>
+                      </div>
                     </Td>
-                    <Td className="hidden md:table-cell font-mono text-xs" onClick={() => toggleSelect(c.id)}>{c.phone || '—'}</Td>
-                    <Td className="hidden sm:table-cell" onClick={() => toggleSelect(c.id)}>
-                      {c.activeCount > 0 ? <Badge variant="info">{c.activeCount} Active</Badge> : <span className="text-xs opacity-30">None</span>}
+                    <Td className="hidden md:table-cell font-mono text-xs opacity-60 tracking-tighter">{c.phone || '—'}</Td>
+                    <Td className="hidden sm:table-cell">
+                      {c.activeCount > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="info">{c.activeCount} ACTIVE</Badge>
+                          <div className="flex -space-x-1 ml-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                            {c.tickets.slice(0, 3).map((t, i) => (
+                              <div key={i} className="w-4 h-4 rounded-full border border-white bg-[var(--info)]" />
+                            ))}
+                          </div>
+                        </div>
+                      ) : <span className="text-[10px] uppercase font-bold opacity-20">None</span>}
                     </Td>
-                    <Td onClick={() => toggleSelect(c.id)}>
-                       <div className={cn("font-bold font-mono transition-all", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                    <Td>
+                       <div className={cn("font-bold font-mono text-base tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                           {fmt(c.totalBalance)}
                        </div>
-                       {c.totalPaid > 0 && <div className="text-[9px] opacity-40">Paid: {fmt(c.totalPaid)}</div>}
+                       {c.totalPaid > 0 && <div className="text-[10px] font-bold opacity-30 mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
                     </Td>
                     <Td right>
-                      <div className="flex gap-1.5 justify-end">
-                        <Btn size="sm" variant="ghost" icon={Info} onClick={() => router.push(`/members/${c.id}`)} style={{ color: 'var(--info)' }}>Profile</Btn>
+                      <div className="flex gap-2 justify-end">
+                        <Btn size="sm" variant="secondary" onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${c.id}`) }}>{t('profile')}</Btn>
+                        <Btn size="sm" variant="ghost" icon={Trash2} onClick={(e: any) => { e.stopPropagation(); deletePerson(c.id) }} className="text-[var(--danger)]" />
                       </div>
                     </Td>
                   </Tr>
                 )
               })}
+              {filteredPeople.length === 0 && (
+                <Tr><Td colSpan={isSuper ? 7 : 6}><Empty title="No persons found" subtitle="Try adjusting your search filter" icon={User} /></Td></Tr>
+              )}
             </tbody>
           </Table>
         </TableCard>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
            {allGroups.filter(g => g.status !== 'archived').map(g => {
               const gMembers = members.filter(m => m.group_id === g.id)
               const gSelectedCount = gMembers.filter(m => selectedIds.has(m.id)).length
               
               return (
-                <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} tickets enrolled`}
+                <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} active enrollments · ${fmt(g.chit_value)} chit`}
                   actions={
                     <div className="flex items-center gap-2">
                        {isSuper && <Badge variant="accent">Owned by: {g.firms?.name}</Badge>}
-                       <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>CSV</Btn>
+                       <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>{t('export')}</Btn>
                     </div>
                   }>
                   <Table>
@@ -525,27 +548,31 @@ export default function MembersPage() {
                         <Th>{t('register_person')}</Th>
                         <Th className="hidden md:table-cell">{t('phone')}</Th>
                         <Th className="hidden sm:table-cell">{t('group_status')}</Th>
-                        <Th>Action</Th>
+                        <Th right>{t('action')}</Th>
                       </tr></thead>
                       <tbody>
                         {gMembers.map(m => {
                           const isSelected = selectedIds.has(m.id)
+                          const isWinner = auctions.some(a => a.winner_id === m.id)
                           return (
-                            <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
-                              <Td><input type="checkbox" checked={isSelected} onChange={() => toggleSelect(m.id)} /></Td>
-                              <Td className="font-mono font-bold" onClick={() => toggleSelect(m.id)}>#{m.ticket_no}</Td>
-                              <Td className="font-semibold" onClick={() => toggleSelect(m.id)}>
-                                 {m.persons?.name} {m.persons?.nickname && <span className="text-[var(--accent)] ml-1 opacity-70">({m.persons.nickname})</span>}
-                                 {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}
+                            <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 transition-colors")} onClick={() => toggleSelect(m.id)}>
+                              <Td><input type="checkbox" checked={isSelected} readOnly /></Td>
+                              <Td className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
+                              <Td className="font-bold">
+                                 <div className="flex items-center gap-2">
+                                   {m.persons?.name} 
+                                   {m.persons?.nickname && <span className="text-[var(--accent)] font-medium text-xs opacity-70">({m.persons.nickname})</span>}
+                                   {isWinner && <Badge variant="accent" className="text-[9px] py-0.5">Winner</Badge>}
+                                 </div>
                               </Td>
-                              <Td className="hidden md:table-cell text-xs" onClick={() => toggleSelect(m.id)}>{m.persons?.phone}</Td>
-                              <Td className="hidden sm:table-cell" onClick={() => toggleSelect(m.id)}>
+                              <Td className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
+                              <Td className="hidden sm:table-cell">
                                  {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
                               </Td>
-                              <Td>
-                                 <div className="flex gap-1">
-                                    <Btn size="sm" variant="ghost" icon={CreditCard} onClick={() => setPayMember(m)}>{t('record_payment')}</Btn>
-                                    <Btn size="sm" variant="ghost" icon={Info} onClick={() => router.push(`/members/${m.person_id}`)}>Profile</Btn>
+                              <Td right>
+                                 <div className="flex gap-2 justify-end">
+                                    <Btn size="sm" variant="ghost" icon={CreditCard} onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }}>{t('record_payment')}</Btn>
+                                    <Btn size="sm" variant="ghost" icon={Info} onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} />
                                  </div>
                               </Td>
                             </Tr>
@@ -559,10 +586,127 @@ export default function MembersPage() {
         </div>
       )}
 
+      {/* Enrollment Modal */}
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member" size="lg">
+        <div className="space-y-6">
+           <div className="flex p-1 bg-[var(--surface2)] rounded-xl border w-fit" style={{ borderColor: 'var(--border)' }}>
+              <button 
+                onClick={() => setAddTab('new')}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  addTab === 'new' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+                )}
+                style={addTab === 'new' ? { borderColor: 'var(--border)' } : {}}
+              >
+                {t('new_person')}
+              </button>
+              <button 
+                onClick={() => setAddTab('existing')}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  addTab === 'existing' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+                )}
+                style={addTab === 'existing' ? { borderColor: 'var(--border)' } : {}}
+              >
+                {t('existing_person')}
+              </button>
+           </div>
+
+          {addTab === 'existing' ? (
+            <Field label={t('select_person')}>
+              <select className={inputClass} style={inputStyle} value={form.existing_id} onChange={e => {
+                const p = persons.find(x => x.id === Number(e.target.value));
+                setForm(f => ({ ...f, existing_id: e.target.value, name: p?.name || '', phone: p?.phone || '' }));
+              }}>
+                <option value="">{t('choose_from_registry')}</option>
+                {persons.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.phone || 'No phone'})</option>
+                ))}
+              </select>
+            </Field>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
+              <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
+              <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
+              <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
+            </div>
+          )}
+
+          <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="text-xs font-bold uppercase opacity-40 mb-4 tracking-widest">{t('enrollment_details')}</div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={t('target_group')}>
+                <select className={inputClass} style={inputStyle} value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>
+                   <option value="">-- {t('select_group')} --</option>
+                   {allGroups.filter(g => g.status === 'active').map(g => (
+                     <option key={g.id} value={g.id}>{g.name} ({fmt(g.chit_value)} · {g.duration}m)</option>
+                   ))}
+                </select>
+              </Field>
+              <Field label={t('tickets_to_add')}>
+                <input className={inputClass} style={inputStyle} type="number" min="1" max="10" value={form.num_tickets} onChange={e => setForm(f => ({ ...f, num_tickets: e.target.value }))} />
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-4 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+            <Btn variant="secondary" onClick={() => setAddOpen(false)}>{t('cancel')}</Btn>
+            <Btn variant="primary" loading={saving} onClick={saveMember}>{t('register_and_enroll')}</Btn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Payment Modal */}
+      {payMember && (() => {
+        const m = payMember
+        const group = allGroups.find(g => g.id === m.group_id)
+        if (!group) return null
+        const mPayments = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id)
+        const allMonths = Array.from({ length: group.duration }, (_, i) => i + 1)
+        const payableMonths = allMonths.filter(month => {
+          const paidForMonth = mPayments.filter(p => p.month === month).reduce((sum, p) => sum + Number(p.amount), 0)
+          return paidForMonth < group.monthly_contribution
+        })
+        const balance = Math.max(0, group.monthly_contribution - mPayments.filter(p => p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0))
+
+        return (
+          <Modal open={!!payMember} onClose={() => setPayMember(null)} title={t('record_payment')}>
+            <div className="p-3 rounded-xl mb-5 text-sm font-medium bg-[var(--surface2)] border" style={{ borderColor: 'var(--border)' }}>
+              {m.persons?.name} · {group.name} · Ticket #{m.ticket_no}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label={t('auction_month')}>
+                <select className={inputClass} style={inputStyle} value={payForm.month} onChange={e => setPayForm(f => ({...f, month: e.target.value}))}>
+                  {payableMonths.map(month => <option key={month} value={month}>Month {month}</option>)}
+                </select>
+              </Field>
+              <Field label={`${t('amount')} (${fmt(balance)} due)`}><input className={inputClass} style={inputStyle} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
+              <Field label={t('date')}><input className={inputClass} style={inputStyle} type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({...f, payment_date: e.target.value}))} /></Field>
+              <Field label={t('payment_mode')}><select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}><option>Cash</option><option>Bank Transfer</option><option>UPI</option></select></Field>
+            </div>
+            <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+              <Btn variant="secondary" onClick={() => setPayMember(null)}>{t('cancel')}</Btn>
+              <Btn variant="primary" loading={saving} onClick={savePay}>{t('record_payment')}</Btn>
+            </div>
+          </Modal>
+        )
+      })()}
+
+      <CSVImportModal 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        onImport={handleImport} 
+        title={t('import_people')} 
+        requiredFields={['Name']} 
+      />
+
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
+      
       {/* Floating ActionBar */}
       {selectedIds.size > 0 && (
          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
-            <div className="bg-[var(--surface)] border border-[var(--accent)] shadow-2xl rounded-2xl p-2 px-4 flex items-center gap-6 backdrop-blur-md">
+            <div className="bg-[var(--surface)] border-2 border-[var(--accent)] shadow-2xl rounded-2xl p-2 px-4 flex items-center gap-6 backdrop-blur-md">
                <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-sm">
                      {selectedIds.size}
@@ -586,108 +730,11 @@ export default function MembersPage() {
                       {can('deleteMember') && <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkMoveToTrash}>Trash All</Btn>}
                     </>
                   )}
-                  <Btn variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Deselect</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>{t('deselect')}</Btn>
                </div>
             </div>
          </div>
       )}
-
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member" size="lg">
-        <div className="space-y-6">
-          <div className="flex bg-[var(--surface2)] p-1 rounded-xl border w-fit" style={{ borderColor: 'var(--border)' }}>
-             <Chip active={addTab === 'new'} onClick={() => setAddTab('new')}>New Person</Chip>
-             <Chip active={addTab === 'existing'} onClick={() => setAddTab('existing')}>Existing Person</Chip>
-          </div>
-
-          {addTab === 'existing' ? (
-            <Field label="Select Person">
-              <select className={inputClass} style={inputStyle} value={form.existing_id} onChange={e => {
-                const p = persons.find(x => x.id === Number(e.target.value));
-                setForm(f => ({ ...f, existing_id: e.target.value, name: p?.name || '', phone: p?.phone || '' }));
-              }}>
-                <option value="">-- Choose from Registry --</option>
-                {persons.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.phone || 'No phone'})</option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
-              <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
-              <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
-              <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
-            </div>
-          )}
-
-          <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-xs font-bold uppercase opacity-40 mb-4">Enrollment Details</div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Target Group">
-                <select className={inputClass} style={inputStyle} value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>
-                   <option value="">-- Select Group --</option>
-                   {allGroups.filter(g => g.status === 'active').map(g => (
-                     <option key={g.id} value={g.id}>{g.name} ({fmt(g.chit_value)} · {g.duration}m)</option>
-                   ))}
-                </select>
-              </Field>
-              <Field label="Tickets to Add">
-                <input className={inputClass} style={inputStyle} type="number" min="1" max="10" value={form.num_tickets} onChange={e => setForm(f => ({ ...f, num_tickets: e.target.value }))} />
-              </Field>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 mt-4 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-            <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
-            <Btn variant="primary" loading={saving} onClick={saveMember}>Register & Enroll</Btn>
-          </div>
-        </div>
-      </Modal>
-
-      {payMember && (() => {
-        const m = payMember
-        const group = allGroups.find(g => g.id === m.group_id)
-        if (!group) return null
-        const mPayments = payments.filter(p => p.member_id === m.id && p.group_id === m.group_id)
-        const allMonths = Array.from({ length: group.duration }, (_, i) => i + 1)
-        const payableMonths = allMonths.filter(month => {
-          const paidForMonth = mPayments.filter(p => p.month === month).reduce((sum, p) => sum + Number(p.amount), 0)
-          return paidForMonth < group.monthly_contribution
-        })
-        const balance = Math.max(0, group.monthly_contribution - mPayments.filter(p => p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0))
-
-        return (
-          <Modal open={!!payMember} onClose={() => setPayMember(null)} title={t('record_payment')}>
-            <div className="p-3 rounded-xl mb-5 text-sm font-medium bg-[var(--surface2)]">
-              {m.persons?.name} · {group.name} · Ticket #{m.ticket_no}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label={t('auction_month')}>
-                <select className={inputClass} style={inputStyle} value={payForm.month} onChange={e => setPayForm(f => ({...f, month: e.target.value}))}>
-                  {payableMonths.map(month => <option key={month} value={month}>Month {month}</option>)}
-                </select>
-              </Field>
-              <Field label={`${t('payout')} (${fmt(balance)} due)`}><input className={inputClass} style={inputStyle} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
-              <Field label={t('date')}><input className={inputClass} style={inputStyle} type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({...f, payment_date: e.target.value}))} /></Field>
-              <Field label="Mode"><select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}><option>Cash</option><option>Bank Transfer</option><option>UPI</option></select></Field>
-            </div>
-            <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-              <Btn variant="secondary" onClick={() => setPayMember(null)}>Cancel</Btn>
-              <Btn variant="primary" loading={saving} onClick={savePay}>{t('record_payment')}</Btn>
-            </div>
-          </Modal>
-        )
-      })()}
-
-      <CSVImportModal 
-        open={importOpen} 
-        onClose={() => setImportOpen(false)} 
-        onImport={handleImport} 
-        title={t('import_people')} 
-        requiredFields={['Name']} 
-      />
-
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>
   )
 }

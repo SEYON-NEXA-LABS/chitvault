@@ -11,6 +11,7 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { Printer, ChevronLeft, Calendar, DollarSign, Users, FileText, CheckCircle, AlertTriangle, TrendingUp, History, Clock, FileSpreadsheet } from 'lucide-react'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { useTerminology } from '@/lib/hooks/useTerminology'
 import type { Group, Member, Auction, Payment, ForemanCommission, Firm } from '@/types'
 
 
@@ -26,12 +27,13 @@ function ReportsPageContent() {
   const supabase = createClient()
   const { firm, role, switchedFirmId } = useFirm()
   const { t } = useI18n()
+  const term = useTerminology(firm)
   
   const REPORTS = useMemo(() => [
     { id: 'today_collection', category: t('cat_financial'), title: t('report_today_title'), desc: t('report_today_desc'), icon: History },
-    { id: 'pnl', category: t('cat_financial'), title: t('report_pnl_title'), desc: t('report_pnl_desc'), icon: DollarSign },
+    { id: 'pnl', category: t('cat_financial'), title: 'Firm Income (P&L)', desc: 'Summary of company commissions and revenue', icon: DollarSign },
     { id: 'cashflow', category: t('cat_financial'), title: t('report_cashflow_title'), desc: t('report_cashflow_desc'), icon: TrendingUp },
-    { id: 'dividend', category: t('cat_financial'), title: t('report_dividend_title'), desc: t('report_dividend_desc'), icon: DollarSign },
+    { id: 'dividend', category: t('cat_financial'), title: term.isAccOnly ? 'Surplus Accumulation' : term.isDivOnly ? t('report_dividend_title') : 'Member Benefit Analysis', desc: t('report_dividend_desc'), icon: TrendingUp },
     
     { id: 'upcoming_pay', category: t('cat_operational'), title: t('report_upcoming_title'), desc: t('report_upcoming_desc'), icon: Calendar },
     { id: 'group_enrollment', category: t('cat_operational'), title: t('report_enrollment_title'), desc: t('report_enrollment_desc'), icon: Users },
@@ -287,9 +289,9 @@ function ReportsPageContent() {
       case 'today_collection': return <ReportTodayCollection payments={payments} members={members} groups={groups} />
       case 'reconciliation': return <ReportReconciliation payments={payments} denominations={denominations} />
       case 'activity': return <ReportActivityLog logs={filteredLogs} profiles={profiles} />
-      case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} auctions={filteredAuctions} />
+      case 'pnl': return <ReportPNL groups={groups} commissions={filteredCommissions} />
       case 'cashflow': return <ReportCashFlow payments={filteredPayments} auctions={filteredAuctions} />
-      case 'dividend': return <ReportDividend groups={groups} auctions={filteredAuctions} />
+      case 'dividend': return <ReportMemberBenefits groups={groups} auctions={filteredAuctions} />
       case 'upcoming_pay': return <ReportUpcomingPay groups={groups} members={members} auctions={filteredAuctions} payments={filteredPayments} />
       case 'auction_sched': return <ReportAuctionSched groups={groups} auctions={filteredAuctions} />
       case 'group_ledger': return (
@@ -445,28 +447,70 @@ function ReportsPageContent() {
 
 // ── Individual Report Components ──────────────────────────────────────────────────────────
 
-function ReportPNL({ groups, commissions, auctions }: { groups: Group[], commissions: ForemanCommission[], auctions: Auction[] }) {
-  const totalIncome = commissions.reduce((s, c) => s + Number(c.commission_amt), 0)
-  const totalDividends = auctions.reduce((s, a) => s + Number(a.dividend), 0) 
+function ReportPNL({ groups, commissions }: { groups: Group[], commissions: ForemanCommission[] }) {
+  const { firm } = useFirm()
+  const { t } = useI18n()
+  const term = useTerminology(firm)
   
+  const totalIncome = commissions.reduce((s, c) => s + Number(c.commission_amt), 0)
+  
+  // Calculate potential revenue: sum up what SHOULD have been collected so far vs total projectable
+  const potentialTotal = groups.reduce((sum, g) => {
+    // Current realized:
+    const realized = commissions.filter(c => c.group_id === g.id).reduce((s, c) => s + Number(c.commission_amt), 0)
+    // Projected remaining (simplified: based on remaining duration and the same commission rate)
+    const confirmedCount = commissions.filter(c => c.group_id === g.id).length
+    const remaining = Math.max(0, g.duration - confirmedCount)
+    const avgComm = confirmedCount > 0 ? (realized / confirmedCount) : (g.commission_type === 'percent_of_chit' ? (g.chit_value * g.commission_value / 100) : g.commission_value)
+    return sum + realized + (remaining * avgComm)
+  }, 0)
+
+  const efficiency = potentialTotal > 0 ? (totalIncome / potentialTotal * 100) : 100
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <StatCard label="Total Commission (Firm Income)" value={fmt(totalIncome)} color="success" />
-        <StatCard label="Dividends Distributed (Member Benefits)" value={fmt(totalDividends)} color="info" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <StatCard label="Realized Firm Income" value={fmt(totalIncome)} color="success" />
+        <StatCard label="Full Cycle Projection" value={fmt(potentialTotal)} color="info" />
+        <StatCard label="Realization Rate" value={Math.round(efficiency) + '%'} color="accent" />
       </div>
-      <TableCard title="Profit & Loss by Group">
+
+      <TableCard 
+        title={term.isAccOnly ? 'Firm Revenue Statement' : t('report_pnl_title')}
+        subtitle="Detailed breakdown of commissions earned across all active and completed cycles.">
         <Table>
-          <thead><tr><Th>Group</Th><Th right>Commissions Earned</Th><Th right>Dividends Distributed</Th></tr></thead>
+          <thead>
+            <tr>
+              <Th>{t('group_name')}</Th>
+              <Th className="hidden md:table-cell">Config / Rate</Th>
+              <Th right>Realized Income</Th>
+              <Th right className="hidden lg:table-cell">Monthly Avg</Th>
+              <Th right className="hidden sm:table-cell">Status</Th>
+            </tr>
+          </thead>
           <tbody>
             {groups.map(g => {
-              const inc = commissions.filter(c => c.group_id === g.id).reduce((s, c) => s + Number(c.commission_amt), 0)
-              const div = auctions.filter(a => a.group_id === g.id).reduce((s, a) => s + Number(a.dividend), 0)
+              const groupComms = commissions.filter(c => c.group_id === g.id)
+              const inc = groupComms.reduce((s, c) => s + Number(c.commission_amt), 0)
+              const avg = groupComms.length > 0 ? inc / groupComms.length : 0
               return (
                 <Tr key={g.id}>
-                  <Td className="font-semibold">{g.name}</Td>
-                  <Td right style={{ color: 'var(--success)' }}>{fmt(inc)}</Td>
-                  <Td right style={{ color: 'var(--text2)' }}>{fmt(div)}</Td>
+                  <Td>
+                    <div className="font-bold text-[var(--text)]">{g.name}</div>
+                    <div className="text-[10px] opacity-40 uppercase tracking-widest font-black">{g.auction_scheme}</div>
+                  </Td>
+                  <Td className="hidden md:table-cell">
+                    <div className="text-xs font-medium opacity-60">
+                      {g.commission_type === 'percent_of_chit' ? `${g.commission_value}% of Chit` : g.commission_type === 'percent_of_discount' ? `${g.commission_value}% of Bid` : `Fixed ₹${g.commission_value}`}
+                    </div>
+                  </Td>
+                  <Td right className="font-black text-[var(--success)]">{fmt(inc)}</Td>
+                  <Td right className="hidden lg:table-cell font-mono text-xs opacity-60">{fmt(avg)}</Td>
+                  <Td right className="hidden sm:table-cell">
+                     <Badge variant={inc > 0 ? 'info' : 'gray'}>
+                        {groupComms.length} / {g.duration} Cycles
+                     </Badge>
+                  </Td>
                 </Tr>
               )
             })}
@@ -496,28 +540,113 @@ function ReportCashFlow({ payments, auctions }: { payments: Payment[], auctions:
   )
 }
 
-function ReportDividend({ groups, auctions }: { groups: Group[], auctions: Auction[] }) {
+function ReportMemberBenefits({ groups, auctions }: { groups: Group[], auctions: Auction[] }) {
+  const { firm } = useFirm()
+  const { t } = useI18n()
+  const term = useTerminology(firm)
+  
+  const accGroups = groups.filter(g => g.auction_scheme === 'ACCUMULATION')
+  const divGroups = groups.filter(g => g.auction_scheme === 'DIVIDEND')
+
+  const totalWealth = auctions.filter(a => a.status === 'confirmed').reduce((s, a) => s + Number(a.dividend || a.auction_discount || 0), 0)
+
   return (
-    <TableCard title="Dividend Performance by Group">
-      <Table>
-        <thead><tr><Th>Group</Th><Th>Auctions Held</Th><Th right>Total Dividend Paid</Th><Th right>Average Dividend</Th></tr></thead>
-        <tbody>
-          {groups.map(g => {
-            const aucs = auctions.filter(a => a.group_id === g.id)
-            const sum = aucs.reduce((s, a) => s + Number(a.dividend), 0)
-            const avg = aucs.length > 0 ? sum / aucs.length : 0
-            return (
-              <Tr key={g.id}>
-                <Td className="font-semibold">{g.name}</Td>
-                <Td>{aucs.length} / {g.duration}</Td>
-                <Td right>{fmt(sum)}</Td>
-                <Td right style={{ color: 'var(--accent)' }}>{fmt(avg)}</Td>
-              </Tr>
-            )
-          })}
-        </tbody>
-      </Table>
-    </TableCard>
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-4 mb-4">
+         <StatCard 
+            label="Total Wealth Created (Realized Benefits)" 
+            value={fmt(totalWealth)} 
+            color="success" 
+            sub="Total discount surplus and dividends distributed back to members across all schemes."
+         />
+      </div>
+
+      {(accGroups.length > 0) && (
+        <TableCard title="Surplus Accumulation Analysis" subtitle="Total value added back to the pool for members. Best for high-savings groups.">
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t('group_name')}</Th>
+                <Th>Auctions</Th>
+                <Th right>Total Surplus</Th>
+                <Th right className="hidden md:table-cell">Avg Month</Th>
+                <Th right>Effective ROI</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {accGroups.map(g => {
+                const aucs = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed')
+                const totalBenefit = aucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0)
+                const avg = aucs.length > 0 ? totalBenefit / aucs.length : 0
+                
+                // ROI approximation: Benefit vs Total Paid Into the group
+                const totalMemberPayments = aucs.length * g.num_members * g.monthly_contribution
+                const roi = totalMemberPayments > 0 ? (totalBenefit / totalMemberPayments * 100) : 0
+
+                return (
+                  <Tr key={g.id}>
+                    <Td>
+                      <div className="font-bold">{g.name}</div>
+                      <div className="text-[9px] opacity-40 font-mono italic">VALUE: {fmt(g.chit_value)}</div>
+                    </Td>
+                    <Td><Badge variant="gray">{aucs.length} / {g.duration}</Badge></Td>
+                    <Td right className="font-black text-[var(--accent)]">{fmt(totalBenefit)}</Td>
+                    <Td right className="hidden md:table-cell opacity-50 text-xs font-mono">{fmt(avg)}</Td>
+                    <Td right>
+                       <div className="font-black text-xs text-[var(--info)]">{roi.toFixed(2)}%</div>
+                       <div className="text-[8px] opacity-30 uppercase font-black">Group ROI</div>
+                    </Td>
+                  </Tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        </TableCard>
+      )}
+
+      {(divGroups.length > 0) && (
+        <TableCard title="Dividend Performance Analysis" subtitle="Total discounts distributed to members each month. Standard conventional model.">
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t('group_name')}</Th>
+                <Th>Auctions</Th>
+                <Th right>Total Dividends</Th>
+                <Th right className="hidden md:table-cell">Avg Dividend</Th>
+                <Th right>Member ROI</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {divGroups.map(g => {
+                const aucs = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed')
+                const totalBenefit = aucs.reduce((s, a) => s + Number(a.dividend || 0), 0)
+                const avg = aucs.length > 0 ? totalBenefit / aucs.length : 0
+
+                // ROI for Dividend: Benefit vs Total Paid
+                const totalPaid = aucs.length * g.num_members * g.monthly_contribution
+                const roi = totalPaid > 0 ? (totalBenefit / totalPaid * 100) : 0
+
+                return (
+                  <Tr key={g.id}>
+                    <Td>
+                       <div className="font-bold">{g.name}</div>
+                       <div className="text-[9px] opacity-40 font-mono italic">VALUE: {fmt(g.chit_value)}</div>
+                    </Td>
+                    <Td><Badge variant="gray">{aucs.length} / {g.duration}</Badge></Td>
+                    <Td right className="font-black text-[var(--success)]">{fmt(totalBenefit)}</Td>
+                    <Td right className="hidden md:table-cell opacity-50 text-xs font-mono">{fmt(avg)}</Td>
+                    <Td right>
+                       <div className="font-black text-xs text-[var(--info)]">{roi.toFixed(2)}%</div>
+                       <div className="text-[8px] opacity-30 uppercase font-black">Yield %</div>
+                    </Td>
+                  </Tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        </TableCard>
+      )}
+    </div>
   )
 }
 
@@ -527,8 +656,13 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
     const group = groups.find((g: Group) => g.id === member.group_id)
     if (!group || group.status === 'archived' || !['active', 'defaulter', 'foreman'].includes(member.status)) return null
 
-    const groupAuctions = auctions.filter((a: Auction) => a.group_id === member.group_id)
-    const currentMonth = Math.min(group.duration, groupAuctions.length + 1)
+    const isAcc = group.auction_scheme === 'ACCUMULATION'
+    const groupAuctions = auctions.filter((a: Auction) => a.group_id === member.group_id && a.status === 'confirmed')
+    const latestMonth = groupAuctions.length
+    const nextDate = new Date(group.start_date || getToday())
+    nextDate.setMonth(nextDate.getMonth() + latestMonth)
+    const isDueNow = new Date() >= nextDate
+    const currentMonth = Math.min(group.duration, isDueNow ? latestMonth + 1 : latestMonth)
     
     const memberPayments = payments.filter((p: Payment) => p.member_id === member.id)
     let mTotalDue = 0
@@ -536,8 +670,8 @@ function ReportUpcomingPay({ groups, members, auctions, payments }: any) {
 
     for (let month = 1; month <= currentMonth; month++) {
       const prevMonthAuc = groupAuctions.find((a: Auction) => a.month === month - 1)
-      const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
-      const due = Number(group.monthly_contribution) - dividend
+      const div = (isAcc || !prevMonthAuc) ? 0 : Number(prevMonthAuc.dividend || 0)
+      const due = Number(group.monthly_contribution) - div
       const paid = memberPayments.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0)
       
       mTotalDue += due
@@ -647,6 +781,8 @@ function ReportAuctionSched({ groups, auctions }: { groups: Group[], auctions: A
 }
 
 function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { groups: Group[], groupId: number, members: Member[], auctions: Auction[], payments: Payment[] }) {
+  const { firm } = useFirm()
+  const term = useTerminology(firm)
   const grpAuctions = auctions.filter(a => a.group_id === groupId).sort((a,b) => a.month - b.month)
   const grpPayments = payments.filter(p => p.group_id === groupId)
   const g = groups.find(x => x.id === groupId)
@@ -660,7 +796,7 @@ function ReportGroupLedger({ groups, groupId, members, auctions, payments }: { g
             <Th>Month</Th>
             <Th>Winner</Th>
             <Th right>Winner Payout (Bid)</Th>
-            <Th right>{isAcc ? 'Discount Surplus' : 'Dividend'}</Th>
+            <Th right>{term.auctionBenefitLabel}</Th>
             <Th right>Total Collections</Th>
           </tr>
         </thead>
@@ -691,14 +827,19 @@ function ReportMemberHistory({ memberId, members, groups, payments, auctions }: 
   const memPayments = payments.filter(p => p.member_id === memberId).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   
   const totalPaid = memPayments.reduce((s, p) => s + Number(p.amount), 0)
-  const groupAuctions = auctions.filter(a => a.group_id === group?.id)
-  const currentMonth = groupAuctions.length > 0 ? Math.max(...groupAuctions.map(a => a.month)) : 0
+  const isAcc = group?.auction_scheme === 'ACCUMULATION'
+  const groupAuctions = auctions.filter(a => a.group_id === group?.id && a.status === 'confirmed')
+  const latestMonth = groupAuctions.length
+  const nextDate = new Date(group?.start_date || getToday())
+  nextDate.setMonth(nextDate.getMonth() + latestMonth)
+  const isDueNow = new Date() >= nextDate
+  const currentMonth = Math.min(group?.duration || 0, isDueNow ? latestMonth + 1 : latestMonth)
   
   let totalDue = 0
   for (let m = 1; m <= currentMonth; m++) {
     const prevMonthAuc = groupAuctions.find(a => a.month === m - 1)
-    const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
-    totalDue += (Number(group?.monthly_contribution || 0) - dividend)
+    const div = (isAcc || !prevMonthAuc) ? 0 : Number(prevMonthAuc.dividend || 0)
+    totalDue += (Number(group?.monthly_contribution || 0) - div)
   }
 
   const balance = totalDue - totalPaid

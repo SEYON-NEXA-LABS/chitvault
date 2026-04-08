@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, getGroupDisplayName } from '@/lib/utils'
 import { Btn, Badge, TableCard, Table, Th, Td, Tr, Modal, Field, Loading, Empty, Toast, StatCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Settings2, TrendingDown, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle, Edit2, Save } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
+import { useTerminology } from '@/lib/hooks/useTerminology'
 import type { Group, Member, Auction, AuctionCalculation, ForemanCommission, Person, Firm, Payment } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 
@@ -19,6 +20,7 @@ export default function AuctionsPage() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can, switchedFirmId } = useFirm()
   const { t } = useI18n()
+  const term = useTerminology(firm)
   const isOwner = role === 'owner' || role === 'superadmin'
   const { toast, show, hide } = useToast()
   const router = useRouter()
@@ -80,17 +82,33 @@ export default function AuctionsPage() {
   async function onGroupChange(groupId: string) {
     const g = groups.find(x => x.id === +groupId)
     if (!g) return
-    const confirmedCount = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed').length
+    const gAucs = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed').sort((a, b) => (a.month || 0) - (b.month || 0))
+    const confirmedCount = gAucs.length
     const winnerIds      = auctions.filter(a => a.group_id === g.id).map(a => a.winner_id)
     const gMembers       = members.filter(m => m.group_id === g.id && !winnerIds.includes(m.id))
     const foremanM       = members.filter(m => m.group_id === g.id && m.status === 'foreman')
+
+    // Smart Date Suggestion
+    let nextDate = g.start_date || getToday()
+    if (gAucs.length > 0) {
+      const last = gAucs[gAucs.length - 1]
+      if (last.auction_date) {
+        const d = new Date(last.auction_date)
+        d.setMonth(d.getMonth() + 1)
+        nextDate = d.toISOString().split('T')[0]
+      } else {
+        const d = new Date(g.start_date || getToday())
+        d.setMonth(d.getMonth() + gAucs.length)
+        nextDate = d.toISOString().split('T')[0]
+      }
+    }
 
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
     const { data: rules } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).is('deleted_at', null).single()
     setGroupRules(rules)
     setEligible(gMembers)
     setForm(f => ({
-      ...f, group_id: groupId, month: String(confirmedCount + 1),
+      ...f, group_id: groupId, month: String(confirmedCount + 1), auction_date: nextDate,
       auction_discount: '', winner_id: '', foreman_member_id: foremanM[0]?.id?.toString() || '', notes: ''
     }))
     setCalc(null); setCalcError('')
@@ -118,16 +136,22 @@ export default function AuctionsPage() {
     const grp = groups.find(g => g.id === +form.group_id)
     if (!mem || !grp) return
 
-    // Note: We only count confirmed auctions for balance calculation to avoid draft interference
     const gAucs = auctions.filter(a => a.group_id === grp.id && a.status === 'confirmed')
     const mPays = payments.filter(p => p.member_id === mem.id && p.group_id === grp.id)
-    const currentMonth = Math.min(grp.duration, gAucs.length + 1)
+
+    // Timing logic: Next month is only due if today >= start_date + latestMonth cycles
+    const isAcc = grp.auction_scheme === 'ACCUMULATION'
+    const latestMonth = gAucs.length
+    const nextDate = new Date(grp.start_date || getToday())
+    nextDate.setMonth(nextDate.getMonth() + latestMonth)
+    const isNextDue = new Date() >= nextDate
+    const currentMonth = Math.min(grp.duration, isNextDue ? latestMonth + 1 : latestMonth)
     
     let totalDue = 0
     let missedCount = 0
     for (let m = 1; m <= currentMonth; m++) {
       const prevAuc = gAucs.find(a => a.month === m - 1)
-      const div = prevAuc ? Number(prevAuc.dividend || 0) : 0
+      const div = (isAcc || !prevAuc) ? 0 : Number(prevAuc.dividend || 0)
       const due = Number(grp.monthly_contribution) - div
       const paid = mPays.filter((p: any) => p.month === m).reduce((s: number, p: any) => s + Number(p.amount), 0)
       if (due - paid > 0.01) {
@@ -141,8 +165,8 @@ export default function AuctionsPage() {
   }, [form.winner_id, form.group_id, members, groups, auctions, payments])
 
   async function handleSave(status: 'draft' | 'confirmed' = 'confirmed') {
-    if (!form.group_id || !form.winner_id || !form.auction_discount) {
-      show('Fill in group, winner and auction discount.', 'error'); return
+    if (!form.group_id || !form.winner_id || !form.auction_discount || !form.auction_date) {
+      show('Fill in group, winner, discount and date.', 'error'); return
     }
     if (status === 'confirmed' && winnerBalance > 0.01 && !acknowledge) {
       show('Please acknowledge the member outstanding dues first.', 'error'); return
@@ -161,7 +185,7 @@ export default function AuctionsPage() {
     const { data, error } = await supabase.rpc('record_auction_with_commission', {
       p_group_id:           +form.group_id,
       p_month:              +form.month,
-      p_auction_date:       form.auction_date || null,
+      p_auction_date:       form.auction_date,
       p_winner_id:          +form.winner_id,
       p_auction_discount:   +form.auction_discount,
       p_foreman_member_id:  form.foreman_member_id ? +form.foreman_member_id : null,
@@ -227,7 +251,7 @@ export default function AuctionsPage() {
       Month: a.month,
       Group: groups.find(g => g.id === a.group_id)?.name || 'Unknown',
       Bid: a.auction_discount,
-      Dividend: a.dividend,
+      [term.auctionBenefitLabel]: a.dividend,
       Payout: a.net_payout
     }))
     downloadCSV(data, 'auction_ledger')
@@ -291,16 +315,16 @@ export default function AuctionsPage() {
             : <Table>
                 <thead><tr>
                   {role === 'superadmin' && <Th>Firm</Th>}
-                  <Th>Group</Th>
-                  <Th>Month</Th>
-                  <Th className="hidden md:table-cell">Date</Th>
-                  <Th>Winner</Th>
-                  <Th right>Discount</Th>
-                  <Th right className="hidden lg:table-cell">Surplus / Div.</Th>
-                  <Th right>Net Payout</Th>
-                  <Th right className="hidden md:table-cell">Comm.</Th>
-                  <Th right className="hidden sm:table-cell">Each Pays</Th>
-                  <Th>Action</Th>
+                  <Th>{t('group')}</Th>
+                  <Th>{t('auction_month')}</Th>
+                  <Th className="hidden md:table-cell">{t('auction_date')}</Th>
+                  <Th>{t('winner')}</Th>
+                  <Th right>{t('auction_discount')}</Th>
+                  <Th right className="hidden lg:table-cell">{term.auctionBenefitLabel}</Th>
+                  <Th right>{t('net_payout')}</Th>
+                  <Th right className="hidden md:table-cell">{t('commission')}</Th>
+                  <Th right className="hidden sm:table-cell">{t('monthly_contribution')}</Th>
+                  <Th>{t('action')}</Th>
                 </tr></thead>
                 <tbody>
                   {filteredAuctions.map(a => {
@@ -314,7 +338,7 @@ export default function AuctionsPage() {
                         )}
                         <Td>
                            <div className="flex flex-col">
-                              <span className="font-semibold">{g?.name || `#${a.group_id}`}</span>
+                              <span className="font-semibold">{g ? getGroupDisplayName(g, t) : `#${a.group_id}`}</span>
                               {a.status === 'draft' && <div className="text-[9px] font-bold text-[var(--accent)] tracking-widest uppercase">Draft Plan</div>}
                            </div>
                         </Td>
@@ -334,19 +358,24 @@ export default function AuctionsPage() {
                         <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
                         <Td right className="hidden md:table-cell">
                           {fc
-                            ? <span style={{ color: 'var(--danger)' }}>{fmt(fc.commission_amt)}</span>
+                            ? <span style={{ color: 'var(--success)' }}>{fmt(fc.commission_amt)}</span>
                             : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </Td>
                         <Td right className="hidden sm:table-cell">
-                          {g ? <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - Number(a.dividend))}</span> : '—'}
+                          {(() => {
+                            if (!g) return '—'
+                            const isAcc = g.auction_scheme === 'ACCUMULATION'
+                            const div = isAcc ? 0 : Number(a.dividend || 0)
+                            return <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - div)}</span>
+                          })()}
                         </Td>
                         <Td>
                           <div className="flex items-center gap-1.5">
                             {can('recordAuction') && (
-                               <Btn size="sm" variant="ghost" onClick={() => handleEdit(a)} icon={Edit2} style={{ color: 'var(--info)' }}>Edit</Btn>
+                               <Btn size="sm" variant="ghost" onClick={() => handleEdit(a)} icon={Edit2} style={{ color: 'var(--info)' }}>{t('edit')}</Btn>
                             )}
                             {can('deleteAuction') && (
-                              <Btn size="sm" variant="danger" onClick={() => del(a.id)} icon={Trash2}>Delete</Btn>
+                              <Btn size="sm" variant="danger" onClick={() => del(a.id)} icon={Trash2}>{t('delete')}</Btn>
                             )}
                           </div>
                         </Td>
@@ -363,8 +392,8 @@ export default function AuctionsPage() {
         <TableCard title="👑 Foreman Commission Summary">
           <Table>
             <thead><tr>
-              {role === 'superadmin' && <Th>Firm</Th>}
-              {['Group','Month','Chit Value','Auction Discount','Total Sacrifice','Commission','Net Dividend','Per Member','Goes To'].map(h => <Th key={h}>{h}</Th>)}
+              {role === 'superadmin' && <Th>{t('firm')}</Th>}
+              {[t('group'), t('auction_month'), t('chit_value'), t('auction_discount'), t('total_sacrifice'), t('commission'), t('net_dividend'), t('per_member'), t('goes_to')].map(h => <Th key={h}>{h}</Th>)}
             </tr></thead>
             <tbody>
               {filteredCommissions.map(fc => {
@@ -375,7 +404,7 @@ export default function AuctionsPage() {
                     {role === 'superadmin' && (
                       <Td><Badge variant="gray">{(fc as any).firms?.name || '—'}</Badge></Td>
                     )}
-                    <Td>{g?.name || '—'}</Td>
+                    <Td>{g ? getGroupDisplayName(g, t) : '—'}</Td>
                     <Td><Badge variant="info">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
                     <Td right>{fmt(fc.chit_value)}</Td>
                     <Td right>{fmt(fc.auction_discount)}</Td>
@@ -409,7 +438,7 @@ export default function AuctionsPage() {
               <option value="">Select group</option>
               {groups.map(g => {
                 const confirmedAucs = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed').length
-                return <option key={g.id} value={g.id}>{g.name} — {fmtMonth(confirmedAucs+1, g.start_date)}</option>
+                return <option key={g.id} value={g.id}>{getGroupDisplayName(g, t)} — {fmtMonth(confirmedAucs+1, g.start_date)}</option>
               })}
             </select>
           </Field>
@@ -421,17 +450,17 @@ export default function AuctionsPage() {
             </div>
           )}
 
-          <Field label="Month No.">
+          <Field label={t('month_no')}>
             <input className={inputClass} style={{ ...inputStyle, opacity: 0.7 }} value={form.month} readOnly />
           </Field>
-          <Field label="Auction Date">
+          <Field label={t('auction_date')}>
             <input className={inputClass} style={inputStyle} type="date" value={form.auction_date}
               onChange={e => setForm(f => ({...f, auction_date: e.target.value}))} />
           </Field>
-          <Field label="Winner (Bidder)" className="col-span-2">
+          <Field label={t('winner_bidder')} className="col-span-2">
             <select className={inputClass} style={inputStyle} value={form.winner_id}
               onChange={e => setForm(f => ({...f, winner_id: e.target.value}))}>
-              <option value="">Select winner</option>
+              <option value="">{t('select_winner')}</option>
               {eligible.map(m => {
                 // Quick balance check for dropdown label
                 const mPays = payments.filter((p: any) => p.member_id === m.id && p.group_id === +form.group_id)
@@ -449,24 +478,24 @@ export default function AuctionsPage() {
                   <ShieldAlert size={20} />
                 </div>
                 <div className="flex-1">
-                  <div className="font-bold text-danger-600 text-sm">Defaulter Warning</div>
+                  <div className="font-bold text-danger-600 text-sm">{t('defaulter_warning')}</div>
                   <div className="text-xs opacity-70">
-                    This member is <strong>{winnerAging} months</strong> behind with a total outstanding balance of <strong>{fmt(winnerBalance)}</strong>.
+                    {t('defaulter_msg').replace('{n}', winnerAging.toString()).replace('{amt}', fmt(winnerBalance))}
                   </div>
                 </div>
               </div>
               <label className="flex items-center gap-2 p-2 rounded-lg bg-white/50 border border-danger-500/10 cursor-pointer select-none hover:bg-white transition-colors">
                 <input type="checkbox" checked={acknowledge} onChange={e => setAcknowledge(e.target.checked)} />
-                <span className="text-[10px] font-bold uppercase tracking-tight text-danger-700">I acknowledge these dues and wish to proceed</span>
+                <span className="text-[10px] font-bold uppercase tracking-tight text-danger-700">{t('acknowledge_dues')}</span>
               </label>
             </div>
           )}
 
           {groupRules?.commission_recipient === 'foreman' && (
-            <Field label="Foreman Member" className="col-span-2">
+            <Field label={t('foreman_member')} className="col-span-2">
               <select className={inputClass} style={inputStyle} value={form.foreman_member_id}
                 onChange={e => setForm(f => ({...f, foreman_member_id: e.target.value}))}>
-                <option value="">Select foreman (optional)</option>
+                <option value="">{t('select_foreman_opt')}</option>
                 {members.filter(m => m.group_id === +form.group_id && m.status === 'foreman').map(m =>
                   <option key={m.id} value={m.id}>{m.persons?.name}</option>
                 )}
@@ -487,10 +516,10 @@ export default function AuctionsPage() {
           <div className="mt-4 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
             <div className="p-4 grid grid-cols-3 gap-3">
               {[
-                { label: 'Net Payout',       value: fmt(calc.net_payout),      color: 'var(--success)' },
-                { label: 'Firm Comm.',  value: fmt(calc.commission_amt),  color: 'var(--danger)'  },
+                { label: t('net_payout'),       value: fmt(calc.net_payout),      color: 'var(--success)' },
+                { label: t('firm_comm'),  value: fmt(calc.commission_amt),  color: 'var(--danger)'  },
                 { 
-                  label: groupRules?.auction_scheme === 'ACCUMULATION' ? 'Group Surplus' : 'Per Member Div',   
+                  label: term.auctionBenefitLabel,   
                   value: groupRules?.auction_scheme === 'ACCUMULATION' ? fmt(calc.auction_discount) : fmt(calc.per_member_div),  
                   color: 'var(--info)'  
                 },
@@ -505,14 +534,14 @@ export default function AuctionsPage() {
         )}
 
         <div className="flex justify-end gap-3 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-          <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
+          <Btn variant="secondary" onClick={() => setAddOpen(false)}>{t('cancel')}</Btn>
           {(editingId === null || auctions.find(a => a.id === editingId)?.status === 'draft') && (
              <Btn variant="secondary" loading={saving} onClick={() => handleSave('draft')} disabled={!!calcError} icon={Save}>
-                {editingId ? 'Update Draft' : 'Save as Draft'}
+                {editingId ? t('update_draft') : t('save_as_draft')}
              </Btn>
           )}
           <Btn variant="primary" loading={saving} onClick={() => handleSave('confirmed')} disabled={!!calcError} icon={TrendingDown}>
-             {editingId ? 'Confirm Updates' : 'Record Auction'}
+             {editingId ? t('confirm_updates') : t('record_auction')}
           </Btn>
         </div>
       </Modal>
