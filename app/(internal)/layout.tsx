@@ -189,10 +189,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden border shadow-sm" style={{ borderColor: 'var(--border)' }}>
-                <Image src="/icons/icon-512.png" alt={APP_NAME} width={36} height={36} className="w-full h-full object-cover" />
-              </div>
+            <Link href="/dashboard" className="flex items-center gap-3 group">
+              <Image src="/icons/icon-512.png" alt={APP_NAME} width={42} height={42} className="w-[42px] h-[42px] object-contain transition-transform group-hover:scale-110 duration-500" />
               <span className="font-bold tracking-tight uppercase" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
             </Link>
           </div>

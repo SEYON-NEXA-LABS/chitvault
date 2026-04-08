@@ -926,6 +926,22 @@ export default function GroupLedgerPage() {
         </Modal>
       )}
 
+      {/* Platform Roadmap / Coming Soon */}
+      <div className="pt-4 opacity-70 hover:opacity-100 transition-opacity no-print">
+        <div className="p-5 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface2)] flex flex-col md:flex-row items-center justify-between gap-4">
+           <div className="flex items-center gap-4 text-center md:text-left">
+              <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
+                 <History size={20} className="animate-pulse" />
+              </div>
+              <div>
+                 <h4 className="font-black text-sm uppercase tracking-wide">Intelligent Member Substitution</h4>
+                 <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">Ticket transfers, arrears migration & replacement audit · <span className="text-[var(--accent)] font-black uppercase">Coming Soon</span></p>
+              </div>
+           </div>
+           <Badge variant="gray" className="text-[8px] italic py-1 px-3">Roadmap v2.4</Badge>
+        </div>
+      </div>
+
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>
   )

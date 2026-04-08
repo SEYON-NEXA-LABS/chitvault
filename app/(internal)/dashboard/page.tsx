@@ -42,7 +42,7 @@ export default function DashboardPage() {
       const [g, m, a, p] = await Promise.all([
         withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId),
         withFirmScope(supabase.from('members').select('*, persons(*)'), targetId),
-        withFirmScope(supabase.from('auctions').select('*'), targetId).order('id', { ascending: false }).limit(10),
+        withFirmScope(supabase.from('auctions').select('*'), targetId).order('month', { ascending: false }),
         withFirmScope(supabase.from('payments').select('*'), targetId).order('payment_date', { ascending: false }),
       ])
 
@@ -60,7 +60,7 @@ export default function DashboardPage() {
     load()
   }, [supabase, isSuper, switchedFirmId, firm, firms.length, groups.length])
 
-  const { stats, chartData, groupDist, modeDist, statusDist, onboardingSteps } = useMemo(() => {
+  const { stats, chartData, groupDist, modeDist, statusDist, onboardingSteps, winnerInsights } = useMemo(() => {
     const totalChitValue = groups.reduce((s, g) => s + Number(g.chit_value), 0)
     
     // 1. Today's Collections
@@ -178,11 +178,34 @@ export default function DashboardPage() {
 
     // 8. Onboarding Steps
     const onboardingSteps = [
-      { id: '1', title: 'Create a Group', desc: 'Set up your first chit scheme', link: '/groups', completed: groups.length > 0 },
-      { id: '2', title: 'Add Members', desc: 'Register at least 5 people', link: '/members', completed: members.length >= 5 },
-      { id: '3', title: 'Start Auction', desc: 'Record your first monthly bidding', link: '/auctions', completed: auctions.length > 0 },
-      { id: '4', title: 'Collect Payments', desc: 'Record your first member payment', link: '/payments', completed: payments.length > 0 },
+      { id: '1', title: t('onboarding_step1_title'), desc: t('onboarding_step1_desc'), link: '/settings', completed: !!firm },
+      { id: '2', title: t('onboarding_step2_title'), desc: t('onboarding_step2_desc'), link: '/groups', completed: groups.length > 0 },
+      { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/members', completed: members.length >= 5 },
+      { id: '4', title: t('onboarding_step4_title'), desc: t('onboarding_step4_desc'), link: '/payments', completed: payments.length > 0 },
     ]
+
+    // 9. Winner Intelligence (Early Birds & High Discounts)
+    const confirmedAucs = auctions.filter(a => a.status === 'confirmed' && a.winner_id != null)
+    const personAgg = new Map<number, any>()
+    confirmedAucs.forEach(a => {
+      const m = members.find(mx => mx.id === a.winner_id)
+      const g = groups.find(gx => gx.id === a.group_id)
+      if (!m || !g) return
+      const pId = m.person_id
+      if (!personAgg.has(pId)) personAgg.set(pId, { person: m.persons, totalDiscount: 0, earlyBirdCount: 0, wins: 0 })
+      const node = personAgg.get(pId)
+      node.totalDiscount += Number(a.auction_discount)
+      node.wins++
+      if (a.month <= (g.duration / 4)) node.earlyBirdCount++
+    })
+    const winnerInsights = {
+      topBorrower: Array.from(personAgg.values()).sort((a,b) => b.totalDiscount - a.totalDiscount)[0],
+      earlyBirdCount: confirmedAucs.filter(a => {
+        const g = groups.find(gx => gx.id === a.group_id)
+        return g && a.month <= (g.duration / 4)
+      }).length,
+      highestSingleDiscount: confirmedAucs.length > 0 ? Math.max(...confirmedAucs.map(a => Number(a.auction_discount))) : 0
+    }
 
     return { 
       stats: { totalChitValue, todayColl, totalPending, overdueDue, currentDue, defaulters },
@@ -190,7 +213,8 @@ export default function DashboardPage() {
       groupDist: distData,
       modeDist,
       statusDist,
-      onboardingSteps
+      onboardingSteps,
+      winnerInsights
     }
   }, [groups, members, auctions, payments])
 
@@ -203,8 +227,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-black text-[var(--text)]">Dashboard Overview</h1>
-        {isSuper && <Badge variant="danger">SUPERADMIN VIEW</Badge>}
+        <h1 className="text-3xl font-black text-[var(--text)]">{t('dash_overview')}</h1>
+        {isSuper && <Badge variant="danger">{t('dash_super_view')}</Badge>}
       </div>
 
       {/* Modern Greeting & Onboarding */}
@@ -212,10 +236,10 @@ export default function DashboardPage() {
         <div className="lg:col-span-3 flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-2">
                <BadgeCheck size={20} className="text-[var(--success)]" />
-               <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Verified Firm Instance</span>
+               <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{t('dash_verified_firm')}</span>
             </div>
             <h2 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
-              Welcome back, <span className="text-[var(--accent)]">{firm?.name || 'Partner'}</span>
+              {t('dash_welcome')}, <span className="text-[var(--accent)]">{firm?.name || t('dash_partner')}</span>
             </h2>
             <div className="flex flex-wrap items-center gap-4 mt-4">
                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
@@ -225,12 +249,12 @@ export default function DashboardPage() {
                </div>
                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
                   <Clock size={14} className="text-[var(--accent)]" />
-                  <span className="opacity-40">Since:</span>
+                  <span className="opacity-40">{t('dash_since')}:</span>
                   <span>{fmtDate(firm?.created_at)}</span>
                </div>
                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent)] text-[11px] font-bold uppercase tracking-wide text-[var(--accent)]">
                   <BadgeCheck size={14} />
-                  <span>{firm?.plan} Enterprise</span>
+                  <span>{firm?.plan} {t('dash_enterprise')}</span>
                </div>
             </div>
         </div>
@@ -243,15 +267,15 @@ export default function DashboardPage() {
 
       {/* Primary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" id="tour-stats">
-        <StatCard label="Active Groups" value={groups.length} sub={`Value ${fmt(stats.totalChitValue)}`} color="accent" />
+        <StatCard label={t('active_groups')} value={groups.length} sub={`${t('value')} ${fmt(stats.totalChitValue)}`} color="accent" />
         <Link href="/reports?type=today_collection" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
+          <StatCard label={t('report_today_title')} value={fmt(stats.todayColl)} sub={t('report_today_desc')} color="success" />
         </Link>
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Overdue" value={fmt(stats.overdueDue)} sub="From past auctions" color="danger" />
+          <StatCard label={t('pending')} value={fmt(stats.overdueDue)} sub={t('dash_overdue_sub')} color="danger" />
         </Link>
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Current Month Due" value={fmt(stats.currentDue)} sub="From current cycle" color="info" />
+          <StatCard label={t('current_month_due')} value={fmt(stats.currentDue)} sub={t('dash_current_due_sub')} color="info" />
         </Link>
       </div>
 
@@ -261,12 +285,12 @@ export default function DashboardPage() {
           {chartData.every(d => (d.actual || 0) === 0 && (d.expected || 0) === 0) ? (
             <Card className="h-[300px] flex flex-col items-center justify-center border-dashed">
                <div className="text-3xl mb-2">📊</div>
-               <div className="text-xs font-bold uppercase opacity-40">No Collection Trends Yet</div>
-               <p className="text-[10px] mt-1 opacity-60 px-10 text-center">Charts will populate once you record member payments or auctions.</p>
+               <div className="text-xs font-bold uppercase opacity-40">{t('dash_no_trends')}</div>
+               <p className="text-[10px] mt-1 opacity-60 px-10 text-center">{t('dash_no_trends_desc')}</p>
             </Card>
           ) : (
             <LineAnalytics 
-              title="Monthly Collection Trends" 
+              title={t('dash_collection_trends')} 
               data={chartData} 
               dataKey="actual"
               expectedKey="expected"
@@ -276,7 +300,7 @@ export default function DashboardPage() {
         </div>
         <div className="lg:col-span-1">
           <PieDistribution 
-            title="Collection Modes" 
+            title={t('dash_collection_modes')} 
             data={modeDist} 
             dataKey="value" 
             nameKey="name" 
@@ -284,21 +308,74 @@ export default function DashboardPage() {
         </div>
         <div className="lg:col-span-1">
           <PieDistribution 
-            title="Member Health" 
+            title={t('dash_member_health')} 
             data={statusDist} 
             dataKey="value" 
             nameKey="name" 
           />
         </div>
       </div>
+      {/* Winner & Market Intelligence */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Link href="/reports?type=auction_insights" className="lg:col-span-2 group">
+          <Card className="h-full bg-gradient-to-br from-[var(--surface)] to-[var(--surface2)] border-l-4 border-l-[var(--danger)] overflow-hidden relative transition-all hover:shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-red-500/10 text-red-500 rounded-2xl transition-all">
+                  <ShieldAlert size={24} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black italic tracking-tight uppercase">{t('dash_winner_intel').split(' ')[0]} <span className="text-red-500 not-italic font-display">{t('dash_winner_intel').split(' ').slice(1).join(' ')}</span></h3>
+                  <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest">{t('dash_winner_intel_sub')}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                 <div>
+                    <div className="text-[9px] uppercase font-bold opacity-30 mb-1">{t('dash_top_borrower')}</div>
+                    <div className="text-lg font-black truncate">{winnerInsights.topBorrower?.person?.name || '—'}</div>
+                    <div className="text-[10px] text-[var(--danger)] font-bold">{fmt(winnerInsights.topBorrower?.totalDiscount || 0)} {t('auction_discount')}</div>
+                 </div>
+                 <div>
+                    <div className="text-[9px] uppercase font-bold opacity-30 mb-1">{t('dash_early_bird_payouts')}</div>
+                    <div className="text-lg font-black">{winnerInsights.earlyBirdCount} <span className="text-[10px] font-medium opacity-40">{t('members')}</span></div>
+                    <div className="text-[10px] text-[var(--accent)] font-bold">{t('dash_maturity')} (First 25%)</div>
+                 </div>
+                 <div className="hidden lg:block">
+                    <div className="text-[9px] uppercase font-bold opacity-30 mb-1">{t('dash_highest_bid')}</div>
+                    <div className="text-lg font-black">{fmt(winnerInsights.highestSingleDiscount)}</div>
+                    <Badge variant="gray" className="text-[8px] uppercase">{t('dash_record_high')}</Badge>
+                 </div>
+              </div>
+            </div>
+            <ArrowRight className="absolute bottom-4 right-4 opacity-10 group-hover:opacity-100 transition-all group-hover:translate-x-1" size={24} />
+          </Card>
+        </Link>
+        
+        <Link href="/defaulters">
+           <Card className="h-full border-l-4 border-l-[var(--warning)] hover:shadow-lg transition-all">
+              <div className="p-6">
+                 <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-orange-500/10 text-orange-500 rounded-2xl transition-all">
+                      <AlertTriangle size={24} strokeWidth={2.5} />
+                    </div>
+                    <h3 className="text-sm font-black uppercase tracking-widest italic">{t('dash_default_risk').split(' ')[0]} <span className="text-orange-500">{t('dash_default_risk').split(' ').slice(1).join(' ')}</span></h3>
+                 </div>
+                 <div className="text-3xl font-black mb-1">{stats.defaulters}</div>
+                 <p className="text-[10px] opacity-50 font-medium uppercase leading-tight">{t('dash_default_risk_desc')}</p>
+                 <Btn variant="secondary" size="sm" className="mt-4 w-full">{t('dash_audit_registry')}</Btn>
+              </div>
+           </Card>
+        </Link>
+      </div>
 
       {/* Group Overview Section */}
       <div>
-        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>Group Overview</h2>
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dash_group_overview')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {groups.length === 0 ? (
             <div className="col-span-full py-12 text-center border-2 border-dashed rounded-xl" style={{ borderColor: 'var(--border)', color: 'var(--text3)' }}>
-              No active groups found. Create one to get started.
+              {t('dash_no_groups')}
             </div>
           ) : (
             groups.map(g => {
@@ -320,11 +397,11 @@ export default function DashboardPage() {
                           </h3>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--text3)' }}>
-                              {g.duration} Months
+                              {g.duration} {t('duration')}
                             </span>
                             {hasDraft && (
                               <Badge variant="danger" className="animate-pulse flex items-center gap-1 py-0 px-2 text-[9px] font-black uppercase tracking-tighter shadow-sm border border-red-200">
-                                <AlertTriangle size={10} /> Action Required
+                                <AlertTriangle size={10} /> {t('dash_action_required')}
                               </Badge>
                             )}
                           </div>
@@ -334,15 +411,15 @@ export default function DashboardPage() {
                             {fmt(g.chit_value)}
                           </span>
                           <span className="text-[10px] uppercase font-bold" style={{ color: 'var(--text3)' }}>
-                            Chit Value
+                            {t('chit_value')}
                           </span>
                         </div>
                       </div>
 
                       <div className="mb-4">
                         <div className="flex justify-between text-xs mb-1.5 font-medium">
-                          <span style={{ color: 'var(--text2)' }}>Progress</span>
-                          <span style={{ color: 'var(--text)' }}>{done} / {g.duration} Months</span>
+                          <span style={{ color: 'var(--text2)' }}>{t('dash_progress')}</span>
+                          <span style={{ color: 'var(--text)' }}>{done} / {g.duration} {t('duration')}</span>
                         </div>
                         <div className="progress-bar-wrap h-1.5">
                           <div className="progress-bar" style={{ width: `${pct}%`, background: isAcc ? 'var(--info)' : 'var(--accent)' }} />
@@ -394,23 +471,23 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Collections */}
         <TableCard 
-          title="Recent Collections" 
-          subtitle="Showing latest member payments"
-          actions={<Link href="/reports?type=today_collection" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">Today&apos;s Detail</Link>}
+          title={t('dash_recent_collections')} 
+          subtitle={t('dash_latest_payments')}
+          actions={<Link href="/reports?type=today_collection" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">{t('dash_today_detail')}</Link>}
         >
           {payments.length === 0 ? (
             <div className="py-12 text-center opacity-40">
                <div className="text-3xl mb-2">💸</div>
-               <div className="text-xs font-bold uppercase tracking-widest">No Payments Yet</div>
-               <p className="text-[10px] mt-1 px-10">Go to the Collection page to record your first payment.</p>
+               <div className="text-xs font-bold uppercase tracking-widest">{t('dash_no_payments')}</div>
+               <p className="text-[10px] mt-1 px-10">{t('dash_no_payments_desc')}</p>
             </div>
           ) : (
             <Table>
               <thead>
                 <Tr>
-                  <Th>Date & Time</Th>
-                  <Th>Member / Mode</Th>
-                  <Th right>Amount</Th>
+                  <Th>{t('dash_date_time')}</Th>
+                  <Th>{t('dash_member_mode')}</Th>
+                  <Th right>{t('amount')}</Th>
                 </Tr>
               </thead>
               <tbody>
@@ -421,7 +498,7 @@ export default function DashboardPage() {
                     <Tr key={p.id}>
                       <Td>
                         <div className="text-xs font-bold">{fmtDate(p.payment_date)}</div>
-                        <div className="text-[9px] opacity-40 uppercase tracking-tighter">Entered at {entryTime}</div>
+                        <div className="text-[9px] opacity-40 uppercase tracking-tighter">{t('dash_entered_at')} {entryTime}</div>
                       </Td>
                       <Td>
                         <div className="text-xs font-semibold truncate max-w-[120px]">{m?.persons?.name || 'Manual Entry'}</div>
@@ -438,23 +515,23 @@ export default function DashboardPage() {
 
         {/* Recent Auctions */}
         <TableCard 
-          title="Recent Auctions" 
-          subtitle="Latest bidding outcomes"
-          actions={<Link href="/reports?type=auction_sched" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">Schedule</Link>}
+          title={t('dash_recent_auctions')} 
+          subtitle={t('dash_latest_bids')}
+          actions={<Link href="/reports?type=auction_sched" className="text-[10px] text-[var(--accent)] hover:underline uppercase font-bold">{t('dash_schedule')}</Link>}
         >
           {auctions.length === 0 ? (
             <div className="py-12 text-center opacity-40">
                <div className="text-3xl mb-2">⚖️</div>
-               <div className="text-xs font-bold uppercase tracking-widest">No Auctions Held</div>
-               <p className="text-[10px] mt-1 px-10">Held auctions will appear here automatically.</p>
+               <div className="text-xs font-bold uppercase tracking-widest">{t('dash_no_auctions')}</div>
+               <p className="text-[10px] mt-1 px-10">{t('dash_no_auctions_desc')}</p>
             </div>
           ) : (
             <Table>
               <thead>
                 <Tr>
-                  <Th>Group / Month</Th>
-                  <Th>Winner</Th>
-                  <Th right>Auction Discount</Th>
+                  <Th>{t('dash_group_month')}</Th>
+                  <Th>{t('winner')}</Th>
+                  <Th right>{t('auction_discount')}</Th>
                 </Tr>
               </thead>
               <tbody>

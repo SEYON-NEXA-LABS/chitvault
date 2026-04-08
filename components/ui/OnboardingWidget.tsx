@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, PartyPopper, ArrowRight, PlayCircle } from 'lucid
 import { Card, Btn, useTour } from './index'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n/context'
 
 interface OnboardingStep {
   id: string
@@ -15,6 +16,7 @@ interface OnboardingStep {
 
 export function OnboardingWidget({ steps }: { steps: OnboardingStep[] }) {
   const { startTour } = useTour()
+  const { t } = useI18n()
   const completedCount = steps.filter(s => s.completed).length
   const total = steps.length
   const pct = Math.round((completedCount / total) * 100)
@@ -44,11 +46,11 @@ export function OnboardingWidget({ steps }: { steps: OnboardingStep[] }) {
                 <CheckCircle2 size={24} />
              </div>
              <div className="flex-1">
-                <h3 className="font-black text-lg text-[var(--success)]">You&apos;re All Set!</h3>
-                <p className="text-sm opacity-60">Your firm setup is complete. You&apos;re now running at full capacity.</p>
+                <h3 className="font-black text-lg text-[var(--success)]">{t('onboarding_all_set')}</h3>
+                <p className="text-sm opacity-60">{t('onboarding_complete_desc')}</p>
                 <div className="mt-4">
                   <Btn size="sm" variant="primary" onClick={handleStartTour} className="bg-[var(--success)] border-none shadow-[0_4px_12px_var(--success-dim)]">
-                    <PlayCircle size={12} className="mr-1.5" /> Launch Visual Tour
+                    <PlayCircle size={12} className="mr-1.5" /> {t('onboarding_launch_tour')}
                   </Btn>
                 </div>
              </div>
@@ -61,12 +63,12 @@ export function OnboardingWidget({ steps }: { steps: OnboardingStep[] }) {
     <Card className="overflow-hidden border-2 border-[var(--accent-border)] bg-[var(--surface)]">
       <div className="px-5 py-4 bg-[var(--accent-dim)] border-b border-[var(--accent-border)] flex items-center justify-between">
         <div>
-          <h3 className="font-black text-base text-[var(--accent)] uppercase tracking-wider">Setup Progress</h3>
-          <p className="text-[10px] font-bold opacity-60 uppercase">Complete these steps to maximize your platform value</p>
+          <h3 className="font-black text-base text-[var(--accent)] uppercase tracking-wider">{t('onboarding_setup_progress')}</h3>
+          <p className="text-[10px] font-bold opacity-60 uppercase">{t('onboarding_setup_desc')}</p>
         </div>
         <div className="text-right">
            <div className="text-xl font-black text-[var(--accent)]">{pct}%</div>
-           <div className="text-[9px] font-bold opacity-40 uppercase">Done</div>
+           <div className="text-[9px] font-bold opacity-40 uppercase">{t('onboarding_done')}</div>
         </div>
       </div>
       
@@ -100,7 +102,7 @@ export function OnboardingWidget({ steps }: { steps: OnboardingStep[] }) {
       <div className="p-4 bg-[var(--surface2)] border-t border-[var(--border)]">
         <Btn size="sm" variant="secondary" onClick={handleStartTour} className="w-full">
            <PlayCircle size={14} className="mr-2" />
-           Launch Guided Visual Tour
+           {t('onboarding_launch_guided')}
         </Btn>
       </div>
     </Card>
