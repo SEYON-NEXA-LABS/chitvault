@@ -9,6 +9,7 @@ import { usePwa } from '@/lib/pwa/context'
 import { usePinLock } from '@/lib/lock/context'
 import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2, Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface FirmBranding {
   name: string; color_profile: string; logo_url: string | null
@@ -118,17 +119,17 @@ function LoginForm() {
         {/* ── Desktop Visual Sidebar (Left) ─────────────────────────────────────── */}
         <div className="hidden lg:flex flex-[1.2] flex-col justify-between p-12 relative overflow-hidden bg-black/30 border-r border-white/10">
           <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-10 translate-x-[-8px]">
-                <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain transition-transform hover:scale-105 duration-700" />
-                <span className="text-6xl font-black text-white uppercase tracking-tighter">ChitVault</span>
-              </div>
+            <div className="flex items-center gap-4 mb-10 translate-x-[-8px]">
+              <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain transition-transform hover:scale-105 duration-700" />
+              <span className="text-6xl font-black text-white uppercase tracking-tighter">ChitVault</span>
+            </div>
 
             <div className="max-w-md">
               <h1 className="text-4xl font-black text-white leading-tight mb-6">
                 Welcome to <br /> <span className="text-[var(--accent)]">{branding.name}.</span>
               </h1>
               <p className="text-lg text-white font-medium leading-relaxed opacity-60">
-                Access your firm's professional financial management portal. 
+                Access your firm&apos;s professional financial management portal.
                 Secure, efficient, and built for modern business.
               </p>
             </div>
@@ -146,7 +147,7 @@ function LoginForm() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--accent)]/10 rounded-full blur-[100px] pointer-events-none" />
         </div>
 
-        {/* ── Auth Form Side (Right) ───────────────────────────────────────────── */ }
+        {/* ── Auth Form Side (Right) ───────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col justify-center p-8 sm:p-14 relative z-20 bg-white/[0.03]">
 
           {/* PWA Floating Install (Mobile Only Header) */}
@@ -178,7 +179,7 @@ function LoginForm() {
             </div>
 
             <div className="space-y-6">
-               {/* Status Messages */}
+              {/* Status Messages */}
               {error && (
                 <div className="p-4 rounded-xl bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider">
                   &times; {error}
@@ -294,7 +295,7 @@ function LoginForm() {
 
             <div className="mt-10 text-center space-y-4">
               {!hasPin && (
-                <button 
+                <button
                   onClick={() => router.push('/settings#lock-config')}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/30 text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
                 >
@@ -308,7 +309,6 @@ function LoginForm() {
             </div>
           </div>
 
-          {/* Mobile Footer */}
           <div className="lg:hidden mt-auto pt-10 text-center text-white/30 text-[9px] font-black uppercase tracking-widest">
             {APP_DEVELOPER} &copy; 2026 &bull; V{process.env.NEXT_PUBLIC_APP_VERSION}
           </div>
