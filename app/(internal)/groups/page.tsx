@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate } from '@/lib/utils'
+import { fmt, fmtDate, getGroupDisplayName, getToday } from '@/lib/utils'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
   Modal, Field, Loading, Empty, Toast, ProgressBar, Card
@@ -12,7 +12,7 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { downloadCSV } from '@/lib/utils/csv'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet, Info } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -40,7 +40,7 @@ export default function GroupsPage() {
 
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
-    monthly_contribution: '', start_date: '',
+    monthly_contribution: '', start_date: getToday(),
     auction_scheme: 'ACCUMULATION' as 'DIVIDEND' | 'ACCUMULATION',
     min_bid_pct: '5', max_bid_pct: '40',
     commission_type: 'percent_of_chit', commission_value: '5'
@@ -53,7 +53,7 @@ export default function GroupsPage() {
 
     const [g, a, p] = await Promise.all([
       withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).is('deleted_at', null).order('id'),
-      withFirmScope(supabase.from('auctions').select('group_id,month'), targetId).is('deleted_at', null),
+      withFirmScope(supabase.from('auctions').select('group_id,month,status'), targetId).is('deleted_at', null),
       withFirmScope(supabase.from('payments').select('group_id,status'), targetId).is('deleted_at', null),
     ])
     setGroups((g.data as any) || [])
@@ -69,8 +69,14 @@ export default function GroupsPage() {
 
   useEffect(() => { load(true) }, [load])
 
+  useEffect(() => {
+    if (firm?.enabled_schemes?.length === 1) {
+      setForm(f => ({ ...f, auction_scheme: firm.enabled_schemes[0] as any }))
+    }
+  }, [firm?.enabled_schemes])
+
   const groupStats = useCallback((g: Group) => {
-    const done = auctions.filter(a => a.group_id === g.id).length
+    const done = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed').length
     const paid = payments.filter(p => p.group_id === g.id && p.status === 'paid').length
     const pending = Math.max(0, done * g.num_members - paid)
     const pct = Math.round(done / g.duration * 100)
@@ -103,6 +109,10 @@ export default function GroupsPage() {
 
   async function handleSave() {
     if (!firm) return
+    if (!form.name || !form.chit_value || !form.start_date) {
+      showToast('Group name, value and start date are required.', 'error')
+      return
+    }
 
     // Standard 5% cap for foreman commission
     const commVal = +form.commission_value || 0
@@ -123,7 +133,7 @@ export default function GroupsPage() {
       num_members: +form.num_members,
       duration: +form.duration,
       monthly_contribution: +form.monthly_contribution,
-      start_date: form.start_date || null,
+      start_date: form.start_date,
       status: 'active',
       firm_id: firm.id,
       auction_scheme: form.auction_scheme,
@@ -150,7 +160,7 @@ export default function GroupsPage() {
         'Capacity': g.num_members,
         'Duration': g.duration,
         'Monthly Pay': g.monthly_contribution,
-        'Start Date': g.start_date || '—',
+        'First Auction Date': fmtDate(g.start_date),
         'Scheme': g.auction_scheme,
         'Status': g.status,
         'Progress': `${s.done}/${g.duration}`,
@@ -193,16 +203,16 @@ export default function GroupsPage() {
     <Table>
       <thead>
         <tr>
-          {isSuper && <Th>Firm</Th>}
-          <Th>Group</Th>
-          <Th right>Value</Th>
-          <Th className="hidden sm:table-cell">Members</Th>
-          <Th right className="hidden md:table-cell">Monthly</Th>
-          <Th>Progress</Th>
-          <Th className="hidden lg:table-cell">Status</Th>
-          <Th className="hidden xl:table-cell">Ends</Th>
-          <Th className="hidden md:table-cell">Pending</Th>
-          <Th>Action</Th>
+          {isSuper && <Th>{t('firm')}</Th>}
+          <Th>{t('group')}</Th>
+          <Th right>{t('value')}</Th>
+          <Th className="hidden sm:table-cell">{t('members')}</Th>
+          <Th right className="hidden md:table-cell">{t('monthly')}</Th>
+          <Th>{t('progress')}</Th>
+          <Th className="hidden lg:table-cell">{t('status')}</Th>
+          <Th className="hidden xl:table-cell">{t('ends')}</Th>
+          <Th className="hidden md:table-cell">{t('pending')}</Th>
+          <Th>{t('action')}</Th>
         </tr>
       </thead>
       <tbody>
@@ -213,7 +223,7 @@ export default function GroupsPage() {
               {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
               <Td>
                 <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
-                  {g.name}
+                  {getGroupDisplayName(g, t)}
                 </Link>
               </Td>
               <Td right>{fmt(g.chit_value)}</Td>
@@ -227,27 +237,27 @@ export default function GroupsPage() {
               </Td>
               <Td className="hidden lg:table-cell">
                 {s.pct >= 100
-                  ? <Badge variant="success">Completed ✓</Badge>
+                  ? <Badge variant="success">{t('completed')} ✓</Badge>
                   : s.done > 0
-                    ? <Badge variant="info">{g.duration - s.done} mo left</Badge>
-                    : <Badge variant="gray">Not started</Badge>}
+                    ? <Badge variant="info">{g.duration - s.done} {t('mo_left')}</Badge>
+                    : <Badge variant="gray">{t('not_started')}</Badge>}
               </Td>
               <Td className="hidden xl:table-cell">{s.endDate}</Td>
               <Td className="hidden md:table-cell">
                 {s.pending > 0
-                  ? <Badge variant="danger">{s.pending} pending</Badge>
-                  : <Badge variant="success">All paid</Badge>}
+                  ? <Badge variant="danger">{s.pending} {t('pending')}</Badge>
+                  : <Badge variant="success">{t('all_paid')}</Badge>}
               </Td>
               <Td>
                 <div className="flex items-center gap-1.5">
                   <Btn size="sm" variant="ghost" icon={Gavel} onClick={() => router.push(`/groups/${g.id}`)}
                     style={{ color: 'var(--info)', border: '1px solid var(--info-dim)' }}>
-                    View
+                    {t('view')}
                   </Btn>
                   {showArchBtn && can('archiveGroup') && (
                     <Btn size="sm" variant="ghost" onClick={() => archive(g.id)}
                       style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-                      <Archive size={12} /> Archive
+                      <Archive size={12} /> {t('archive')}
                     </Btn>
                   )}
                   {can('deleteGroup') && <Btn size="sm" variant="danger" onClick={() => del(g.id)}><Trash2 size={12} /></Btn>}
@@ -288,7 +298,7 @@ export default function GroupsPage() {
         <TableCard title={`✅ Completed — Ready to Archive (${completed.length})`}
           subtitle="All auctions done & all payments collected."
           actions={<Btn size="sm" onClick={archiveAll} style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-            <Archive size={12} /> Archive All
+            <Archive size={12} /> {t('archive_all')}
           </Btn>}>
           <GroupTable list={completed} showArchBtn={true} />
         </TableCard>
@@ -318,50 +328,67 @@ export default function GroupsPage() {
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Chit Group">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Group Name"><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SEP2026-A" /></Field>
-          <Field label="Total Chit Value (₹)"><input className={inputClass} style={inputStyle} value={form.chit_value} type="number" onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" /></Field>
-          <Field label="Auction Scheme">
-            <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
-              <option value="ACCUMULATION">SURPLUS MODEL (Fixed Payout)</option>
-              <option value="DIVIDEND">DIVIDEND MODEL (Coming Soon)</option>
-            </select>
-          </Field>
-          <Field label="Total Members"><input className={inputClass} style={inputStyle} value={form.num_members} type="number" onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" /></Field>
-          <Field label="Duration (Months)"><input className={inputClass} style={inputStyle} value={form.duration} type="number" onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" /></Field>
-          <Field label="Monthly Installment (₹)"><input className={inputClass} style={inputStyle} value={form.monthly_contribution} type="number" onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" /></Field>
-          <Field label="Start Date"><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></Field>
+          <Field label={t('group_name')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SEP2026-A" /></Field>
+          <Field label={`${t('chit_value')} (₹)`}><input className={inputClass} style={inputStyle} value={form.chit_value} type="number" onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" /></Field>
+          {(!firm?.enabled_schemes || firm.enabled_schemes.length > 1) && (
+            <Field label="Auction Scheme">
+              <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
+                {(!firm?.enabled_schemes || firm.enabled_schemes.includes('ACCUMULATION')) && (
+                  <option value="ACCUMULATION">SURPLUS MODEL (Fixed Payout)</option>
+                )}
+                {(!firm?.enabled_schemes || firm.enabled_schemes.includes('DIVIDEND')) && (
+                  <option value="DIVIDEND">DIVIDEND MODEL (Conventional)</option>
+                )}
+              </select>
+            </Field>
+          )}
+          <Field label={t('total_members')}><input className={inputClass} style={inputStyle} value={form.num_members} type="number" onChange={e => setForm(f => ({ ...f, num_members: e.target.value }))} placeholder="20" /></Field>
+          <Field label={t('duration_months')}><input className={inputClass} style={inputStyle} value={form.duration} type="number" onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} placeholder="20" /></Field>
+          <Field label={t('monthly_installment')}><input className={inputClass} style={inputStyle} value={form.monthly_contribution} type="number" onChange={e => setForm(f => ({ ...f, monthly_contribution: e.target.value }))} placeholder="5000" /></Field>
+          <Field label={t('start_date')}><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required /></Field>
 
           <div className="col-span-1 md:col-span-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
             <h3 className="text-xs font-black uppercase tracking-widest opacity-40 mb-3 flex items-center gap-2">
               <Gavel size={14} /> Auction Rules & Commission
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Min Discount (Floor %)">
+              <Field label={t('min_discount')}>
                 <input className={inputClass} style={inputStyle} type="number" value={form.min_bid_pct} onChange={e => setForm(f => ({ ...f, min_bid_pct: e.target.value }))} placeholder="5" />
               </Field>
-              <Field label="Max Discount (Cap %)">
+              <Field label={t('max_discount')}>
                 <input className={inputClass} style={inputStyle} type="number" value={form.max_bid_pct} onChange={e => setForm(f => ({ ...f, max_bid_pct: e.target.value }))} placeholder="40" />
               </Field>
-              <Field label="Commission Type">
+              <Field label={t('commission_type')}>
                 <select className={inputClass} style={inputStyle} value={form.commission_type} onChange={e => setForm(f => ({ ...f, commission_type: e.target.value }))}>
                   <option value="percent_of_chit">Percent of Chit Value</option>
                   <option value="percent_of_discount">Percent of Auction Discount</option>
                   <option value="fixed_amount">Fixed Amount</option>
                 </select>
+                <div className="text-[10px] mt-1.5 opacity-60 font-medium leading-tight">
+                  {form.commission_type === 'percent_of_chit' && "Calculated from the Total Fund (Chit Value)."}
+                  {form.commission_type === 'percent_of_discount' && "Calculated from the Bid Amount (Winner's Sacrifice)."}
+                  {form.commission_type === 'fixed_amount' && "A flat fee charged every month."}
+                </div>
               </Field>
-              <Field label="Commission Value">
+              <Field label={t('commission_val')}>
                 <input className={inputClass} style={inputStyle} type="number" value={form.commission_value} onChange={e => setForm(f => ({ ...f, commission_value: e.target.value }))} placeholder="5" />
+                <div className="text-[10px] mt-1.5 font-bold text-[var(--accent)] flex items-center gap-1">
+                  <Info size={10} />
+                  {form.commission_type === 'percent_of_chit' && `Example: ${fmt((+form.chit_value || 0) * (+form.commission_value || 0) / 100)} / month`}
+                  {form.commission_type === 'percent_of_discount' && `Example: ₹500 at ₹50,000 bid`}
+                  {form.commission_type === 'fixed_amount' && `Flat ₹${form.commission_value || 0} per month`}
+                </div>
               </Field>
             </div>
-            <p className="text-[10px] opacity-40 mt-3 italic">
+            <p className="text-[10px] opacity-40 mt-4 italic">
               * The &quot;Min Discount&quot; is usually your commission rate (e.g., 5%).
               The winner must sacrifice at least this amount to the group.
             </p>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-          <Btn variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Btn>
-          <Btn variant="primary" loading={saving} onClick={handleSave}>Create Group</Btn>
+          <Btn variant="secondary" onClick={() => setAddOpen(false)}>{t('cancel')}</Btn>
+          <Btn variant="primary" loading={saving} onClick={handleSave}>{t('create_group')}</Btn>
         </div>
       </Modal>
 

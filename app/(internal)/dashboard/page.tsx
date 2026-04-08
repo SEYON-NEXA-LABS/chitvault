@@ -4,22 +4,27 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, getToday } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, getGroupDisplayName } from '@/lib/utils'
 import { 
   Users, Layers, TrendingUp, DollarSign, Wallet, ShieldCheck, 
   ArrowUpRight, ArrowDownRight, Clock, Info, ShieldAlert,
-  Building, BadgeCheck
+  Building, BadgeCheck, AlertTriangle
 } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 import { StatCard, Card, Loading, Badge, LineAnalytics, PieDistribution, OnboardingWidget, TableCard, Table, Th, Td, Tr, Btn } from '@/components/ui'
+import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 import { inputClass, inputStyle } from '@/components/ui'
 import { ArrowRight } from 'lucide-react'
+import { useTerminology } from '@/lib/hooks/useTerminology'
 import type { Group, Member, Auction, Payment, Firm } from '@/types'
 
 export default function DashboardPage() {
   const supabase = createClient()
   const { firm, role, switchedFirmId } = useFirm()
+  const { t } = useI18n()
+  const term = useTerminology(firm)
   const [groups,   setGroups]   = useState<Group[]>([])
   const [members,  setMembers]  = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -62,27 +67,42 @@ export default function DashboardPage() {
     const today = getToday()
     const todayColl = payments.filter(p => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0)
 
-    // 2. Pending Collections
-    const totalPending = members.reduce((sum, member) => {
+    let totalPending = 0
+    let currentDue = 0
+    let overdueDue = 0
+
+    members.forEach((member) => {
       const group = groups.find(g => g.id === member.group_id)
-      if (!group || !['active', 'defaulter', 'foreman'].includes(member.status)) return sum
+      if (!group || !['active', 'defaulter', 'foreman'].includes(member.status)) return
       
-      const gAucs = auctions.filter(a => a.group_id === member.group_id)
-      const currentMonth = Math.min(group.duration, gAucs.length + 1)
-      const mPays = payments.filter(p => p.member_id === member.id && p.group_id === group.id)
+      const gAucs = auctions.filter(a => Number(a.group_id) === Number(member.group_id) && a.status === 'confirmed')
+      const gPays = payments.filter(p => Number(p.member_id) === Number(member.id) && Number(p.group_id) === Number(group.id))
+      const isAcc = group.auction_scheme?.toUpperCase() === 'ACCUMULATION'
+      const latestMonth = gAucs.length > 0 ? Math.max(...gAucs.map(a => Number(a.month))) : 0
       
-      let mTotalDue = 0
-      for (let month = 1; month <= currentMonth; month++) {
-        const prevMonthAuc = gAucs.find(a => a.month === month - 1)
-        const div = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0
-        mTotalDue += (Number(group.monthly_contribution) - div)
+      const financial = getMemberFinancialStatus(member, group, gAucs, gPays)
+      
+      if (financial.balance > 0.01) {
+        totalPending += financial.balance
+        
+        // Categorize the balance for the dashboard cards
+        financial.streak.forEach((s: any) => {
+          const bal = s.due - s.paid
+          if (bal > 0.01) {
+            const hasAuctionHappened = gAucs.some(a => a.month === s.month)
+            const isDueForScheme = isAcc ? hasAuctionHappened : (s.month <= latestMonth + 1)
+            
+            if (isDueForScheme) {
+              if (hasAuctionHappened) {
+                overdueDue += bal
+              } else {
+                currentDue += bal
+              }
+            }
+          }
+        })
       }
-      
-      const mTotalPaid = mPays.reduce((s, p) => s + Number(p.amount), 0)
-      const pending = Math.max(0, mTotalDue - mTotalPaid)
-      
-      return sum + pending
-    }, 0)
+    })
 
     // 3. Defaulter Count
     const defaulters = members.filter(m => m.status === 'defaulter').length
@@ -107,18 +127,23 @@ export default function DashboardPage() {
       groups.forEach(g => {
         if (!g.start_date) return
         const gStart = new Date(g.start_date)
-        const auctionNum = (y - gStart.getFullYear()) * 12 + (m - gStart.getMonth())
+        const auctionNum = (y - gStart.getFullYear()) * 12 + (m - gStart.getMonth()) + 1
         
         if (auctionNum >= 1 && auctionNum <= g.duration) {
-          const installment = Number(g.chit_value) / g.duration
+          const isAcc = g.auction_scheme === 'ACCUMULATION'
+          const installment = Number(g.monthly_contribution)
           const baseTotal = installment * g.num_members
-          const auc = auctions.find(a => a.group_id === g.id && a.month === auctionNum)
           
-          if (auc) {
-            expected += baseTotal - (Number(auc.dividend) * g.num_members)
+          const auc = auctions.find(a => a.group_id === g.id && a.month === auctionNum)
+          const hasAuctioned = auc && auc.status === 'confirmed'
+          
+          if (isAcc) {
+             // For accumulation, we only "expect" money for the months auctioned
+             if (hasAuctioned) expected += baseTotal
           } else {
-            // Assume full installment if auction not yet recorded for this month
-            expected += baseTotal
+             // For dividend, we expect it for the current cycle regardless of auction status
+             const dividend = Number(auc?.dividend || 0)
+             expected += baseTotal - (dividend * g.num_members)
           }
         }
       })
@@ -147,8 +172,8 @@ export default function DashboardPage() {
 
     // 7. Group Distribution
     const distData = [
-      { name: 'Dividend', value: groups.filter(g => g.auction_scheme === 'DIVIDEND').length },
-      { name: 'Accumulation', value: groups.filter(g => g.auction_scheme === 'ACCUMULATION').length }
+      { name: t('dividend'), value: groups.filter(g => g.auction_scheme === 'DIVIDEND').length },
+      { name: t('surplus'), value: groups.filter(g => g.auction_scheme === 'ACCUMULATION').length }
     ].filter(d => d.value > 0)
 
     // 8. Onboarding Steps
@@ -160,7 +185,7 @@ export default function DashboardPage() {
     ]
 
     return { 
-      stats: { totalChitValue, todayColl, totalPending, defaulters },
+      stats: { totalChitValue, todayColl, totalPending, overdueDue, currentDue, defaulters },
       chartData: collectionTrends,
       groupDist: distData,
       modeDist,
@@ -223,10 +248,10 @@ export default function DashboardPage() {
           <StatCard label="Today's Collection" value={fmt(stats.todayColl)} sub="Payments received today" color="success" />
         </Link>
         <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Pending Collections" value={fmt(stats.totalPending)} sub="Click to see breakdown" color="danger" />
+          <StatCard label="Overdue" value={fmt(stats.overdueDue)} sub="From past auctions" color="danger" />
         </Link>
-        <Link href="/reports?type=defaulters" className="block transition-transform hover:scale-[1.02]">
-          <StatCard label="Defaulter Members" value={stats.defaulters} sub="Critical follow-up needed" color="info" />
+        <Link href="/reports?type=upcoming_pay" className="block transition-transform hover:scale-[1.02]">
+          <StatCard label="Current Month Due" value={fmt(stats.currentDue)} sub="From current cycle" color="info" />
         </Link>
       </div>
 
@@ -277,7 +302,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             groups.map(g => {
-              const done = auctions.filter(a => a.group_id === g.id).length
+              const gAucs = auctions.filter(a => a.group_id === g.id)
+              const done = gAucs.filter(a => a.status === 'confirmed').length
+              const hasDraft = gAucs.some(a => a.status === 'draft')
               const pct = Math.round((done / g.duration) * 100)
               const isAcc = g.auction_scheme === 'ACCUMULATION'
               
@@ -289,15 +316,17 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="font-bold text-lg leading-tight mb-1" style={{ color: 'var(--text)' }}>
-                            {g.name}
+                            {getGroupDisplayName(g, t)}
                           </h3>
                           <div className="flex items-center gap-2">
-                            <Badge variant={isAcc ? "info" : "accent"}>
-                              {g.auction_scheme}
-                            </Badge>
                             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'var(--text3)' }}>
                               {g.duration} Months
                             </span>
+                            {hasDraft && (
+                              <Badge variant="danger" className="animate-pulse flex items-center gap-1 py-0 px-2 text-[9px] font-black uppercase tracking-tighter shadow-sm border border-red-200">
+                                <AlertTriangle size={10} /> Action Required
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
@@ -323,7 +352,7 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-2 gap-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
                         <div>
                           <div className="text-[10px] uppercase opacity-40 font-bold tracking-wider">
-                            {isAcc ? 'Monthly Contr.' : 'Each Pays'}
+                            {isAcc ? t('monthly_contribution') : t('after_div')}
                           </div>
                           <div className="text-xl font-black" style={{ color: 'var(--text)' }}>
                             {fmt(Number(g.monthly_contribution))}
@@ -332,7 +361,7 @@ export default function DashboardPage() {
                         {isAcc ? (
                           <div>
                             <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--info)' }}>
-                              Group Surplus
+                              {term.groupSurplusLabel}
                             </span>
                             <span className="text-sm font-bold" style={{ color: 'var(--info)' }}>
                               {fmt(g.accumulated_surplus)}
@@ -341,9 +370,9 @@ export default function DashboardPage() {
                         ) : (
                           <div>
                             <span className="text-[10px] uppercase font-bold block mb-0.5" style={{ color: 'var(--text3)' }}>
-                              Status
+                              {t('status')}
                             </span>
-                            <Badge variant="success" className="text-[10px]">Active</Badge>
+                            <Badge variant="success" className="text-[10px]">{t('completed') || 'Active'}</Badge>
                           </div>
                         )}
                       </div>
@@ -435,7 +464,7 @@ export default function DashboardPage() {
                   return (
                     <Tr key={a.id}>
                       <Td>
-                        <div className="text-xs font-bold truncate max-w-[100px]">{g?.name || 'Group'}</div>
+                        <div className="text-xs font-bold truncate max-w-[150px]">{g ? getGroupDisplayName(g, t) : 'Group'}</div>
                         <Badge variant="info" className="text-[8px] py-0">{fmtMonth(a.month, g?.start_date)}</Badge>
                       </Td>
                       <Td>

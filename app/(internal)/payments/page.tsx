@@ -1,40 +1,27 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn, getGroupDisplayName } from '@/lib/utils'
 import { Btn, Badge, Card, Loading, Empty, Toast, Chip, Modal, Field, StatCard, Table, Th, Td, Tr, TableCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useFirm } from '@/lib/firm/context'
 import { logActivity } from '@/lib/utils/logger'
-import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
+import { useI18n } from '@/lib/i18n/context'
+import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { getMemberFinancialStatus, FinancialStatus } from '@/lib/utils/chitLogic'
 import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
-
-interface MemberDue {
-  group: Group;
-  month: number;
-  amountDue: number;
-  amountPaid: number;
-  balance: number;
-  isAuctioned: boolean;
-  dividend: number;
-}
-
-interface MemberSummary {
-  member: Member;
-  group: Group;
-  dues: MemberDue[];
-  totalDue: number;
-  totalPaid: number;
-  totalBalance: number;
-}
 
 interface PersonSummary {
   person: Person;
-  memberships: MemberSummary[];
+  memberships: {
+    member: Member;
+    group: Group;
+    status: FinancialStatus;
+  }[];
   overallTotalDue: number;
   overallTotalPaid: number;
   overallTotalBalance: number;
@@ -52,7 +39,9 @@ export default function PaymentsPage() {
 function PaymentsPageContent() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, profile, role, can, switchedFirmId } = useFirm()
-  const { toast, show, hide } = useToast()
+  const { t } = useI18n()
+  const { toast, show: showToast, hide: hideToast } = useToast()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const qPersonId = searchParams.get('personId')
 
@@ -76,7 +65,7 @@ function PaymentsPageContent() {
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<number>>(new Set())
 
   const load = useCallback(async (isInitial = false) => {
-    if (isInitial && groups.length === 0) setLoading(true)
+    if (isInitial) setLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
 
     const [g, m, a, p] = await Promise.all([
@@ -100,83 +89,20 @@ function PaymentsPageContent() {
 
   useEffect(() => { load(true) }, [load])
 
-  const togglePaymentSelect = (id: number) => {
-    const next = new Set(selectedPaymentIds)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setSelectedPaymentIds(next)
-  }
-
-  const toggleAllPayments = (ids: number[]) => {
-    if (selectedPaymentIds.size === ids.length) setSelectedPaymentIds(new Set())
-    else setSelectedPaymentIds(new Set(ids))
-  }
-
-  async function handleBulkDeletePayments() {
-    if (selectedPaymentIds.size === 0 || !can('deletePayment')) return
-    if (!confirm(`Move ${selectedPaymentIds.size} selected payments to trash?`)) return
-    
-    setSaving(true)
-    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).in('id', Array.from(selectedPaymentIds)).eq('firm_id', firm?.id)
-    
-    if (error) show(error.message, 'error')
-    else {
-      show(`${selectedPaymentIds.size} payments moved to trash!`, 'success')
-      load()
-    }
-    setSaving(false)
-  }
-
   const personSummaries: PersonSummary[] = useMemo(() => {
-    // 1. Calculate membership-level summaries first
-    const mSummaries = members.map((m: Member) => {
-      if (!m.persons) return null;
-      const group = groups.find((g: Group) => g.id === m.group_id);
-      if (!group) return null;
-
-      const gAucs = auctions.filter((a: Auction) => a.group_id === group.id);
-      const mPays = payments.filter((p: Payment) => p.member_id === m.id && p.group_id === group.id);
-      const currentMonth = Math.min(group.duration, gAucs.length + 1);
-      
-      const mDues: MemberDue[] = [];
-      let mTotalDue = 0;
-      for (let month = 1; month <= currentMonth; month++) {
-        // Dividend Calculation (Next Month Rule):
-        // Month 1 is always full. Month 2 is reduced by Auction 1's dividend.
-        const prevMonthAuc = gAucs.find((a: Auction) => a.month === month - 1);
-        const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0;
-        
-        const amountDue = Number(group.monthly_contribution) - dividend;
-        const amountPaid = mPays.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
-        
-        // Month-level balance for display (not for total sum to avoid Math.max issues)
-        const displayBalance = Math.max(0, amountDue - amountPaid);
-        
-        mTotalDue += amountDue;
-        
-        if (displayBalance > 0.01 || amountPaid > 0) {
-          mDues.push({ group, month, amountDue, amountPaid, balance: displayBalance, isAuctioned: !!gAucs.find(a => a.month === month), dividend });
-        }
-      }
-
-      const mTotalPaid = mPays.reduce((s, p) => s + Number(p.amount), 0);
-      const mNetBalance = Math.max(0, mTotalDue - mTotalPaid);
-
-      return {
-        member: m, group, dues: mDues,
-        totalDue: mTotalDue,
-        totalPaid: mTotalPaid,
-        totalBalance: mNetBalance,
-      };
-    }).filter(Boolean) as MemberSummary[];
-
-    // 2. Group by Person
     const personMap = new Map<number, PersonSummary>();
-    mSummaries.forEach((ms: MemberSummary) => {
-      const pId = ms.member.person_id;
+
+    members.forEach((m: Member) => {
+      if (!m.persons) return;
+      const group = groups.find((g: Group) => g.id === m.group_id);
+      if (!group) return;
+
+      const fStatus = getMemberFinancialStatus(m, group, auctions, payments);
+      const pId = m.person_id;
+
       if (!personMap.has(pId)) {
         personMap.set(pId, {
-          person: ms.member.persons!,
+          person: m.persons,
           memberships: [],
           overallTotalDue: 0,
           overallTotalPaid: 0,
@@ -184,14 +110,16 @@ function PaymentsPageContent() {
           lastPaymentDate: null
         });
       }
+
       const pSummary = personMap.get(pId)!;
-      pSummary.memberships.push(ms);
-      pSummary.overallTotalDue += ms.totalDue;
-      pSummary.overallTotalPaid += ms.totalPaid;
-      pSummary.overallTotalBalance += ms.totalBalance;
-      
-      const lastPay = payments.filter(p => p.member_id === ms.member.id)[0];
-      if (lastPay && (!pSummary.lastPaymentDate || lastPay.payment_date! > pSummary.lastPaymentDate)) {
+      pSummary.memberships.push({ member: m, group, status: fStatus });
+      pSummary.overallTotalDue += fStatus.totalDue;
+      pSummary.overallTotalPaid += fStatus.totalPaid;
+      pSummary.overallTotalBalance += fStatus.balance;
+
+      const mPays = payments.filter(p => p.member_id === m.id && p.group_id === group.id);
+      const lastPay = mPays[0];
+      if (lastPay && (!pSummary.lastPaymentDate || lastPay.payment_date! > pSummary.lastPaymentDate!)) {
         pSummary.lastPaymentDate = lastPay.payment_date;
       }
     });
@@ -199,7 +127,7 @@ function PaymentsPageContent() {
     return Array.from(personMap.values());
   }, [members, groups, auctions, payments]);
 
-  // Handle URL-based Auto-selection (from Collection Registry)
+  // Handle URL-based Auto-selection
   useEffect(() => {
     if (qPersonId && personSummaries.length > 0 && !payModal) {
       const target = personSummaries.find(s => String(s.person.id) === qPersonId)
@@ -215,7 +143,7 @@ function PaymentsPageContent() {
         setPayModal(target);
       }
     }
-  }, [qPersonId, personSummaries.length, payModal])
+  }, [qPersonId, personSummaries, payModal])
 
   const filtered = useMemo(() => {
     return personSummaries.filter((s: PersonSummary) => {
@@ -223,9 +151,7 @@ function PaymentsPageContent() {
         (s.person.phone && s.person.phone.includes(search));
       
       if (!matchSearch) return false;
-
       if (showOnlyPaid && dateRange.start && dateRange.end) {
-        // Person must have at least one payment in the range
         const hasPaymentInRange = payments.some(p => 
           s.memberships.some(ms => ms.member.id === p.member_id) && 
           p.payment_date! >= dateRange.start && 
@@ -233,286 +159,188 @@ function PaymentsPageContent() {
         );
         if (!hasPaymentInRange) return false;
       }
-
       return true;
-    }).sort((a: PersonSummary, b: PersonSummary) => b.overallTotalBalance - a.overallTotalBalance);
+    }).sort((a, b) => b.overallTotalBalance - a.overallTotalBalance);
   }, [personSummaries, search, showOnlyPaid, dateRange, payments]);
 
   const stats = useMemo(() => {
     const today = getToday();
-    const collectedToday = payments.filter((p: Payment) => p.payment_date === today).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
-    
+    const collectedToday = payments.filter((p: Payment) => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0);
     let collectedInRange = 0;
     if (dateRange.start && dateRange.end) {
       collectedInRange = payments.filter((p: Payment) => 
         p.payment_date! >= dateRange.start && p.payment_date! <= dateRange.end
-      ).reduce((s: number, p: Payment) => s + Number(p.amount), 0);
+      ).reduce((s, p) => s + Number(p.amount), 0);
     }
-
-    const totalOut = personSummaries.reduce((s: number, p: PersonSummary) => s + p.overallTotalBalance, 0);
+    const totalOut = personSummaries.reduce((s, p) => s + p.overallTotalBalance, 0);
     return { collectedToday, totalOut, collectedInRange };
   }, [payments, personSummaries, dateRange]);
 
   async function handlePay() {
     if (!payModal || !firm) return;
     const amount = Number(payForm.amount);
-    if (amount <= 0) { show('Enter a valid amount', 'error'); return; }
+    if (amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
     
     setSaving(true);
     let remaining = amount;
-    const finalPayments = [];
+    const finalPayments: any[] = [];
 
     if (payForm.isManual) {
-      // Use manual allocations
       for (const [key, val] of Object.entries(payForm.manualAllocations)) {
         const amt = Number(val);
         if (amt <= 0) continue;
-        
         const [mId, month] = key.split('-').map(Number);
         const m = payModal.memberships.find(x => x.member.id === mId);
-        const due = m?.dues.find(d => d.month === month);
-        if (!m || !due) continue;
+        const streakItem = m?.status.streak.find(d => d.month === month);
+        if (!m || !streakItem) continue;
 
         finalPayments.push({
-          firm_id: firm.id,
-          member_id: mId,
-          group_id: m.group.id,
-          month: month,
-          amount: amt,
-          status: (due.amountPaid + amt) >= due.amountDue ? 'paid' : 'partial',
-          amount_due: due.amountDue,
-          balance_due: Math.max(0, due.amountDue - due.amountPaid - amt),
-          payment_date: payForm.date,
-          mode: payForm.mode,
-          payment_type: (due.amountPaid + amt) >= due.amountDue ? 'full' : 'partial',
-          collected_by: profile?.id || null,
-          note: payForm.note
+          firm_id: firm.id, member_id: mId, group_id: m.group.id, month: month,
+          amount: amt, payment_date: payForm.date, mode: payForm.mode,
+          collected_by: profile?.id || null, note: payForm.note,
+          status: (streakItem.paid + amt) >= (streakItem.due - 0.01) ? 'paid' : 'partial',
+          amount_due: streakItem.due,
+          balance_due: Math.max(0, streakItem.due - streakItem.paid - amt),
+          payment_type: (streakItem.paid + amt) >= (streakItem.due - 0.01) ? 'full' : 'partial',
         });
       }
     } else {
       // Auto-distribution logic
-      // All dues of this person across all memberships, sorted by month
-      const allDues = payModal.memberships.flatMap(m => m.dues.map(d => ({ ...d, memberId: m.member.id })))
-        .sort((a, b) => a.month - b.month);
+      const allStreak = payModal.memberships.flatMap(ms => 
+        ms.status.streak.filter(d => (ms.group.auction_scheme === 'ACCUMULATION' ? d.status === 'danger' : (d.status === 'danger' || d.status === 'info')))
+          .map(d => ({ ...d, memberId: ms.member.id, groupId: ms.group.id }))
+      ).sort((a, b) => a.month - b.month);
 
-      for (const due of allDues) {
+      for (const due of allStreak) {
         if (remaining <= 0) break;
-        if (due.balance <= 0) continue;
-
-        const toPay = Math.min(remaining, due.balance);
+        const bal = Math.max(0, due.due - due.paid);
+        if (bal <= 0.01) continue;
+        const toPay = Math.min(remaining, bal);
         remaining -= toPay;
-
         finalPayments.push({
-          firm_id: firm.id,
-          member_id: due.memberId,
-          group_id: due.group.id,
-          month: due.month,
-          amount: toPay,
-          status: (due.amountPaid + toPay) >= due.amountDue ? 'paid' : 'partial',
-          amount_due: due.amountDue,
-          balance_due: Math.max(0, due.amountDue - due.amountPaid - toPay),
-          payment_date: payForm.date,
-          mode: payForm.mode,
-          payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
-          collected_by: profile?.id || null,
-          note: payForm.note
+          firm_id: firm.id, member_id: due.memberId, group_id: due.groupId, month: due.month,
+          amount: toPay, payment_date: payForm.date, mode: payForm.mode,
+          collected_by: profile?.id || null, note: payForm.note,
+          status: (due.paid + toPay) >= (due.due - 0.01) ? 'paid' : 'partial',
+          amount_due: due.due,
+          balance_due: Math.max(0, due.due - due.paid - toPay),
+          payment_type: (due.paid + toPay) >= (due.due - 0.01) ? 'full' : 'partial',
         });
       }
 
-      // Residual amount goes to the first membership's next month
-      if (remaining > 0 && payModal.memberships.length > 0) {
+      // Residual -> First ticket's next month
+      if (remaining > 0.01 && payModal.memberships.length > 0) {
         const ms = payModal.memberships[0];
-        const nextMonth = (ms.dues.length > 0 ? Math.max(...ms.dues.map(d => d.month)) : 0) + 1;
+        const nextMonth = ms.status.streak.filter(d => d.paid > 0 || d.due > 0).length + 1;
         if (nextMonth <= ms.group.duration) {
           finalPayments.push({
-            firm_id: firm.id,
-            member_id: ms.member.id,
-            group_id: ms.group.id,
-            month: nextMonth,
-            amount: remaining,
-            status: remaining >= ms.group.monthly_contribution ? 'paid' : 'partial',
+            firm_id: firm.id, member_id: ms.member.id, group_id: ms.group.id, month: nextMonth,
+            amount: remaining, payment_date: payForm.date, mode: payForm.mode,
+            collected_by: profile?.id || null, note: payForm.note,
+            status: remaining >= (ms.group.monthly_contribution - 0.01) ? 'paid' : 'partial',
             amount_due: ms.group.monthly_contribution,
             balance_due: Math.max(0, ms.group.monthly_contribution - remaining),
-            payment_date: payForm.date,
-            mode: payForm.mode,
-            payment_type: remaining >= ms.group.monthly_contribution ? 'full' : 'partial',
-            collected_by: profile?.id || null,
-            note: payForm.note
+            payment_type: remaining >= (ms.group.monthly_contribution - 0.01) ? 'full' : 'partial',
           });
         }
       }
     }
 
-    if (finalPayments.length === 0) { show('No allocations made', 'error'); setSaving(false); return; }
-
+    if (finalPayments.length === 0) { showToast('No allocations made', 'error'); setSaving(false); return; }
     const { data: created, error } = await supabase.from('payments').insert(finalPayments).select();
-    if (error) { show(error.message, 'error'); }
+    if (error) { showToast(error.message, 'error'); }
     else { 
-      show(`Recorded ${finalPayments.length} payment segments!`); 
-      
-      if (payModal.person) {
-        await logActivity(
-          firm.id,
-          'PAYMENT_RECORDED',
-          'payment',
-          created?.[0]?.id || null,
-          { 
-            person_name: payModal.person.name, 
-            total_amount: amount, 
-            segments: finalPayments.length 
-          }
-        );
-      }
-
-      setPayModal(null); 
-      load(); 
+      showToast(`Recorded ${finalPayments.length} payment segments!`, 'success'); 
+      await logActivity(firm.id, 'PAYMENT_RECORDED', 'payment', created?.[0]?.id || null, { person_name: payModal.person.name, total_amount: amount });
+      setPayModal(null); load(); 
     }
     setSaving(false);
   }
 
-  async function handleDeletePayment(paymentId: number) {
+  const handleDeletePayment = async (id: number) => {
     if (!can('deletePayment')) return;
-    if (!window.confirm('Are you sure you want to move this payment record to trash?')) return;
-    
-    // Get details for logging BEFORE delete
-    const payment = payments.find(p => p.id === paymentId);
-    
-    // Double-guard delete with firm_id for SaaS isolation
-    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).eq('id', paymentId).eq('firm_id', firm?.id);
-    if (error) {
-      show(error.message, 'error');
-    } else {
-      show('Payment moved to trash!');
-      if (payment && firm) {
-        await logActivity(
-          firm.id,
-          'PAYMENT_ARCHIVED',
-          'payment',
-          paymentId,
-          { amount: payment.amount, month: payment.month }
-        );
-      }
-      load();
-    }
+    if (!confirm('Move this payment record to trash?')) return;
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).eq('id', id).eq('firm_id', firm?.id);
+    if (error) showToast(error.message, 'error'); else { showToast('Payment removed!', 'success'); load(); }
+  }
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedPaymentIds)
+    if (ids.length === 0 || !can('deletePayment')) return;
+    if (!confirm(`Trash ${ids.length} records?`)) return;
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date() }).in('id', ids).eq('firm_id', firm?.id);
+    if (error) showToast(error.message, 'error'); else { showToast('Payments trashed!', 'success'); load(); }
   }
 
   if (loading) return <Loading />
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2" id="tour-pay-title">
-        <h1 className="text-2xl font-black text-[var(--text)]">Payments Ledger</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-black text-[var(--text)]">{t('nav_payments')}</h1>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Collected Today" value={fmt(stats.collectedToday)} color="success" />
-        {dateRange.start && dateRange.end && (
-          <StatCard label="Collected in Range" value={fmt(stats.collectedInRange)} color="info" />
-        )}
+        {dateRange.start && dateRange.end && <StatCard label="Collected in Range" value={fmt(stats.collectedInRange)} color="info" />}
         <StatCard label="Total Outstanding" value={fmt(stats.totalOut)} color="danger" />
         <StatCard label="Total Persons" value={personSummaries.length} color="accent" />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }} id="tour-pay-filter">
+      <div className="flex flex-col lg:flex-row gap-4 bg-[var(--surface)] p-4 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
         <div className="flex-1 relative">
            <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
             placeholder="Search name or phone..." value={search} onChange={e => setSearch(e.target.value)} />
            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
         </div>
-        
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: 13 }} 
-              value={dateRange.start} onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))} />
-            <span className="opacity-30">to</span>
-            <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto', padding: '6px 10px', fontSize: 13 }} 
-              value={dateRange.end} onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))} />
-          </div>
-          
-          {(dateRange.start || dateRange.end) && (
-            <button onClick={() => setDateRange({ start: '', end: '' })} className="text-[10px] uppercase font-bold text-[var(--danger)] hover:underline">
-              Clear
-            </button>
-          )}
-
-          <div className="h-6 w-px bg-[var(--border)] mx-1 hidden md:block" />
-
-          <label className="flex items-center gap-2 text-xs font-bold whitespace-nowrap cursor-pointer select-none">
+          <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto' }} value={dateRange.start} onChange={e => setDateRange(r => ({ ...r, start: e.target.value }))} />
+          <span className="opacity-30">to</span>
+          <input type="date" className={inputClass} style={{ ...inputStyle, width: 'auto' }} value={dateRange.end} onChange={e => setDateRange(r => ({ ...r, end: e.target.value }))} />
+          <label className="flex items-center gap-2 text-xs font-bold cursor-pointer select-none">
             <input type="checkbox" checked={showOnlyPaid} onChange={e => setShowOnlyPaid(e.target.checked)} />
             Show only paid
           </label>
         </div>
       </div>
 
-      <TableCard title="Collection Ledger (Person-Centric)" subtitle="Manage total individual dues, track payment history, and distribute lump-sum payments across all tickets.">
+      <TableCard title="Collection Ledger (Person-Centric)" subtitle="Manage total individual dues tracked across multiple tickets.">
         <Table>
-          <thead>
-            <Tr>
-              <Th>Person / Active Tickets</Th>
-              <Th className="hidden md:table-cell">Last Activity</Th>
-              <Th className="hidden sm:table-cell">Account Status</Th>
-              <Th right>Total Balance</Th>
-              {dateRange.start && dateRange.end && <Th right>Paid in Range</Th>}
-              <Th right>Action</Th>
-            </Tr>
-          </thead>
+          <thead><Tr>
+            <Th>Person / Active Tickets</Th>
+            <Th className="hidden md:table-cell">Last Activity</Th>
+            <Th className="hidden sm:table-cell">Account Status</Th>
+            <Th right>Total Balance</Th>
+            <Th right>Action</Th>
+          </Tr></thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <Tr><Td colSpan={5}><Empty text="No matching persons found." /></Td></Tr>
-            ) : filtered.map(s => (
+            {filtered.length === 0 ? <Tr><Td colSpan={5}><Empty text="No matching persons found." /></Td></Tr> : filtered.map(s => (
               <Tr key={s.person.id}>
                 <Td>
-                  <div className="font-bold text-base">{s.person.name}</div>
+                  <div className="font-bold text-base cursor-pointer hover:text-[var(--accent)]" onClick={() => router.push(`/members/${s.person.id}`)}>{s.person.name}</div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {s.memberships.map(m => (
                       <Badge key={m.member.id} variant="gray" className="text-[9px] lowercase opacity-70">
-                        {m.group.name} (#{m.member.ticket_no})
+                        {getGroupDisplayName(m.group, t)} (#{m.member.ticket_no})
                       </Badge>
                     ))}
                   </div>
                 </Td>
-                <Td className="hidden md:table-cell">
-                   {s.lastPaymentDate ? (
-                     <div className="text-xs">
-                        {fmtDate(s.lastPaymentDate)}
-                        <div className="text-[10px] opacity-40">Latest payment</div>
-                     </div>
-                   ) : <span className="text-xs opacity-30">—</span>}
-                </Td>
+                <Td className="hidden md:table-cell text-xs">{s.lastPaymentDate ? fmtDate(s.lastPaymentDate) : '—'}</Td>
                 <Td className="hidden sm:table-cell">
-                  {s.overallTotalBalance <= 0.01 ? (
-                    <Badge variant="success">Clear Account</Badge>
-                  ) : (
-                    <Badge variant="danger">{s.memberships.filter(m => m.totalBalance > 0).length} Tickets Pending</Badge>
-                  )}
+                  <Badge variant={s.overallTotalBalance <= 0.01 ? "success" : "danger"}>
+                    {s.overallTotalBalance <= 0.01 ? "Clear Account" : `${s.memberships.filter(m => m.status.balance > 0).length} Tickets Pending`}
+                  </Badge>
                 </Td>
-                <Td right>
-                   <div className={cn("font-bold font-mono text-base", s.overallTotalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                      {fmt(s.overallTotalBalance)}
-                   </div>
+                <Td right className={cn("font-bold font-mono text-base", s.overallTotalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                  {fmt(s.overallTotalBalance)}
                 </Td>
-                {dateRange.start && dateRange.end && (
-                   <Td right>
-                      <div className="font-mono font-bold text-[var(--success)]">
-                        {(() => {
-                           const collected = payments.filter(p => 
-                             s.memberships.some(ms => ms.member.id === p.member_id) && 
-                             p.payment_date! >= dateRange.start && 
-                             p.payment_date! <= dateRange.end
-                           ).reduce((sum, p) => sum + Number(p.amount), 0);
-                           return fmt(collected);
-                        })()}
-                      </div>
-                   </Td>
-                 )}
-                <Td right>
-                  <div className="flex gap-1 justify-end">
-                    <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
-                    <Btn size="sm" variant="primary" icon={CreditCard} id="tour-pay-add" onClick={() => {
-                        setPayForm({ amount: String(s.overallTotalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
-                        setPayModal(s);
-                    }}>Collect</Btn>
-                  </div>
-                </Td>
+                <Td right><div className="flex gap-1 justify-end">
+                  <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
+                  <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => {
+                    setPayForm({ amount: String(s.overallTotalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
+                    setPayModal(s);
+                  }}>Collect</Btn>
+                </div></Td>
               </Tr>
             ))}
           </tbody>
@@ -523,136 +351,48 @@ function PaymentsPageContent() {
         <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record Consolidated Payment" size="lg">
           <div className="space-y-6">
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--surface2)]">
-              <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">
-                {payModal.person.name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <div className="font-bold text-lg">{payModal.person.name}</div>
-                <div className="text-xs opacity-50 font-mono tracking-tight">
-                  {payModal.person.phone} · {payModal.memberships.length} active tickets
-                </div>
-              </div>
+              <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{payModal.person.name.charAt(0)}</div>
+              <div className="flex-1"><div className="font-bold text-lg">{payModal.person.name}</div><div className="text-xs opacity-50">{payModal.person.phone}</div></div>
               <div className="text-right">
-                 <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
-                   {payModal.memberships.some(m => m.group.auction_scheme === 'ACCUMULATION') ? 'To Collect (Contr.)' : 'To Collect (Due)'}
-                 </div>
+                 <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">To Collect</div>
                  <div className="text-xl font-black text-[var(--danger)]">{fmt(payModal.overallTotalBalance)}</div>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
-                 <div className="text-xs font-bold uppercase opacity-40">
-                    {payModal.memberships.some(m => m.group.auction_scheme === 'ACCUMULATION') ? 'Pending Contributions' : 'Outstanding Dues'}
-                 </div>
-                 <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                    <input type="checkbox" checked={payForm.isManual} onChange={e => setPayForm(f => ({ ...f, isManual: e.target.checked }))} />
-                    <span className="font-bold">Manual Allocation</span>
-                 </label>
+                 <div className="text-xs font-bold uppercase opacity-40">Allocated Dues</div>
+                 <label className="flex items-center gap-2 text-xs cursor-pointer select-none"><input type="checkbox" checked={payForm.isManual} onChange={e => setPayForm(f => ({ ...f, isManual: e.target.checked }))} /><span className="font-bold">Manual Allocation</span></label>
               </div>
               <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl border p-2" style={{ borderColor: 'var(--border)' }}>
-                {payModal.memberships.flatMap(ms => {
-                  // Pre-calculate running balances for highlighting
-                  const allDues = payModal.memberships.flatMap(m => m.dues.map(d => ({ ...d, memberId: m.member.id })))
-                    .sort((a, b) => a.month - b.month);
-                  
-                  let runningValue = Number(payForm.amount);
-                  const coveredMap = new Map<string, boolean>();
-                  for (const d of allDues) {
-                    if (runningValue >= d.balance - 0.01) {
-                      coveredMap.set(`${d.memberId}-${d.month}`, true);
-                      runningValue -= d.balance;
-                    } else break;
-                  }
-
-                  return ms.dues.filter(d => d.balance > 0.01).map(d => {
-                    const key = `${ms.member.id}-${d.month}`;
-                    const isCovered = coveredMap.get(key) && !payForm.isManual;
-
-                    return (
-                      <div key={key} className={cn(
-                        "flex items-center justify-between p-2.5 rounded-lg text-xs border transition-all",
-                        isCovered ? "bg-[var(--success-dim)] border-[var(--success)] shadow-sm" : "bg-[var(--surface2)] border-transparent"
-                      )}>
-                        <div className="flex-1">
-                           <div className="font-bold flex items-center gap-2">
-                             {ms.group.name} · {fmtMonth(d.month, ms.group.start_date)}
-                             {isCovered && <Badge variant="success" className="text-[8px] px-1 py-0 h-4">Covered</Badge>}
-                           </div>
-                           <div className="text-[9px] opacity-40">Ticket #{ms.member.ticket_no}</div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right min-w-[80px]">
-                             <div className={cn("font-bold", isCovered ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-                               {fmt(d.balance)}
-                             </div>
-                             <div className="text-[9px] opacity-40 font-mono">Bal: {fmt(d.amountDue)}</div>
-                          </div>
-                          {payForm.isManual ? (
-                            <div className="w-24">
-                               <input 
-                                 className={inputClass} 
-                                 style={{ ...inputStyle, padding: '4px 8px', fontSize: '11px' }} 
-                                 type="number"
-                                 placeholder="Amt"
-                                 value={payForm.manualAllocations[key] || ''}
-                                 onChange={e => {
-                                   const val = e.target.value;
-                                   setPayForm(f => {
-                                     const next = { ...f.manualAllocations, [key]: val };
-                                     const newTotal = Object.values(next).reduce((s, v) => s + Number(v || 0), 0);
-                                     return { ...f, manualAllocations: next, amount: String(newTotal) };
-                                   });
-                                 }}
-                               />
-                            </div>
-                          ) : (
-                            <Btn size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => {
-                              setPayForm(f => ({ ...f, amount: String(d.balance) }));
-                            }}>Set</Btn>
-                          )}
-                        </div>
+                {payModal.memberships.flatMap(ms => ms.status.streak.filter(d => (d.status === 'danger' || (ms.group.auction_scheme === 'DIVIDEND' && d.status === 'info'))).map(d => {
+                  const key = `${ms.member.id}-${d.month}`;
+                  const bal = Math.max(0, d.due - d.paid);
+                  return (
+                    <div key={key} className="flex items-center justify-between p-2.5 rounded-lg text-xs bg-[var(--surface2)]">
+                      <div><div className="font-bold">{getGroupDisplayName(ms.group, t)} · {fmtMonth(d.month, ms.group.start_date)}</div><div className="text-[9px] opacity-40">Ticket #{ms.member.ticket_no}</div></div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right min-w-[80px]"><div className="font-bold text-[var(--danger)]">{fmt(bal)}</div><div className="text-[9px] opacity-40 font-mono">DUE: {fmt(d.due)}</div></div>
+                        {payForm.isManual && <input className={cn(inputClass, "w-20")} style={{ ...inputStyle, padding: '4px' }} type="number" value={payForm.manualAllocations[key] || ''} onChange={e => {
+                          const next = { ...payForm.manualAllocations, [key]: e.target.value };
+                          const total = Object.values(next).reduce((s, v) => s + Number(v || 0), 0);
+                          setPayForm(f => ({ ...f, manualAllocations: next, amount: String(total) }));
+                        }} />}
                       </div>
-                    );
-                  });
-                })}
+                    </div>
+                  )
+                }))}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-6" style={{ borderColor: 'var(--border)' }}>
-              <div className="space-y-4">
-                <Field label="Total Amount Received">
-                  <input className={inputClass} style={inputStyle} type="number" 
-                    readOnly={payForm.isManual}
-                    value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} />
-                  <p className="text-[10px] opacity-40 italic mt-1">
-                    {payForm.isManual ? "* This is the sum of manual allocations defined above." : "* Amount will be automatically distributed starting from oldest dues."}
-                  </p>
-                </Field>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Payment Date">
-                    <input className={inputClass} style={inputStyle} type="date" 
-                      value={payForm.date} onChange={e => setPayForm(f => ({...f, date: e.target.value}))} />
-                  </Field>
-                  <Field label="Mode">
-                    <select className={inputClass} style={inputStyle} 
-                      value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}>
-                      <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option>
-                    </select>
-                  </Field>
-                </div>
+              <Field label="Total Amount Received"><input className={inputClass} style={inputStyle} type="number" readOnly={payForm.isManual} value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Payment Date"><input className={inputClass} style={inputStyle} type="date" value={payForm.date} onChange={e => setPayForm(f => ({...f, date: e.target.value}))} /></Field>
+                <Field label="Mode"><select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value})) as any}><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option></select></Field>
               </div>
-              <Field label="Note / Remarks">
-                <textarea className={cn(inputClass, "h-full min-h-[120px] text-xs resize-none")} style={inputStyle} 
-                  placeholder="e.g. Received total cash at home for all tickets" 
-                  value={payForm.note} onChange={e => setPayForm(f => ({...f, note: e.target.value}))} />
-              </Field>
             </div>
-
-            <div className="flex justify-end gap-3 mt-4">
-              <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-              <Btn variant="primary" loading={saving} onClick={handlePay}>Confirm & Distribute Payment</Btn>
-            </div>
+            <div className="flex justify-end gap-3 mt-4"><Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn><Btn variant="primary" loading={saving} onClick={handlePay}>Confirm Payment</Btn></div>
           </div>
         </Modal>
       )}
@@ -661,75 +401,40 @@ function PaymentsPageContent() {
         <Modal open={!!historyModal} onClose={() => { setHistoryModal(null); setSelectedPaymentIds(new Set()) }} title="Consolidated Personal Ledger" size="lg">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-               <div>
-                  <div className="font-bold text-xl">{historyModal.person.name}</div>
-                  <div className="text-xs opacity-50">Combined History for {historyModal.memberships.length} tickets</div>
-               </div>
-               {selectedPaymentIds.size > 0 && (
-                  <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkDeletePayments}>Delete ({selectedPaymentIds.size})</Btn>
-               )}
+               <div><div className="font-bold text-xl">{historyModal.person.name}</div><div className="text-xs opacity-50">Combined History</div></div>
+               {selectedPaymentIds.size > 0 && <Btn variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>Delete ({selectedPaymentIds.size})</Btn>}
             </div>
             <div className="max-h-[50vh] overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
               <Table>
-                <thead>
-                  <Tr>
-                    <Th className="w-10">
-                       <input type="checkbox" 
-                          checked={selectedPaymentIds.size === payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).length && selectedPaymentIds.size > 0} 
-                          onChange={() => {
-                             const pIds = payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).map(p => Number(p.id))
-                             toggleAllPayments(pIds)
-                          }} />
-                    </Th>
-                    <Th>Date</Th>
-                    <Th>Target Ticket/Month</Th>
-                    <Th>Mode</Th>
-                    <Th right>Amount</Th>
-                    {can('deletePayment') && <Th right className="w-10">{""}</Th>}
-                  </Tr>
-                </thead>
+                <thead><Tr><Th className="w-10"><input type="checkbox" checked={selectedPaymentIds.size > 0} onChange={() => {
+                  const ids = payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).map(p => p.id);
+                  if (selectedPaymentIds.size === ids.length) setSelectedPaymentIds(new Set()); else setSelectedPaymentIds(new Set(ids));
+                }} /></Th><Th>Date</Th><Th>Ticket/Month</Th><Th right>Amount</Th><Th right></Th></Tr></thead>
                 <tbody>
                   {payments.filter(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)).map(p => {
-                    const group = groups.find(g => g.id === p.group_id);
-                    const isSelected = selectedPaymentIds.has(Number(p.id))
+                    const g = groups.find(x => x.id === p.group_id);
+                    const isS = selectedPaymentIds.has(p.id);
                     return (
-                      <Tr key={p.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "")}>
-                        <Td><input type="checkbox" checked={isSelected} onChange={() => togglePaymentSelect(Number(p.id))} /></Td>
-                        <Td onClick={() => togglePaymentSelect(Number(p.id))}>{fmtDate(p.payment_date)}</Td>
-                        <Td onClick={() => togglePaymentSelect(Number(p.id))} className="text-xs">
-                           <div className="font-bold">{group?.name}</div>
-                           <div className="opacity-50 text-[10px]">{fmtMonth(p.month, group?.start_date)}</div>
-                        </Td>
-                        <Td onClick={() => togglePaymentSelect(Number(p.id))}><Badge variant="gray" className="text-[8px] uppercase">{p.mode}</Badge></Td>
-                        <Td right className="font-bold text-[var(--success)]" onClick={() => togglePaymentSelect(Number(p.id))}>{fmt(p.amount)}</Td>
-                        {can('deletePayment') && (
-                          <Td right>
-                            <button 
-                              onClick={() => handleDeletePayment(Number(p.id))} 
-                              className="p-1.5 hover:bg-[var(--danger-dim)] text-[var(--danger)] rounded-md transition-colors opacity-70 hover:opacity-100"
-                              title="Delete Payment"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </Td>
-                        )}
+                      <Tr key={p.id} className={cn(isS ? "bg-[var(--accent-dim)]" : "")}>
+                        <Td><input type="checkbox" checked={isS} onChange={() => {
+                          const next = new Set(selectedPaymentIds); if (next.has(p.id)) next.delete(p.id); else next.add(p.id); setSelectedPaymentIds(next);
+                        }} /></Td>
+                        <Td>{fmtDate(p.payment_date)}</Td>
+                        <Td className="text-xs"><div className="font-bold">{g ? getGroupDisplayName(g, t) : '—'}</div><div className="opacity-50">{fmtMonth(p.month, g?.start_date)}</div></Td>
+                        <Td right className="font-bold text-[var(--success)]">{fmt(p.amount)}</Td>
+                        <Td right>{can('deletePayment') && <button onClick={() => handleDeletePayment(p.id)} className="text-[var(--danger)] opacity-50 hover:opacity-100"><Trash2 size={14}/></button>}</Td>
                       </Tr>
-                    );
+                    )
                   })}
-                  {!payments.some(p => historyModal.memberships.some(ms => ms.member.id === p.member_id)) && (
-                    <Tr><Td colSpan={4} className="text-center py-10 opacity-30">No payments recorded yet.</Td></Tr>
-                  )}
                 </tbody>
               </Table>
             </div>
-            <div className="flex justify-end pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-              <Btn variant="secondary" onClick={() => setHistoryModal(null)}>Close</Btn>
-            </div>
+            <div className="flex justify-end pt-4 border-t" style={{ borderColor: 'var(--border)' }}><Btn variant="secondary" onClick={() => setHistoryModal(null)}>Close</Btn></div>
           </div>
         </Modal>
       )}
 
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>
   )
 }

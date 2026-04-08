@@ -49,6 +49,7 @@ export default function SettingsPage() {
   const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
   const [font, setFont] = useState(firm?.font || 'Noto Sans')
   const [regToken, setRegToken] = useState(firm?.register_token || '')
+  const [enabledSchemes, setEnabledSchemes] = useState<string[]>(firm?.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
 
   const [stats, setStats] = useState({ groupCount: 0, memberCount: 0 })
 
@@ -78,6 +79,7 @@ export default function SettingsPage() {
       setColorProfile(firm.color_profile || 'indigo')
       setFont(firm.font || 'Noto Sans')
       setRegToken(firm.register_token || '')
+      setEnabledSchemes(firm.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
     }
   }, [firm, supabase])
 
@@ -107,6 +109,7 @@ export default function SettingsPage() {
       phone: phone.trim() || null,
       color_profile: colorProfile,
       font,
+      enabled_schemes: enabledSchemes,
     }).eq('id', firm.id)
     setSaving(false)
     if (error) { show(error.message, 'error'); return }
@@ -180,6 +183,77 @@ export default function SettingsPage() {
             <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
               <Btn variant="primary" loading={saving} onClick={saveBranding}>
                 Save Changes
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Business Model & Schemes (Owner Only) ────────────────────── */}
+      {isOwner && (
+        <Card className="overflow-hidden">
+          <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+            <ShieldCheck size={15} /> Business Models & Auction Schemes
+          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-xs opacity-60 mb-2">
+              Select which auction models your firm supports. This will customize your terminology and available options globally.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Accumulation Model */}
+              <button 
+                onClick={() => {
+                  const val = enabledSchemes.includes('ACCUMULATION') 
+                    ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'ACCUMULATION') : enabledSchemes)
+                    : [...enabledSchemes, 'ACCUMULATION']
+                  setEnabledSchemes(val)
+                }}
+                className="p-4 rounded-2xl border text-left transition-all"
+                style={{ 
+                  borderColor: enabledSchemes.includes('ACCUMULATION') ? 'var(--info)' : 'var(--border)',
+                  background: enabledSchemes.includes('ACCUMULATION') ? 'var(--info-dim)' : 'transparent'
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                   <div className="w-8 h-8 rounded-lg bg-[var(--info)] text-white flex items-center justify-center font-black">S</div>
+                   {enabledSchemes.includes('ACCUMULATION') && <Badge variant="info">Active</Badge>}
+                </div>
+                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Surplus Model (Accumulation)</div>
+                <p className="text-[10px] mt-1 opacity-60">
+                   Member savings are collected in a pool. Fixed prize money is paid to the winner. Best for long-term saving groups.
+                </p>
+              </button>
+
+              {/* Dividend Model */}
+              <button 
+                onClick={() => {
+                  const val = enabledSchemes.includes('DIVIDEND') 
+                    ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'DIVIDEND') : enabledSchemes)
+                    : [...enabledSchemes, 'DIVIDEND']
+                  setEnabledSchemes(val)
+                }}
+                className="p-4 rounded-2xl border text-left transition-all"
+                style={{ 
+                  borderColor: enabledSchemes.includes('DIVIDEND') ? 'var(--accent)' : 'var(--border)',
+                  background: enabledSchemes.includes('DIVIDEND') ? 'var(--accent-dim)' : 'transparent'
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                   <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-black">D</div>
+                   {enabledSchemes.includes('DIVIDEND') && <Badge variant="accent">Active</Badge>}
+                </div>
+                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Dividend Model (Conventional)</div>
+                <p className="text-[10px] mt-1 opacity-60">
+                   Auction discounts are distributed back to members each month. Installments vary. Standard chit fund approach.
+                </p>
+              </button>
+            </div>
+            
+            <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <Btn variant="primary" loading={saving} onClick={saveBranding}>
+                Update Business Models
               </Btn>
             </div>
           </div>

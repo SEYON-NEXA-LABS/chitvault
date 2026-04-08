@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn, getGroupDisplayName } from '@/lib/utils'
+import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+
 import {
   TableCard, Table, Th, Td, Tr,
   Loading, Empty, Badge, StatCard, Btn, Modal, Field, Toast
@@ -11,7 +14,6 @@ import {
 import { downloadCSV } from '@/lib/utils/csv'
 import { useToast } from '@/lib/hooks/useToast'
 import { Printer, Phone, MapPin, Search, FileSpreadsheet, ShieldAlert, AlertTriangle, AlertCircle, MessageSquare, ExternalLink, CreditCard } from 'lucide-react'
-import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
 
@@ -75,24 +77,19 @@ export default function CollectionPage() {
       const g = groups.find(x => x.id === m.group_id);
       if (!g) return null;
 
-      const gAucs = auctions.filter(a => a.group_id === g.id);
-      const gPays = payments.filter(p => p.member_id === m.id && p.group_id === g.id);
-      const currentMonth = Math.min(g.duration, gAucs.length + 1);
+      const fStatus = getMemberFinancialStatus(m, g, auctions, payments);
+      const totalBalance = fStatus.balance;
+      const overdueMonthsCount = fStatus.missedCount;
       
-      const mDues: MemberDue[] = [];
-      for (let month = 1; month <= currentMonth; month++) {
-        const prevMonthAuc = gAucs.find(a => a.month === month - 1);
-        const dividend = prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0;
-        const amountDue = Number(g.monthly_contribution) - dividend;
-        const amountPaid = gPays.filter(p => p.month === month).reduce((s, p) => s + Number(p.amount), 0);
-        const balance = Math.max(0, amountDue - amountPaid);
-        if (balance > 0.01) {
-          mDues.push({ group: g, month, amountDue, amountPaid, balance, isAuctioned: !!gAucs.find(a => a.month === month) });
-        }
-      }
+      const mDues = fStatus.streak.filter(d => d.status === 'danger' || (g.auction_scheme === 'DIVIDEND' && d.status === 'info'))
+        .map(d => ({ ...d, group: g, isAuctioned: d.status === 'danger' }));
 
-      const totalBalance = mDues.reduce((s, d) => s + d.balance, 0);
-      return totalBalance > 0.01 ? { member: m, person: m.persons, group: g, dues: mDues, totalBalance, overdueCount: mDues.length } : null;
+      return totalBalance > 0.01 ? { 
+        member: m, person: m.persons, group: g, dues: mDues, 
+        totalBalance, 
+        overdueCount: overdueMonthsCount,
+        isOverdue: overdueMonthsCount > 0
+      } : null;
     }).filter(Boolean) as any[];
 
     // 2. Group by Person
@@ -147,9 +144,10 @@ export default function CollectionPage() {
 
     for (const due of allDues) {
       if (remaining <= 0) break;
-      if (due.balance <= 0) continue;
+      const bal = due.due - due.paid;
+      if (bal <= 0.01) continue;
 
-      const toPay = Math.min(remaining, due.balance);
+      const toPay = Math.min(remaining, bal);
       remaining -= toPay;
 
       finalPayments.push({
@@ -158,12 +156,12 @@ export default function CollectionPage() {
         group_id: due.group.id,
         month: due.month,
         amount: toPay,
-        status: (due.amountPaid + toPay) >= due.amountDue ? 'paid' : 'partial',
-        amount_due: due.amountDue,
-        balance_due: Math.max(0, due.amountDue - due.amountPaid - toPay),
+        status: (due.paid + toPay) >= (due.due - 0.01) ? 'paid' : 'partial',
+        amount_due: due.due,
+        balance_due: Math.max(0, due.due - due.paid - toPay),
         payment_date: payForm.date,
         mode: payForm.mode,
-        payment_type: (due.amountPaid + toPay) >= due.amountDue ? 'full' : 'partial',
+        payment_type: (due.paid + toPay) >= (due.due - 0.01) ? 'full' : 'partial',
         collected_by: profile?.id || null,
         note: payForm.note
       });
@@ -233,7 +231,7 @@ export default function CollectionPage() {
                  <div className="space-y-2 mb-6">
                     {(x as any).memberships.map((m: any) => (
                        <div key={m.member.id} className="flex justify-between items-center text-xs bg-[var(--surface2)] px-3 py-2 rounded-xl">
-                          <span className="opacity-60">{m.group.name} (#{m.member.ticket_no})</span>
+                          <span className="opacity-60">{getGroupDisplayName(m.group, t)} (#{m.member.ticket_no})</span>
                           <span className="font-bold">{fmt(m.totalBalance)}</span>
                        </div>
                     ))}

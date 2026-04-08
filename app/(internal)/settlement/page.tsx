@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useFirm } from "@/lib/firm/context"
 import { useI18n } from "@/lib/i18n/context"
 import { useToast } from "@/lib/hooks/useToast"
+import { useTerminology } from "@/lib/hooks/useTerminology"
 import { logActivity } from "@/lib/utils/logger"
 import { withFirmScope } from "@/lib/supabase/firmQuery"
 import { inputClass, inputStyle } from "@/components/ui"
@@ -30,6 +31,7 @@ function SettlementPage() {
   const { show } = useToast()
   const { t } = useI18n()
   const { firm, role, can } = useFirm()
+  const term = useTerminology(firm)
   
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -270,7 +272,7 @@ function SettlementPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Calculator size={24} style={{ color: 'var(--accent)' }} />
-            {t('settlement_title')}
+            {term.settlementLabel}
           </h1>
           <p className="text-sm opacity-60">Final prize money calculation and payoff registry based on group duration and historical averages.</p>
         </div>
@@ -355,7 +357,7 @@ function SettlementPage() {
                       <Th>{t('date')}</Th>
                       <Th>{t('member_group')}</Th>
                       <Th right>{t('amount')}</Th>
-                      <Th right>{t('settlement_payout')}</Th>
+                      <Th right>{term.payoutLabel}</Th>
                       <Th className="text-center w-10">{t('action')}</Th>
                    </tr>
                 </thead>
@@ -507,7 +509,7 @@ function SettlementPage() {
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className="px-2 py-1 rounded bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-widest">
-                    {t('settlement_payout')}
+                    {term.payoutLabel}
                   </div>
                   <div className="text-[10px] opacity-40 font-bold uppercase">{targetMonths - 1} Months</div>
                 </div>

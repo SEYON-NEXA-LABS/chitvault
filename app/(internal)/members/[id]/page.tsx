@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, cn } from '@/lib/utils'
+import { fmt, fmtDate, cn, getGroupDisplayName } from '@/lib/utils'
 import {
   Card, TableCard, Loading, Badge, StatCard, Btn,
   Modal, Field, Toast, Empty, Table, Th, Td, Tr, Chip
@@ -12,12 +12,10 @@ import {
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useI18n } from '@/lib/i18n/context'
-import {
-  User, Phone, MapPin, ArrowLeft, History,
-  CreditCard, ExternalLink, Edit, Trash2, ShieldCheck,
-  TrendingUp, Wallet, Receipt
-} from 'lucide-react'
+import { useTerminology } from '@/lib/hooks/useTerminology'
+import { User, Phone, MapPin, ArrowLeft, History, CreditCard, ExternalLink, Edit, Trash2, ShieldCheck, TrendingUp, Wallet, Receipt } from 'lucide-react'
 import type { Group, Member, Auction, Payment, Person, Profile } from '@/types'
+import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 
 export default function MemberDetailPage() {
   const params = useParams()
@@ -25,6 +23,7 @@ export default function MemberDetailPage() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, can } = useFirm()
   const { t } = useI18n()
+  const term = useTerminology(firm)
   const { toast, show: showToast, hide: hideToast } = useToast()
 
   const personId = Number(params.id)
@@ -86,27 +85,26 @@ export default function MemberDetailPage() {
   useEffect(() => { load(true) }, [load])
 
   const stats = useMemo(() => {
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0)
-
+    let totalPaid = 0
     let totalBalance = 0
+    let missedCount = 0
+    let totalDividends = 0
+
     tickets.forEach(m => {
       const group = allGroups.find(g => g.id === m.group_id)
       if (!group || group.status === 'archived') return
 
       const gAucs = auctions.filter(a => a.group_id === group.id)
-      const mPays = payments.filter(pay => pay.member_id === m.id)
-      const currentMonth = Math.min(group.duration, gAucs.length + 1)
-
-      for (let month = 1; month <= currentMonth; month++) {
-        const auc = gAucs.find(a => a.month === month)
-        const dividend = auc ? Number(auc.dividend || 0) : 0
-        const amountDue = Number(group.monthly_contribution) - dividend
-        const amountPaid = mPays.filter(pay => pay.month === month).reduce((s, p) => s + Number(p.amount), 0)
-        totalBalance += Math.max(0, amountDue - amountPaid)
-      }
+      const gPays = payments.filter(p => p.group_id === group.id)
+      
+      const financial = getMemberFinancialStatus(m, group, gAucs, gPays)
+      totalPaid += financial.totalPaid
+      totalBalance += financial.balance
+      missedCount += financial.missedCount
+      totalDividends += financial.dividends
     })
 
-    return { totalPaid, totalBalance, activeCount: tickets.length }
+    return { totalPaid, totalBalance, missedCount, totalDividends, activeCount: tickets.length }
   }, [payments, tickets, allGroups, auctions])
 
   async function handleUpdatePerson() {
@@ -199,10 +197,14 @@ export default function MemberDetailPage() {
             <div className="text-2xl font-black text-[var(--success)]">{fmt(stats.totalPaid)}</div>
           </div>
           <div className="p-5 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-sm flex flex-col justify-center">
-            <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Total Outstanding</div>
-            <div className={cn("text-2xl font-black", stats.totalBalance > 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1 leading-tight">Total Outstanding</div>
+            <div className={cn("text-2xl font-black", stats.missedCount > 0 ? "text-[var(--danger)]" : stats.totalBalance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>
               {fmt(stats.totalBalance)}
             </div>
+          </div>
+          <div className="p-5 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-sm flex flex-col justify-center">
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1 leading-tight">{term.memberBenefitLabel}</div>
+            <div className="text-2xl font-black text-[var(--accent)]">{fmt(stats.totalDividends)}</div>
           </div>
           <div className="col-span-2 p-5 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-lg flex items-center justify-between">
             <div>
@@ -230,21 +232,42 @@ export default function MemberDetailPage() {
               <Card className="p-5 border-2 hover:border-[var(--accent)] transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-black text-lg group-hover:text-[var(--accent)] transition-colors">{g.name}</h3>
+                    <h3 className="font-black text-lg group-hover:text-[var(--accent)] transition-colors">{getGroupDisplayName(g, t)}</h3>
                     <div className="text-[10px] opacity-40 font-bold uppercase tracking-tighter">
                       Ticket #{m.ticket_no} · Value {fmt(g.chit_value)}
                     </div>
                   </div>
                   <Badge variant={m.status === 'foreman' ? 'info' : 'success'}>{m.status}</Badge>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-6">
+                
+                {/* Streak Visualization */}
+                <div className="mb-4">
+                  <div className="text-[8px] font-bold uppercase tracking-widest opacity-30 mb-1">Payment Streak</div>
+                  <div className="flex flex-wrap gap-1">
+                    {(() => {
+                      const f = getMemberFinancialStatus(m, g, auctions, payments)
+                      return f.streak.map(s => (
+                        <div key={s.month} 
+                          title={`Month ${s.month}: ${s.status}`}
+                          className="w-2.5 h-2.5 rounded-[2px] transition-transform hover:scale-125" 
+                          style={{ background: `var(--${s.status})` }} 
+                        />
+                      ))
+                    })()}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-2">
                   <div className="p-3 bg-[var(--surface2)] rounded-2xl flex flex-col items-center justify-center">
                     <span className="text-[9px] opacity-40 uppercase font-black">Status</span>
                     <span className="text-xs font-bold">{isWinner ? 'Winner (Won)' : 'Active (Paying)'}</span>
                   </div>
                   <div className="p-3 bg-[var(--surface2)] rounded-2xl flex flex-col items-center justify-center">
-                    <span className="text-[9px] opacity-40 uppercase font-black">Duration</span>
-                    <span className="text-xs font-bold">{g.duration} Months</span>
+                    <span className="text-[9px] opacity-40 uppercase font-black">Outstanding</span>
+                    {(() => {
+                      const f = getMemberFinancialStatus(m, g, auctions, payments)
+                      return <span className={cn("text-xs font-bold", f.missedCount > 0 ? "text-[var(--danger)]" : f.balance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>{fmt(f.balance)}</span>
+                    })()}
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 text-[10px] font-bold opacity-30 group-hover:opacity-100 transition-opacity">
@@ -299,7 +322,7 @@ export default function MemberDetailPage() {
                     <Td>
                       <div className="font-bold text-xs">{g?.name || 'Unknown'}</div>
                       <div className="text-[10px] opacity-40">
-                        {g?.auction_scheme === 'ACCUMULATION' ? 'Ticket Contribution' : 'Amount Due'}
+                        {g?.auction_scheme === 'ACCUMULATION' ? t('monthly_contribution') : t('amount_due')}
                       </div>
                     </Td>
                     <Td><Badge variant="gray">Month {p.month}</Badge></Td>
