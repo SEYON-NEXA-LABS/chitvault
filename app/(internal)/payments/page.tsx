@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -389,7 +389,9 @@ function PaymentsPageContent() {
               <Field label="Total Amount Received"><input className={inputClass} style={inputStyle} type="number" readOnly={payForm.isManual} value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} /></Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Payment Date"><input className={inputClass} style={inputStyle} type="date" value={payForm.date} onChange={e => setPayForm(f => ({...f, date: e.target.value}))} /></Field>
-                <Field label="Mode"><select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value})) as any}><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option></select></Field>
+                <Field label="Payment Mode">
+                  <input className={inputClass} style={inputStyle} readOnly value="Cash" />
+                </Field>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4"><Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn><Btn variant="primary" loading={saving} onClick={handlePay}>Confirm Payment</Btn></div>

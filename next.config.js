@@ -58,7 +58,7 @@ const withPWA = require('next-pwa')({
       urlPattern: /\.(?:js|css)$/,
       handler: 'StaleWhileRevalidate',
       options: {
-        cacheName: 'static-assets',
+        cacheName: `static-assets-${commitId}`,
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days

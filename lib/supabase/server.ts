@@ -38,3 +38,18 @@ export const createClient = (cookieStore?: Awaited<ReturnType<typeof cookies>>) 
     },
   );
 };
+
+// Admin Client: High-privilege client using Service Role Key
+// ONLY USE IN SERVER COMPONENTS / ACTIONS WITH SUPERADMIN CHECKS
+export const createAdminClient = () => {
+  return createServerClient(
+    supabaseUrl!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() { return [] },
+        setAll() { },
+      },
+    }
+  );
+};
