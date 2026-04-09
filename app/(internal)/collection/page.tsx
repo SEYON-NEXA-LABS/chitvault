@@ -174,6 +174,7 @@ export default function CollectionPage() {
     else { 
       show(`Collected ₹${amount}! Distribution handled.`); 
       setPayModal(null); 
+      router.refresh();
       load(); 
     }
     setSaving(false);

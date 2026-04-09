@@ -128,21 +128,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.deferredPrompt = e;
           });
 
+          // Production-Safe Service Worker Update Hook
           if ('serviceWorker' in navigator) {
-            if (${process.env.NODE_ENV === 'production' ? 'true' : 'false'}) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js');
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.ready.then(function(registration) {
+                registration.update();
+              }).catch(function(err) {
+                console.warn('SW Update failed:', err);
               });
-            } else {
-              navigator.serviceWorker.getRegistrations().then(function(regs) {
-                for(var i = 0; i < regs.length; i++) regs[i].unregister();
-              });
-              if ('caches' in window) {
-                caches.keys().then(function(names) {
-                  for (var i = 0; i < names.length; i++) caches.delete(names[i]);
-                });
-              }
-            }
+            });
           }
         `}} />
       </body>

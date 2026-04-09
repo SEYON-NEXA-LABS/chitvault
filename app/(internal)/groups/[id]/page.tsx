@@ -9,7 +9,7 @@ import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Fie
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History, AlertTriangle, ExternalLink } from 'lucide-react'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useTerminology } from '@/lib/hooks/useTerminology'
 import Link from 'next/link'
@@ -47,17 +47,14 @@ export default function GroupLedgerPage() {
   const [settling, setSettling] = useState<Auction | null>(null)
   const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '', mode: 'Cash' })
   const [payoutOpen, setPayoutOpen] = useState(false)
-  const [rulesOpen, setRulesOpen] = useState(false)
-  const [rulesForm, setRulesForm] = useState({ 
-    name: '', start_date: '',
-    min_bid_pct: '', max_bid_pct: '', 
-    commission_type: '', commission_value: '' 
-  })
 
   const load = useCallback(async (isInitial = false) => {
     // Allow superadmins to load even without a firm context
     if (!firm && role !== 'superadmin') return
     if (isInitial && !group) setLoading(true)
+    
+    // Cache buster: help force Next.js to re-evaluate
+    const timestamp = Date.now()
 
     const gQuery = supabase.from('groups').select('*').eq('id', groupId)
     const mQuery = supabase.from('members').select('*, persons(*)').eq('group_id', groupId).order('ticket_no')
@@ -246,6 +243,7 @@ export default function GroupLedgerPage() {
     else {
       showToast('Payout Marked as Settled!', 'success')
       setSettling(null)
+      router.refresh()
       load()
     }
   }
@@ -408,6 +406,11 @@ export default function GroupLedgerPage() {
           {members.length < group.num_members && (
             <Btn variant="primary" onClick={() => setAddOpen(true)} icon={UserPlus}>{t('add_member')}</Btn>
           )}
+          <Btn variant="secondary" onClick={() => { 
+            router.refresh()
+            load()
+            showToast('Data Synced! ✓', 'success')
+          }} icon={RefreshCw}>Sync</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/settlement?groupId=${groupId}`)} icon={Calculator}>{t('nav_settlements')}</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/groups/${groupId}/settings`)} icon={Settings2}>{t('nav_settings')}</Btn>
         </div>
@@ -440,21 +443,6 @@ export default function GroupLedgerPage() {
               <div className="flex-1">
                 <div className="flex justify-between items-start">
                   <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('auction_rules')}</div>
-                  {isOwner && (
-                    <button onClick={() => {
-                      setRulesForm({
-                        name: group.name,
-                        start_date: group.start_date || '',
-                        min_bid_pct: String((group.min_bid_pct || 0.05) * 100),
-                        max_bid_pct: String((group.max_bid_pct || 0.40) * 100),
-                        commission_type: group.commission_type || 'percent_of_chit',
-                        commission_value: String(group.commission_value || 5)
-                      });
-                      setRulesOpen(true);
-                    }} className="p-1 hover:bg-white/50 rounded-md transition-colors text-[var(--accent)]">
-                      <Settings2 size={14} />
-                    </button>
-                  )}
                 </div>
                 <div className="flex gap-4 mt-1">
                   <div className="text-xs">
@@ -526,6 +514,15 @@ export default function GroupLedgerPage() {
       </div>
 
       <TableCard title={t('auction_ledger')}>
+        <div className="px-6 py-3 border-b border-dashed bg-[var(--surface2)] flex items-center gap-3">
+           <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--accent-o10)]">Σ</div>
+           <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Calculation Logic</span>
+              <span className="text-xs font-mono font-bold">
+                 Benefit / Mem = ({t('auction_discount')} — {t('commission')}) ÷ {group.num_members} {t('members')}
+              </span>
+           </div>
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <thead>
@@ -534,7 +531,7 @@ export default function GroupLedgerPage() {
                 <Th>{t('winner')}</Th>
                 <Th right>{t('auction_discount')}</Th>
                 <Th right className="hidden md:table-cell">
-                  {group.auction_scheme === 'ACCUMULATION' ? t('surplus_to_pool') : t('dividend')}
+                   {group.auction_scheme === 'ACCUMULATION' ? 'Benefit / Mem' : t('dividend')}
                 </Th>
                 <Th right>{t('net_payout')}</Th>
                 <Th right className="hidden lg:table-cell text-[var(--danger)]">{t('commission')}</Th>
@@ -553,8 +550,8 @@ export default function GroupLedgerPage() {
                 const comm = commissions.find(c => c.auction_id === a.id)
                 const isAcc = group.auction_scheme === 'ACCUMULATION'
                 const monthlyDue = Number(group.monthly_contribution)
-                const dividend = isAcc ? 0 : Number(a.dividend || 0)
-                const eachPays = monthlyDue - dividend
+                const dividend = Number(a.dividend || 0)
+                const eachPays = isAcc ? monthlyDue : (monthlyDue - dividend)
                 return (
                   <Tr key={a.id}>
                     <Td>
@@ -573,7 +570,7 @@ export default function GroupLedgerPage() {
                     </Td>
                     <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</Td>
                     <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)]">
-                      {group?.auction_scheme === 'ACCUMULATION' ? `+${fmt(a.auction_discount)}` : fmt(a.dividend)}
+                      {`+${fmt(a.dividend)}`}
                     </Td>
                     <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
                     <Td right className="hidden lg:table-cell font-mono text-[var(--success)]">
@@ -581,8 +578,8 @@ export default function GroupLedgerPage() {
                     </Td>
                     <Td right className="hidden sm:table-cell font-mono font-bold">
                       {fmt(eachPays)}
-                      <div className="text-[8px] opacity-30">
-                        {group.auction_scheme === 'ACCUMULATION' ? t('monthly_contribution') : t('after_div')}
+                      <div className="text-[8px] opacity-30 mt-0.5">
+                        {group.auction_scheme === 'ACCUMULATION' ? 'Full Contribution' : t('after_div')}
                       </div>
                     </Td>
                     <Td right>
@@ -830,106 +827,9 @@ export default function GroupLedgerPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImport={handleImport}
-        title="Bulk Enroll Members"
+        title="Account Enrollment"
         requiredFields={['Name', 'Ticket No']}
       />
-
-      {rulesOpen && (
-        <Modal open={rulesOpen} onClose={() => setRulesOpen(false)} title="Edit Group Settings" size="lg">
-           <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 border-b pb-6" style={{ borderColor: 'var(--border)' }}>
-                 <Field label={t('group_name')} className="col-span-2 md:col-span-1">
-                    <input className={inputClass} style={inputStyle} 
-                       value={rulesForm.name} onChange={e => setRulesForm(f => ({ ...f, name: e.target.value }))} />
-                 </Field>
-                 <Field label={t('start_date')} className="col-span-2 md:col-span-1">
-                    <input className={inputClass} style={inputStyle} type="date"
-                       value={rulesForm.start_date} onChange={e => setRulesForm(f => ({ ...f, start_date: e.target.value }))} required />
-                 </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                 <h3 className="col-span-2 text-xs font-black uppercase tracking-widest opacity-40 mb-1 flex items-center gap-2">
-                    <Gavel size={14} /> Auction Rules & Commission
-                 </h3>
-                 <Field label="Min Discount (Floor %)">
-                    <input className={inputClass} style={inputStyle} type="number" 
-                       value={rulesForm.min_bid_pct} onChange={e => setRulesForm(f => ({ ...f, min_bid_pct: e.target.value }))} />
-                 </Field>
-                 <Field label="Max Discount (Cap %)">
-                    <input className={inputClass} style={inputStyle} type="number" 
-                       value={rulesForm.max_bid_pct} onChange={e => setRulesForm(f => ({ ...f, max_bid_pct: e.target.value }))} />
-                 </Field>
-                 <Field label="Commission Type" className="col-span-2">
-                    <select className={inputClass} style={inputStyle} value={rulesForm.commission_type} 
-                       onChange={e => setRulesForm(f => ({ ...f, commission_type: e.target.value }))}>
-                       <option value="percent_of_chit">Percent of Chit Value</option>
-                        <option value="percent_of_discount">Percent of Auction Discount</option>
-                        <option value="fixed_amount">Fixed Amount</option>
-                     </select>
-                     <div className="text-[10px] mt-1.5 opacity-60 font-medium leading-tight">
-                        {rulesForm.commission_type === 'percent_of_chit' && "Calculated from the Total Fund (Chit Value)."}
-                        {rulesForm.commission_type === 'percent_of_discount' && "Calculated from the Bid Amount (Winner's Sacrifice)."}
-                        {rulesForm.commission_type === 'fixed_amount' && "A flat fee charged every month."}
-                     </div>
-                 </Field>
-                 <Field label="Commission Value" className="col-span-2">
-                    <input className={inputClass} style={inputStyle} type="number" 
-                       value={rulesForm.commission_value} onChange={e => setRulesForm(f => ({ ...f, commission_value: e.target.value }))} />
-                     <div className="text-[10px] mt-1.5 font-bold text-[var(--accent)] flex items-center gap-1">
-                        <Info size={10} />
-                        {rulesForm.commission_type === 'percent_of_chit' && `Example: ${fmt((group?.chit_value || 0) * (+rulesForm.commission_value || 0) / 100)} / month`}
-                        {rulesForm.commission_type === 'percent_of_discount' && `Example: ₹500 at ₹50,000 bid`}
-                        {rulesForm.commission_type === 'fixed_amount' && `Flat ₹${rulesForm.commission_value || 0} per month`}
-                     </div>
-                 </Field>
-              </div>
-              <div className="p-4 rounded-2xl bg-[var(--surface2)] text-[10px] space-y-2 opacity-60">
-                 <p className="font-bold uppercase tracking-tight text-[var(--accent)]">Important Notes:</p>
-                 <p>• <strong>Min Discount (Floor)</strong> is usually your base commission (e.g., 5%). Bids lower than this will be rejected.</p>
-                 <p>• <strong>Max Discount (Cap)</strong> is to prevent members from bidding too high and losing their savings (e.g., 40%).</p>
-                 <p>• <strong>Foreman Commission</strong> is legally capped at <strong>5%</strong> of the total chit value.</p>
-                 <p>• Changes will apply to all <strong>future</strong> confirmed auctions in this group.</p>
-              </div>
-              <div className="flex justify-end gap-3 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-                 <Btn variant="secondary" onClick={() => setRulesOpen(false)}>Cancel</Btn>
-                 <Btn variant="primary" loading={saving} onClick={async () => {
-                    if (!rulesForm.name || !rulesForm.start_date) {
-                       showToast('Group name and start date are required.', 'error')
-                       return
-                    }
-                    // Standard 5% cap for foreman commission
-                    const commVal = +rulesForm.commission_value || 0
-                    if (rulesForm.commission_type === 'percent_of_chit' && commVal > 5) {
-                       showToast('Foreman commission cannot exceed 5% of the chit value', 'error')
-                       return
-                    }
-                    if (rulesForm.commission_type === 'fixed_amount' && group.chit_value && commVal > (group.chit_value * 0.05)) {
-                       showToast('Foreman commission cannot exceed 5% of the chit value (' + fmt(group.chit_value * 0.05) + ')', 'error')
-                       return
-                    }
-
-                    setSaving(true);
-                    const { error } = await supabase.from('groups').update({
-                       name: rulesForm.name,
-                       start_date: rulesForm.start_date,
-                       min_bid_pct: (+rulesForm.min_bid_pct) / 100,
-                       max_bid_pct: (+rulesForm.max_bid_pct) / 100,
-                       commission_type: rulesForm.commission_type,
-                       commission_value: +rulesForm.commission_value
-                    }).eq('id', groupId);
-                    setSaving(false);
-                    if (error) showToast(error.message, 'error');
-                    else {
-                       showToast('Settings updated!');
-                       setRulesOpen(false);
-                       load();
-                    }
-                 }}>Update Settings</Btn>
-              </div>
-           </div>
-        </Modal>
-      )}
 
       {/* Platform Roadmap / Coming Soon */}
       <div className="pt-4 opacity-70 hover:opacity-100 transition-opacity no-print">

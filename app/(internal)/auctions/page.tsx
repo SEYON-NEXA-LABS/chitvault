@@ -211,6 +211,7 @@ export default function AuctionsPage() {
           }
         );
       }
+      router.refresh()
       setAddOpen(false); load()
     }
     setSaving(false)
@@ -277,6 +278,7 @@ export default function AuctionsPage() {
           { month: auc.month, group_id: auc.group_id }
         );
       }
+      router.refresh();
       load(); 
     }
   }
