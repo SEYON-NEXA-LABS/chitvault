@@ -200,7 +200,7 @@ export default function GroupsPage() {
   }
 
   const GroupTable = ({ list, showArchBtn }: { list: Group[], showArchBtn: boolean }) => (
-    <Table>
+    <Table responsive>
       <thead>
         <tr>
           {isSuper && <Th>{t('firm')}</Th>}
@@ -220,35 +220,35 @@ export default function GroupsPage() {
           const s = groupStats(g)
           return (
             <Tr key={g.id}>
-              {isSuper && <Td><Badge variant="gray">{g.firms?.name}</Badge></Td>}
-              <Td>
+              {isSuper && <Td label="Firm"><Badge variant="gray">{g.firms?.name}</Badge></Td>}
+              <Td label="Group">
                 <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
                   {getGroupDisplayName(g, t)}
                 </Link>
               </Td>
-              <Td right>{fmt(g.chit_value)}</Td>
-              <Td className="hidden sm:table-cell">{g.num_members}</Td>
-              <Td right className="hidden md:table-cell">{fmt(g.monthly_contribution)}</Td>
-              <Td>
+              <Td label="Chit Value" right>{fmt(g.chit_value)}</Td>
+              <Td label="Members" className="hidden sm:table-cell">{g.num_members}</Td>
+              <Td label="Monthly" right className="hidden md:table-cell">{fmt(g.monthly_contribution)}</Td>
+              <Td label="Progress">
                 <div className="flex items-center gap-2">
                   <div className="hidden md:block w-20"><ProgressBar pct={s.pct} /></div>
                   <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text2)' }}>{s.done}/{g.duration}</span>
                 </div>
               </Td>
-              <Td className="hidden lg:table-cell">
+              <Td label="Status" className="hidden lg:table-cell">
                 {s.pct >= 100
                   ? <Badge variant="success">{t('completed')} ✓</Badge>
                   : s.done > 0
                     ? <Badge variant="info">{g.duration - s.done} {t('mo_left')}</Badge>
                     : <Badge variant="gray">{t('not_started')}</Badge>}
               </Td>
-              <Td className="hidden xl:table-cell">{s.endDate}</Td>
-              <Td className="hidden md:table-cell">
+              <Td label="Ends" className="hidden xl:table-cell">{s.endDate}</Td>
+              <Td label="Pending" className="hidden md:table-cell">
                 {s.pending > 0
                   ? <Badge variant="danger">{s.pending} {t('pending')}</Badge>
                   : <Badge variant="success">{t('all_paid')}</Badge>}
               </Td>
-              <Td>
+              <Td label="Action">
                 <div className="flex items-center gap-1.5">
                   <Btn size="sm" variant="ghost" icon={Gavel} onClick={() => router.push(`/groups/${g.id}`)}
                     style={{ color: 'var(--info)', border: '1px solid var(--info-dim)' }}>

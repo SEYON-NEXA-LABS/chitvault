@@ -314,7 +314,7 @@ export default function AuctionsPage() {
                 text="No auctions recorded. Owners and Staff can start by clicking 'Record Auction' below." 
                 action={can('recordAuction') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus}>Record Auction</Btn>}
               />
-            : <Table>
+            : <Table responsive>
                 <thead><tr>
                   {role === 'superadmin' && <Th>Firm</Th>}
                   <Th>{t('group')}</Th>
@@ -336,34 +336,34 @@ export default function AuctionsPage() {
                     return (
                       <Tr key={a.id}>
                         {role === 'superadmin' && (
-                         <Td><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
+                         <Td label="Firm"><Badge variant="gray">{(a as any).firms?.name || '—'}</Badge></Td>
                         )}
-                        <Td>
+                        <Td label="Group">
                            <div className="flex flex-col">
                               <span className="font-semibold">{g ? getGroupDisplayName(g, t) : `#${a.group_id}`}</span>
                               {a.status === 'draft' && <div className="text-[9px] font-bold text-[var(--accent)] tracking-widest uppercase">Draft Plan</div>}
                            </div>
                         </Td>
-                        <Td>
+                        <Td label="Month">
                            <Badge variant={a.status === 'draft' ? 'gray' : 'info'}>
                               {fmtMonth(a.month, g?.start_date)}
                            </Badge>
                         </Td>
-                        <Td className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
-                        <Td>👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
-                        <Td right>{fmt(a.auction_discount)}</Td>
-                        <Td right className="hidden lg:table-cell">
+                        <Td label="Date" className="hidden md:table-cell">{fmtDate(a.auction_date)}</Td>
+                        <Td label="Winner">👑 <span className="font-semibold text-xs md:text-sm">{w?.persons?.name || '—'}</span></Td>
+                        <Td label="Bid" right>{fmt(a.auction_discount)}</Td>
+                        <Td label="Benefit" right className="hidden lg:table-cell">
                            {g?.auction_scheme === 'ACCUMULATION' 
                              ? <span style={{ color: 'var(--accent)' }}>+{fmt(a.auction_discount)}</span>
                              : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </Td>
-                        <Td right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
-                        <Td right className="hidden md:table-cell">
+                        <Td label="Payout" right className="font-bold text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
+                        <Td label="Comm." right className="hidden md:table-cell">
                           {fc
                             ? <span style={{ color: 'var(--success)' }}>{fmt(fc.commission_amt)}</span>
                             : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </Td>
-                        <Td right className="hidden sm:table-cell">
+                        <Td label="Installment" right className="hidden sm:table-cell">
                           {(() => {
                             if (!g) return '—'
                             const isAcc = g.auction_scheme === 'ACCUMULATION'
@@ -371,7 +371,7 @@ export default function AuctionsPage() {
                             return <span style={{ color: 'var(--text)' }}>{fmt(Number(g.monthly_contribution) - div)}</span>
                           })()}
                         </Td>
-                        <Td>
+                        <Td label="Action">
                           <div className="flex items-center gap-1.5">
                             {can('recordAuction') && (
                                <Btn size="sm" variant="ghost" onClick={() => handleEdit(a)} icon={Edit2} style={{ color: 'var(--info)' }}>{t('edit')}</Btn>
@@ -392,7 +392,7 @@ export default function AuctionsPage() {
 
       {commissions.length > 0 && (
         <TableCard title="👑 Foreman Commission Summary">
-          <Table>
+          <Table responsive>
             <thead><tr>
               {role === 'superadmin' && <Th>{t('firm')}</Th>}
               {[t('group'), t('auction_month'), t('chit_value'), t('auction_discount'), t('total_sacrifice'), t('commission'), t('net_dividend'), t('per_member'), t('goes_to')].map(h => <Th key={h}>{h}</Th>)}
@@ -404,22 +404,22 @@ export default function AuctionsPage() {
                 return (
                   <Tr key={fc.id}>
                     {role === 'superadmin' && (
-                      <Td><Badge variant="gray">{(fc as any).firms?.name || '—'}</Badge></Td>
+                      <Td label="Firm"><Badge variant="gray">{(fc as any).firms?.name || '—'}</Badge></Td>
                     )}
-                    <Td>{g ? getGroupDisplayName(g, t) : '—'}</Td>
-                    <Td><Badge variant="info">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
-                    <Td right>{fmt(fc.chit_value)}</Td>
-                    <Td right>{fmt(fc.auction_discount)}</Td>
-                    <Td right><span style={{ color: 'var(--danger)' }}>{fmt(fc.discount)}</span></Td>
-                    <Td right>
+                    <Td label="Group">{g ? getGroupDisplayName(g, t) : '—'}</Td>
+                    <Td label="Month"><Badge variant="info">{fmtMonth(fc.month, g?.start_date)}</Badge></Td>
+                    <Td label="Value" right>{fmt(fc.chit_value)}</Td>
+                    <Td label="Bid" right>{fmt(fc.auction_discount)}</Td>
+                    <Td label="Sacrifice" right><span style={{ color: 'var(--danger)' }}>{fmt(fc.discount)}</span></Td>
+                    <Td label="Comm." right>
                       <div style={{ color: 'var(--accent)' }}>{fmt(fc.commission_amt)}</div>
                       <div className="text-[10px]" style={{ color: 'var(--text3)' }}>
                         {fc.commission_type === 'fixed_amount' ? 'Fixed' : `${fc.commission_rate}%`}
                       </div>
                     </Td>
-                    <Td right><span style={{ color: 'var(--success)' }}>{fmt(fc.net_dividend)}</span></Td>
-                    <Td right><span style={{ color: 'var(--success)' }}>{fmt(fc.per_member_div)}</span></Td>
-                    <Td>
+                    <Td label="Dividend" right><span style={{ color: 'var(--success)' }}>{fmt(fc.net_dividend)}</span></Td>
+                    <Td label="P.Member" right><span style={{ color: 'var(--success)' }}>{fmt(fc.per_member_div)}</span></Td>
+                    <Td label="Goes to">
                       {fc.paid_to === 'foreman' && fm
                         ? <Badge variant="accent">👑 {fm.persons?.name}</Badge>
                         : <Badge variant="info">🏦 Firm</Badge>}

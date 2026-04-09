@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, fmtMonth, getToday, cn, APP_NAME, getGroupDisplayName } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn, APP_NAME, getGroupDisplayName, amtToWords } from '@/lib/utils'
 import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -290,8 +290,9 @@ export default function GroupLedgerPage() {
 
           <div class="payout-box">
             <div class="label">NET PAYOUT AMOUNT</div>
-            <div className="amount font-black text-4xl">{fmt(auc.net_payout || auc.auction_discount)}</div>
-            <div style="font-size: 12px; margin-top: 10px;">(Rupees equivalent calculated as per group rules)</div>
+            <div class="amount" style="font-weight: 900; font-size: 32px; font-family: 'Courier New', Courier, monospace;">${fmt(auc.net_payout || auc.auction_discount)}</div>
+            <div style="font-weight: bold; font-size: 14px; margin-top: 5px; text-transform: uppercase;">${amtToWords(auc.net_payout || auc.auction_discount)}</div>
+            <div style="font-size: 12px; margin-top: 10px; opacity: 0.6;">(Rupees equivalent calculated as per group rules)</div>
           </div>
 
           <div class="signatures">

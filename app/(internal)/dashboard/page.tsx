@@ -482,7 +482,7 @@ export default function DashboardPage() {
                <p className="text-[10px] mt-1 px-10">{t('dash_no_payments_desc')}</p>
             </div>
           ) : (
-            <Table>
+            <Table responsive>
               <thead>
                 <Tr>
                   <Th>{t('dash_date_time')}</Th>
@@ -496,15 +496,15 @@ export default function DashboardPage() {
                   const entryTime = p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'
                   return (
                     <Tr key={p.id}>
-                      <Td>
+                      <Td label="Date">
                         <div className="text-xs font-bold">{fmtDate(p.payment_date)}</div>
                         <div className="text-[9px] opacity-40 uppercase tracking-tighter">{t('dash_entered_at')} {entryTime}</div>
                       </Td>
-                      <Td>
+                      <Td label="Member">
                         <div className="text-xs font-semibold truncate max-w-[120px]">{m?.persons?.name || 'Manual Entry'}</div>
                         <Badge variant="gray" className="text-[8px] py-0">{p.mode}</Badge>
                       </Td>
-                      <Td right className="font-mono font-black text-[var(--success)]">{fmt(p.amount)}</Td>
+                      <Td label="Amount" right className="font-mono font-black text-[var(--success)]">{fmt(p.amount)}</Td>
                     </Tr>
                   )
                 })}
@@ -526,7 +526,7 @@ export default function DashboardPage() {
                <p className="text-[10px] mt-1 px-10">{t('dash_no_auctions_desc')}</p>
             </div>
           ) : (
-            <Table>
+            <Table responsive>
               <thead>
                 <Tr>
                   <Th>{t('dash_group_month')}</Th>
@@ -540,15 +540,15 @@ export default function DashboardPage() {
                   const w = members.find(x => x.id === a.winner_id)
                   return (
                     <Tr key={a.id}>
-                      <Td>
+                      <Td label="Month">
                         <div className="text-xs font-bold truncate max-w-[150px]">{g ? getGroupDisplayName(g, t) : 'Group'}</div>
                         <Badge variant="info" className="text-[8px] py-0">{fmtMonth(a.month, g?.start_date)}</Badge>
                       </Td>
-                      <Td>
+                      <Td label="Winner">
                         <div className="text-xs font-semibold truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</div>
                         <div className="text-[9px] opacity-40 uppercase tracking-tighter">Ticket #{w?.ticket_no}</div>
                       </Td>
-                      <Td right className="font-mono font-black text-[var(--text)]">{fmt(a.auction_discount)}</Td>
+                      <Td label="Discount" right className="font-mono font-black text-[var(--text)]">{fmt(a.auction_discount)}</Td>
                     </Tr>
                   )
                 })}

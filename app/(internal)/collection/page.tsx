@@ -32,6 +32,7 @@ interface CollectionItem {
   dues: MemberDue[];
   totalBalance: number;
   overdueCount: number;
+  isOverdue: boolean;
 }
 
 export default function CollectionPage() {
@@ -41,22 +42,22 @@ export default function CollectionPage() {
   const { t } = useI18n()
   const { toast, show, hide } = useToast()
 
-  const [groups,   setGroups]   = useState<Group[]>([])
-  const [members,  setMembers]  = useState<Member[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
+  const [members, setMembers] = useState<Member[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [search,   setSearch]   = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const [payModal, setPayModal] = useState<CollectionItem | null>(null)
-  const [payForm,  setPayForm]  = useState({ amount: '', date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
+  const [payForm, setPayForm] = useState({ amount: '', date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
 
   const load = useCallback(async () => {
     if (!firm) return
     setLoading(true)
     const [g, m, a, p] = await Promise.all([
-      supabase.from('groups').select('*').eq('firm_id', firm.id).neq('status','archived'),
+      supabase.from('groups').select('*').eq('firm_id', firm.id).neq('status', 'archived'),
       supabase.from('members').select('*, persons(*)').eq('firm_id', firm.id).is('deleted_at', null),
       supabase.from('auctions').select('*').eq('firm_id', firm.id).is('deleted_at', null).order('month'),
       supabase.from('payments').select('*').eq('firm_id', firm.id).is('deleted_at', null)
@@ -80,13 +81,13 @@ export default function CollectionPage() {
       const fStatus = getMemberFinancialStatus(m, g, auctions, payments);
       const totalBalance = fStatus.balance;
       const overdueMonthsCount = fStatus.missedCount;
-      
-      const mDues = fStatus.streak.filter(d => d.status === 'danger' || (g.auction_scheme === 'DIVIDEND' && d.status === 'info'))
+
+      const mDues = fStatus.streak.filter(d => d.status === 'danger' || d.status === 'info')
         .map(d => ({ ...d, group: g, isAuctioned: d.status === 'danger' }));
 
-      return totalBalance > 0.01 ? { 
-        member: m, person: m.persons, group: g, dues: mDues, 
-        totalBalance, 
+      return totalBalance > 0.01 ? {
+        member: m, person: m.persons, group: g, dues: mDues,
+        totalBalance,
         overdueCount: overdueMonthsCount,
         isOverdue: overdueMonthsCount > 0
       } : null;
@@ -97,13 +98,13 @@ export default function CollectionPage() {
     balances.forEach((item: any) => {
       const pId = item.person.id;
       if (!personMap.has(pId)) {
-        personMap.set(pId, { 
-            person: item.person, 
-            totalBalance: 0, 
-            dues: [], 
-            member: item.member, // placeholder for high-level ref
-            overdueCount: 0,
-            memberships: [] 
+        personMap.set(pId, {
+          person: item.person,
+          totalBalance: 0,
+          dues: [],
+          member: item.member, // placeholder for high-level ref
+          overdueCount: 0,
+          memberships: []
         } as any);
       }
       const pData = personMap.get(pId) as any;
@@ -116,11 +117,11 @@ export default function CollectionPage() {
   }, [members, groups, auctions, payments]);
 
   const filtered = useMemo(() => {
-    return reportData.filter(x => 
+    return reportData.filter(x =>
       x.person.name.toLowerCase().includes(search.toLowerCase()) ||
       (x.person.phone && x.person.phone.includes(search)) ||
       (x.person.address && x.person.address.toLowerCase().includes(search.toLowerCase()))
-    ).sort((a,b) => b.totalBalance - a.totalBalance);
+    ).sort((a, b) => b.totalBalance - a.totalBalance);
   }, [reportData, search]);
 
   const stats = useMemo(() => {
@@ -133,14 +134,14 @@ export default function CollectionPage() {
     if (!payModal || !firm) return;
     const amount = Number(payForm.amount);
     if (amount <= 0) { show('Enter a valid amount', 'error'); return; }
-    
+
     setSaving(true);
     let remaining = amount;
     const finalPayments = [];
 
     // Auto-distribution logic
     const allDues = (payModal as any).memberships.flatMap((m: any) => m.dues.map((d: any) => ({ ...d, memberId: m.member.id })))
-        .sort((a: any, b: any) => a.month - b.month);
+      .sort((a: any, b: any) => a.month - b.month);
 
     for (const due of allDues) {
       if (remaining <= 0) break;
@@ -171,11 +172,11 @@ export default function CollectionPage() {
 
     const { error } = await supabase.from('payments').insert(finalPayments);
     if (error) { show(error.message, 'error'); }
-    else { 
-      show(`Collected ₹${amount}! Distribution handled.`); 
-      setPayModal(null); 
+    else {
+      show(`Collected ₹${amount}! Distribution handled.`);
+      setPayModal(null);
       router.refresh();
-      load(); 
+      load();
     }
     setSaving(false);
   }
@@ -183,7 +184,7 @@ export default function CollectionPage() {
   const handleWhatsAppReminder = (p: any) => {
     const phone = p.person.phone ? p.person.phone.replace(/[^\d]/g, '') : ''
     if (!phone) return show('No phone number found', 'error')
-    
+
     const isAcc = (p as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION')
     const term = isAcc ? 'Pending Contribution' : 'Outstanding Due'
     const text = `Hi ${p.person.name}, Reminder from ${firm?.name}. ${term}: ₹${p.totalBalance.toLocaleString('en-IN')}. Please clear it at the earliest. Thank you!`
@@ -203,106 +204,106 @@ export default function CollectionPage() {
 
       <div className="flex gap-4 items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }} id="tour-coll-search">
         <div className="flex-1 relative">
-           <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }} 
+          <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }}
             placeholder="Search name, phone, area..." value={search} onChange={e => setSearch(e.target.value)} />
-           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
         </div>
         <Btn variant="secondary" onClick={() => window.print()} icon={Printer} className="hidden sm:flex">Print Hub</Btn>
       </div>
 
       {/* Field View (Cards) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-         {filtered.length === 0 ? (
-           <div className="col-span-full"><Empty text="Clean slate! No pending collections." /></div>
-         ) : filtered.map((x, idx) => (
-           <div key={x.person.id} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
-              <div className="p-5 flex-1">
-                 <div className="flex justify-between items-start gap-3 mb-4">
-                    <div>
-                       <div className="font-bold text-lg leading-tight">{x.person.name}</div>
-                       <div className="text-xs opacity-50 mt-1 flex items-center gap-1"><MapPin size={12}/> {x.person.address || 'Unknown Area'}</div>
-                    </div>
-                    {x.overdueCount >= 3 ? (
-                       <div className="bg-[var(--danger-dim)] text-[var(--danger)] text-[10px] font-black px-2 py-1 rounded-lg uppercase animate-pulse">Critical</div>
-                    ) : (
-                       <Badge variant="accent" className="text-[9px] uppercase tracking-wider">{x.overdueCount} Months</Badge>
-                    )}
-                 </div>
-
-                 <div className="space-y-2 mb-6">
-                    {(x as any).memberships.map((m: any) => (
-                       <div key={m.member.id} className="flex justify-between items-center text-xs bg-[var(--surface2)] px-3 py-2 rounded-xl">
-                          <span className="opacity-60">{getGroupDisplayName(m.group, t)} (#{m.member.ticket_no})</span>
-                          <span className="font-bold">{fmt(m.totalBalance)}</span>
-                       </div>
-                    ))}
-                 </div>
-
-                 <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <div>
-                       <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
-                         {(x as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION') ? 'To Collect (Contr.)' : 'To Collect (Due)'}
-                       </div>
-                       <div className="text-xl font-black text-[var(--danger)]">{fmt(x.totalBalance)}</div>
-                    </div>
-                    <div className="flex gap-2">
-                       <button onClick={() => handleWhatsAppReminder(x)} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[#25D366] hover:bg-[#25D366]/10 transition-colors">
-                          <MessageSquare size={18} fill="currentColor" />
-                       </button>
-                       <a href={`tel:${x.person.phone}`} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--info)] hover:bg-[var(--info-dim)]">
-                          <Phone size={18} />
-                       </a>
-                    </div>
-                 </div>
+        {filtered.length === 0 ? (
+          <div className="col-span-full"><Empty text="Clean slate! No pending collections." /></div>
+        ) : filtered.map((x, idx) => (
+          <div key={x.person.id} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+            <div className="p-5 flex-1">
+              <div className="flex justify-between items-start gap-3 mb-4">
+                <div>
+                  <div className="font-bold text-lg leading-tight">{x.person.name}</div>
+                  <div className="text-xs opacity-50 mt-1 flex items-center gap-1"><MapPin size={12} /> {x.person.address || 'Unknown Area'}</div>
+                </div>
+                {x.overdueCount >= 3 ? (
+                  <div className="bg-[var(--danger-dim)] text-[var(--danger)] text-[10px] font-black px-2 py-1 rounded-lg uppercase animate-pulse">Critical</div>
+                ) : (
+                  <Badge variant="accent" className="text-[9px] uppercase tracking-wider">{x.overdueCount} Months</Badge>
+                )}
               </div>
-              <button 
-               onClick={() => {
-                  setPayForm({ amount: String(x.totalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
-                  setPayModal(x);
-               }}
-                className="w-full py-4 bg-[var(--accent)] text-white font-bold text-sm uppercase tracking-widest hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
-                id={idx === 0 ? "tour-coll-pay" : undefined}
-              >
-                 <CreditCard size={18} />
-                 Record Collection
-              </button>
-           </div>
-         ))}
+
+              <div className="space-y-2 mb-6">
+                {(x as any).memberships.map((m: any) => (
+                  <div key={m.member.id} className="flex justify-between items-center text-xs bg-[var(--surface2)] px-3 py-2 rounded-xl">
+                    <span className="opacity-60">{getGroupDisplayName(m.group, t)} (#{m.member.ticket_no}) · M {m.dues[0]?.month || '—'}</span>
+                    <span className="font-bold">{fmt(m.totalBalance)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                <div>
+                  <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
+                    {(x as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION') ? 'To Collect (Advance)' : 'To Collect (Due)'}
+                  </div>
+                  <div className={cn("text-xl font-black", x.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]")}>{fmt(x.totalBalance)}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleWhatsAppReminder(x)} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[#25D366] hover:bg-[#25D366]/10 transition-colors">
+                    <MessageSquare size={18} fill="currentColor" />
+                  </button>
+                  <a href={`tel:${x.person.phone}`} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--info)] hover:bg-[var(--info-dim)]">
+                    <Phone size={18} />
+                  </a>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setPayForm({ amount: String(x.totalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
+                setPayModal(x);
+              }}
+              className="w-full py-4 bg-[var(--accent)] text-white font-bold text-sm uppercase tracking-widest hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
+              id={idx === 0 ? "tour-coll-pay" : undefined}
+            >
+              <CreditCard size={18} />
+              Record Collection
+            </button>
+          </div>
+        ))}
       </div>
 
       {payModal && (
         <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Field Collection Entry" size="md">
-           <div className="space-y-6">
-              <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
-                 <div className="text-xs uppercase opacity-40 font-bold mb-1">Collecting From</div>
-                 <div className="font-bold text-lg">{payModal.person.name}</div>
-                 <div className="text-xl font-black text-[var(--danger)] mt-2">{fmt(payModal.totalBalance)} <span className="text-[10px] opacity-40 font-normal">outstanding</span></div>
-              </div>
+          <div className="space-y-6">
+            <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
+              <div className="text-xs uppercase opacity-40 font-bold mb-1">Collecting From</div>
+              <div className="font-bold text-lg">{payModal.person.name}</div>
+              <div className="text-xl font-black text-[var(--danger)] mt-2">{fmt(payModal.totalBalance)} <span className="text-[10px] opacity-40 font-normal">outstanding</span></div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                 <Field label="Amount Collected">
-                    <input className={inputClass} style={{ ...inputStyle, fontSize: 24, padding: '15px' }} type="number" 
-                      value={payForm.amount} onChange={e => setPayForm(f => ({...f, amount: e.target.value}))} />
-                 </Field>
-                 <div className="grid grid-cols-2 gap-4">
-                    <Field label="Date"><input className={inputClass} style={inputStyle} type="date" value={payForm.date} onChange={e => setPayForm(f => ({...f, date: e.target.value}))} /></Field>
-                    <Field label="Mode">
-                       <select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({...f, mode: e.target.value}))}>
-                          <option>Cash</option><option>UPI</option><option>GPay</option>
-                       </select>
-                    </Field>
-                 </div>
-                 <Field label="Short Note (Optional)">
-                    <textarea className={inputClass} style={{ ...inputStyle, height: 60 }} placeholder="House locked, paid later etc" 
-                      value={payForm.note} onChange={e => setPayForm(f => ({...f, note: e.target.value}))} />
-                 </Field>
+            <div className="grid grid-cols-1 gap-4">
+              <Field label="Amount Collected">
+                <input className={inputClass} style={{ ...inputStyle, fontSize: 24, padding: '15px' }} type="number"
+                  value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Date"><input className={inputClass} style={inputStyle} type="date" value={payForm.date} onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))} /></Field>
+                <Field label="Mode">
+                  <select className={inputClass} style={inputStyle} value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
+                    <option>Cash</option><option>UPI</option><option>GPay</option>
+                  </select>
+                </Field>
               </div>
+              <Field label="Short Note (Optional)">
+                <textarea className={inputClass} style={{ ...inputStyle, height: 60 }} placeholder="House locked, paid later etc"
+                  value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} />
+              </Field>
+            </div>
 
-              <div className="flex gap-3 pt-4">
-                 <Btn variant="secondary" className="flex-1" onClick={() => setPayModal(null)}>Cancel</Btn>
-                 <Btn variant="primary" className="flex-[2]" loading={saving} onClick={handlePay}>Confirm Collection</Btn>
-              </div>
-           </div>
+            <div className="flex gap-3 pt-4">
+              <Btn variant="secondary" className="flex-1" onClick={() => setPayModal(null)}>Cancel</Btn>
+              <Btn variant="primary" className="flex-[2]" loading={saving} onClick={handlePay}>Confirm Collection</Btn>
+            </div>
+          </div>
         </Modal>
       )}
 

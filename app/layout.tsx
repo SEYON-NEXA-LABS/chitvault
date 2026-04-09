@@ -4,7 +4,6 @@ import { FirmProvider } from '@/lib/firm/context'
 import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
-import { PwaProvider } from '@/lib/pwa/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
 import './globals.css'
@@ -27,8 +26,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#2563eb" />
         {/* Blocking script to prevent theme flickering */}
         <script dangerouslySetInnerHTML={{
@@ -109,42 +106,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BrandingProvider>
             <I18nProvider>
               <PinLockProvider>
-                <PwaProvider>
-                  {children}
-                  <InviteAutoLinker />
-                </PwaProvider>
+                {children}
+                <InviteAutoLinker />
               </PinLockProvider>
             </I18nProvider>
           </BrandingProvider>
         </FirmProvider>
 
-        <script dangerouslySetInnerHTML={{
-          __html: `
-          window.deferredPrompt = null;
-          window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            window.deferredPrompt = e;
-          });
-
-          // Production-Safe Service Worker Update Hook
-          if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.ready.then(function(registration) {
-                registration.update();
-                
-                // Also check for updates when the user returns to the app
-                document.addEventListener('visibilitychange', function() {
-                  if (document.visibilityState === 'visible') registration.update();
-                });
-                window.addEventListener('focus', function() {
-                  registration.update();
-                });
-              }).catch(function(err) {
-                console.warn('SW Update failed:', err);
-              });
-            });
-          }
-        `}} />
       </body>
     </html>
   )

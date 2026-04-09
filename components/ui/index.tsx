@@ -113,9 +113,36 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
 }
 
 // ── Table ─────────────────────────────────────────────────────────────────────
-export function Table({ children, className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
+export function Table({ children, className, responsive, ...props }: {
+  responsive?: boolean
+} & React.TableHTMLAttributes<HTMLTableElement>) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const checkScroll = () => {
+      const hasScroll = el.scrollWidth > el.clientWidth
+      const isAtEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 10
+      el.classList.toggle('has-scroll-right', hasScroll && !isAtEnd)
+    }
+
+    checkScroll()
+    el.addEventListener('scroll', checkScroll)
+    window.addEventListener('resize', checkScroll)
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [])
+
   return (
-    <div className={cn('overflow-x-auto', className)}>
+    <div ref={containerRef} className={cn(
+      'scroll-shadow-container overflow-x-auto transition-all',
+      responsive && 'table-responsive-cards',
+      className
+    )}>
       <table className="w-full border-collapse text-sm" {...props}>{children}</table>
     </div>
   )
@@ -132,14 +159,18 @@ export function Th({ children, right, className, ...props }: { children?: React.
   )
 }
 
-export function Td({ children, right, className, style, colSpan, onClick, ...props }: {
-  children?: React.ReactNode; right?: boolean; className?: string; style?: React.CSSProperties; colSpan?: number; onClick?: () => void
+export function Td({ children, right, label, className, style, colSpan, onClick, ...props }: {
+  children?: React.ReactNode; right?: boolean; label?: string; className?: string; style?: React.CSSProperties; colSpan?: number; onClick?: () => void
 } & React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td colSpan={colSpan} className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
+    <td 
+      colSpan={colSpan} 
+      className={cn('px-4 py-3 text-sm', right && 'text-right font-mono', className)}
+      data-label={label}
       onClick={onClick}
       style={{ borderBottom: '1px solid var(--border)', color: 'var(--text)', cursor: onClick ? 'pointer' : 'default', ...style }}
-      {...props}>
+      {...props}
+    >
       {children}
     </td>
   )

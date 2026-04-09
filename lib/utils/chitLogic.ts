@@ -12,6 +12,7 @@ export type FinancialStatus = {
     status: 'success' | 'danger' | 'info' | 'gray'
     due: number
     paid: number
+    isAdvance: boolean
   }[]
   dividends: number
   surplusShare: number
@@ -86,9 +87,9 @@ export function getMemberFinancialStatus(
     }
 
     // NEW LOGIC: Determine if this month should contribute to the "Outstanding Balance"
-    // Accumulation: Only past months (with auctions) are considered "Due" for balance purposes.
-    // Dividend: Current month is also considered "Due" before the auction.
-    const contributesToBalance = isAcc ? hasAuctionHappened : (m <= currentDueMonth)
+    // Both Accumulation and Dividend schemes now include the current month installment 
+    // to facilitate pre-payment tracking and partial collections.
+    const contributesToBalance = (m <= currentDueMonth)
 
     if (contributesToBalance) {
       totalDue += amountDue
@@ -98,7 +99,8 @@ export function getMemberFinancialStatus(
       month: m,
       status,
       due: amountDue,
-      paid: amountPaid
+      paid: amountPaid,
+      isAdvance: amountPaid > 0 && !hasAuctionHappened
     })
   }
 

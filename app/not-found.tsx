@@ -95,8 +95,6 @@ export default function NotFound() {
         </div>
  
         <div className="mt-8 flex justify-center items-center gap-4 text-xs font-bold opacity-30">
-           <span>Error Ref: {Math.random().toString(36).substring(7).toUpperCase()}</span>
-           <div className="w-1.5 h-1.5 rounded-full bg-[var(--border)]" />
            <span>Secure Audit Active</span>
         </div>
       </div>

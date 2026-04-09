@@ -8,93 +8,6 @@ try {
   commitId = 'v1.0.1';
 }
 
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  clientsClaim: true,
-  disable: process.env.NODE_ENV === 'development',
-  runtimeCaching: [
-    // ✅ Next.js Internal Data (RSC & _next/data) - NEVER CACHE
-    {
-      urlPattern: ({ url, request }) => {
-        return (
-          url.pathname.includes('/_next/data/') ||
-          request.headers.get('RSC') ||
-          request.headers.get('Next-Router-State-Tree') ||
-          request.headers.get('Next-Router-Prefetch')
-        )
-      },
-      handler: 'NetworkOnly', // Prevent PWA from ever touching these
-    },
-
-    // ✅ API calls – ALWAYS fresh first
-    {
-      urlPattern: /^https?:\/\/.*\/api\/.*$/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        networkTimeoutSeconds: 10,
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60, // 1 minute max
-        },
-        cacheableResponse: {
-          statuses: [0, 200],
-        },
-      },
-    },
-
-    // ✅ Pages & navigation
-    {
-      urlPattern: ({ request }) => request.mode === 'navigate',
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'pages-cache',
-      },
-    },
-
-    // ✅ Static JS/CSS
-    {
-      urlPattern: /\.(?:js|css)$/,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: `static-assets-${commitId}`,
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-        },
-      },
-    },
-
-    // ✅ Images
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'images',
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
-        },
-      },
-    },
-
-    // ✅ Fonts
-    {
-      urlPattern: /\.(?:woff|woff2|ttf|otf)$/,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'fonts',
-        expiration: {
-          maxEntries: 20,
-          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
-        },
-      },
-    },
-  ],
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Required for Electron packaging — bundles Next.js as a standalone server
@@ -104,4 +17,4 @@ const nextConfig = {
   },
 }
 
-module.exports = withPWA(nextConfig)
+module.exports = nextConfig
