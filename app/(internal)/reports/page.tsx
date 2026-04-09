@@ -504,7 +504,10 @@ function ReportPNL({ groups, commissions }: { groups: Group[], commissions: Fore
                   </Td>
                   <Td className="hidden md:table-cell">
                     <div className="text-xs font-medium opacity-60">
-                      {g.commission_type === 'percent_of_chit' ? `${g.commission_value}% of Chit` : g.commission_type === 'percent_of_discount' ? `${g.commission_value}% of Bid` : `Fixed ₹${g.commission_value}`}
+                      {g.commission_type === 'percent_of_chit' ? `${g.commission_value}% of Chit` : 
+                       g.commission_type === 'percent_of_discount' ? `${g.commission_value}% of Bid` : 
+                       g.commission_type === 'percent_of_payout' ? `${g.commission_value}% of Payout` :
+                       `Fixed ₹${g.commission_value}`}
                     </div>
                   </Td>
                   <Td right className="font-black text-[var(--success)]">{fmt(inc)}</Td>
@@ -593,10 +596,15 @@ function ReportMemberBenefits({ groups, auctions }: { groups: Group[], auctions:
                       <div className="text-[9px] opacity-40 font-mono italic">VALUE: {fmt(g.chit_value)}</div>
                     </Td>
                     <Td><Badge variant="gray">{aucs.length} / {g.duration}</Badge></Td>
-                    <Td right className="font-black text-[var(--accent)]">{fmt(totalBenefit)}</Td>
+                    <Td right className="font-black text-[var(--accent)]">
+                       {fmt(g.accumulated_surplus)}
+                       <div className="text-[8px] opacity-30 uppercase font-black">Net Pool (DB)</div>
+                    </Td>
                     <Td right className="hidden md:table-cell opacity-50 text-xs font-mono">{fmt(avg)}</Td>
                     <Td right>
-                       <div className="font-black text-xs text-[var(--info)]">{roi.toFixed(2)}%</div>
+                       <div className="font-black text-xs text-[var(--info)]">
+                          {(g.accumulated_surplus / (aucs.length * g.num_members * g.monthly_contribution || 1) * 100).toFixed(2)}%
+                       </div>
                        <div className="text-[8px] opacity-30 uppercase font-black">Group ROI</div>
                     </Td>
                   </Tr>

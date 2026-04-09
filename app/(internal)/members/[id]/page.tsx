@@ -101,7 +101,7 @@ export default function MemberDetailPage() {
       totalPaid += financial.totalPaid
       totalBalance += financial.balance
       missedCount += financial.missedCount
-      totalDividends += financial.dividends
+      totalDividends += (financial.dividends + (financial.surplusShare || 0))
     })
 
     return { totalPaid, totalBalance, missedCount, totalDividends, activeCount: tickets.length }
