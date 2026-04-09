@@ -16,6 +16,10 @@ import Link from 'next/link'
 import { CSVImportModal } from '@/components/ui'
 import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules, Payment } from '@/types'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, BarChart, Bar
+} from 'recharts'
 
 export default function GroupLedgerPage() {
   const params = useParams()
@@ -389,6 +393,41 @@ export default function GroupLedgerPage() {
   const monthsCompleted = confirmedAucs.length
   const totalMonths = group.duration
 
+  // --- Analytic Data Derivations (Zero-Query) ---
+  const yieldData = useMemo(() => {
+    return auctionHistory
+      .filter(a => a.status === 'confirmed')
+      .map(a => ({
+        name: `M${a.month}`,
+        discount: Number(a.auction_discount || 0),
+        dividend: Number(a.dividend || 0),
+      }))
+  }, [auctionHistory])
+
+  const healthData = useMemo(() => {
+    const counts = { success: 0, info: 0, danger: 0 }
+    members.forEach(m => {
+      if (!group) return
+      const status = getMemberFinancialStatus(m, group, auctionHistory, payments)
+      if (status.overallStatus === 'overdue') counts.danger++
+      else if (status.overallStatus === 'current') counts.info++
+      else counts.success++
+    })
+    return [
+      { name: 'On Track', value: counts.success, color: 'var(--success)' },
+      { name: 'Current', value: counts.info, color: 'var(--info)' },
+      { name: 'Overdue', value: counts.danger, color: 'var(--danger)' },
+    ].filter(x => x.value > 0)
+  }, [members, group, auctionHistory, payments])
+
+  const totalPossibleCollection = useMemo(() => {
+    if (!group) return 0
+    // Total expected if everyone is active up to current month
+    const latestMonth = auctionHistory.length > 0 ? Math.max(...auctionHistory.map(a => Number(a.month))) : 0
+    const mContr = Number(group.monthly_contribution)
+    return group.num_members * mContr * (latestMonth || 1)
+  }, [group, auctionHistory])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -512,6 +551,84 @@ export default function GroupLedgerPage() {
         <StatCard label={t('paid_to_winners')} value={fmt(actualPayouts)} color="danger" />
         <StatCard label={t('firm_comm')} value={fmt(totalComm)} color="accent" />
         <StatCard label={t('chit_value')} value={fmt(group.chit_value)} color="danger" />
+      </div>
+
+      {/* Analytics Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="tour-group-analytics">
+        <Card title={t('yield_trend')} subtitle="Auction Discount & Member Dividend Over Time">
+          <div className="h-[280px] w-full pt-4">
+            {yieldData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorDisc" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="var(--danger)" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorDiv" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} tickFormatter={v => `₹${v/1000}k`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--surface)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
+                  />
+                  <Area type="monotone" dataKey="discount" stroke="var(--danger)" fillOpacity={1} fill="url(#colorDisc)" strokeWidth={3} name={t('auction_discount')} />
+                  <Area type="monotone" dataKey="dividend" stroke="var(--accent)" fillOpacity={1} fill="url(#colorDiv)" strokeWidth={3} name="Dividend / Mem" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center opacity-30 text-xs italic">Awaiting first successful auction...</div>
+            )}
+          </div>
+        </Card>
+
+        <Card title="Collection Health" subtitle="Overall Member Payment Status Distribution">
+          <div className="grid grid-cols-1 md:grid-cols-5 items-center gap-4 h-[280px]">
+            <div className="md:col-span-3 h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={healthData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {healthData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', background: 'var(--surface)', shadow: 'xl' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="md:col-span-2 space-y-3 pr-4">
+              {healthData.map((d) => (
+                <div key={d.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ background: d.color }} />
+                    <span className="text-xs font-bold opacity-70 uppercase tracking-tighter">{d.name}</span>
+                  </div>
+                  <span className="text-sm font-black">{d.value}</span>
+                </div>
+              ))}
+              <div className="pt-3 border-t border-dashed mt-3">
+                 <div className="text-[10px] font-bold uppercase opacity-40">Group Liquidity</div>
+                 <div className="text-lg font-black">{((totalCollected/totalPossibleCollection)*100 || 0).toFixed(1)}%</div>
+                 <ProgressBar pct={(totalCollected/totalPossibleCollection)*100} color={totalCollected >= totalPossibleCollection * 0.9 ? 'success' : 'accent'} />
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <TableCard title={t('auction_ledger')}>
