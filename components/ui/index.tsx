@@ -258,10 +258,11 @@ export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outlin
 export const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
 
 // ── Progress Bar ──────────────────────────────────────────────────────────────
-export function ProgressBar({ pct }: { pct: number }) {
+export function ProgressBar({ pct, color }: { pct: number; color?: 'success' | 'danger' | 'accent' | 'info' | 'gray' }) {
+  const barColor = color ? `var(--${color})` : 'var(--accent)'
   return (
-    <div className="progress-bar-wrap w-20 inline-block">
-      <div className="progress-bar" style={{ width: `${pct}%` }} />
+    <div className="progress-bar-wrap w-full">
+      <div className="progress-bar" style={{ width: `${pct}%`, background: barColor }} />
     </div>
   )
 }
