@@ -394,8 +394,8 @@ export default function GroupLedgerPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/groups')} className="p-2.5 rounded-xl hover:bg-[var(--surface2)] transition-colors border" style={{ borderColor: 'var(--border)' }}>
-            <ArrowLeft size={20} />
+          <button onClick={() => router.push('/groups')} className="p-2.5 rounded-xl hover:bg-[var(--surface2)] transition-all group/back">
+            <ArrowLeft size={20} className="group-hover/back:-translate-x-1 transition-transform" />
           </button>
           <div>
             <h1 className="text-xl md:text-3xl font-black text-[var(--text)]">{getGroupDisplayName(group, t)}</h1>
@@ -413,14 +413,14 @@ export default function GroupLedgerPage() {
         </div>
       </div>
 
-      {draftAucs.length > 0 && (
-        <div className="bg-[var(--warning-dim)] border-2 border-[var(--warning-border)] p-4 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500">
-           <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[var(--warning)] text-white flex items-center justify-center shrink-0">
-                 <AlertTriangle size={24} />
+        {draftAucs.length > 0 && (
+        <div className="bg-[var(--surface2)] border border-[var(--border)] p-5 rounded-[32px] flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500 shadow-sm">
+           <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+                 <AlertTriangle size={28} strokeWidth={2.5} />
               </div>
               <div>
-                 <h4 className="font-black text-lg text-[var(--warning-text)] leading-tight">Confirmation Required</h4>
+                 <h4 className="font-black text-lg text-[var(--text)] uppercase tracking-tight leading-tight">Confirmation Required</h4>
                  <p className="text-xs font-medium opacity-70 mt-0.5 max-w-[500px]">
                     You have <strong className="font-bold underline">{draftAucs.length} Draft Auction(s)</strong> which are not yet reflected in the Surplus Pool or Member Balances. 
                     Please confirm them to finalize the financial ledger.
@@ -432,10 +432,10 @@ export default function GroupLedgerPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4 border-2 relative group-hover:border-[var(--accent)] transition-all" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[var(--accent)] text-white">
-                <Gavel size={18} />
+        <Card className="p-5 border relative hover:shadow-xl transition-all">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
+                <Gavel size={22} strokeWidth={2.5} />
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
@@ -473,10 +473,10 @@ export default function GroupLedgerPage() {
             </div>
         </Card>
 
-        <Card className="p-4 border-2" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)] border border-[var(--info-border)]">
-                <Calculator size={18} />
+        <Card className="p-5 border hover:shadow-xl transition-all">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-[var(--info-dim)] text-[var(--info)]">
+                <Calculator size={22} strokeWidth={2.5} />
               </div>
               <div className="flex-1">
                 <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('revenue_comm')}</div>
@@ -502,7 +502,12 @@ export default function GroupLedgerPage() {
         
         {group.auction_scheme === 'ACCUMULATION' ? (
           <div className="relative group">
-             <StatCard label={term.groupSurplusLabel} value={fmt(totalSurplus)} color="success" />
+             <StatCard 
+               label={term.groupSurplusLabel} 
+               value={fmt(group.accumulated_surplus)} 
+               color="success" 
+               sub={`Gross: ${fmt(totalSurplus)}`}
+             />
              {pendingSurplus > 0 && (
                <div className="absolute -bottom-2 left-4 right-4 bg-[var(--surface)] border px-2 py-0.5 rounded-full text-[9px] font-bold text-[var(--warning-text)] flex items-center justify-center gap-1 shadow-sm border-[var(--warning-border)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />

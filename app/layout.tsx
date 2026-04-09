@@ -64,16 +64,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 var now = Date.now();
                 var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
                 if (now - reloadData.last > 60000) reloadData.count = 0;
+                
                 if (reloadData.count < 3) {
                   reloadData.count++;
                   reloadData.last = now;
                   sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
-                  console.warn('System: Asset Mismatch. Self-Healing in progress...');
-                  if (reloadData.count > 1 && 'serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(regs) {
-                      for(var i = 0; i < regs.length; i++) regs[i].unregister();
+                  console.warn('System: Asset Mismatch detected. Attempting Self-Healing ' + reloadData.count + '/3...');
+                  
+                  var forceFullReload = function() {
+                    // Try to clear caches if supported
+                    if ('caches' in window) {
+                      caches.keys().then(function(names) {
+                        names.forEach(function(name) { caches.delete(name); });
+                      }).catch(function(){});
+                    }
+                    // Try to unregister service workers
+                    if ('serviceWorker' in navigator) {
+                      navigator.serviceWorker.getRegistrations().then(function(regs) {
+                        regs.forEach(function(reg) { reg.unregister(); });
+                        window.location.reload();
+                      }).catch(function() { window.location.reload(); });
+                    } else {
                       window.location.reload();
-                    }).catch(function() { window.location.reload(); });
+                    }
+                  };
+
+                  // On first attempt just reload, on second/third attempt try a full hard reset
+                  if (reloadData.count > 1) {
+                    forceFullReload();
                   } else {
                     window.location.reload();
                   }

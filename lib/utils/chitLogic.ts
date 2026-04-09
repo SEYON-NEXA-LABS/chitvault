@@ -14,6 +14,7 @@ export type FinancialStatus = {
     paid: number
   }[]
   dividends: number
+  surplusShare: number
 }
 
 /**
@@ -26,23 +27,22 @@ export function getMemberFinancialStatus(
   payments: Payment[]
 ): FinancialStatus {
   const isAcc = group.auction_scheme?.toUpperCase() === 'ACCUMULATION'
-  // DEBUGING:
-  if (isAcc) console.log(`[CHITLOGIC] Member: ${member.ticket_no} | Scheme: Accumulation | GroupID: ${group.id}`)
+
   const duration = group.duration
   const monthlyContr = Number(group.monthly_contribution)
-  
+
   // Filter relevant auctions and payments
   const groupAucs = auctions.filter(a => {
     return Number(a.group_id) === Number(group.id) && a.status === 'confirmed'
   }).sort((a, b) => a.month - b.month)
-  
+
   const memberPays = payments.filter(p => Number(p.member_id) === Number(member.id) && Number(p.group_id) === Number(group.id))
-  
+
   const latestMonth = groupAucs.length > 0 ? Math.max(...groupAucs.map(a => Number(a.month))) : 0
   // Rule: Next month is due as soon as the previous one is finished (auction held)
   // But it only becomes "Overdue" (Red) after its own auction is held.
   const currentDueMonth = Math.min(duration, latestMonth + 1)
-  
+
   let totalDue = 0
   let missedCount = 0
   let totalDividends = 0
@@ -59,16 +59,16 @@ export function getMemberFinancialStatus(
       const prevAuc = groupAucs.find(a => a.month === m - 1)
       dividend = prevAuc ? Number(prevAuc.dividend || 0) : 0
     }
-    
+
     const amountDue = monthlyContr - dividend
     const amountPaid = memberPays.filter(p => p.month === m).reduce((s, p) => s + Number(p.amount), 0)
-    
+
     const hasAuctionHappened = m <= latestMonth
     const isCurrentMonth = m === currentDueMonth
     const isFuture = m > currentDueMonth
-    
+
     const isFullyPaid = amountPaid >= (amountDue - 0.01)
-    
+
     let status: FinancialStatus['streak'][0]['status'] = 'gray'
     if (isFullyPaid) {
       status = 'success'
@@ -103,7 +103,8 @@ export function getMemberFinancialStatus(
   }
 
   const balance = Math.max(0, totalDue - totalPaidEver)
-  
+  const surplusShare = isAcc ? (Number(group.accumulated_surplus || 0) / (group.num_members || 1)) : 0
+
   let overallStatus: FinancialStatus['overallStatus'] = 'paid'
   if (missedCount > 0) overallStatus = 'overdue'
   else if (balance > 0.01) overallStatus = 'current'
@@ -115,6 +116,7 @@ export function getMemberFinancialStatus(
     missedCount,
     overallStatus,
     streak,
-    dividends: totalDividends
+    dividends: totalDividends,
+    surplusShare
   }
 }
