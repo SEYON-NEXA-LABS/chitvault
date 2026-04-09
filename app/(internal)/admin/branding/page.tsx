@@ -31,14 +31,15 @@ export default function AdminBrandingPage() {
   const router = useRouter()
   const supabase = createClient()
   const { show } = useToast()
-  const { role } = useFirm()
+  const { role, firm: currentFirm } = useFirm()
 
   const [firms, setFirms] = useState<Firm[]>([])
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Allow both superadmin and owner (Firm Admin)
   useEffect(() => {
-    if (role && role !== 'superadmin') {
+    if (role && role !== 'superadmin' && role !== 'owner') {
       router.push('/dashboard')
       return
     }
@@ -54,16 +55,20 @@ export default function AdminBrandingPage() {
   useEffect(() => {
     async function fetchFirms() {
       setIsLoading(true)
-      const { data, error } = await supabase.from('firms').select('*')
-      if (error) {
-        show(error.message, 'error')
-      } else {
-        setFirms(data as Firm[])
+      
+      if (role === 'superadmin') {
+        const { data, error } = await supabase.from('firms').select('*')
+        if (!error) setFirms(data as Firm[])
+      } else if (currentFirm) {
+        // If owner, just set their own firm
+        setFirms([currentFirm as any])
+        setSelectedFirm(currentFirm as any)
       }
+      
       setIsLoading(false)
     }
     fetchFirms()
-  }, [show, supabase])
+  }, [show, supabase, role, currentFirm])
 
   useEffect(() => {
     if (selectedFirm) {
@@ -107,39 +112,43 @@ export default function AdminBrandingPage() {
       return
     }
     show('Identity & Branding saved! ✓')
-    // Refresh the firms list to get the updated data
-    const { data, error: fetchError } = await supabase.from('firms').select('*')
-    if (!fetchError) {
-      setFirms(data as Firm[])
-       const updatedFirm = (data as Firm[]).find(f => f.id === selectedFirm.id)
-       if (updatedFirm) setSelectedFirm(updatedFirm)
+    
+    // Refresh
+    if (role === 'superadmin') {
+      const { data } = await supabase.from('firms').select('*')
+      if (data) setFirms(data as Firm[])
+    } else {
+      // Local refresh for owner
+      setSelectedFirm(prev => prev ? { ...prev, name, address, phone, color_profile: colorProfile, font } : null)
     }
   }
 
   return (
     <div className="max-w-2xl space-y-4">
-      <h1 className="text-2xl font-bold mb-4">Branding & Appearance</h1>
+      <h1 className="text-2xl font-bold mb-4">Firm Identity & Branding</h1>
 
-      <Card className="overflow-hidden">
-         <div className="p-5 space-y-5">
-        <label htmlFor="firm-select" className="block text-sm font-medium text-gray-700 mb-2">Select a firm to configure:</label>
-        <select
-          id="firm-select"
-          value={selectedFirm?.id || ''}
-          onChange={(e) => {
-            const firm = firms.find(f => f.id === e.target.value)
-            setSelectedFirm(firm || null)
-          }}
-          className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
-          disabled={isLoading}
-        >
-          <option value="" disabled>-- Select a Firm --</option>
-          {firms.map(firm => (
-            <option key={firm.id} value={firm.id}>{firm.name}</option>
-          ))}
-        </select>
-        </div>
-      </Card>
+      {role === 'superadmin' && (
+        <Card className="overflow-hidden">
+          <div className="p-5 space-y-5">
+            <label htmlFor="firm-select" className="block text-sm font-medium text-gray-700 mb-2">Select a firm to configure:</label>
+            <select
+              id="firm-select"
+              value={selectedFirm?.id || ''}
+              onChange={(e) => {
+                const firm = firms.find(f => f.id === e.target.value)
+                setSelectedFirm(firm || null)
+              }}
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              disabled={isLoading}
+            >
+              <option value="" disabled>-- Select a Firm --</option>
+              {firms.map(firm => (
+                <option key={firm.id} value={firm.id}>{firm.name}</option>
+              ))}
+            </select>
+          </div>
+        </Card>
+      )}
 
       {selectedFirm && (
         <Card className="overflow-hidden">
