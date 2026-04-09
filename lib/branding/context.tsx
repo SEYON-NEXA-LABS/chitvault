@@ -13,7 +13,7 @@ interface BrandingContext {
 
 const Ctx = createContext<BrandingContext>({
   name: 'Seyon Chit Vault',
-  font: 'Noto Sans', colorProfile: 'indigo'
+  font: 'Inter', colorProfile: 'indigo'
 })
 
 export function BrandingProvider({ children }: {
@@ -21,7 +21,7 @@ export function BrandingProvider({ children }: {
 }) {
   const { firm } = useFirm()
   const name = firm?.name || APP_NAME
-  const font = firm?.font || 'Noto Sans'
+  const font = firm?.font || 'Inter'
   
   const [colorProfile, setColorProfile] = useState<string>(firm?.color_profile || 'indigo')
 
@@ -61,25 +61,13 @@ export function BrandingProvider({ children }: {
 export function useBranding() { return useContext(Ctx) }
 
 export const AVAILABLE_FONTS = [
+  { label: 'Inter (Modern Standard)', value: 'Inter' },
+  { label: 'Outfit (Geometric Premium)', value: 'Outfit' },
   { label: 'Noto Sans (Best Support)', value: 'Noto Sans' },
-  { label: 'Mukta Malar', value: 'Mukta Malar' },
-  { label: 'Hind Madurai', value: 'Hind Madurai' },
 ]
 
 export const COLOR_PROFILES = [
-  { id: 'indigo',       name: 'Indigo Professional', color: '#3a5ccc' },
-  { id: 'emerald',      name: 'Emerald Calm',        color: '#0f766e' },
-  { id: 'violet',       name: 'Violet Modern',       color: '#6d28d9' },
-  { id: 'crimson',      name: 'Crimson Authority',   color: '#991b1b' },
-  { id: 'graphite',     name: 'Neutral Graphite',    color: '#374151' },
-  { id: 'slate-blue',   name: 'Slate Blue',          color: '#475569' },
-  { id: 'warm-gray',    name: 'Warm Gray',           color: '#52525b' },
-  { id: 'muted-teal',   name: 'Muted Teal',          color: '#115e59' },
-  { id: 'deep-indigo',  name: 'Deep Indigo',         color: '#312e81' },
-  { id: 'bronze',       name: 'Muted Bronze',        color: '#7c4a1d' },
-  { id: 'charcoal',     name: 'Charcoal Minimal',    color: '#1f2933' },
-  { id: 'steel-blue',   name: 'Steel Blue Ops',      color: '#334155' },
-  { id: 'muted-olive',  name: 'Muted Olive',         color: '#3f6212' },
+  { id: 'indigo',       name: 'ChitVault Premium', color: '#2563eb' },
 ]
 
 // For backward compatibility with picker UI

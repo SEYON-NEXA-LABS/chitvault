@@ -4,7 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function updateFirmStatusAction(firmId: string, status: 'active' | 'suspended' | 'cancelled') {
-  const supabase = createClient()
+  const supabase = await createClient()
   const adminClient = createAdminClient()
 
   // 1. Security Check: Must be Superadmin
@@ -25,7 +25,7 @@ export async function updateFirmStatusAction(firmId: string, status: 'active' | 
 }
 
 export async function extendTrialAction(firmId: string, days: number = 30) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const adminClient = createAdminClient()
 
   // Security Check

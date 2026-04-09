@@ -9,7 +9,8 @@ import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 
 import {
   TableCard, Table, Th, Td, Tr,
-  Loading, Empty, Badge, StatCard, Btn, Modal, Field, Toast
+  Loading, Empty, Badge, StatCard, Btn, Modal, Field, Toast,
+  inputClass, inputStyle
 } from '@/components/ui'
 import { downloadCSV } from '@/lib/utils/csv'
 import { useToast } from '@/lib/hooks/useToast'
@@ -195,63 +196,75 @@ export default function CollectionPage() {
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-6 pb-20">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" id="tour-coll-stat">
-        <StatCard label="Total Reach" value={fmt(stats.totalOut)} color="danger" />
-        <StatCard label="Pending Visits" value={filtered.length} color="accent" />
-        <StatCard label="Critical (>3m)" value={stats.critical} color="danger" />
+    <div className="space-y-8 pb-20">
+      <div className="mesh-gradient rounded-[3rem] p-6 shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 relative z-10">
+          <div className="glass-card p-4 rounded-3xl flex flex-col justify-center border-white/20">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white opacity-60 mb-1">Total Reach</div>
+            <div className="text-2xl font-black text-white italic">{fmt(stats.totalOut)}</div>
+          </div>
+          <div className="glass-card p-4 rounded-3xl flex flex-col justify-center border-white/20">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white opacity-60 mb-1">Pending Visits</div>
+            <div className="text-2xl font-black text-white italic">{filtered.length}</div>
+          </div>
+          <div className="glass-card p-4 rounded-3xl flex flex-col justify-center border-white/20 hidden sm:flex">
+             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white opacity-60 mb-1">Critical {'>'}3m</div>
+             <div className="text-2xl font-black text-white italic">{stats.critical}</div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex gap-4 items-center bg-[var(--surface)] p-3 rounded-2xl border no-print" style={{ borderColor: 'var(--border)' }} id="tour-coll-search">
+      <div className="flex gap-4 items-center bg-[var(--surface)] p-3 rounded-[2rem] neumo-out no-print" id="tour-coll-search">
         <div className="flex-1 relative">
-          <input className={inputClass} style={{ ...inputStyle, paddingLeft: 40 }}
+          <input className={inputClass} style={{ ...inputStyle, paddingLeft: 44, height: 54, border: 'none' }}
             placeholder="Search name, phone, area..." value={search} onChange={e => setSearch(e.target.value)} />
-          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 opacity-30" />
+          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20" />
         </div>
         <Btn variant="secondary" onClick={() => window.print()} icon={Printer} className="hidden sm:flex">Print Hub</Btn>
       </div>
 
       {/* Field View (Cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.length === 0 ? (
           <div className="col-span-full"><Empty text="Clean slate! No pending collections." /></div>
         ) : filtered.map((x, idx) => (
-          <div key={x.person.id} className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
-            <div className="p-5 flex-1">
-              <div className="flex justify-between items-start gap-3 mb-4">
+          <div key={x.person.id} className="bg-[var(--surface)] rounded-[2.5rem] neumo-out transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl overflow-hidden flex flex-col border border-white/5">
+            <div className="p-7 flex-1">
+              <div className="flex justify-between items-start gap-3 mb-6">
                 <div>
-                  <div className="font-bold text-lg leading-tight">{x.person.name}</div>
-                  <div className="text-xs opacity-50 mt-1 flex items-center gap-1"><MapPin size={12} /> {x.person.address || 'Unknown Area'}</div>
+                  <div className="font-black text-2xl tracking-tighter leading-none italic uppercase">{x.person.name}</div>
+                  <div className="text-[10px] font-bold opacity-40 mt-2 flex items-center gap-1.5 uppercase tracking-widest"><MapPin size={12} /> {x.person.address || 'Unknown Area'}</div>
                 </div>
                 {x.overdueCount >= 3 ? (
-                  <div className="bg-[var(--danger-dim)] text-[var(--danger)] text-[10px] font-black px-2 py-1 rounded-lg uppercase animate-pulse">Critical</div>
+                  <div className="bg-[var(--danger)] text-white text-[9px] font-black px-3 py-1 rounded-full uppercase shadow-lg shadow-red-500/20">Critical</div>
                 ) : (
-                  <Badge variant="accent" className="text-[9px] uppercase tracking-wider">{x.overdueCount} Months</Badge>
+                  <div className="bg-[var(--accent-dim)] text-[var(--accent)] text-[9px] font-black px-3 py-1 rounded-full uppercase border border-[var(--accent-border)]">{x.overdueCount} Months</div>
                 )}
               </div>
 
-              <div className="space-y-2 mb-6">
+              <div className="space-y-2.5 mb-8">
                 {(x as any).memberships.map((m: any) => (
-                  <div key={m.member.id} className="flex justify-between items-center text-xs bg-[var(--surface2)] px-3 py-2 rounded-xl">
-                    <span className="opacity-60">{getGroupDisplayName(m.group, t)} (#{m.member.ticket_no}) · M {m.dues[0]?.month || '—'}</span>
-                    <span className="font-bold">{fmt(m.totalBalance)}</span>
+                  <div key={m.member.id} className="flex justify-between items-center text-[11px] bg-[var(--surface2)] neumo-in px-4 py-3 rounded-2xl border border-white/5 font-bold">
+                    <span className="opacity-50 uppercase tracking-tighter">{getGroupDisplayName(m.group, t)} · M {m.dues[0]?.month || '—'}</span>
+                    <span className="font-black italic">{fmt(m.totalBalance)}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-end justify-between pt-6 border-t border-dashed" style={{ borderColor: 'var(--border)' }}>
                 <div>
-                  <div className="text-[10px] uppercase opacity-40 font-bold tracking-widest">
-                    {(x as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION') ? 'To Collect (Advance)' : 'To Collect (Due)'}
+                  <div className="text-[9px] uppercase opacity-30 font-black tracking-[0.2em] mb-1">
+                    {(x as any).memberships?.some((m: any) => m.group?.auction_scheme === 'ACCUMULATION') ? 'Advance Target' : 'Liquidation Due'}
                   </div>
-                  <div className={cn("text-xl font-black", x.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]")}>{fmt(x.totalBalance)}</div>
+                  <div className={cn("text-3xl font-black italic tracking-tighter", x.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]")}>{fmt(x.totalBalance)}</div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleWhatsAppReminder(x)} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[#25D366] hover:bg-[#25D366]/10 transition-colors">
-                    <MessageSquare size={18} fill="currentColor" />
+                <div className="flex gap-3">
+                  <button onClick={() => handleWhatsAppReminder(x)} className="w-12 h-12 rounded-2xl neumo-out flex items-center justify-center text-[#25D366] hover:bg-[#25D366]/5 transition-all active:neumo-in active:scale-90">
+                    <MessageSquare size={20} fill="currentColor" />
                   </button>
-                  <a href={`tel:${x.person.phone}`} className="w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center text-[var(--info)] hover:bg-[var(--info-dim)]">
-                    <Phone size={18} />
+                  <a href={`tel:${x.person.phone}`} className="w-12 h-12 rounded-2xl neumo-out flex items-center justify-center text-[var(--info)] hover:bg-[var(--info-dim)] transition-all active:neumo-in active:scale-90">
+                    <Phone size={20} />
                   </a>
                 </div>
               </div>
@@ -261,11 +274,11 @@ export default function CollectionPage() {
                 setPayForm({ amount: String(x.totalBalance), date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} });
                 setPayModal(x);
               }}
-              className="w-full py-4 bg-[var(--accent)] text-white font-bold text-sm uppercase tracking-widest hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
+              className="w-full py-5 bg-[var(--accent)] text-white font-black text-xs uppercase tracking-[0.2em] hover:brightness-110 active:brightness-90 transition-all flex items-center justify-center gap-2"
               id={idx === 0 ? "tour-coll-pay" : undefined}
             >
               <CreditCard size={18} />
-              Record Collection
+              Record Payment
             </button>
           </div>
         ))}
@@ -320,5 +333,3 @@ export default function CollectionPage() {
   )
 }
 
-const inputClass = 'w-full px-4 py-3 rounded-2xl border text-base outline-none transition-all focus:ring-2 focus:ring-[var(--accent)] font-medium shadow-sm'
-const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
