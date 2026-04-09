@@ -32,14 +32,14 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   variant?: BtnVariant; size?: 'sm' | 'md' | 'lg'
   icon?: any; loading?: boolean; children?: React.ReactNode; className?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = 'inline-flex items-center justify-center gap-1.5 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
-  const sizes = { sm: 'px-3 py-1.5 text-[13px]', md: 'px-4 py-2 text-[15px]', lg: 'px-5 py-3 text-base' }
+  const base = 'inline-flex items-center justify-center gap-1.5 font-black rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0.5 active:neumo-in neumo-out active:scale-95'
+  const sizes = { sm: 'px-4 py-2 text-[12px] uppercase tracking-widest', md: 'px-6 py-3 text-[14px] uppercase tracking-widest', lg: 'px-8 py-4 text-base uppercase tracking-widest' }
   const styles: Record<BtnVariant, React.CSSProperties> = {
-    primary:   { background: 'var(--accent)',      color: '#ffffff' },
-    secondary: { background: 'var(--surface2)',  color: 'var(--text)', border: '1px solid var(--border)' },
-    danger:    { background: 'var(--danger-dim)',   color: 'var(--danger)',  border: '1px solid var(--accent-border)' },
-    success:     { background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid var(--accent-border)' },
-    ghost:     { background: 'transparent',      color: 'var(--text)' },
+    primary:   { background: 'var(--accent)',      color: '#ffffff', border: 'none' },
+    secondary: { background: 'var(--surface)',  color: 'var(--text)', border: '1px solid var(--border)' },
+    danger:    { background: 'var(--danger-dim)',   color: 'var(--danger)',  border: '1px solid var(--danger)' },
+    success:     { background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid var(--success)' },
+    ghost:     { background: 'transparent',      color: 'var(--text)', boxShadow: 'none' },
   }
   return (
     <button className={cn(base, sizes[size], className)} style={styles[variant]} {...props}>
@@ -53,13 +53,13 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   )
 }
 
-export function Card({ title, subtitle, headerAction, children, className, style }: {
+export function Card({ title, subtitle, headerAction, children, className, style, glass }: {
   title?: React.ReactNode; subtitle?: React.ReactNode; headerAction?: React.ReactNode
-  children: React.ReactNode; className?: string; style?: React.CSSProperties
+  children: React.ReactNode; className?: string; style?: React.CSSProperties; glass?: boolean
 }) {
   return (
-    <div className={cn('rounded-2xl border', className)}
-      style={{ background: 'var(--surface)', borderColor: 'var(--border)', ...style }}>
+    <div className={cn('rounded-[2rem] border transition-all duration-300', glass ? 'glass-card' : 'neumo-out', className)}
+      style={{ background: glass ? undefined : 'var(--surface)', borderColor: 'var(--border)', ...style }}>
       {(title || subtitle || headerAction) && (
         <div className="px-5 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
           <div>
@@ -91,20 +91,21 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
   }
   
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
+    <Card className="p-6 overflow-hidden relative group" glass>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)] opacity-[0.03] rounded-full -mr-16 -mt-16 blur-3xl group-hover:opacity-10 transition-opacity" />
+      <div className="flex items-start justify-between relative z-10">
         <div>
-          <div className="text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>{label}</div>
-          <div className="font-mono text-2xl font-semibold" style={{ color: colors[color] }}>{value}</div>
-          {sub && <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>{sub}</div>}
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-50" style={{ color: 'var(--text)' }}>{label}</div>
+          <div className="text-3xl font-black tracking-tighter" style={{ color: colors[color] }}>{value}</div>
+          {sub && <div className="text-[10px] font-bold mt-1 opacity-40 uppercase tracking-widest" style={{ color: 'var(--text)' }}>{sub}</div>}
         </div>
         {Icon && (
-          <div className="p-3 rounded-2xl flex items-center justify-center transition-all bg-[var(--surface2)]" 
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-[var(--surface2)] neumo-out group-hover:scale-110" 
             style={{ 
               background: bgColors[color], 
               color: colors[color] 
             }}>
-            <Icon size={24} strokeWidth={2.5} />
+            <Icon size={22} strokeWidth={2.5} />
           </div>
         )}
       </div>
@@ -244,17 +245,17 @@ export function Field({ label, error, children, className }: {
   label: string; error?: string; children: React.ReactNode; className?: string
 }) {
   return (
-    <div className={cn('flex flex-col gap-1', className)}>
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+    <div className={cn('flex flex-col gap-2', className)}>
+      <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 px-1" style={{ color: 'var(--text)' }}>
         {label}
       </label>
       {children}
-      {error && <span className="text-xs" style={{ color: 'var(--danger)' }}>{error}</span>}
+      {error && <span className="text-[10px] font-bold uppercase tracking-wide px-1" style={{ color: 'var(--danger)' }}>{error}</span>}
     </div>
   )
 }
 
-export const inputClass = 'w-full px-3 py-2.5 rounded-lg border text-base outline-none transition-colors focus:border-[var(--accent)] font-medium'
+export const inputClass = 'w-full px-4 py-3.5 rounded-2xl border text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--accent-dim)] font-bold neumo-in'
 export const inputStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
 
 // ── Progress Bar ──────────────────────────────────────────────────────────────

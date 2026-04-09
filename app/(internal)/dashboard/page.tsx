@@ -232,37 +232,43 @@ export default function DashboardPage() {
       </div>
 
       {/* Modern Greeting & Onboarding */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" id="tour-welcome">
-        <div className="lg:col-span-3 flex flex-col justify-center">
-            <div className="flex items-center gap-2 mb-2">
-               <BadgeCheck size={20} className="text-[var(--success)]" />
-               <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{t('dash_verified_firm')}</span>
-            </div>
-            <h2 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text)' }}>
-              {t('dash_welcome')}, <span className="text-[var(--accent)]">{firm?.name || t('dash_partner')}</span>
-            </h2>
-            <div className="flex flex-wrap items-center gap-4 mt-4">
-               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
-                  <Building size={14} className="text-[var(--accent)]" />
-                  <span className="opacity-40">ID:</span>
-                  <span className="font-mono">{firm?.id.substring(0,8)}...</span>
-               </div>
-               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-[11px] font-bold uppercase tracking-wide">
-                  <Clock size={14} className="text-[var(--accent)]" />
-                  <span className="opacity-40">{t('dash_since')}:</span>
+      <div className="relative group overflow-hidden rounded-[3rem] p-8 mesh-gradient shadow-2xl transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(37,99,235,0.3)]">
+        <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+          <div className="lg:col-span-3 flex flex-col justify-center text-white">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full flex items-center gap-2 border border-white/30">
+                  <BadgeCheck size={14} className="text-white" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('dash_verified_firm')}</span>
+                </div>
+              </div>
+              <h2 className="text-5xl font-black tracking-tight leading-tight">
+                {t('dash_welcome')}, <br />
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-200 to-white">{firm?.name || t('dash_partner')}</span>
+              </h2>
+              <div className="flex flex-wrap items-center gap-4 mt-8">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">
+                  <Building size={14} />
+                  <span className="opacity-60">ID:</span>
+                  <span className="font-mono">{firm?.id.substring(0,8)}</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">
+                  <Clock size={14} />
+                  <span className="opacity-60">{t('dash_since')}:</span>
                   <span>{fmtDate(firm?.created_at)}</span>
-               </div>
-               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-dim)] border border-[var(--accent)] text-[11px] font-bold uppercase tracking-wide text-[var(--accent)]">
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white text-blue-600 border border-white text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all">
                   <BadgeCheck size={14} />
                   <span>{firm?.plan} {t('dash_enterprise')}</span>
-               </div>
-            </div>
-        </div>
-        {(isNewFirm || !chartData.every(c => c.actual > 0)) && (
-          <div className="lg:col-span-1" id="tour-onboarding">
-            <OnboardingWidget steps={onboardingSteps} />
+                </div>
+              </div>
           </div>
-        )}
+          {(isNewFirm || !chartData.every(c => c.actual > 0)) && (
+            <div className="lg:col-span-1" id="tour-onboarding">
+              <OnboardingWidget steps={onboardingSteps} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Primary Stats */}

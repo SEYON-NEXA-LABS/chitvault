@@ -89,11 +89,6 @@ export default function SettingsPage() {
     document.documentElement.setAttribute('data-theme', val)
   }
 
-  function handleProfileSelect(id: string) {
-    setColorProfile(id)
-    // Apply immediately for preview
-    document.documentElement.setAttribute('data-color-profile', id)
-  }
 
   function handleFontChange(f: string) {
     setFont(f)
@@ -270,28 +265,6 @@ export default function SettingsPage() {
           <div className="p-5 space-y-5">
 
 
-            {/* Color Profiles */}
-            <div className="pt-2">
-              <div className="flex items-center gap-1.5 mb-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Palette size={13} /> Color Profile
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                {COLOR_PROFILES.map(p => (
-                  <button key={p.id} onClick={() => handleProfileSelect(p.id)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group"
-                    style={{
-                      borderColor: colorProfile === p.id ? 'var(--accent)' : 'var(--border)',
-                      background: colorProfile === p.id ? 'var(--accent-dim)' : 'var(--surface2)',
-                    }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                    <span className="text-[10px] font-bold uppercase tracking-tight text-center"
-                      style={{ color: colorProfile === p.id ? 'var(--accent)' : 'var(--text2)' }}>
-                      {p.name.split(' ')[0]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Font */}
             <div className="pt-2">
@@ -497,45 +470,6 @@ export default function SettingsPage() {
         </div>
         <div className="p-5 space-y-6">
 
-          {/* Color Profiles (Personal Selection) */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Palette size={13} /> Personal Color Profile
-              </div>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('chitvault-user-color-profile')
-                  window.location.reload()
-                }}
-                className="text-[10px] font-bold text-[var(--accent)] hover:underline"
-              >
-                Reset to Firm Default
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {COLOR_PROFILES.map(p => {
-                const isSelected = (typeof window !== 'undefined' && localStorage.getItem('chitvault-user-color-profile')) === p.id
-                return (
-                  <button key={p.id} onClick={() => {
-                    localStorage.setItem('chitvault-user-color-profile', p.id)
-                    window.location.reload()
-                  }}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all group"
-                    style={{
-                      borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
-                      background: isSelected ? 'var(--accent-dim)' : 'var(--surface2)',
-                    }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, background: p.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                    <span className="text-[10px] font-bold uppercase tracking-tight text-center"
-                      style={{ color: isSelected ? 'var(--accent)' : 'var(--text2)' }}>
-                      {p.name.split(' ')[0]}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
 
           <hr style={{ borderColor: 'var(--border)' }} />
 
