@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { APP_DEVELOPER, APP_NAME } from '@/lib/utils/index'
+import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
@@ -32,7 +32,7 @@ function LoginForm() {
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [branding, setBranding] = useState<FirmBranding>({
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
+    name: APP_NAME,
     color_profile: 'indigo', logo_url: null,
     font: 'Noto Sans'
   })
@@ -310,7 +310,7 @@ function LoginForm() {
           </div>
 
           <div className="lg:hidden mt-auto pt-10 text-center text-white/30 text-[9px] font-black uppercase tracking-widest">
-            {APP_DEVELOPER} &copy; 2026 &bull; V{process.env.NEXT_PUBLIC_APP_VERSION}
+            {APP_DEVELOPER} &copy; 2026 &bull; V{APP_VERSION} ({APP_COMMIT_ID})
           </div>
 
         </div>
