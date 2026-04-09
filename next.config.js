@@ -1,10 +1,11 @@
 const { execSync } = require('child_process');
 
-let commitId;
+let commitId = 'dev';
 try {
   commitId = execSync('git rev-parse --short HEAD', { stdio: 'pipe' }).toString().trim();
 } catch (e) {
-  commitId = `build-${Date.now()}`;
+  // Use a stable version fallback for managed hosting where .git may be missing
+  commitId = 'v1.0.1';
 }
 
 const withPWA = require('next-pwa')({

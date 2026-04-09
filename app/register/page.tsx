@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
+import { APP_NAME } from '@/lib/utils'
 
 interface FirmByToken {
   id: string; name: string; slug: string
@@ -104,8 +105,11 @@ function RegisterForm() {
         <div className="max-w-md">
           <div className="text-5xl mb-6">🔒</div>
           <h1 className="text-2xl font-bold text-white mb-4">Registration is Invite-Only</h1>
-          <p className="text-gray-400 mb-8">
-            New firms must be registered through the platform administrator.
+          <p className="text-white/40 text-sm leading-relaxed max-w-sm mx-auto">
+            New firms must be registered through the {APP_NAME || 'platform'} administration.
+            Contact support to onboard your organization.
+          </p>
+          <p className="text-gray-400 mb-8 mt-4">
             If you already have an account, please sign in.
           </p>
           <Link href="/login" className="px-8 py-3 bg-[var(--accent)] text-black font-bold rounded-xl hover:scale-105 transition-transform inline-block">
