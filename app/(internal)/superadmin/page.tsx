@@ -33,12 +33,12 @@ export default async function SuperadminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white p-6 md:p-12 space-y-12 font-[var(--font-noto)]">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-6 md:p-12 space-y-12 font-[var(--font-noto)]">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-[var(--accent)] font-bold text-xs uppercase tracking-[0.2em]">
+          <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-[0.2em]">
             <Crown size={14} /> Control Plane
           </div>
           <h1 className="text-4xl font-black tracking-tight">System Overview</h1>
@@ -46,7 +46,7 @@ export default async function SuperadminDashboard() {
         
         <Link 
           href="/superadmin/onboard"
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-black font-black hover:bg-white/90 transition-all shadow-xl shadow-white/5"
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-600/10"
         >
           <Plus size={20} /> Onboard New Firm
         </Link>
@@ -55,13 +55,13 @@ export default async function SuperadminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Firms', value: stats.total, icon: Building2, color: 'text-blue-500' },
-          { label: 'Active Status', value: stats.active, icon: ShieldCheck, color: 'text-success-500' },
-          { label: 'In Trial', value: stats.trial, icon: Clock, color: 'text-warning-500' },
-          { label: 'Suspended', value: stats.suspended, icon: AlertTriangle, color: 'text-danger-500' },
+          { label: 'Total Firms', value: stats.total, icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Active Status', value: stats.active, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'In Trial', value: stats.trial, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Suspended', value: stats.suspended, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
         ].map((stat, i) => (
-          <div key={i} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4">
-            <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${stat.color}`}>
+          <div key={i} className="p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-sm space-y-4">
+            <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center ${stat.color}`}>
               <stat.icon size={20} />
             </div>
             <div>
@@ -80,10 +80,10 @@ export default async function SuperadminDashboard() {
           </h2>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+        <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-white/10 bg-white/[0.02]">
+              <tr className="border-b border-[var(--border)] bg-[var(--surface2)]">
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40">Organization</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40">Owner Authority</th>
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40">Plan & Expiry</th>
@@ -91,12 +91,12 @@ export default async function SuperadminDashboard() {
                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[var(--border)]">
               {firms?.map((firm) => (
-                <tr key={firm.id} className="group hover:bg-white/[0.02] transition-colors">
+                <tr key={firm.id} className="group hover:bg-[var(--surface2)] transition-colors">
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center font-black">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">
                         {firm.name?.[0]}
                       </div>
                       <div>
@@ -114,7 +114,7 @@ export default async function SuperadminDashboard() {
                   <td className="px-6 py-5">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/10">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[var(--surface2)]">
                           {firm.plan}
                         </span>
                       </div>
@@ -127,15 +127,15 @@ export default async function SuperadminDashboard() {
                   <td className="px-6 py-5">
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase ${
                       firm.plan_status === 'active' 
-                        ? 'bg-success-500/10 text-success-500' 
-                        : 'bg-danger-500/10 text-danger-500'
+                        ? 'bg-emerald-50 text-emerald-600' 
+                        : 'bg-rose-50 text-rose-600'
                     }`}>
-                      <div className={`w-1 h-1 rounded-full ${firm.plan_status === 'active' ? 'bg-success-500' : 'bg-danger-500'}`} />
+                      <div className={`w-1 h-1 rounded-full ${firm.plan_status === 'active' ? 'bg-emerald-600' : 'bg-rose-600'}`} />
                       {firm.plan_status}
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
-                    <button className="p-2 rounded-xl hover:bg-white/10 transition-all opacity-30 hover:opacity-100">
+                    <button className="p-2 rounded-xl hover:bg-[var(--surface2)] transition-all opacity-30 hover:opacity-100">
                       <MoreVertical size={18} />
                     </button>
                   </td>
@@ -152,7 +152,6 @@ export default async function SuperadminDashboard() {
           </table>
         </div>
       </div>
-
     </div>
   )
 }

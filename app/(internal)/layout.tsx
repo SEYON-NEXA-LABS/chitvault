@@ -122,9 +122,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     if (firm?.name) {
-      document.title = `${firm.name} | ${APP_BRAND} ${APP_NAME}`
+      document.title = `${firm.name} (${firm.slug}) | ${APP_BRAND}`
     } else {
-      document.title = (switchedFirmId === 'all') ? `Platform Admin | ${APP_BRAND}` : `${APP_BRAND} ${APP_NAME}`
+      document.title = (switchedFirmId === 'all') ? `${APP_BRAND} Control Center` : `${APP_BRAND} ${APP_NAME}`
     }
     return () => {
       media.removeEventListener('change', listener)
@@ -257,10 +257,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <UserCog size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold truncate" style={{ color: 'var(--text)' }}>{userEmail}</p>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <p className="text-[10px] opacity-60 uppercase font-black">{role}</p>
-                    <p className="text-[9px] opacity-30 font-mono">v{APP_VERSION} ({APP_COMMIT_ID})</p>
+                  <p className="text-[11px] font-black truncate uppercase" style={{ color: 'var(--text)' }}>
+                    {firm?.name || APP_BRAND}
+                  </p>
+                  <p className="text-[9px] opacity-40 font-mono truncate">
+                    ID: {firm?.slug || 'GLOBAL'}
+                  </p>
+                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5">
+                    <p className="text-[9px] opacity-60 uppercase font-black">{role}</p>
+                    <p className="text-[9px] opacity-30 font-mono">v{APP_VERSION}</p>
                   </div>
                 </div>
               </div>
