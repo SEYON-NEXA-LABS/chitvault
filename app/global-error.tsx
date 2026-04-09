@@ -23,20 +23,22 @@ export default function GlobalError({
 
   const handleHardReset = async () => {
     try {
-      // 1. Clear all caches if supported
+      // 1. Clear all browser caches (Service Worker caches)
       if ('caches' in window) {
         const cacheNames = await caches.keys()
         await Promise.all(cacheNames.map(name => caches.delete(name)))
       }
       
-      // 2. Unregister service workers to force fresh asset fetching
+      // 2. Unregister service workers 
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations()
         await Promise.all(registrations.map(reg => reg.unregister()))
       }
       
-      // 3. Force hard reload from server
-      window.location.href = window.location.href
+      // 3. Force hard reload with a cache-busting parameter 
+      const url = new URL(window.location.href)
+      url.searchParams.set('recovery', Date.now().toString())
+      window.location.replace(url.toString())
     } catch (e) {
       console.error('Hard reset failed, falling back to reload', e)
       window.location.reload()

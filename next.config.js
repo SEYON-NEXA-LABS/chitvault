@@ -11,8 +11,22 @@ const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
+  clientsClaim: true,
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
+    // ✅ Next.js Internal Data (RSC & _next/data) - NEVER CACHE
+    {
+      urlPattern: ({ url, request }) => {
+        return (
+          url.pathname.includes('/_next/data/') ||
+          request.headers.get('RSC') ||
+          request.headers.get('Next-Router-State-Tree') ||
+          request.headers.get('Next-Router-Prefetch')
+        )
+      },
+      handler: 'NetworkOnly', // Prevent PWA from ever touching these
+    },
+
     // ✅ API calls – ALWAYS fresh first
     {
       urlPattern: /^https?:\/\/.*\/api\/.*$/,
@@ -39,14 +53,14 @@ const withPWA = require('next-pwa')({
       },
     },
 
-    // ✅ Static JS/CSS (safe to cache hard)
+    // ✅ Static JS/CSS
     {
       urlPattern: /\.(?:js|css)$/,
-      handler: 'CacheFirst',
+      handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'static-assets',
         expiration: {
-          maxEntries: 50,
+          maxEntries: 100,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
         },
       },

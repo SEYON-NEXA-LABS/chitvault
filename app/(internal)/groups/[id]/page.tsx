@@ -530,13 +530,19 @@ export default function GroupLedgerPage() {
                 <Th>{t('auction_month')}</Th>
                 <Th>{t('winner')}</Th>
                 <Th right>{t('auction_discount')}</Th>
-                <Th right className="hidden md:table-cell">
-                   {group.auction_scheme === 'ACCUMULATION' ? 'Benefit / Mem' : t('dividend')}
+                <Th right className="hidden lg:table-cell text-[var(--danger)]">
+                   <div className="flex items-center justify-end gap-1">
+                      <span className="opacity-40 font-mono">−</span> {t('commission')}
+                   </div>
+                </Th>
+                <Th right className="hidden md:table-cell text-[var(--accent)]">
+                   <div className="flex items-center justify-end gap-1">
+                      <span className="opacity-40 font-mono">=</span> Benefit / Mem
+                   </div>
                 </Th>
                 <Th right>{t('net_payout')}</Th>
-                <Th right className="hidden lg:table-cell text-[var(--danger)]">{t('commission')}</Th>
                 <Th right className="hidden sm:table-cell">
-                  {group.auction_scheme === 'ACCUMULATION' ? t('monthly_contribution') : t('after_div')}
+                  {group.auction_scheme === 'ACCUMULATION' ? 'Monthly Pay' : t('after_div')}
                 </Th>
                 <Th right>{t('settlement')}</Th>
                 <Th className="only-print">{t('sign_here')}</Th>
@@ -569,13 +575,23 @@ export default function GroupLedgerPage() {
                       ) : '—'}
                     </Td>
                     <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</Td>
-                    <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)]">
-                      {`+${fmt(a.dividend)}`}
+                    
+                    <Td right className="hidden lg:table-cell font-mono text-[var(--danger)] opacity-80">
+                      <div className="flex flex-col items-end">
+                         <span>{comm ? fmt(comm.commission_amt) : '—'}</span>
+                         {comm && <span className="text-[8px] opacity-40 uppercase tracking-tighter">Comm.</span>}
+                      </div>
                     </Td>
+
+                    <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)] bg-[var(--accent-o5)]">
+                      <div className="flex flex-col items-end">
+                         <span>{`+${fmt(a.dividend)}`}</span>
+                         <span className="text-[8px] opacity-60 uppercase tracking-tighter">Net Benefit</span>
+                      </div>
+                    </Td>
+
                     <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
-                    <Td right className="hidden lg:table-cell font-mono text-[var(--success)]">
-                      {comm ? fmt(comm.commission_amt) : '—'}
-                    </Td>
+                    
                     <Td right className="hidden sm:table-cell font-mono font-bold">
                       {fmt(eachPays)}
                       <div className="text-[8px] opacity-30 mt-0.5">
