@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 
 export default async function SuperadminDashboard() {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   // 1. Fetch Firms with Owner details
   // Note: RLS allows superadmin to see all

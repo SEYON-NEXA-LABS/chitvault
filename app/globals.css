@@ -9,7 +9,7 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --font-base: 'Noto Sans', 'Noto Sans Tamil', sans-serif;
+  --font-base: var(--font-inter), 'Noto Sans Tamil', sans-serif;
   font-size: var(--font-size-base, 16px);
 }
 
@@ -76,11 +76,11 @@
 }
 
 /* ===============================
-   Color Profiles (Accent & Semantics)
+   Fusion Design System (Tokens)
    =============================== */
 
-/* 🔵 Indigo Professional (Default) */
-:root, [data-color-profile="indigo"] {
+:root {
+  /* Core Accent (Indigo Professional) */
   --accent: #2563eb;
   --accent-rgb: 37, 99, 235;
   --accent-light: #60a5fa;
@@ -92,187 +92,22 @@
   --danger-dim: #fef2f2;
   --info: #3b82f6;
   --info-dim: #eff6ff;
+
+  /* Neumorphism (Light) */
+  --neumo-shadow-out: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
+  --neumo-shadow-in: inset 8px 8px 16px #d1d9e6, inset -8px -8px 16px #ffffff;
 }
 
-/* 🟢 Emerald Calm (Finance) */
-[data-color-profile="emerald"] {
-  --accent: #059669;
-  --accent-rgb: 5, 150, 105;
-  --accent-light: #34d399;
-  --accent-dim: rgba(5, 150, 105, 0.1);
-  --accent-border: rgba(5, 150, 105, 0.2);
-  --success: #059669;
-  --success-dim: #ecfdf5;
-  --danger: #dc2626;
-  --danger-dim: #fef2f2;
-  --info: #0891b2;
-  --info-dim: #ecfeff;
+[data-theme="dark"] {
+  /* Neumorphism (Dark) */
+  --neumo-shadow-out: 8px 8px 16px #000000, -8px -8px 16px #18181b;
+  --neumo-shadow-in: inset 8px 8px 16px #000000, inset -8px -8px 16px #18181b;
 }
 
-/* 🟣 Violet Modern */
-[data-color-profile="violet"] {
-  --accent: #7c3aed;
-  --accent-rgb: 124, 58, 237;
-  --accent-light: #a78bfa;
-  --accent-dim: rgba(124, 58, 237, 0.1);
-  --accent-border: rgba(124, 58, 237, 0.2);
-  --success: #10b981;
-  --success-dim: #ecfdf5;
-  --danger: #ef4444;
-  --danger-dim: #fef2f2;
-  --info: #6366f1;
-  --info-dim: #eef2ff;
-}
+/* ===============================
+   Color Profiles (Accent & Semantics)
+   =============================== */
 
-/* 🔴 Crimson Authority */
-[data-color-profile="crimson"] {
-  --accent: #dc2626;
-  --accent-rgb: 220, 38, 38;
-  --accent-light: #f87171;
-  --accent-dim: rgba(220, 38, 38, 0.1);
-  --accent-border: rgba(220, 38, 38, 0.2);
-  --success: #166534;
-  --success-dim: #dcfce7;
-  --danger: #991b1b;
-  --danger-dim: #fef2f2;
-  --info: #2563eb;
-  --info-dim: #eff6ff;
-}
-
-/* ⚫ Graphite (Low-Distraction) */
-[data-color-profile="graphite"] {
-  --accent: #18181b;
-  --accent-rgb: 24, 24, 27;
-  --accent-light: #52525b;
-  --accent-dim: rgba(24, 24, 27, 0.05);
-  --accent-border: rgba(24, 24, 27, 0.1);
-  --success: #18181b;
-  --success-dim: #f4f4f5;
-  --danger: #18181b;
-  --danger-dim: #f4f4f5;
-  --info: #18181b;
-  --info-dim: #f4f4f5;
-}
-
-/* 🔵 Slate Blue (Enterprise) */
-[data-color-profile="slate-blue"] {
-  --accent: #475569;
-  --accent-rgb: 71, 85, 105;
-  --accent-light: #64748b;
-  --accent-dim: rgba(71, 85, 105, 0.1);
-  --accent-border: rgba(71, 85, 105, 0.2);
-  --success: #166534;
-  --success-dim: #e5f3eb;
-  --danger: #991b1b;
-  --danger-dim: #fef2f2;
-  --info: #2563eb;
-  --info-dim: #eff6ff;
-}
-
-/* 🔘 Warm Gray (Legal/Audit) */
-[data-color-profile="warm-gray"] {
-  --accent: #52525b;
-  --accent-rgb: 82, 82, 91;
-  --accent-light: #71717a;
-  --accent-dim: rgba(82, 82, 91, 0.1);
-  --accent-border: rgba(82, 82, 91, 0.2);
-  --success: #365314;
-  --success-dim: #ecf5dd;
-  --danger: #7c2d12;
-  --danger-dim: #fceae4;
-  --info: #374151;
-  --info-dim: #eff1f5;
-}
-
-/* 🟢 Muted Teal (Finance/Trust) */
-[data-color-profile="muted-teal"] {
-  --accent: #0d9488;
-  --accent-rgb: 13, 148, 136;
-  --accent-light: #2dd4bf;
-  --accent-dim: rgba(13, 148, 136, 0.1);
-  --accent-border: rgba(13, 148, 136, 0.2);
-  --success: #059669;
-  --success-dim: #ecfdf5;
-  --danger: #be123c;
-  --danger-dim: #fff1f2;
-  --info: #0891b2;
-  --info-dim: #ecfeff;
-}
-
-/* 🌌 Deep Indigo (Executive) */
-[data-color-profile="deep-indigo"] {
-  --accent: #3730a3;
-  --accent-rgb: 55, 48, 163;
-  --accent-light: #4f46e5;
-  --accent-dim: rgba(55, 48, 163, 0.1);
-  --accent-border: rgba(55, 48, 163, 0.2);
-  --success: #065f46;
-  --success-dim: #dcfce7;
-  --danger: #9f1239;
-  --danger-dim: #fff1f2;
-  --info: #1e3a8a;
-  --info-dim: #e0e7ff;
-}
-
-/* 🟫 Muted Bronze (Industrial) */
-[data-color-profile="bronze"] {
-  --accent: #92400e;
-  --accent-rgb: 146, 64, 14;
-  --accent-light: #b45309;
-  --accent-dim: rgba(146, 64, 14, 0.08);
-  --accent-border: rgba(146, 64, 14, 0.15);
-  --success: #166534;
-  --success-dim: #edf5de;
-  --danger: #991b1b;
-  --danger-dim: #fef2f2;
-  --info: #78350f;
-  --info-dim: #f5ece6;
-}
-
-/* ⚫ Charcoal (Analyst Mode) */
-[data-color-profile="charcoal"] {
-  --accent: #18181b;
-  --accent-rgb: 24, 24, 27;
-  --accent-light: #52525b;
-  --accent-dim: rgba(24, 24, 27, 0.05);
-  --accent-border: rgba(24, 24, 27, 0.1);
-  --success: #18181b;
-  --success-dim: #f4f4f5;
-  --danger: #18181b;
-  --danger-dim: #f4f4f5;
-  --info: #18181b;
-  --info-dim: #f4f4f5;
-}
-
-/* 🛠️ Steel Blue (Ops) */
-[data-color-profile="steel-blue"] {
-  --accent: #334155;
-  --accent-rgb: 51, 65, 85;
-  --accent-light: #64748b;
-  --accent-dim: rgba(51, 65, 85, 0.1);
-  --accent-border: rgba(51, 65, 85, 0.2);
-  --success: #059669;
-  --success-dim: #e7f3ec;
-  --danger: #be123c;
-  --danger-dim: #fff1f2;
-  --info: #2563eb;
-  --info-dim: #eff6ff;
-}
-
-/* 🏛️ Muted Olive (Institutional) */
-[data-color-profile="muted-olive"] {
-  --accent: #3f6212;
-  --accent-rgb: 63, 98, 18;
-  --accent-light: #65a30d;
-  --accent-dim: rgba(63, 98, 18, 0.1);
-  --accent-border: rgba(63, 98, 18, 0.2);
-  --success: #166534;
-  --success-dim: #edf5de;
-  --danger: #991b1b;
-  --danger-dim: #fef2f2;
-  --info: #3f6212;
-  --info-dim: #eff6e7;
-}
 
 /* ── Premium Aesthetics ─────────────────────────────────────────────────────── */
 .mesh-gradient {
@@ -287,17 +122,21 @@
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--surface-rgb), 0.6);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(var(--surface-rgb), 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
 }
 
-[data-theme="light"] .glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+.neumo-out {
+  box-shadow: var(--neumo-shadow-out);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neumo-in {
+  box-shadow: var(--neumo-shadow-in);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 

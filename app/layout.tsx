@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Noto_Sans, Noto_Sans_Tamil } from 'next/font/google'
+import { Inter, Outfit, Noto_Sans_Tamil } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
 import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
@@ -8,7 +8,8 @@ import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
 import './globals.css'
 
-const noto = Noto_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-noto' })
+const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-inter' })
+const outfit = Outfit({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-outfit' })
 const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '600', '700'], variable: '--font-noto-tamil' })
 
 export const metadata: Metadata = {
@@ -101,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         `}} />
       </head>
-      <body className={`${noto.variable} ${notoTamil.variable}`}>
+      <body className={`${inter.variable} ${outfit.variable} ${notoTamil.variable}`}>
         <FirmProvider>
           <BrandingProvider>
             <I18nProvider>

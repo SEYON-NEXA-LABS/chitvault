@@ -4,11 +4,11 @@ import { cookies } from "next/headers";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-export const createClient = (cookieStore?: Awaited<ReturnType<typeof cookies>>) => {
+export const createClient = async (cookieStore?: Awaited<ReturnType<typeof cookies>>) => {
   // If no cookie store provided, try to get it from next/headers
   if (!cookieStore) {
     try {
-      cookieStore = cookies()
+      cookieStore = await cookies()
     } catch (e) {
       // Cookies not available (e.g. static build or metadata route)
     }

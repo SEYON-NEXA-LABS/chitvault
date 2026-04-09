@@ -25,7 +25,7 @@ export async function registerFirm(params: {
   color_profile: string;
   font: string;
 }) {
-  const supabase = createServerClient(cookies())
+  const supabase = await createServerClient()
   const admin = createAdminClient()
 
   // 1. Check if current user is superadmin
@@ -86,7 +86,7 @@ export async function registerFirm(params: {
 }
 
 export async function updateFirmProfile(firmId: string, profileId: string) {
-  const supabase = createServerClient(cookies())
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
@@ -111,7 +111,7 @@ export async function updateFirmDetails(firmId: string, params: {
   phone?: string;
   font?: string;
 }) {
-  const supabase = createServerClient(cookies())
+  const supabase = await createServerClient()
   
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user?.id).single()

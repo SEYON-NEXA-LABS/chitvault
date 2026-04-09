@@ -11,7 +11,7 @@ export async function onboardFirmAction(formData: {
   ownerName: string
   initialPassword?: string
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const adminClient = createAdminClient()
 
   // 1. Security Check: Must be Superadmin
