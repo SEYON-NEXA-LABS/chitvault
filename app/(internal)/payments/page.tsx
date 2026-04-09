@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, fmtDate, fmtMonth, getToday, cn, getGroupDisplayName } from '@/lib/utils'
+import { fmt, fmtDate, fmtMonth, getToday, cn, getGroupDisplayName, amtToWords } from '@/lib/utils'
 import { Btn, Badge, Card, Loading, Empty, Toast, Chip, Modal, Field, StatCard, Table, Th, Td, Tr, TableCard } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -13,7 +13,7 @@ import { useI18n } from '@/lib/i18n/context'
 import type { Group, Member, Auction, Payment, Person, Firm } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { getMemberFinancialStatus, FinancialStatus } from '@/lib/utils/chitLogic'
-import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
+import { CreditCard, Search, History, ChevronRight, AlertCircle, CheckCircle2, Trash2, Printer } from 'lucide-react'
 
 interface PersonSummary {
   person: Person;
@@ -25,6 +25,7 @@ interface PersonSummary {
   overallTotalDue: number;
   overallTotalPaid: number;
   overallTotalBalance: number;
+  isOverdue: boolean;
   lastPaymentDate: string | null;
 }
 
@@ -107,6 +108,7 @@ function PaymentsPageContent() {
           overallTotalDue: 0,
           overallTotalPaid: 0,
           overallTotalBalance: 0,
+          isOverdue: false,
           lastPaymentDate: null
         });
       }
@@ -116,6 +118,7 @@ function PaymentsPageContent() {
       pSummary.overallTotalDue += fStatus.totalDue;
       pSummary.overallTotalPaid += fStatus.totalPaid;
       pSummary.overallTotalBalance += fStatus.balance;
+      if (fStatus.overallStatus === 'overdue') pSummary.isOverdue = true;
 
       const mPays = payments.filter(p => p.member_id === m.id && p.group_id === group.id);
       const lastPay = mPays[0];
@@ -257,6 +260,68 @@ function PaymentsPageContent() {
     setSaving(false);
   }
 
+  function handlePrintReceipt(p: Payment) {
+    const m = members.find(x => x.id === p.member_id)
+    const g = groups.find(x => x.id === p.group_id)
+    if (!m || !g) return
+
+    const printWin = window.open('', '_blank')
+    if (!printWin) return
+
+    const html = `
+      <html>
+        <head>
+          <title>Receipt - ${m.persons?.name}</title>
+          <style>
+            body { font-family: sans-serif; padding: 30px; line-height: 1.6; color: #000; }
+            .receipt-box { border: 2px solid #000; padding: 30px; position: relative; max-width: 600px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+            .firm-name { font-size: 20px; font-weight: bold; text-transform: uppercase; }
+            .receipt-title { font-size: 14px; color: #555; font-weight: bold; letter-spacing: 2px; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+            .label { font-size: 12px; color: #666; font-weight: bold; }
+            .value { font-size: 14px; font-weight: bold; }
+            .amount-section { background: #f9f9f9; padding: 15px; text-align: center; margin-top: 20px; border: 1px solid #ddd; }
+            .amount { font-size: 24px; font-weight: 900; }
+            .words { font-size: 12px; text-transform: uppercase; font-weight: bold; margin-top: 5px; }
+            .footer { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .sig { border-top: 1px solid #000; width: 150px; text-align: center; font-size: 10px; padding-top: 5px; }
+            .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; opacity: 0.05; font-weight: 900; pointer-events: none; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-box">
+            <div class="watermark">PAID</div>
+            <div class="header">
+              <div class="firm-name">${firm?.name}</div>
+              <div class="receipt-title">PAYMENT RECEIPT</div>
+            </div>
+            
+            <div class="row"><span class="label">Date:</span><span class="value">${fmtDate(p.payment_date)}</span></div>
+            <div class="row"><span class="label">Received From:</span><span class="value">${m.persons?.name}</span></div>
+            <div class="row"><span class="label">Group:</span><span class="value">${getGroupDisplayName(g, t)}</span></div>
+            <div class="row"><span class="label">Month / Installment:</span><span class="value">${fmtMonth(p.month, g.start_date)}</span></div>
+            <div class="row"><span class="label">Payment Mode:</span><span class="value">${p.mode}</span></div>
+
+            <div class="amount-section">
+              <div class="label">AMOUNT PAID</div>
+              <div class="amount">${fmt(p.amount)}</div>
+              <div class="words">${amtToWords(p.amount)}</div>
+            </div>
+
+            <div class="footer">
+              <div style="font-size: 10px; color: #888;">Transaction ID: ${p.id}</div>
+              <div class="sig">Authorized Signature</div>
+            </div>
+          </div>
+          <script>window.onload = () => { window.print(); window.close(); }</script>
+        </body>
+      </html>
+    `
+    printWin.document.write(html)
+    printWin.document.close()
+  }
+
   const handleDeletePayment = async (id: number) => {
     if (!can('deletePayment')) return;
     if (!confirm('Move this payment record to trash?')) return;
@@ -331,7 +396,12 @@ function PaymentsPageContent() {
                     {s.overallTotalBalance <= 0.01 ? "Clear Account" : `${s.memberships.filter(m => m.status.balance > 0).length} Tickets Pending`}
                   </Badge>
                 </Td>
-                <Td right className={cn("font-bold font-mono text-base", s.overallTotalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                <Td right className={cn(
+                  "font-bold font-mono text-base", 
+                  s.overallTotalBalance > 0.01 
+                    ? (s.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]") 
+                    : "text-[var(--success)]"
+                )}>
                   {fmt(s.overallTotalBalance)}
                 </Td>
                 <Td right><div className="flex gap-1 justify-end">
@@ -370,7 +440,17 @@ function PaymentsPageContent() {
                   const bal = Math.max(0, d.due - d.paid);
                   return (
                     <div key={key} className="flex items-center justify-between p-2.5 rounded-lg text-xs bg-[var(--surface2)]">
-                      <div><div className="font-bold">{getGroupDisplayName(ms.group, t)} · {fmtMonth(d.month, ms.group.start_date)}</div><div className="text-[9px] opacity-40">Ticket #{ms.member.ticket_no}</div></div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{getGroupDisplayName(ms.group, t)} · {fmtMonth(d.month, ms.group.start_date)}</span>
+                          {(() => {
+                             const gAucs = auctions.filter(a => a.group_id === ms.group.id)
+                             const isAdvance = d.month > (gAucs.length > 0 ? Math.max(...gAucs.map(a => a.month)) : 0)
+                             return (isAdvance || d.status === 'info') && <span className="text-[9px] font-black text-[#0ea5e9] uppercase tracking-tighter">Advance</span>
+                          })()}
+                        </div>
+                        <div className="text-[9px] opacity-40">Ticket #{ms.member.ticket_no}</div>
+                      </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right min-w-[80px]"><div className="font-bold text-[var(--danger)]">{fmt(bal)}</div><div className="text-[9px] opacity-40 font-mono">DUE: {fmt(d.due)}</div></div>
                         {payForm.isManual && <input className={cn(inputClass, "w-20")} style={{ ...inputStyle, padding: '4px' }} type="number" value={payForm.manualAllocations[key] || ''} onChange={e => {
@@ -424,7 +504,12 @@ function PaymentsPageContent() {
                         <Td>{fmtDate(p.payment_date)}</Td>
                         <Td className="text-xs"><div className="font-bold">{g ? getGroupDisplayName(g, t) : '—'}</div><div className="opacity-50">{fmtMonth(p.month, g?.start_date)}</div></Td>
                         <Td right className="font-bold text-[var(--success)]">{fmt(p.amount)}</Td>
-                        <Td right>{can('deletePayment') && <button onClick={() => handleDeletePayment(p.id)} className="text-[var(--danger)] opacity-50 hover:opacity-100"><Trash2 size={14}/></button>}</Td>
+                        <Td right>
+                          <div className="flex justify-end gap-1">
+                            <button onClick={() => handlePrintReceipt(p)} className="text-[var(--info)] opacity-50 hover:opacity-100" title="Print Receipt"><Printer size={14}/></button>
+                            {can('deletePayment') && <button onClick={() => handleDeletePayment(p.id)} className="text-[var(--danger)] opacity-50 hover:opacity-100" title="Delete"><Trash2 size={14}/></button>}
+                          </div>
+                        </Td>
                       </Tr>
                     )
                   })}

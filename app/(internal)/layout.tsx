@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { APP_BRAND, APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID, cn } from '@/lib/utils/index'
 import {
+  ChevronDown,
   LayoutDashboard, Users, UsersRound, Gavel, Crown,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
@@ -16,7 +17,6 @@ import {
 import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
-import { usePwa } from '@/lib/pwa/context'
 import type { Firm, Profile, UserRole } from '@/types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -39,34 +39,72 @@ interface NavItem {
   href?: string
   label: string
   icon?: any
-  divider?: boolean
   ownerOnly?: boolean
   superAdminOnly?: boolean
+  items?: {
+    href: string
+    label: string
+    icon?: any
+    ownerOnly?: boolean
+  }[]
 }
 
 const NAV: NavItem[] = [
-  { href: '/dashboard', label: 'nav_dashboard', icon: LayoutDashboard },
-  { href: '/groups', label: 'nav_groups', icon: UsersRound },
-  { href: '/members', label: 'nav_members', icon: Users },
-  { label: 'nav_transactions', divider: true },
-  { href: '/auctions', label: 'nav_auctions', icon: Gavel },
-  { href: '/payments', label: 'nav_payments', icon: CreditCard },
-  { label: 'nav_reports_group', divider: true },
-  { href: '/reports', label: 'nav_reports', icon: BarChart3 },
-  { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
-  { href: '/collection', label: 'nav_collection', icon: ClipboardList },
-  { href: '/defaulters', label: 'nav_defaulters', icon: ShieldAlert },
-  { href: '/settlement', label: 'nav_settlements', icon: Calculator },
-  { label: 'nav_manage', divider: true },
-  { href: '/team', label: 'nav_team', icon: UserCog },
-  { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
-  { href: '/admin/branding', label: 'Firm Identity', icon: Palette, ownerOnly: true },
-  { href: '/settings', label: 'nav_settings', icon: Settings },
-  { label: 'nav_help', divider: true },
-  { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
-  { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
-  { href: '/superadmin', label: 'Control Plane', icon: Crown, superAdminOnly: true },
-  { href: '/superadmin/onboard', label: 'Onboard Firm', icon: Building2, superAdminOnly: true },
+  {
+    label: 'nav_operations',
+    icon: LayoutDashboard,
+    items: [
+      { href: '/dashboard', label: 'nav_dashboard', icon: LayoutDashboard },
+      { href: '/groups', label: 'nav_groups', icon: UsersRound },
+      { href: '/members', label: 'nav_members', icon: Users },
+    ]
+  },
+  {
+    label: 'nav_transactions',
+    icon: Gavel,
+    items: [
+      { href: '/auctions', label: 'nav_auctions', icon: Gavel },
+      { href: '/payments', label: 'nav_payments', icon: CreditCard },
+      { href: '/settlement', label: 'nav_settlements', icon: Calculator },
+    ]
+  },
+  {
+    label: 'nav_reports_group',
+    icon: BarChart3,
+    items: [
+      { href: '/reports', label: 'nav_reports', icon: BarChart3 },
+      { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
+      { href: '/collection', label: 'nav_collection', icon: ClipboardList },
+      { href: '/defaulters', label: 'nav_defaulters', icon: ShieldAlert },
+    ]
+  },
+  {
+    label: 'nav_manage',
+    icon: Settings,
+    items: [
+      { href: '/team', label: 'nav_team', icon: UserCog },
+      { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
+      { href: '/admin/branding', label: 'Firm Identity', icon: Palette, ownerOnly: true },
+      { href: '/settings', label: 'nav_settings', icon: Settings },
+    ]
+  },
+  {
+    label: 'nav_help',
+    icon: HelpCircle,
+    items: [
+      { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
+      { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
+    ]
+  },
+  {
+    label: 'Control Plane',
+    icon: Crown,
+    superAdminOnly: true,
+    items: [
+      { href: '/superadmin', label: 'Overview', icon: Crown },
+      { href: '/superadmin/onboard', label: 'Onboard Firm', icon: Building2 },
+    ]
+  }
 ]
 
 const planColor: Record<string, string> = {
@@ -81,7 +119,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isOwner = role === 'owner' || role === 'superadmin'
   const { lang, setLang, t } = useI18n()
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
-  const { install, isInstallable } = usePwa()
   const { switchedFirmId, setSwitchedFirmId } = useFirm()
   const [firms, setFirms] = useState<Firm[]>([])
 
@@ -90,6 +127,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [fontSize, setFontSize] = useState(14)
   const [monochrome, setMonochrome] = useState(false)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    nav_operations: true, nav_transactions: true, nav_reports_group: true, nav_manage: true, nav_help: true, 'Control Plane': true
+  })
 
   useEffect(() => {
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
@@ -195,38 +235,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
           
-          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-            {NAV.map((item, i) => {
-              if (item.divider) {
-                return (
-                  <div key={i} className="pt-6 pb-2 px-3">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 select-none">
-                      {t(item.label)}
-                    </div>
-                  </div>
-                )
-              }
-              if (item.ownerOnly && !isOwner) return null
-              if (item.superAdminOnly && role !== 'superadmin') return null
-              
-              const Icon = item.icon
-              const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href!))
-              
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4">
+            {NAV.map((group, i) => {
+              if (group.superAdminOnly && role !== 'superadmin') return null
+              if (group.ownerOnly && !isOwner) return null
+
+              const isExp = expanded[group.label]
+              const Icon = group.icon
+
               return (
-                <Link
-                  key={i}
-                  href={item.href!}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all',
-                    active 
-                      ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]' 
-                      : 'text-[var(--text2)] hover:bg-[var(--surface2)]'
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <Icon size={18} />
-                  {t(item.label)}
-                </Link>
+                <div key={i} className="space-y-1">
+                  <button 
+                    onClick={() => setExpanded(e => ({ ...e, [group.label]: !e[group.label] }))}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity"
+                  >
+                    <div className="flex items-center gap-2">
+                       {Icon && <Icon size={14} className="opacity-50" />}
+                       {t(group.label)}
+                    </div>
+                    <ChevronDown size={14} className={cn("transition-transform duration-300", !isExp && "-rotate-90")} />
+                  </button>
+
+                  <div className={cn("space-y-1 overflow-hidden transition-all duration-300", isExp ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0")}>
+                    {group.items?.map((item, j) => {
+                      if (item.ownerOnly && !isOwner) return null
+                      const SIcon = item.icon
+                      const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+
+                      return (
+                        <Link
+                          key={j}
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all ml-2',
+                            active 
+                              ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]' 
+                              : 'text-[var(--text2)] hover:bg-[var(--surface2)]'
+                          )}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          {SIcon && <SIcon size={16} />}
+                          {t(item.label)}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
           </nav>
@@ -275,16 +329,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {t('sign_out')}
               </button>
-
-              {isInstallable && (
-                <button 
-                  onClick={install}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-[var(--accent-dim)] text-[var(--accent)] text-xs font-bold border border-[var(--accent-border)] hover:bg-[var(--accent)] hover:text-white transition-all shadow-sm"
-                >
-                  <Download size={14} />
-                  Install App
-                </button>
-              )}
             </div>
           </div>
         </aside>
@@ -302,15 +346,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              {isInstallable && (
-                <button 
-                  onClick={install}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white lg:hidden"
-                >
-                  <Download size={14} />
-                  Install
-                </button>
-              )}
               {hasPin ? (
                 <button 
                   onClick={lock}

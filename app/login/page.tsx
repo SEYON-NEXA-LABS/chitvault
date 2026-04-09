@@ -135,11 +135,13 @@ function LoginForm() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-auto pt-8 border-t border-white/10 flex items-center justify-between text-white font-bold uppercase tracking-widest text-[9px] opacity-30">
-            <span>{APP_DEVELOPER} &copy; 2026</span>
+          <div className="relative z-10 mt-auto pt-8 border-t border-white/10 flex items-center justify-between text-[var(--text2)] font-bold uppercase tracking-widest text-[9px] opacity-30">
+            <div className="flex flex-col gap-1">
+              <span>{APP_DEVELOPER} &copy; 2026</span>
+              <span className="text-[var(--accent)]">V{APP_VERSION} &bull; {APP_COMMIT_ID}</span>
+            </div>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Security</a>
+              <span className="text-white/50">SECURE AUDIT ACTIVE</span>
             </div>
           </div>
 

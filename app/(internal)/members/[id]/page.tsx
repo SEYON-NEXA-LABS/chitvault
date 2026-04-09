@@ -248,9 +248,9 @@ export default function MemberDetailPage() {
                       const f = getMemberFinancialStatus(m, g, auctions, payments)
                       return f.streak.map(s => (
                         <div key={s.month} 
-                          title={`Month ${s.month}: ${s.status}`}
+                          title={`Month ${s.month}: ${s.isAdvance ? 'Advance' : s.status}`}
                           className="w-2.5 h-2.5 rounded-[2px] transition-transform hover:scale-125" 
-                          style={{ background: `var(--${s.status})` }} 
+                          style={{ background: s.isAdvance ? '#0ea5e9' : `var(--${s.status})` }} 
                         />
                       ))
                     })()}
@@ -266,7 +266,7 @@ export default function MemberDetailPage() {
                     <span className="text-[9px] opacity-40 uppercase font-black">Outstanding</span>
                     {(() => {
                       const f = getMemberFinancialStatus(m, g, auctions, payments)
-                      return <span className={cn("text-xs font-bold", f.missedCount > 0 ? "text-[var(--danger)]" : f.balance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>{fmt(f.balance)}</span>
+                      return <span className={cn("text-xs font-bold", f.overallStatus === 'overdue' ? "text-[var(--danger)]" : f.balance > 0.01 ? "text-[#0ea5e9]" : "text-[var(--success)]")}>{fmt(f.balance)}</span>
                     })()}
                   </div>
                 </div>
@@ -325,7 +325,18 @@ export default function MemberDetailPage() {
                         {g?.auction_scheme === 'ACCUMULATION' ? t('monthly_contribution') : t('amount_due')}
                       </div>
                     </Td>
-                    <Td><Badge variant="gray">Month {p.month}</Badge></Td>
+                    <Td>
+                       <div className="flex items-center gap-2">
+                          <Badge variant="gray">Month {p.month}</Badge>
+                          {(() => {
+                             const mStatus = tickets.find(x => x.id === p.member_id)
+                             const gStatus = mStatus ? allGroups.find(x => x.id === mStatus.group_id) : null
+                             const gAucs = auctions.filter(a => a.group_id === gStatus?.id)
+                             const isAdvance = p.month > (gAucs.length > 0 ? Math.max(...gAucs.map(a => a.month)) : 0)
+                             return isAdvance ? <span className="text-[9px] font-black text-[#0ea5e9] uppercase tracking-tighter">Advance</span> : null
+                          })()}
+                       </div>
+                    </Td>
                     <Td right className="font-black text-[var(--success)]">{fmt(p.amount)}</Td>
                     <Td className="hidden sm:table-cell"><Badge variant="gray">{p.mode}</Badge></Td>
                     <Td className="hidden md:table-cell text-[10px] opacity-40">

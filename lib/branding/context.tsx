@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, createContext, useContext } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import type { Firm } from '@/types'
 import { useFirm } from '@/lib/firm/context'
 import { APP_NAME } from '@/lib/utils'
@@ -23,8 +23,13 @@ export function BrandingProvider({ children }: {
   const name = firm?.name || APP_NAME
   const font = firm?.font || 'Noto Sans'
   
-  // Priority: 1. User Local Preference, 2. Firm Global Setting, 3. Default
-  const colorProfile = (typeof window !== 'undefined' && localStorage.getItem('chitvault-user-color-profile')) || firm?.color_profile || 'indigo'
+  const [colorProfile, setColorProfile] = useState<string>(firm?.color_profile || 'indigo')
+
+  useEffect(() => {
+    // Only run on client after mount to prevent hydration mismatch
+    const saved = localStorage.getItem('chitvault-user-color-profile')
+    if (saved) setColorProfile(saved)
+  }, [])
 
   useEffect(() => {
     applyBranding(font, colorProfile)

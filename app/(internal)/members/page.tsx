@@ -459,7 +459,7 @@ export default function MembersPage() {
 
       {view === 'people' ? (
         <TableCard title={`Total Registry (${filteredPeople.length} People)`} subtitle="All unique individuals registered in the system.">
-          <Table>
+          <Table responsive>
             <thead><tr>
               <Th className="w-10">
                  <input type="checkbox" checked={selectedIds.size === filteredPeople.length && filteredPeople.length > 0} onChange={() => toggleAll(filteredPeople.map(p => p.id))} />
@@ -476,9 +476,9 @@ export default function MembersPage() {
                 const isSelected = selectedIds.has(c.id)
                 return (
                   <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/50 transition-colors cursor-pointer")} onClick={() => toggleSelect(c.id)}>
-                    <Td><input type="checkbox" checked={isSelected} readOnly /></Td>
-                    {isSuper && <Td><Badge variant="gray">{c.firms?.name || '—'}</Badge></Td>}
-                    <Td>
+                    <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
+                    {isSuper && <Td label="Firm"><Badge variant="gray">{c.firms?.name || '—'}</Badge></Td>}
+                    <Td label="Person">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-bold text-xs uppercase overflow-hidden shrink-0">
                           {c.name.substring(0, 2)}
@@ -491,8 +491,8 @@ export default function MembersPage() {
                         </div>
                       </div>
                     </Td>
-                    <Td className="hidden md:table-cell font-mono text-xs opacity-60 tracking-tighter">{c.phone || '—'}</Td>
-                    <Td className="hidden sm:table-cell">
+                    <Td label="Phone" className="hidden md:table-cell font-mono text-xs opacity-60 tracking-tighter">{c.phone || '—'}</Td>
+                    <Td label="Tickets" className="hidden sm:table-cell">
                       {c.activeCount > 0 ? (
                         <div className="flex items-center gap-1.5">
                           <Badge variant="info">{c.activeCount} ACTIVE</Badge>
@@ -504,13 +504,13 @@ export default function MembersPage() {
                         </div>
                       ) : <span className="text-[10px] uppercase font-bold opacity-20">None</span>}
                     </Td>
-                    <Td>
+                    <Td label="Outstanding">
                        <div className={cn("font-bold font-mono text-base tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                           {fmt(c.totalBalance)}
                        </div>
                        {c.totalPaid > 0 && <div className="text-[10px] font-bold opacity-30 mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
                     </Td>
-                    <Td right>
+                    <Td label="Action" right>
                       <div className="flex gap-2 justify-end">
                         <Btn size="sm" variant="secondary" onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${c.id}`) }}>{t('profile')}</Btn>
                         <Btn size="sm" variant="ghost" icon={Trash2} onClick={(e: any) => { e.stopPropagation(); deletePerson(c.id) }} className="text-[var(--danger)]" />
@@ -539,7 +539,7 @@ export default function MembersPage() {
                        <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>{t('export')}</Btn>
                     </div>
                   }>
-                  <Table>
+                  <Table responsive>
                       <thead><tr>
                         <Th className="w-10">
                            <input type="checkbox" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
@@ -556,20 +556,20 @@ export default function MembersPage() {
                           const isWinner = auctions.some(a => a.winner_id === m.id)
                           return (
                             <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 transition-colors")} onClick={() => toggleSelect(m.id)}>
-                              <Td><input type="checkbox" checked={isSelected} readOnly /></Td>
-                              <Td className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
-                              <Td className="font-bold">
+                              <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
+                              <Td label="Ticket" className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
+                              <Td label="Person" className="font-bold">
                                  <div className="flex items-center gap-2">
                                    {m.persons?.name} 
                                    {m.persons?.nickname && <span className="text-[var(--accent)] font-medium text-xs opacity-70">({m.persons.nickname})</span>}
                                    {isWinner && <Badge variant="accent" className="text-[9px] py-0.5">Winner</Badge>}
                                  </div>
                               </Td>
-                              <Td className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
-                              <Td className="hidden sm:table-cell">
+                              <Td label="Phone" className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
+                              <Td label="Status" className="hidden sm:table-cell">
                                  {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
                               </Td>
-                              <Td right>
+                              <Td label="Action" right>
                                  <div className="flex gap-2 justify-end">
                                     <Btn size="sm" variant="ghost" icon={CreditCard} onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }}>{t('record_payment')}</Btn>
                                     <Btn size="sm" variant="ghost" icon={Info} onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} />
