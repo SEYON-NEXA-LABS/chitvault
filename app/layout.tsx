@@ -59,47 +59,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 errorMessage.indexOf('ChunkLoadError') !== -1 || 
                 errorMessage.indexOf('Loading chunk') !== -1 ||
                 errorMessage.indexOf('Failed to fetch') !== -1 ||
-                errorMessage.indexOf("Unexpected token '<'") !== -1
+                errorMessage.indexOf("Unexpected token '<'") !== -1 ||
+                errorMessage.indexOf("Unexpected token '{'") !== -1
               );
               if (isChunkError) {
                 var now = Date.now();
                 var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
+                
+                // If it's been more than a minute, reset the counter
                 if (now - reloadData.last > 60000) reloadData.count = 0;
                 
-                if (reloadData.count < 3) {
+                if (reloadData.count < 5) {
                   reloadData.count++;
                   reloadData.last = now;
                   sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
-                  console.warn('System: Asset Mismatch detected. Attempting Self-Healing ' + reloadData.count + '/3...');
                   
                   var forceFullReload = function() {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('recovery', now);
-                    
-                    // Try to clear caches
+                    // Try to clear all caches
                     if ('caches' in window) {
                       caches.keys().then(function(names) {
                         names.forEach(function(name) { caches.delete(name); });
                       }).catch(function(){});
                     }
-                    // Try to unregister service workers
+                    // Force unregister service workers
                     if ('serviceWorker' in navigator) {
                       navigator.serviceWorker.getRegistrations().then(function(regs) {
                         regs.forEach(function(reg) { reg.unregister(); });
-                        window.location.replace(url.toString());
-                      }).catch(function() { window.location.replace(url.toString()); });
+                        setTimeout(function() { window.location.reload(true); }, 100);
+                      }).catch(function() { window.location.reload(true); });
                     } else {
-                      window.location.replace(url.toString());
+                      window.location.reload(true);
                     }
                   };
 
-                  if (reloadData.count > 1) {
-                    forceFullReload();
-                  } else {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set('recovery', now);
-                    window.location.replace(url.toString());
-                  }
+                  forceFullReload();
                 }
               }
             }

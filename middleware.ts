@@ -19,6 +19,6 @@ export const config = {
      * - icons (static icons directory)
      * - any file with an extension (ending in .png, .svg, .webp, .ico, .json, .txt)
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|sw\\.js|.*\\.png$|.*\\.svg$|.*\\.webp$|.*\\.ico$|.*\\.json$|.*\\.txt$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons|sw\\.js|.*\\.js$|.*\\.css$|.*\\.png$|.*\\.svg$|.*\\.webp$|.*\\.ico$|.*\\.json$|.*\\.txt$).*)',
   ],
 }
