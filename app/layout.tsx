@@ -72,7 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   console.warn('System: Asset Mismatch detected. Attempting Self-Healing ' + reloadData.count + '/3...');
                   
                   var forceFullReload = function() {
-                    // Try to clear caches if supported
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('recovery', now);
+                    
+                    // Try to clear caches
                     if ('caches' in window) {
                       caches.keys().then(function(names) {
                         names.forEach(function(name) { caches.delete(name); });
@@ -82,18 +85,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     if ('serviceWorker' in navigator) {
                       navigator.serviceWorker.getRegistrations().then(function(regs) {
                         regs.forEach(function(reg) { reg.unregister(); });
-                        window.location.reload();
-                      }).catch(function() { window.location.reload(); });
+                        window.location.replace(url.toString());
+                      }).catch(function() { window.location.replace(url.toString()); });
                     } else {
-                      window.location.reload();
+                      window.location.replace(url.toString());
                     }
                   };
 
-                  // On first attempt just reload, on second/third attempt try a full hard reset
                   if (reloadData.count > 1) {
                     forceFullReload();
                   } else {
-                    window.location.reload();
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('recovery', now);
+                    window.location.replace(url.toString());
                   }
                 }
               }
@@ -133,6 +137,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.addEventListener('load', function() {
               navigator.serviceWorker.ready.then(function(registration) {
                 registration.update();
+                
+                // Also check for updates when the user returns to the app
+                document.addEventListener('visibilitychange', function() {
+                  if (document.visibilityState === 'visible') registration.update();
+                });
+                window.addEventListener('focus', function() {
+                  registration.update();
+                });
               }).catch(function(err) {
                 console.warn('SW Update failed:', err);
               });
