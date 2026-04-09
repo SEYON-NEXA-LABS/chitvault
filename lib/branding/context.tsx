@@ -3,6 +3,7 @@
 import { useEffect, createContext, useContext } from 'react'
 import type { Firm } from '@/types'
 import { useFirm } from '@/lib/firm/context'
+import { APP_NAME } from '@/lib/utils'
 
 interface BrandingContext {
   name: string
@@ -19,7 +20,7 @@ export function BrandingProvider({ children }: {
   children: React.ReactNode
 }) {
   const { firm } = useFirm()
-  const name = firm?.name || process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault'
+  const name = firm?.name || APP_NAME
   const font = firm?.font || 'Noto Sans'
   
   // Priority: 1. User Local Preference, 2. Firm Global Setting, 3. Default

@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { APP_BRAND, APP_DEVELOPER, APP_NAME, APP_VERSION, cn } from '@/lib/utils/index'
+import { APP_BRAND, APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID, cn } from '@/lib/utils/index'
 import {
   LayoutDashboard, Users, UsersRound, Gavel, Crown,
   CreditCard, BarChart3, ClipboardList, Settings,
@@ -260,7 +260,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <p className="text-[11px] font-bold truncate" style={{ color: 'var(--text)' }}>{userEmail}</p>
                   <div className="flex items-center justify-between mt-0.5">
                     <p className="text-[10px] opacity-60 uppercase font-black">{role}</p>
-                    <p className="text-[9px] opacity-30 font-mono">v{APP_VERSION} ({process.env.NEXT_PUBLIC_COMMIT_ID})</p>
+                    <p className="text-[9px] opacity-30 font-mono">v{APP_VERSION} ({APP_COMMIT_ID})</p>
                   </div>
                 </div>
               </div>

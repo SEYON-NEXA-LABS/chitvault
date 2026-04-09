@@ -8,6 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'SEYON'
 export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'
+export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_DEVELOPER = 'SEYON NEXA LABS'
 export const SUPPORT_EMAIL = 'seyonnexalabs@gmail.com'
 export const SUPERADMIN_EMAIL = 'seyonnexalabs@gmail.com'

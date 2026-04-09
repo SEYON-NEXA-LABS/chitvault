@@ -8,7 +8,7 @@ import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS, COLOR_PROFILES } from '@
 import { Btn, Card, Badge, Toast } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { APP_NAME, fmtDate } from '@/lib/utils'
+import { APP_NAME, APP_VERSION, APP_COMMIT_ID, fmtDate } from '@/lib/utils'
 import {
   Sun, Moon, LogOut, Key, Palette, Type, Building, Building2,
   Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
@@ -610,7 +610,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-8 pt-6 border-t flex flex-wrap gap-4" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-[10px] font-medium opacity-50 flex items-center gap-1.5"><Monitor size={12} /> Platform: ChitVault v{process.env.NEXT_PUBLIC_APP_VERSION}</div>
+            <div className="text-[10px] font-medium opacity-50 flex items-center gap-1.5"><Monitor size={12} /> Platform: ChitVault v{APP_VERSION} ({APP_COMMIT_ID})</div>
             <div className="text-[10px] font-medium opacity-50 flex items-center gap-1.5"><LockKeyhole size={12} /> Security: High-Fidelity Audit Trails Enabled</div>
           </div>
         </div>

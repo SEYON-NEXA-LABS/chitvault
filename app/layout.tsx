@@ -6,13 +6,14 @@ import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { PwaProvider } from '@/lib/pwa/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
+import { APP_NAME } from '@/lib/utils/index'
 import './globals.css'
 
 const noto = Noto_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-noto' })
 const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '600', '700'], variable: '--font-noto-tamil' })
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || 'SEYON ChitVault',
+  title: APP_NAME,
   description: 'Chit Fund Management Software',
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-512.png' },
 }
