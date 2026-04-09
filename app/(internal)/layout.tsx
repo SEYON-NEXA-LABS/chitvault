@@ -60,10 +60,11 @@ const NAV: NavItem[] = [
   { label: 'nav_manage', divider: true },
   { href: '/team', label: 'nav_team', icon: UserCog },
   { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
+  { href: '/admin/branding', label: 'Firm Identity', icon: Palette, ownerOnly: true },
   { href: '/settings', label: 'nav_settings', icon: Settings },
   { label: 'nav_help', divider: true },
   { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
-  { href: '/schemes', label: 'nav_help', icon: HelpCircle },
+  { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
   { href: '/superadmin', label: 'Control Plane', icon: Crown, superAdminOnly: true },
   { href: '/superadmin/onboard', label: 'Onboard Firm', icon: Building2, superAdminOnly: true },
 ]
@@ -196,7 +197,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           
           <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
             {NAV.map((item, i) => {
-              if (item.divider) return <div key={i} className="my-4 h-px bg-[var(--border)] opacity-50" />
+              if (item.divider) {
+                return (
+                  <div key={i} className="pt-6 pb-2 px-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 select-none">
+                      {t(item.label)}
+                    </div>
+                  </div>
+                )
+              }
               if (item.ownerOnly && !isOwner) return null
               if (item.superAdminOnly && role !== 'superadmin') return null
               

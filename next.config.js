@@ -1,10 +1,15 @@
 const { execSync } = require('child_process');
 
-let commitId = 'dev';
+// Get the current commit ID for PWA versioning (Fall back to timestamp if Git is missing)
+let commitId = 'dev'
 try {
-  commitId = execSync('git rev-parse --short HEAD').toString().trim();
+  commitId = execSync('git rev-parse --short HEAD').toString().trim()
+  console.log(`✅ Build Version: commit-${commitId}`)
 } catch (e) {
-  console.warn('Could not get git commit hash');
+  // If Git fails (e.g., on Hostinger build servers without .git folder), 
+  // we use a build timestamp to ensure cache invalidation still works.
+  commitId = `build-${Date.now()}`
+  console.warn(`⚠️ Git info missing. Using fallback Build ID: ${commitId}`)
 }
 
 const withPWA = require('next-pwa')({
