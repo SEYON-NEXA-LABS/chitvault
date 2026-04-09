@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { APP_BRAND, APP_DEVELOPER, APP_NAME, APP_VERSION, cn } from '@/lib/utils/index'
 import {
-  LayoutDashboard, Users, UsersRound, Gavel,
+  LayoutDashboard, Users, UsersRound, Gavel, Crown,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass
@@ -64,9 +64,8 @@ const NAV: NavItem[] = [
   { label: 'nav_help', divider: true },
   { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
   { href: '/schemes', label: 'nav_help', icon: HelpCircle },
-  { href: '/admin', label: 'Platform Admin', icon: Settings, superAdminOnly: true },
-  { href: '/admin?create=true', label: 'Register Firm', icon: Building2, superAdminOnly: true },
-  { href: '/admin/branding', label: 'Branding', icon: Palette, superAdminOnly: true },
+  { href: '/superadmin', label: 'Control Plane', icon: Crown, superAdminOnly: true },
+  { href: '/superadmin/onboard', label: 'Onboard Firm', icon: Building2, superAdminOnly: true },
 ]
 
 const planColor: Record<string, string> = {

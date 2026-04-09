@@ -64,53 +64,76 @@ export default function OnboardingPage() {
   const current = steps[step]
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: '#0d0f14' }}>
-      <div style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
-
-        {/* Progress dots */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 40 }}>
-          {steps.map((_, i) => (
-            <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? '#2563eb' : '#2a3045', transition: 'all 0.3s' }} />
-          ))}
+    <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center p-6 font-[var(--font-noto)]">
+      <div className="max-w-md w-full animate-in fade-in zoom-in duration-500">
+        
+        {/* Progress header */}
+        <div className="flex items-center justify-between mb-8 px-2">
+           <div className="flex gap-2">
+             {steps.map((_, i) => (
+               <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? 'w-8 bg-[var(--accent)]' : 'w-2 bg-white/10'}`} />
+             ))}
+           </div>
+           <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{step + 1} / {steps.length}</span>
         </div>
 
-        <div style={{ background: '#161921', border: '1px solid #2a3045', borderRadius: 20, padding: '40px 36px' }}>
-          <div style={{ fontSize: 56, marginBottom: 20 }}>{current.icon}</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 14, color: '#e8ecf5' }}>
-            {current.title}
-          </h2>
-          <p style={{ fontSize: 15, color: '#8892aa', lineHeight: 1.7, marginBottom: 32 }}>
-            {current.body}
-          </p>
+        <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-10 md:p-12 space-y-8 backdrop-blur-xl relative overflow-hidden group">
+          {/* Subtle glow effect */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[var(--accent)]/10 blur-[80px] rounded-full" />
+          
+          <div className="relative space-y-6 text-center">
+            <div className="text-6xl mb-6 transform transition-transform group-hover:scale-110 duration-500 inline-block">{current.icon}</div>
+            <div className="space-y-3">
+              <h2 className="text-3xl font-black tracking-tight leading-tight">
+                {current.title}
+              </h2>
+              <p className="text-sm opacity-50 leading-relaxed font-medium">
+                {current.body}
+              </p>
+            </div>
+          </div>
 
           {/* Trial info on first step */}
           {step === 0 && firm && (
-            <div style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 10, padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
-              <div style={{ fontSize: 13, color: '#2563eb', fontWeight: 600, marginBottom: 8 }}>Your Account Details</div>
-              <div style={{ fontSize: 13, color: '#8892aa', lineHeight: 2 }}>
-                <div>Business: <strong style={{ color: '#e8ecf5' }}>{firm.name}</strong></div>
-                <div>Plan: <strong style={{ color: '#e8ecf5' }}>Trial (30 days free)</strong></div>
-                <div>Login URL: <strong style={{ color: '#2563eb' }}>chitvault.app/login</strong></div>
+            <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4 animate-in slide-in-from-bottom-4 duration-700">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">Subscription Instance</div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                   <span className="opacity-40">Firm Name</span>
+                   <span className="font-bold">{firm.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                   <span className="opacity-40">Plan Status</span>
+                   <span className="text-success-500 font-bold uppercase tracking-wider">Active Trial</span>
+                </div>
               </div>
             </div>
           )}
 
-          <button onClick={next}
-            style={{ width: '100%', padding: '14px 0', background: '#2563eb', color: '#0d0f14', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
-            {current.action}
-          </button>
-
-          {step > 0 && (
-            <button onClick={() => setStep(s => s - 1)}
-              style={{ width: '100%', marginTop: 10, padding: '10px 0', background: 'transparent', color: '#505a70', border: 'none', fontSize: 14, cursor: 'pointer' }}>
-              ← Back
+          <div className="space-y-4 pt-4">
+            <button 
+              onClick={next}
+              className="w-full py-5 rounded-[1.5rem] bg-white text-black font-black text-lg hover:bg-white/90 active:scale-[0.98] transition-all shadow-xl shadow-white/5"
+            >
+              {current.action}
             </button>
-          )}
+
+            {step > 0 && (
+              <button 
+                onClick={() => setStep(s => s - 1)}
+                className="w-full text-xs font-bold opacity-30 hover:opacity-100 transition-opacity tracking-widest uppercase"
+              >
+                Go Back
+              </button>
+            )}
+          </div>
         </div>
 
-        <button onClick={() => window.location.replace('/dashboard')}
-          style={{ marginTop: 16, background: 'none', border: 'none', color: '#505a70', fontSize: 13, cursor: 'pointer' }}>
-          Skip intro →
+        <button 
+          onClick={() => window.location.replace('/dashboard')}
+          className="w-full mt-10 text-[10px] font-bold uppercase tracking-[0.3em] opacity-20 hover:opacity-100 transition-opacity"
+        >
+          Skip Intro Sequence →
         </button>
 
       </div>

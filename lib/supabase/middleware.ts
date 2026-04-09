@@ -35,6 +35,7 @@ export async function updateSession(request: NextRequest) {
   const isOnboarding = pathname === '/onboarding'
   const isInvite = pathname.startsWith('/invite')
   const isDenied = pathname === '/access-denied'
+  const isSuperadminRoute = pathname.startsWith('/superadmin')
 
   if (!user && !isPublic && !isInvite && !isDenied) {
     const url = request.nextUrl.clone()
@@ -63,20 +64,20 @@ export async function updateSession(request: NextRequest) {
     // 2. If on Public page —> Forward to App
     if (isPublic) {
       if (profile?.role === 'superadmin') {
-        return NextResponse.redirect(new URL('/admin', request.url))
+        return NextResponse.redirect(new URL('/superadmin/onboard', request.url))
       }
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
   // 3. If on Protected route —> Enforce guards
     if (!isPublic && !isOnboarding && !isInvite && !isDenied) {
-      // Admin-only areas
-      if (isAdmin && profile?.role !== 'superadmin') {
+      // Superadmin-only areas
+      if (isSuperadminRoute && profile?.role !== 'superadmin') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
 
       // If no profile at all, force onboarding
-      if (!profile && !isAdmin) {
+      if (!profile && !isAdmin && !isSuperadminRoute) {
         return NextResponse.redirect(new URL('/onboarding', request.url))
       }
     }
