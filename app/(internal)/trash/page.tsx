@@ -171,7 +171,7 @@ export default function TrashPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <StatCard label="Total Items in Trash" value={Object.values(counts).reduce((a,b)=>a+b,0)} color="accent" />
          <StatCard label="Auto-Purge Policy" value="90 Days" color="info" />
-         <Link href="/reports?type=activity" className="block"><StatCard label="Recent Purges" value={0} color="info" sub="Audit activity log" /></Link>
+         <Link href="/reports/activity" className="block"><StatCard label="Recent Purges" value={0} color="info" sub="Audit activity log" /></Link>
       </div>
 
       <TableCard title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Archive`} subtitle={`Manage deleted ${activeTab} records.`}>

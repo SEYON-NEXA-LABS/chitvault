@@ -136,7 +136,7 @@ function RegisterForm() {
       <div className="w-full max-w-[480px]">
         <div className="text-center mb-10">
           <div className="flex items-center justify-center mb-10">
-            <img src="/icons/icon-512.png" alt="Logo" className="w-40 h-40 object-contain transition-transform hover:scale-105 duration-700" />
+            <Image src="/icons/icon-512.png" alt="Logo" width={160} height={160} className="object-contain transition-transform hover:scale-105 duration-700" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
             Join {tokenFirm?.name}

@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Lock, Delete, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePinLock } from '@/lib/lock/context'
+import Image from 'next/image'
 
 interface PinOverlayProps {
   onUnlock: (pin: string) => boolean
@@ -15,40 +16,18 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
   const [resetting, setResetting] = useState(false)
   const { clearLock } = usePinLock()
 
-  // Auto-submit when 4 digits are entered
-  useEffect(() => {
-    if (pin.length === 4) {
-      const timer = setTimeout(() => {
-        handleSubmit()
-      }, 150) // Tiny delay for visual feedback of the 4th dot
-      return () => clearTimeout(timer)
-    }
-  }, [pin])
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= '0' && e.key <= '9') {
-        handleKey(e.key)
-      } else if (e.key === 'Backspace') {
-        handleBackspace()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pin])
-
-  const handleKey = (num: string) => {
+  const handleKey = useCallback((num: string) => {
     if (pin.length >= 4) return
     setError(false)
     setPin(prev => prev + num)
-  }
+  }, [pin])
 
-  const handleBackspace = () => {
+  const handleBackspace = useCallback(() => {
     setPin(prev => prev.slice(0, -1))
     setError(false)
-  }
+  }, [])
 
-  const handleSubmit = (manualPin?: string) => {
+  const handleSubmit = useCallback((manualPin?: string) => {
     const target = manualPin || pin
     if (onUnlock(target)) {
       setPin('')
@@ -60,7 +39,29 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
       el?.classList.add('animate-shake')
       setTimeout(() => el?.classList.remove('animate-shake'), 400)
     }
-  }
+  }, [pin, onUnlock])
+
+  // Auto-submit when 4 digits are entered
+  useEffect(() => {
+    if (pin.length === 4) {
+      const timer = setTimeout(() => {
+        handleSubmit()
+      }, 150) // Tiny delay for visual feedback of the 4th dot
+      return () => clearTimeout(timer)
+    }
+  }, [pin, handleSubmit])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handleKey(e.key)
+      } else if (e.key === 'Backspace') {
+        handleBackspace()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleKey, handleBackspace])
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center mesh-gradient overflow-hidden selection:bg-[var(--accent)] selection:text-white">
@@ -68,7 +69,7 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
       {/* Visual Context (Matches Login Sidebar Style) */}
       <div className="absolute top-10 left-10 hidden lg:flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center overflow-hidden">
-          <img src="/icons/icon-512.png" alt="Logo" className="w-8 h-8 object-cover" />
+          <Image src="/icons/icon-512.png" alt="Logo" width={32} height={32} className="object-cover" />
         </div>
         <span className="text-xl font-black tracking-tighter text-white uppercase italic">ChitVault</span>
       </div>

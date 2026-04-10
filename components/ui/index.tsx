@@ -346,6 +346,84 @@ export function Chip({ active, onClick, children }: {
     </button>
   )
 }
+
+// ── Pagination ──────────────────────────────────────────────────────────────
+export function Pagination({ 
+  current, 
+  total, 
+  pageSize, 
+  onPageChange, 
+  onPageSizeChange 
+}: { 
+  current: number; 
+  total: number; 
+  pageSize: number;
+  onPageChange: (p: number) => void;
+  onPageSizeChange?: (size: number) => void;
+}) {
+  const totalPages = Math.ceil(total / pageSize)
+  if (totalPages <= 1 && total <= 25) return null
+
+  return (
+    <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-8 px-6 border-t mt-4 no-print" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex items-center gap-3">
+        <select 
+          value={pageSize} 
+          onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+          className="text-[10px] font-black uppercase tracking-widest bg-[var(--surface2)] border px-2 py-1 rounded-lg outline-none"
+        >
+          <option value={25}>25 Per Page</option>
+          <option value={50}>50 Per Page</option>
+          <option value={100}>100 Per Page</option>
+        </select>
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">
+          Showing {Math.min(total, (current - 1) * pageSize + 1)}-{Math.min(total, current * pageSize)} of {total}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Btn 
+          size="sm" 
+          variant="secondary" 
+          disabled={current <= 1} 
+          onClick={() => onPageChange(current - 1)}
+          className="px-3"
+        >
+          Prev
+        </Btn>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+            const p = i + 1 // Simple pagination for now
+            // If totalPages > 5, this logic would need to be smarter (e.g. windows), but keeping it simple for reports
+            return (
+              <button
+                key={p}
+                onClick={() => onPageChange(p)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-[10px] font-black transition-all",
+                  current === p ? "bg-[var(--accent)] text-white" : "hover:bg-[var(--surface2)] opacity-50"
+                )}
+              >
+                {p}
+              </button>
+            )
+          })}
+          {totalPages > 5 && <span className="opacity-30">...</span>}
+        </div>
+        <Btn 
+          size="sm" 
+          variant="secondary" 
+          disabled={current >= totalPages} 
+          onClick={() => onPageChange(current + 1)}
+          className="px-3"
+        >
+          Next
+        </Btn>
+      </div>
+    </div>
+  )
+}
+
 export * from './PinOverlay'
 export * from './CSVImportModal'
 export * from './CommandPalette'

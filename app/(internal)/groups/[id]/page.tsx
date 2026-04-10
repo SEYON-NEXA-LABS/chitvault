@@ -799,7 +799,7 @@ export default function GroupLedgerPage() {
                 </Td>
                 <Td right className="no-print">
                   <div className="flex justify-end gap-1">
-                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports?type=member_history&member_id=${m.id}`)} icon={History}>{t('ledger')}</Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports/member_history?member_id=${m.id}`)} icon={History}>{t('ledger')}</Btn>
                     <Btn size="sm" variant="ghost" onClick={() => router.push(`/members/${m.person_id}`)} icon={Info}>{t('profile')}</Btn>
                     {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>{t('remove')}</Btn>}
                   </div>

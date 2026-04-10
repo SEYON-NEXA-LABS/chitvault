@@ -29,7 +29,7 @@ create table if not exists firms (
   color_profile   text default 'indigo',      -- indigo | emerald | violet | crimson | graphite
   logo_url        text,                        -- hosted image URL
   font            text default 'DM Sans',      -- Google Font name
-  register_token  text unique,                 -- private registration link token
+  enabled_schemes text[] default array['DIVIDEND', 'ACCUMULATION'],
   created_at      timestamptz default now(),
   created_by      uuid references auth.users(id),
   updated_at      timestamptz default now(),
@@ -48,6 +48,7 @@ alter table firms add column if not exists register_token text unique;
 alter table firms add column if not exists address        text;
 alter table firms add column if not exists city           text;
 alter table firms add column if not exists phone          text;
+alter table firms add column if not exists enabled_schemes text[] default array['DIVIDEND', 'ACCUMULATION'];
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'firms_plan_chk') then
@@ -104,7 +105,7 @@ create table if not exists groups (
   num_members          int not null,
   duration             int not null,
   monthly_contribution numeric(12,2) not null,
-  start_date           date,
+  start_date           date not null,
   status               text default 'active',
   -- Scheme Configuration
   auction_scheme       text default 'ACCUMULATION',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
@@ -216,6 +217,7 @@ create table if not exists auctions (
   is_payout_settled boolean default false,
   payout_date       date,
   payout_amount     numeric(12,2),
+  payout_mode       text,                          -- Cash, UPI, Bank Transfer, Cheque
   payout_note       text,
   notes             text,
   status       text default 'confirmed',
@@ -233,6 +235,7 @@ alter table auctions add column if not exists net_payout          numeric(12,2) 
 alter table auctions add column if not exists is_payout_settled   boolean default false;
 alter table auctions add column if not exists payout_date        date;
 alter table auctions add column if not exists payout_amount      numeric(12,2);
+alter table auctions add column if not exists payout_mode        text;
 alter table auctions add column if not exists payout_note        text;
 alter table auctions add column if not exists notes              text;
 
@@ -1150,3 +1153,114 @@ drop trigger if exists log_new_firm on firms;
 create trigger log_new_firm
   after insert on firms
   for each row execute function trg_log_new_firm();
+
+-- ══════════════════════════════════════════════════════════════
+-- 12. PERFORMANCE OPTIMIZATIONS (Aggregated Metrics & Scoped Fetching)
+-- ══════════════════════════════════════════════════════════════
+
+-- 12.1 Registry Statistics (Members Page)
+create or replace function public.get_firm_registry_stats(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+declare
+    v_total_people int;
+    v_active_tickets int;
+begin
+    select count(*) into v_total_people from persons where firm_id = p_firm_id and deleted_at is null;
+    select count(m.id) into v_active_tickets from members m join groups g on m.group_id = g.id
+    where m.firm_id = p_firm_id and m.deleted_at is null and g.status != 'archived';
+    return json_build_object('totalPeople', v_total_people, 'activeTickets', v_active_tickets);
+end;
+$$;
+
+-- 12.2 Ledger Statistics (Payments & Cashbook Page)
+create or replace function public.get_firm_ledger_stats(p_firm_id uuid, p_start_date date default null, p_end_date date default null)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+declare
+    v_today_coll numeric(12,2);
+    v_range_coll numeric(12,2) := 0;
+    v_range_payout numeric(12,2) := 0;
+begin
+    select coalesce(sum(amount), 0) into v_today_coll from payments where firm_id = p_firm_id and deleted_at is null and payment_date = current_date;
+    if p_start_date is not null and p_end_date is not null then
+        select coalesce(sum(amount), 0) into v_range_coll from payments where firm_id = p_firm_id and deleted_at is null and payment_date >= p_start_date and payment_date <= p_end_date;
+        select coalesce(sum(total_amount), 0) into v_range_payout from settlements where firm_id = p_firm_id and deleted_at is null and created_at >= (p_start_date::text || ' 00:00:00')::timestamp and created_at <= (p_end_date::text || ' 23:59:59')::timestamp;
+    end if;
+    return json_build_object('collectedToday', v_today_coll, 'collectedInRange', v_range_coll, 'payoutsInRange', v_range_payout);
+end;
+$$;
+
+-- 12.3 Dashboard Statistics
+create or replace function public.get_firm_dashboard_stats(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+declare
+    v_total_chit_value numeric(15,2);
+    v_defaulters_count int;
+    v_active_groups_count int;
+    v_total_members_count int;
+begin
+    select coalesce(sum(chit_value), 0), count(*) into v_total_chit_value, v_active_groups_count from groups where firm_id = p_firm_id and status = 'active' and deleted_at is null;
+    select count(*) into v_defaulters_count from members where firm_id = p_firm_id and status = 'defaulter' and deleted_at is null;
+    select count(*) into v_total_members_count from members where firm_id = p_firm_id and deleted_at is null;
+    return json_build_object('totalChitValue', v_total_chit_value, 'defaulters', v_defaulters_count, 'activeGroups', v_active_groups_count, 'totalMembers', v_total_members_count);
+end;
+$$;
+
+-- 12.4 Collection Trends (6 Months)
+create or replace function public.get_firm_collection_trends(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+begin
+    return (select json_agg(t) from (select to_char(payment_date, 'YYYY-MM') as month, coalesce(sum(amount), 0) as actual from payments where firm_id = p_firm_id and deleted_at is null and payment_date >= (current_date - interval '6 months') group by 1 order by 1) t);
+end;
+$$;
+
+-- 12.5 Group Progress Summaries
+create or replace function public.get_firm_group_summaries(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+begin
+    return (select json_agg(t) from (select g.id, (select count(*) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as auctions_done, (select count(*) from payments p where p.group_id = g.id and p.status = 'paid' and p.deleted_at is null) as payments_made from groups g where g.firm_id = p_firm_id and g.status != 'archived' and g.deleted_at is null) t);
+end;
+$$;
+
+-- 12.6 Winner Intelligence
+create or replace function public.get_firm_winner_insights(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+declare
+    v_early_bird_count int;
+    v_highest_bid numeric(15,2);
+begin
+    select count(*) into v_early_bird_count from auctions a join groups g on a.group_id = g.id where a.firm_id = p_firm_id and a.status = 'confirmed' and a.month <= (g.duration / 4);
+    select coalesce(max(auction_discount), 0) into v_highest_bid from auctions where firm_id = p_firm_id and status = 'confirmed';
+    return json_build_object('earlyBirdCount', v_early_bird_count, 'highestSingleDiscount', v_highest_bid);
+end;
+$$;
+
+grant execute on function public.get_firm_registry_stats(uuid) to authenticated;
+grant execute on function public.get_firm_ledger_stats(uuid, date, date) to authenticated;
+grant execute on function public.get_firm_dashboard_stats(uuid) to authenticated;
+grant execute on function public.get_firm_collection_trends(uuid) to authenticated;
+grant execute on function public.get_firm_group_summaries(uuid) to authenticated;
+grant execute on function public.get_firm_winner_insights(uuid) to authenticated;

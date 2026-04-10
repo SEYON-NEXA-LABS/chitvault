@@ -185,7 +185,7 @@ export default function MemberDetailPage() {
             </div>
             <div className="flex gap-2">
               {can('editMember') && <Btn size="sm" variant="secondary" icon={Edit} onClick={() => setEditOpen(true)}>Edit Profile</Btn>}
-              <Btn size="sm" variant="secondary" icon={History} onClick={() => router.push(`/reports?type=member_history&person_id=${person.id}`)}>Audit History</Btn>
+              <Btn size="sm" variant="secondary" icon={History} onClick={() => router.push(`/reports/member_history?person_id=${person.id}`)}>Audit History</Btn>
               {can('deleteMember') && <Btn size="sm" variant="danger" icon={Trash2} onClick={handleDeletePerson}>Move to Trash</Btn>}
             </div>
           </div>

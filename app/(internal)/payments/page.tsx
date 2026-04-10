@@ -64,29 +64,82 @@ function PaymentsPageContent() {
   const [payForm,  setPayForm]  = useState({ amount: '', date: getToday(), mode: 'Cash', note: '', isManual: false, manualAllocations: {} as Record<string, string> })
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<Set<number>>(new Set())
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const PAGE_SIZE = 20
+
+  const [ledgerStats, setLedgerStats] = useState({ collectedToday: 0, collectedInRange: 0, totalOut: 0 })
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
+    if (!targetId) return
 
-    const [g, m, a, p] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*').neq('status','archived'), targetId).is('deleted_at', null).order('name'),
-      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).is('deleted_at', null),
-      withFirmScope(supabase.from('auctions').select('*'), targetId).is('deleted_at', null).order('month'),
-      withFirmScope(supabase.from('payments').select('*'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }),
-    ])
-    setGroups(g.data || [])
-    setMembers(m.data || [])
-    setAuctions(a.data || [])
-    setPayments(p.data || [])
+    try {
+      // 1. Fetch Global Stats via RPC
+      const { data: sData } = await supabase.rpc('get_firm_ledger_stats', { 
+        p_firm_id: targetId,
+        p_start_date: dateRange.start || null,
+        p_end_date: dateRange.end || null
+      })
+      if (sData) setLedgerStats(sData)
 
-    if (isSuper && firms.length === 0) {
-      const { data: f } = await supabase.from('firms').select('*').order('name')
-      setFirms(f || [])
+      // 2. Fetch Paginated Persons (Optimized Select)
+      let pQuery = withFirmScope(supabase.from('persons').select('id, name, phone, firm_id', { count: 'exact' }), targetId).is('deleted_at', null)
+      
+      if (search) {
+        pQuery = pQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+      }
+
+      const { data: pData, count, error: pErr } = await pQuery
+        .order('name')
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
+
+      if (pErr) showToast(pErr.message, 'error')
+      const currentPersons = pData || []
+      setTotalCount(count || 0)
+
+      // 3. Fetch dependent data for these specific people ONLY
+      const personIds = (currentPersons as any[]).map(p => p.id)
+
+      const { data: mData } = await withFirmScope(supabase.from('members').select('id, person_id, group_id, ticket_no, status, persons(id, name, nickname, phone)'), targetId)
+        .in('person_id', personIds)
+        .is('deleted_at', null)
+      
+      const relevantGroupIds = Array.from(new Set((mData as any[])?.map(m => m.group_id) || []))
+
+      const [g, a, pay] = await Promise.all([
+        withFirmScope(supabase.from('groups').select('id, name, duration, monthly_contribution, status, auction_scheme, accumulated_surplus, num_members'), targetId)
+          .in('id', relevantGroupIds)
+          .is('deleted_at', null),
+        withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status'), targetId)
+          .in('group_id', relevantGroupIds)
+          .is('deleted_at', null)
+          .order('month'),
+        withFirmScope(supabase.from('payments').select('id, member_id, person_id, group_id, amount, month, payment_date, created_at'), targetId)
+          .in('person_id', personIds)
+          .is('deleted_at', null)
+          .order('payment_date', { ascending: false }),
+      ])
+      
+      setMembers(mData || [])
+      setGroups(g.data || [])
+      setAuctions(a.data || [])
+      setPayments(pay.data || [])
+
+      if (isSuper && firms.length === 0) {
+        const { data: f } = await supabase.from('firms').select('id, name').order('name')
+        setFirms(f || [])
+      }
+    } finally {
+      setLoading(false)
+      setSelectedPaymentIds(new Set())
     }
-    setLoading(false)
-    setSelectedPaymentIds(new Set())
-  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length, page, search, dateRange.start, dateRange.end, showToast])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search])
 
   useEffect(() => { load(true) }, [load])
 
@@ -148,36 +201,15 @@ function PaymentsPageContent() {
     }
   }, [qPersonId, personSummaries, payModal])
 
-  const filtered = useMemo(() => {
-    return personSummaries.filter((s: PersonSummary) => {
-      const matchSearch = s.person.name.toLowerCase().includes(search.toLowerCase()) ||
-        (s.person.phone && s.person.phone.includes(search));
-      
-      if (!matchSearch) return false;
-      if (showOnlyPaid && dateRange.start && dateRange.end) {
-        const hasPaymentInRange = payments.some(p => 
-          s.memberships.some(ms => ms.member.id === p.member_id) && 
-          p.payment_date! >= dateRange.start && 
-          p.payment_date! <= dateRange.end
-        );
-        if (!hasPaymentInRange) return false;
-      }
-      return true;
-    }).sort((a, b) => b.overallTotalBalance - a.overallTotalBalance);
-  }, [personSummaries, search, showOnlyPaid, dateRange, payments]);
+  const filtered = personSummaries
 
   const stats = useMemo(() => {
-    const today = getToday();
-    const collectedToday = payments.filter((p: Payment) => p.payment_date === today).reduce((s, p) => s + Number(p.amount), 0);
-    let collectedInRange = 0;
-    if (dateRange.start && dateRange.end) {
-      collectedInRange = payments.filter((p: Payment) => 
-        p.payment_date! >= dateRange.start && p.payment_date! <= dateRange.end
-      ).reduce((s, p) => s + Number(p.amount), 0);
-    }
-    const totalOut = personSummaries.reduce((s, p) => s + p.overallTotalBalance, 0);
-    return { collectedToday, totalOut, collectedInRange };
-  }, [payments, personSummaries, dateRange]);
+    return { 
+      collectedToday: ledgerStats.collectedToday, 
+      totalOut: ledgerStats.totalOut || 0, // RPC doesn't calculate totalOut yet, we'll keep it as 0 or calculate on current slice
+      collectedInRange: ledgerStats.collectedInRange 
+    };
+  }, [ledgerStats]);
 
   async function handlePay() {
     if (!payModal || !firm) return;
@@ -366,6 +398,26 @@ function PaymentsPageContent() {
             Show only paid
           </label>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs font-bold opacity-60 uppercase tracking-widest px-2 mb-2">
+         <span>Showing {(page-1)*PAGE_SIZE + 1} to {Math.min(page*PAGE_SIZE, totalCount)} of {totalCount} people</span>
+         <div className="flex gap-2">
+            <button 
+             disabled={page === 1}
+             onClick={() => setPage(p => Math.max(1, p - 1))}
+             className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
+            >
+              Previous
+            </button>
+            <button 
+             disabled={page * PAGE_SIZE >= totalCount}
+             onClick={() => setPage(p => p + 1)}
+             className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
+            >
+              Next
+            </button>
+         </div>
       </div>
 
       <TableCard title="Collection Ledger (Person-Centric)" subtitle="Manage total individual dues tracked across multiple tickets.">
