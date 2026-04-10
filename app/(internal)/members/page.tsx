@@ -57,32 +57,89 @@ export default function MembersPage() {
   const [payForm,  setPayForm]  = useState({ amount: '', payment_date: new Date().toISOString().substring(0, 10), mode: 'Cash', month: '' })
   const [importOpen, setImportOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const PAGE_SIZE = 20
+
+  const [regStats, setRegStats] = useState({ totalPeople: 0, activeTickets: 0, totalOutstanding: 0, totalPaid: 0 })
 
   const load = useCallback(async (isInitial = false) => {
-    if (isInitial && members.length === 0) setLoading(true)
+    if (isInitial) setLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
-    
-    // Scoped Queries for Multi-Tenancy
-    const [g, m, p, a, pay] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*, firms(name)'), targetId).is('deleted_at', null).order('name'),
-      withFirmScope(supabase.from('members').select('*, persons(*)'), targetId).is('deleted_at', null).order('ticket_no'),
-      withFirmScope(supabase.from('persons').select('*, firms(name)'), targetId).is('deleted_at', null).order('name'),
-      withFirmScope(supabase.from('auctions').select('*'), targetId).is('deleted_at', null).order('month'),
-      withFirmScope(supabase.from('payments').select('*'), targetId).is('deleted_at', null),
-    ])
-    setAllGroups(g.data || [])
-    setMembers(m.data || [])
-    setPersons(p.data || [])
-    setAuctions(a.data || [])
-    setPayments(pay.data || [])
+    if (!targetId) return
 
-    if (isSuper && firms.length === 0) {
-      const { data: f } = await supabase.from('firms').select('*').order('name')
-      setFirms(f || [])
+    try {
+      // 1. Fetch Global Stats via RPC
+      const { data: sData } = await supabase.rpc('get_firm_registry_stats', { p_firm_id: targetId })
+      if (sData) setRegStats(sData)
+
+      // 2. Fetch Paginated Persons (Optimized Select)
+      let pQuery = withFirmScope(supabase.from('persons').select('id, name, nickname, phone, address, firm_id, firms(name)', { count: 'exact' }), targetId).is('deleted_at', null)
+      
+      if (search) {
+        pQuery = pQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+      }
+
+      const { data: pData, count, error: pErr } = await pQuery
+        .order('name')
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
+
+      if (pErr) showToast(pErr.message, 'error')
+      const currentPersons = pData || []
+      setPersons(currentPersons)
+      setTotalCount(count || 0)
+
+      // 3. Fetch Dependent Data for current page ONLY
+      const personIds = (currentPersons as any[]).map(p => p.id)
+      
+      // Secondary fetch for members to identify relevant groups
+      const { data: mData } = await withFirmScope(supabase.from('members').select('id, group_id, person_id, ticket_no, status, notes'), targetId)
+        .in('person_id', personIds)
+        .is('deleted_at', null)
+      
+      const relevantGroupIds = Array.from(new Set((mData as any[])?.map(m => m.group_id) || []))
+
+      const [g, a, pay] = await Promise.all([
+        // Only groups relevant to the current page slice
+        withFirmScope(supabase.from('groups').select('id, name, duration, monthly_contribution, chit_value, status, auction_scheme, accumulated_surplus, num_members'), targetId)
+          .in('id', relevantGroupIds)
+          .is('deleted_at', null),
+        // Only auctions for these groups
+        withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status'), targetId)
+          .in('group_id', relevantGroupIds)
+          .is('deleted_at', null)
+          .order('month'),
+        // Only payments for these specific members
+        withFirmScope(supabase.from('payments').select('id, member_id, group_id, person_id, amount, month, payment_date, created_at'), targetId)
+          .in('person_id', personIds)
+          .is('deleted_at', null)
+      ])
+
+      setMembers(mData || [])
+      setAllGroups(g.data || [])
+      setAuctions(a.data || [])
+      setPayments(pay.data || [])
+
+      // Still need full group list for the "Add Member" dropdown and "By Groups" view
+      if (isInitial || view === 'groups') {
+        const { data: allG } = await withFirmScope(supabase.from('groups').select('id, name, chit_value, duration, status'), targetId).is('deleted_at', null).order('name')
+        setAllGroups(allG || [])
+      }
+
+    } finally {
+      if (isSuper && firms.length === 0) {
+        const { data: f } = await supabase.from('firms').select('id, name').order('name')
+        setFirms(f || [])
+      }
+      setLoading(false)
+      setSelectedIds(new Set())
     }
-    setLoading(false)
-    setSelectedIds(new Set())
-  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm, firms.length, page, search, showToast, view])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1)
+  }, [search])
 
   useEffect(() => { load(true) }, [load])
 
@@ -198,19 +255,16 @@ export default function MembersPage() {
     })
   }, [persons, members, allGroups, payments, auctions])
 
-  const filteredPeople = contacts.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    (c.phone && c.phone.includes(search))
-  ).sort((a,b) => b.activeCount - a.activeCount || a.name.localeCompare(b.name))
+  const filteredPeople = contacts.sort((a,b) => b.activeCount - a.activeCount || a.name.localeCompare(b.name))
 
   const summaryStats = useMemo(() => {
     return {
-      totalPeople: contacts.length,
-      activeTickets: contacts.reduce((s, c) => s + c.activeCount, 0),
-      totalOutstanding: contacts.reduce((s, c) => s + c.totalBalance, 0),
-      totalPaid: contacts.reduce((s, c) => s + c.totalPaid, 0)
+      totalPeople: regStats.totalPeople,
+      activeTickets: regStats.activeTickets,
+      totalOutstanding: regStats.totalOutstanding,
+      totalPaid: regStats.totalPaid
     }
-  }, [contacts])
+  }, [regStats])
 
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
@@ -456,6 +510,28 @@ export default function MembersPage() {
          />
          <Plus className="absolute left-4 top-1/2 -translate-y-1/2 rotate-45 opacity-30" size={20} />
       </div>
+
+      {view === 'people' && (
+         <div className="flex items-center justify-between text-xs font-bold opacity-60 uppercase tracking-widest px-2">
+            <span>Showing {(page-1)*PAGE_SIZE + 1} to {Math.min(page*PAGE_SIZE, totalCount)} of {totalCount} people</span>
+            <div className="flex gap-2">
+               <button 
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
+               >
+                 Previous
+               </button>
+               <button 
+                disabled={page * PAGE_SIZE >= totalCount}
+                onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
+               >
+                 Next
+               </button>
+            </div>
+         </div>
+      )}
 
       {view === 'people' ? (
         <TableCard title={`Total Registry (${filteredPeople.length} People)`} subtitle="All unique individuals registered in the system.">

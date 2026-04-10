@@ -47,24 +47,29 @@ export default function GroupsPage() {
   })
   const [saving, setSaving] = useState(false)
 
+  const [groupSummaries, setGroupSummaries] = useState<any[]>([])
+
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
+    if (!targetId) return
 
-    const [g, a, p] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*, firms(name)').neq('status', 'archived'), targetId).is('deleted_at', null).order('id'),
-      withFirmScope(supabase.from('auctions').select('group_id,month,status'), targetId).is('deleted_at', null),
-      withFirmScope(supabase.from('payments').select('group_id,status'), targetId).is('deleted_at', null),
-    ])
-    setGroups((g.data as any) || [])
-    setAuctions((a.data as any) || [])
-    setPayments((p.data as any) || [])
+    try {
+      const [g, summaries] = await Promise.all([
+        withFirmScope(supabase.from('groups').select('id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, firms(name)').neq('status', 'archived'), targetId).is('deleted_at', null).order('id'),
+        supabase.rpc('get_firm_group_summaries', { p_firm_id: targetId })
+      ])
+      
+      setGroups((g.data as any) || [])
+      setGroupSummaries(summaries.data || [])
 
-    if (isSuper && firms.length === 0) {
-      const { data: f } = await supabase.from('firms').select('*').order('name')
-      setFirms(f || [])
+      if (isSuper && firms.length === 0) {
+        const { data: f } = await supabase.from('firms').select('id, name').order('name')
+        setFirms(f || [])
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [supabase, isSuper, switchedFirmId, firm, firms.length])
 
   useEffect(() => { load(true) }, [load])
@@ -76,8 +81,9 @@ export default function GroupsPage() {
   }, [firm?.enabled_schemes])
 
   const groupStats = useCallback((g: Group) => {
-    const done = auctions.filter(a => a.group_id === g.id && a.status === 'confirmed').length
-    const paid = payments.filter(p => p.group_id === g.id && p.status === 'paid').length
+    const summary = groupSummaries?.find(s => s.id === g.id) || { auctions_done: 0, payments_made: 0 }
+    const done = Number(summary.auctions_done)
+    const paid = Number(summary.payments_made)
     const pending = Math.max(0, done * g.num_members - paid)
     const pct = Math.round(done / g.duration * 100)
     const isComplete = done >= g.duration && pending === 0
@@ -88,7 +94,7 @@ export default function GroupsPage() {
       endDate = fmtDate(d.toISOString().split('T')[0])
     }
     return { done, pending, pct, isComplete, endDate }
-  }, [auctions, payments])
+  }, [groupSummaries])
 
   const active = useMemo(() => {
     return groups.filter(g => { const s = groupStats(g); return !s.isComplete })

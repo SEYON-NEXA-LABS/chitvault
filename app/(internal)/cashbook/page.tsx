@@ -9,8 +9,9 @@ import { useToast } from '@/lib/hooks/useToast'
 import { DENOMINATIONS } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import type { Denomination, Firm } from '@/types'
-import { Printer, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Printer, Plus, Trash2, ChevronDown, ChevronUp, History } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
+import { Pagination } from '@/components/ui'
 
 type DenomKey = typeof DENOMINATIONS[number]['key']
 type DenomCounts = Record<DenomKey, number>
@@ -29,6 +30,11 @@ export default function CashbookPage() {
   const [addOpen,  setAddOpen]  = useState(false)
   const [saving,   setSaving]   = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [totalRecords, setTotalRecords] = useState(0)
   
   const isSuper = role === 'superadmin'
 
@@ -53,51 +59,42 @@ export default function CashbookPage() {
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
+    if (!targetId) return
 
-    const [dRes, pRes, payRes, setRes] = await Promise.all([
-      withFirmScope(supabase.from('denominations').select('*'), targetId)
-        .is('deleted_at', null)
-        .gte('entry_date', fromDate)
-        .lte('entry_date', toDate)
-        .order('entry_date', { ascending: false }),
-      withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name'),
-      withFirmScope(supabase.from('payments').select('amount'), targetId)
-        .is('deleted_at', null)
-        .gte('payment_date', fromDate)
-        .lte('payment_date', toDate),
-      withFirmScope(supabase.from('settlements').select('total_amount, created_at'), targetId)
-        .is('deleted_at', null)
-        .gte('created_at', fromDate + 'T00:00:00Z')
-        .lte('created_at', toDate + 'T23:59:59Z')
-    ])
-    
-    if (dRes.error) {
-      show(dRes.error.message, 'error')
-      setEntries([])
+    try {
+      const [statsRes, dRes, pRes] = await Promise.all([
+        supabase.rpc('get_firm_ledger_stats', {
+          p_firm_id: targetId,
+          p_start_date: fromDate,
+          p_end_date: toDate
+        }),
+        withFirmScope(supabase.from('denominations').select('*', { count: 'exact' }), targetId)
+          .is('deleted_at', null)
+          .gte('entry_date', fromDate)
+          .lte('entry_date', toDate)
+          .order('entry_date', { ascending: false })
+          .range((page - 1) * pageSize, page * pageSize - 1),
+        withFirmScope(supabase.from('profiles').select('id, full_name, role'), targetId).order('full_name')
+      ])
+
+      if (statsRes.data) {
+        setTotalCollections(Number(statsRes.data.collectedInRange || 0))
+        setTotalPayouts(Number(statsRes.data.payoutsInRange || 0))
+      }
+
+      setTotalRecords(dRes.count || 0)
+      setProfiles(pRes.data || [])
+
+      const entriesWithTotal = (dRes.data || []).map((e: any) => {
+        const calculatedTotal = DENOMINATIONS.reduce((s, d) => s + (e[d.key] || 0) * d.value, 0)
+        return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal }
+      })
+
+      setEntries(entriesWithTotal)
+    } finally {
       setLoading(false)
-      return
     }
-
-    // Sum transactions
-    const collections = (payRes.data || []).reduce((s: number, p: any) => s + Number(p.amount || 0), 0)
-    const payouts = (setRes.data || []).reduce((s: number, p: any) => s + Number(p.total_amount || 0), 0)
-    setTotalCollections(collections)
-    setTotalPayouts(payouts)
-
-    setProfiles(pRes.data || [])
-
-    // Defensively calculate total for each entry to prevent crashes if it's missing from DB
-    const entriesWithTotal = (dRes.data || []).map((e: any) => {
-      const calculatedTotal = DENOMINATIONS.reduce((s, d) => {
-          const count = e[d.key] || 0;
-          return s + count * d.value;
-      }, 0);
-      return { ...e, total: (e.total != null && !isNaN(e.total)) ? e.total : calculatedTotal };
-    });
-
-    setEntries(entriesWithTotal)
-    setLoading(false)
-  }, [supabase, isSuper, switchedFirmId, firm, fromDate, toDate, show])
+  }, [supabase, isSuper, switchedFirmId, firm, fromDate, toDate, page, pageSize])
 
   useEffect(() => { load(true) }, [load])
 
@@ -337,6 +334,15 @@ export default function CashbookPage() {
                 </Card>
               )
             })}
+
+            {/* Pagination Controls */}
+            <Pagination 
+              current={page} 
+              total={totalRecords} 
+              pageSize={pageSize} 
+              onPageChange={setPage} 
+              onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+            />
 
             {/* Period total */}
             <div className="flex justify-end">

@@ -100,6 +100,7 @@ export interface Auction {
   payout_note: string | null
   status: 'draft' | 'confirmed'
   created_at: string
+  members?: Member
 }
 
 
@@ -124,6 +125,7 @@ export interface Payment {
   status:       'paid' | 'pending' | 'partial'
   collected_by: string | null
   profiles?: { full_name: string | null }
+  members?: Member
   created_at:   string
 }
 

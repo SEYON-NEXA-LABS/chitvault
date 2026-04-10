@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -59,7 +59,7 @@ function LoginForm() {
     document.documentElement.classList.add('dark')
   }, [firmSlug, supabase])
 
-  async function handleRedirect(user: { id: string }) {
+  const handleRedirect = useCallback(async (user: { id: string }) => {
     try {
       router.refresh()
       const { data: profile } = await supabase
@@ -75,7 +75,7 @@ function LoginForm() {
     } catch (err) {
       window.location.href = searchParams.get('next') || '/dashboard'
     }
-  }
+  }, [supabase, router, searchParams])
 
   useEffect(() => {
     async function checkUser() {
@@ -83,7 +83,7 @@ function LoginForm() {
       if (data?.user) await handleRedirect(data.user)
     }
     checkUser()
-  }, [supabase.auth, router])
+  }, [supabase.auth, handleRedirect])
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault(); setError(''); setLoading(true)
@@ -117,7 +117,7 @@ function LoginForm() {
         <div className="hidden lg:flex flex-[1.2] flex-col justify-between p-12 relative overflow-hidden bg-black/30 border-r border-white/10">
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-10 translate-x-[-8px]">
-              <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain transition-transform hover:scale-105 duration-700" />
+              <Image src="/icons/icon-512.png" alt="Logo" width={96} height={96} className="object-contain transition-transform hover:scale-105 duration-700" />
               <span className="text-6xl font-black text-white uppercase tracking-tighter">ChitVault</span>
             </div>
 
@@ -153,7 +153,7 @@ function LoginForm() {
 
           <div className="max-w-sm w-full mx-auto">
             <div className="text-center mb-8">
-              <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain mx-auto mb-8 transition-transform hover:scale-105 duration-700" />
+              <Image src="/icons/icon-512.png" alt="Logo" width={96} height={96} className="mx-auto mb-8 transition-transform hover:scale-105 duration-700 object-contain" />
               <h2 className="text-3xl font-black tracking-tight text-white mb-2">{tab === 'signin' ? 'Sign In' : 'Reset Password'}</h2>
               <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em] mb-4 opacity-40">
                 {tab === 'signin' ? `Authorization for ${branding.name}` : 'Security check initiated'}

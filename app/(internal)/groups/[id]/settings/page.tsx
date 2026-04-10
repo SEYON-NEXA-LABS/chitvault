@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
@@ -70,7 +70,7 @@ export default function GroupSettingsPage() {
   }, [firm, groupId, router, supabase])
 
   // Smart Simulator - Passes local rules to verify math before saving
-  async function calculatePreview(bid: number) {
+  const calculatePreview = useCallback(async (bid: number) => {
     if (!group) return
     
     // Instead of local JS math, use the "What-If" RPC for perfect accuracy
@@ -87,11 +87,11 @@ export default function GroupSettingsPage() {
        return
     }
     setPreview(data)
-  }
+  }, [group, groupId, rules, supabase])
 
   useEffect(() => {
      if (testBid && !isNaN(+testBid)) calculatePreview(+testBid)
-  }, [testBid, rules, group])
+  }, [testBid, calculatePreview])
 
   async function save() {
     if (!firm) return
