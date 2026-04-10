@@ -187,57 +187,57 @@ export default function SettingsPage() {
             <p className="text-xs opacity-60 mb-2">
               Select which auction models your firm supports. This will customize your terminology and available options globally.
             </p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Accumulation Model */}
-              <button 
+              <button
                 onClick={() => {
-                  const val = enabledSchemes.includes('ACCUMULATION') 
+                  const val = enabledSchemes.includes('ACCUMULATION')
                     ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'ACCUMULATION') : enabledSchemes)
                     : [...enabledSchemes, 'ACCUMULATION']
                   setEnabledSchemes(val)
                 }}
                 className="p-4 rounded-2xl border text-left transition-all"
-                style={{ 
+                style={{
                   borderColor: enabledSchemes.includes('ACCUMULATION') ? 'var(--info)' : 'var(--border)',
                   background: enabledSchemes.includes('ACCUMULATION') ? 'var(--info-dim)' : 'transparent'
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
-                   <div className="w-8 h-8 rounded-lg bg-[var(--info)] text-white flex items-center justify-center font-black">S</div>
-                   {enabledSchemes.includes('ACCUMULATION') && <Badge variant="info">Active</Badge>}
+                  <div className="w-8 h-8 rounded-lg bg-[var(--info)] text-white flex items-center justify-center font-black">S</div>
+                  {enabledSchemes.includes('ACCUMULATION') && <Badge variant="info">Active</Badge>}
                 </div>
                 <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Surplus Model (Accumulation)</div>
                 <p className="text-[10px] mt-1 opacity-60">
-                   Member savings are collected in a pool. Fixed prize money is paid to the winner. Best for long-term saving groups.
+                  Member savings are collected in a pool. Fixed prize money is paid to the winner. Best for long-term saving groups.
                 </p>
               </button>
 
               {/* Dividend Model */}
-              <button 
+              <button
                 onClick={() => {
-                  const val = enabledSchemes.includes('DIVIDEND') 
+                  const val = enabledSchemes.includes('DIVIDEND')
                     ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'DIVIDEND') : enabledSchemes)
                     : [...enabledSchemes, 'DIVIDEND']
                   setEnabledSchemes(val)
                 }}
                 className="p-4 rounded-2xl border text-left transition-all"
-                style={{ 
+                style={{
                   borderColor: enabledSchemes.includes('DIVIDEND') ? 'var(--accent)' : 'var(--border)',
                   background: enabledSchemes.includes('DIVIDEND') ? 'var(--accent-dim)' : 'transparent'
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
-                   <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-black">D</div>
-                   {enabledSchemes.includes('DIVIDEND') && <Badge variant="accent">Active</Badge>}
+                  <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-black">D</div>
+                  {enabledSchemes.includes('DIVIDEND') && <Badge variant="accent">Active</Badge>}
                 </div>
                 <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Dividend Model (Conventional)</div>
                 <p className="text-[10px] mt-1 opacity-60">
-                   Auction discounts are distributed back to members each month. Installments vary. Standard chit fund approach.
+                  Auction discounts are distributed back to members each month. Installments vary. Standard chit fund approach.
                 </p>
               </button>
             </div>
-            
+
             <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
               <Btn variant="primary" loading={saving} onClick={saveBranding}>
                 Update Business Models
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                 <Btn variant="secondary" size="sm" onClick={() => setPinChange(true)}>Change PIN</Btn>
                 <Btn variant="secondary" size="sm" onClick={() => { setPin(null); show('PIN Disabled') }}>Disable PIN</Btn>
                 <Btn variant="primary" size="sm" onClick={lock} className="!bg-[var(--accent)] !text-white !font-black !px-6 shadow-lg shadow-[var(--accent-dim)]">
-                   Lock Vault Now
+                  Lock Vault Now
                 </Btn>
               </div>
             )}
@@ -463,7 +463,7 @@ export default function SettingsPage() {
             <ShieldCheck size={18} />
             <span className="uppercase tracking-widest text-[10px]">Official Firm Passport</span>
           </div>
-          <Badge variant="success" className="font-mono text-[9px] px-2">Live System v2.1</Badge>
+          <Badge variant="success" className="font-mono text-[9px] px-2">Live System v${APP_VERSION}</Badge>
         </div>
 
         <div className="p-6">
