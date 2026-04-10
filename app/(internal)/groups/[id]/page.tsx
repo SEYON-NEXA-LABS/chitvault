@@ -52,14 +52,44 @@ export default function GroupLedgerPage() {
   const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '', mode: 'Cash' })
   const [payoutOpen, setPayoutOpen] = useState(false)
 
+  // --- Analytic Data Derivations (Zero-Query) ---
+  const yieldData = useMemo(() => {
+    return auctionHistory
+      .filter(a => a.status === 'confirmed')
+      .map(a => ({
+        name: `M${a.month}`,
+        discount: Number(a.auction_discount || 0),
+        dividend: Number(a.dividend || 0),
+      }))
+  }, [auctionHistory])
+
+  const healthData = useMemo(() => {
+    const counts = { success: 0, info: 0, danger: 0 }
+    members.forEach(m => {
+      if (!group) return
+      const status = getMemberFinancialStatus(m, group, auctionHistory, payments)
+      if (status.overallStatus === 'overdue') counts.danger++
+      else if (status.overallStatus === 'current') counts.info++
+      else counts.success++
+    })
+    return [
+      { name: 'On Track', value: counts.success, color: 'var(--success)' },
+      { name: 'Current', value: counts.info, color: 'var(--info)' },
+      { name: 'Overdue', value: counts.danger, color: 'var(--danger)' },
+    ].filter(x => x.value > 0)
+  }, [members, group, auctionHistory, payments])
+
+  const totalPossibleCollection = useMemo(() => {
+    if (!group) return 0
+    const latestMonth = auctionHistory.length > 0 ? Math.max(...auctionHistory.map(a => Number(a.month))) : 0
+    const mContr = Number(group.monthly_contribution)
+    return group.num_members * mContr * (latestMonth || 1)
+  }, [group, auctionHistory])
+
   const load = useCallback(async (isInitial = false) => {
-    // Allow superadmins to load even without a firm context
     if (!firm && role !== 'superadmin') return
     if (isInitial && !group) setLoading(true)
     
-    // Cache buster: help force Next.js to re-evaluate
-    const timestamp = Date.now()
-
     const gQuery = supabase.from('groups').select('*').eq('id', groupId)
     const mQuery = supabase.from('members').select('*, persons(*)').eq('group_id', groupId).order('ticket_no')
     const aQuery = supabase.from('auctions').select('*').eq('group_id', groupId).order('month')
@@ -67,7 +97,6 @@ export default function GroupLedgerPage() {
     const payQuery = supabase.from('payments').select('*').eq('group_id', groupId).is('deleted_at', null)
     const pQuery = supabase.from('persons').select('*').order('name')
 
-    // Only apply firm filter if not superadmin and firm is available
     if (role !== 'superadmin' && firm) {
       gQuery.eq('firm_id', firm.id)
       pQuery.eq('firm_id', firm.id)
@@ -91,7 +120,7 @@ export default function GroupLedgerPage() {
     setCommissions(fcRes.data || [])
     setPayments(payRes.data || [])
     setLoading(false)
-  }, [firm, groupId, router, supabase, group])
+  }, [firm, groupId, router, supabase, group, role])
 
   useEffect(() => { load(true) }, [load])
 
@@ -119,7 +148,6 @@ export default function GroupLedgerPage() {
     if (addTab === 'existing' && form.person_id) {
       person_id = +form.person_id
     } else {
-      // Create new person
       const { data: pData, error: pErr } = await supabase.from('persons')
         .insert({
           name: form.name,
@@ -177,7 +205,6 @@ export default function GroupLedgerPage() {
     if (!firm || !group) return
     const { data: { user } } = await supabase.auth.getUser()
 
-    // 1. Bulk Upsert Persons
     const personPayload = csvData.map(row => ({
       firm_id: firm.id,
       name: (row.Name || row.name)?.trim(),
@@ -191,10 +218,8 @@ export default function GroupLedgerPage() {
 
     if (pErr) { showToast(pErr.message, 'error'); return }
 
-    // 2. Map Name+Phone to ID for member insertion
     const pMap = new Map(pData.map((p: Person) => [`${p.name}|${p.phone || ''}`, p.id]))
 
-    // 3. Bulk Insert Members
     const memberPayload = csvData.map(row => {
       const name = (row.Name || row.name)?.trim()
       const phone = (row.Phone || row.phone)?.toString()?.replace(/\D/g, '') || null
@@ -219,7 +244,6 @@ export default function GroupLedgerPage() {
       load()
     }
   }
-
 
   async function deleteMember(id: number) {
     if (!can('deleteMember')) return
@@ -392,41 +416,6 @@ export default function GroupLedgerPage() {
   
   const monthsCompleted = confirmedAucs.length
   const totalMonths = group.duration
-
-  // --- Analytic Data Derivations (Zero-Query) ---
-  const yieldData = useMemo(() => {
-    return auctionHistory
-      .filter(a => a.status === 'confirmed')
-      .map(a => ({
-        name: `M${a.month}`,
-        discount: Number(a.auction_discount || 0),
-        dividend: Number(a.dividend || 0),
-      }))
-  }, [auctionHistory])
-
-  const healthData = useMemo(() => {
-    const counts = { success: 0, info: 0, danger: 0 }
-    members.forEach(m => {
-      if (!group) return
-      const status = getMemberFinancialStatus(m, group, auctionHistory, payments)
-      if (status.overallStatus === 'overdue') counts.danger++
-      else if (status.overallStatus === 'current') counts.info++
-      else counts.success++
-    })
-    return [
-      { name: 'On Track', value: counts.success, color: 'var(--success)' },
-      { name: 'Current', value: counts.info, color: 'var(--info)' },
-      { name: 'Overdue', value: counts.danger, color: 'var(--danger)' },
-    ].filter(x => x.value > 0)
-  }, [members, group, auctionHistory, payments])
-
-  const totalPossibleCollection = useMemo(() => {
-    if (!group) return 0
-    // Total expected if everyone is active up to current month
-    const latestMonth = auctionHistory.length > 0 ? Math.max(...auctionHistory.map(a => Number(a.month))) : 0
-    const mContr = Number(group.monthly_contribution)
-    return group.num_members * mContr * (latestMonth || 1)
-  }, [group, auctionHistory])
 
   return (
     <div className="space-y-6">
@@ -606,7 +595,7 @@ export default function GroupLedgerPage() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', background: 'var(--surface)', shadow: 'xl' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', background: 'var(--surface)', boxShadow: 'var(--shadow-xl)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -855,7 +844,6 @@ export default function GroupLedgerPage() {
         </div>
       </Modal>
 
-      {/* Payout Settlement Modal */}
       <Modal open={!!settling} onClose={() => setSettling(null)} title="Confirm Payout Settlement">
         <div className="space-y-6">
           {settling && (() => {
@@ -965,7 +953,6 @@ export default function GroupLedgerPage() {
         requiredFields={['Name', 'Ticket No']}
       />
 
-      {/* Platform Roadmap / Coming Soon */}
       <div className="pt-4 opacity-70 hover:opacity-100 transition-opacity no-print">
         <div className="p-5 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface2)] flex flex-col md:flex-row items-center justify-between gap-4">
            <div className="flex items-center gap-4 text-center md:text-left">

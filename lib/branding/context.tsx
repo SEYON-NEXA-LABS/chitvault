@@ -39,8 +39,8 @@ export function BrandingProvider({ children }: {
       document.title = firm.name
     }
 
-    // Update Favicon dynamically
-    const iconUrl = firm?.logo_url || '/icons/icon-192.png'
+    // Fixed Favicon (No storage space for custom logos)
+    const iconUrl = '/icons/icon-192.png'
     let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']")
     if (!link) {
       link = document.createElement('link')
@@ -49,7 +49,7 @@ export function BrandingProvider({ children }: {
     }
     link.href = iconUrl
 
-  }, [firm?.name, firm?.logo_url, font, colorProfile])
+  }, [firm?.name, font, colorProfile])
 
   return (
     <Ctx.Provider value={{ name, font, colorProfile }}>
@@ -68,6 +68,10 @@ export const AVAILABLE_FONTS = [
 
 export const COLOR_PROFILES = [
   { id: 'indigo',       name: 'ChitVault Premium', color: '#2563eb' },
+  { id: 'emerald',      name: 'Emerald Growth',   color: '#10b981' },
+  { id: 'amber',        name: 'Amber Gold',       color: '#f59e0b' },
+  { id: 'rose',         name: 'Rose Energy',      color: '#e11d48' },
+  { id: 'slate',        name: 'Onyx Stealth',     color: '#475569' },
 ]
 
 // For backward compatibility with picker UI

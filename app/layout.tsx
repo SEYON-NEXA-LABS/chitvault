@@ -6,6 +6,7 @@ import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
+import { ThemeProvider } from '@/lib/theme/context'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-inter' })
@@ -15,7 +16,7 @@ const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '
 export const metadata: Metadata = {
   title: APP_NAME,
   description: 'Chit Fund Management Software',
-  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-512.png' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
 }
 
 export const viewport: Viewport = {
@@ -103,17 +104,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body className={`${inter.variable} ${outfit.variable} ${notoTamil.variable}`}>
-        <FirmProvider>
-          <BrandingProvider>
-            <I18nProvider>
-              <PinLockProvider>
-                {children}
-                <InviteAutoLinker />
-              </PinLockProvider>
-            </I18nProvider>
-          </BrandingProvider>
-        </FirmProvider>
-
+        <ThemeProvider>
+          <FirmProvider>
+            <BrandingProvider>
+              <I18nProvider>
+                <PinLockProvider>
+                  {children}
+                  <InviteAutoLinker />
+                </PinLockProvider>
+              </I18nProvider>
+            </BrandingProvider>
+          </FirmProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

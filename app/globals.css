@@ -63,18 +63,6 @@
   }
 }
 
-[data-theme="monochrome"] {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface2: #f5f5f5;
-  --surface3: #e5e5e5;
-  --border: #bdbdbd;
-  --text: #000000;
-  --text2: #444444;
-  --text3: #777777;
-  --shadow: none;
-}
-
 /* ===============================
    Fusion Design System (Tokens)
    =============================== */
@@ -96,6 +84,42 @@
   /* Neumorphism (Light) */
   --neumo-shadow-out: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
   --neumo-shadow-in: inset 8px 8px 16px #d1d9e6, inset -8px -8px 16px #ffffff;
+}
+
+/* ── Emerald Growth ── */
+[data-color-profile="emerald"] {
+  --accent: #10b981;
+  --accent-rgb: 16, 185, 129;
+  --accent-light: #34d399;
+  --accent-dim: rgba(16, 185, 129, 0.1);
+  --accent-border: rgba(16, 185, 129, 0.2);
+}
+
+/* ── Amber Gold ── */
+[data-color-profile="amber"] {
+  --accent: #f59e0b;
+  --accent-rgb: 245, 158, 11;
+  --accent-light: #fbbf24;
+  --accent-dim: rgba(245, 158, 11, 0.1);
+  --accent-border: rgba(245, 158, 11, 0.2);
+}
+
+/* ── Rose Energy ── */
+[data-color-profile="rose"] {
+  --accent: #e11d48;
+  --accent-rgb: 225, 29, 72;
+  --accent-light: #fb7185;
+  --accent-dim: rgba(225, 29, 72, 0.1);
+  --accent-border: rgba(225, 29, 72, 0.2);
+}
+
+/* ── Onyx Stealth ── */
+[data-color-profile="slate"] {
+  --accent: #475569;
+  --accent-rgb: 71, 85, 105;
+  --accent-light: #64748b;
+  --accent-dim: rgba(71, 85, 105, 0.1);
+  --accent-border: rgba(71, 85, 105, 0.2);
 }
 
 [data-theme="dark"] {
@@ -399,15 +423,6 @@ a {
 }
 
 /* ── Accessibility ───────────────────────────────────────── */
-.grayscale-mode {
-  filter: grayscale(100%) contrast(1.1);
-}
-
-.grayscale-mode * {
-  /* Ensure colors don't peek through */
-  border-color: var(--border) !important;
-}
-
 *:focus-visible {
   outline: 3px solid var(--accent-dim);
   outline-offset: 2px;
