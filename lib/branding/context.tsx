@@ -77,31 +77,18 @@ export const COLOR_PROFILES = [
 // For backward compatibility with picker UI
 export const PRESET_COLORS = COLOR_PROFILES.map(p => ({ label: p.name, value: p.color, id: p.id }))
 
-// Apply CSS variables + load Google Font dynamically
+// Apply CSS variables + Load local font definitions
 export function applyBranding(font: string, colorProfile: string = 'indigo') {
   const root = document.documentElement
 
   // Set Profile Attribute (Source of truth for CSS variables in globals.css)
   root.setAttribute('data-color-profile', colorProfile)
 
-  // Load Google Font if not already loaded
-  const fontId = `gfont-${font.replace(/\s+/g, '-').toLowerCase()}`
-  if (!document.getElementById(fontId)) {
-    const link = document.createElement('link')
-    link.id = fontId
-    link.rel = 'stylesheet'
-
-    let fontPath = font.replace(/ /g, '+')
-    if (font === 'Noto Sans') fontPath += '&family=Noto+Sans+Tamil'
-    if (font === 'Mukta Malar') fontPath = 'Mukta+Malar'
-    if (font === 'Hind Madurai') fontPath = 'Hind+Madurai'
-
-    link.href = `https://fonts.googleapis.com/css2?family=${fontPath}:wght@300;400;500;600;700&display=swap`
-    document.head.appendChild(link)
-  }
-
-  // Apply font
-  const fontStack = font === 'Noto Sans' ? `'Noto Sans', 'Noto Sans Tamil', sans-serif` : `'${font}', sans-serif`
+  // Apply font stack
+  // Map 'Noto Sans' to our local 'Noto Sans Tamil' definition
+  const family = font === 'Noto Sans' ? 'Noto Sans Tamil' : font
+  const fontStack = `'${family}', sans-serif`
+  
   root.style.setProperty('--font-body', fontStack)
   document.body.style.fontFamily = fontStack
 }

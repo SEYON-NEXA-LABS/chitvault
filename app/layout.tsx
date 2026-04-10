@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Outfit, Noto_Sans_Tamil } from 'next/font/google'
 import { FirmProvider } from '@/lib/firm/context'
 import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
@@ -8,10 +7,9 @@ import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
 import { ThemeProvider } from '@/lib/theme/context'
 import './globals.css'
+import './fonts.css'
 
-const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-inter' })
-const outfit = Outfit({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-outfit' })
-const notoTamil = Noto_Sans_Tamil({ subsets: ['tamil'], weight: ['400', '500', '600', '700'], variable: '--font-noto-tamil' })
+
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -45,9 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })();
           `
         }} />
-        {/* Google Fonts preconnect for fast dynamic font loading */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Local Fonts are now loaded via fonts.css */}
         {/* ── Early-Activation Self-Healing for ChunkLoadErrors ── */}
         <script dangerouslySetInnerHTML={{
           __html: `
@@ -103,7 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         `}} />
       </head>
-      <body className={`${inter.variable} ${outfit.variable} ${notoTamil.variable}`}>
+      <body>
         <ThemeProvider>
           <FirmProvider>
             <BrandingProvider>
