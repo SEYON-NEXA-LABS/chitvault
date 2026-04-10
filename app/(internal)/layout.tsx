@@ -18,6 +18,7 @@ import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from 
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import type { Firm, Profile, UserRole } from '@/types'
+import { useTheme } from '@/lib/theme/context'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function TourTrigger() {
@@ -84,7 +85,7 @@ const NAV: NavItem[] = [
     items: [
       { href: '/team', label: 'nav_team', icon: UserCog },
       { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
-      { href: '/admin/branding', label: 'Firm Identity', icon: Palette, ownerOnly: true },
+      { href: '/admin/branding', label: 'nav_branding', icon: Palette, ownerOnly: true },
       { href: '/settings', label: 'nav_settings', icon: Settings },
     ]
   },
@@ -121,41 +122,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
   const { switchedFirmId, setSwitchedFirmId } = useFirm()
   const [firms, setFirms] = useState<Firm[]>([])
+  
+  const { theme, toggleTheme, adjustFont } = useTheme()
 
   const [userEmail, setUserEmail] = useState('')
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system' | 'monochrome'>('light')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [fontSize, setFontSize] = useState(14)
-  const [monochrome, setMonochrome] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     nav_operations: true, nav_transactions: true, nav_reports_group: true, nav_manage: true, nav_help: true, 'Control Plane': true
   })
 
   useEffect(() => {
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
-    const savedTheme = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system' | 'monochrome'
-    setTheme(savedTheme as any)
-
-    const apply = (t: string) => {
-      document.documentElement.setAttribute('data-theme', t)
-    }
-
-    apply(savedTheme)
-
-    // Listen for system changes if mode is system
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const listener = () => {
-      if (localStorage.getItem('theme') === 'system') apply('system')
-    }
-    media.addEventListener('change', listener)
-
-    const savedSize = parseInt(localStorage.getItem('fontSize') || '16')
-    setFontSize(savedSize)
-    document.documentElement.style.setProperty('--font-size-base', `${savedSize}px`)
-
-    const savedMono = localStorage.getItem('monochrome') === 'true'
-    setMonochrome(savedMono)
-    document.documentElement.classList.toggle('grayscale-mode', savedMono)
 
     if (role === 'superadmin') {
       supabase.from('firms').select('*').order('name').then((res: { data: Firm[] | null }) => setFirms(res.data || []))
@@ -165,9 +142,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.title = `${firm.name} (${firm.slug}) | ${APP_BRAND}`
     } else {
       document.title = (switchedFirmId === 'all') ? `${APP_BRAND} Control Center` : `${APP_BRAND} ${APP_NAME}`
-    }
-    return () => {
-      media.removeEventListener('change', listener)
     }
   }, [firm, supabase, role, switchedFirmId])
 
@@ -190,28 +164,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     )
-  }
-
-  function toggleTheme() {
-    const modes = ['light', 'dark', 'system', 'monochrome'] as const
-    const next = modes[(modes.indexOf(theme as any) + 1) % modes.length]
-    setTheme(next)
-    localStorage.setItem('theme', next)
-    document.documentElement.setAttribute('data-theme', next)
-  }
-
-  function adjustFont(delta: number) {
-    const next = Math.min(20, Math.max(12, fontSize + delta))
-    setFontSize(next)
-    localStorage.setItem('fontSize', String(next))
-    document.documentElement.style.setProperty('--font-size-base', `${next}px`)
-  }
-
-  function toggleMono() {
-    const next = !monochrome
-    setMonochrome(next)
-    localStorage.setItem('monochrome', String(next))
-    document.documentElement.classList.toggle('grayscale-mode', next)
   }
 
   const trialDaysLeft = firm?.trial_ends
@@ -290,6 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button 
                 onClick={toggleTheme}
                 className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)]"
+                title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
@@ -297,12 +250,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <button onClick={() => adjustFont(-1)} className="p-1 text-xs opacity-50 hover:opacity-100">A-</button>
                 <button onClick={() => adjustFont(1)} className="p-1 text-base opacity-50 hover:opacity-100">A+</button>
               </div>
-              <button 
-                onClick={toggleMono}
-                className={cn('p-2 rounded-lg hover:bg-[var(--surface2)]', monochrome ? 'text-[var(--accent)]' : 'text-[var(--text2)]')}
-              >
-                <Palette size={18} />
-              </button>
+              <div className="w-8" /> {/* Spacer for symmetry since mono is removed */}
             </div>
             
             <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">

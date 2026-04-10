@@ -3,6 +3,7 @@ export type Lang = 'en' | 'ta';
 export const dictionary: Record<Lang, Record<string, string>> = {
   en: {
     // Sidebar
+    nav_operations: 'Operations',
     nav_dashboard: 'Dashboard',
     nav_groups: 'Chit Groups',
     nav_members: 'Members',
@@ -15,6 +16,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_collection: 'Collection Registry',
     nav_manage: 'Manage',
     nav_team: 'Team',
+    nav_branding: 'Identity & Branding',
     nav_settings: 'Settings',
     nav_help: 'Help & Support',
     nav_journey: 'App Journey',
@@ -24,7 +26,6 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_trash: 'Trash',
     
     // Header
-    signed_in_as: 'Signed in as',
     sign_out: 'Sign Out',
     
     // General
@@ -61,6 +62,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     monthly_contribution: 'Monthly Pay',
     duration: 'Duration',
     total_members: 'Total Members',
+    group_status: 'Status',
     scheme: 'Scheme',
     new_group_desc: 'Set up a new chit group',
     start_date: 'First Auction Date',
@@ -311,7 +313,8 @@ export const dictionary: Record<Lang, Record<string, string>> = {
   },
   ta: {
     // Sidebar
-    nav_dashboard: 'முகப்பு',
+    nav_operations: 'செயல்பாடுகள்',
+    nav_dashboard: 'மேலோட்டம்',
     nav_groups: 'குழுக்கள்',
     nav_members: 'உறுப்பினர்கள்',
     nav_transactions: 'பரிவர்த்தனை',
@@ -323,16 +326,16 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_collection: 'வசூல் பட்டியல்',
     nav_manage: 'நிர்வாகம்',
     nav_team: 'குழு',
+    nav_branding: 'நிறுவன அடையாளம்',
     nav_settings: 'அமைப்புகள்',
     nav_help: 'உதவி மற்றும் ஆதரவு',
     nav_journey: 'செயலி பயணம்',
     nav_settlements: 'பட்டுவாடா',
     nav_reports_group: 'அறிக்கைகள் மற்றும் தணிக்கை',
     nav_defaulters: 'நிலுவைதாரர்கள்',
-    nav_trash: 'குப்பைத் தொட்டி / காப்பகம்',
+    nav_trash: 'காப்பகம் / நீக்கப்பட்டவை',
     
     // Header
-    signed_in_as: 'உள்நுழைந்துள்ள மின்னஞ்சல்',
     sign_out: 'வெளியேறு',
 
     // General
@@ -341,7 +344,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     payout: 'கொடுப்பனவு',
     commission: 'கமிஷன்',
     surplus: 'உபரி',
-    dividend: 'தள்ளுபடி',
+    dividend: 'பங்கு லாபம்',
     search: 'தேடுக...',
     print: 'அச்சிடுக',
     new_group: 'புதிய குழு',
@@ -359,13 +362,13 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     address: 'முகவரி',
     nickname: 'சிறு பெயர்',
     active_tickets: 'நேரடி சீட்டுகள்',
-    member_history: 'உறுப்பினர் தவனைகள்',
+    member_history: 'உறுப்பினர் தவணைகள்',
     member_since: 'உறுப்பினரான தேதி',
 
     // Groups
     active_groups: 'நேரடி குழுக்கள்',
     chit_value: 'சீட்டு மதிப்பு',
-    monthly_contribution: 'மாத சந்தா',
+    monthly_contribution: 'மாதத் தவணை',
     duration: 'தவணைகள்',
     total_members: 'மொத்த உறுப்பினர்கள்',
     group_status: 'நிலை',
@@ -384,7 +387,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     auction_history: 'ஏல வரலாறு',
     winning_bid: 'ஏலத் தொகை (₹)',
     payout_amt: 'பட்டுவாடா தொகை',
-    per_member_div: 'நபர் தள்ளுபடி',
+    per_member_div: 'நபர் பங்கு லாபம்',
 
     // Settlements
     settlement_title: 'பட்டுவாடா சரிபார்ப்பு',

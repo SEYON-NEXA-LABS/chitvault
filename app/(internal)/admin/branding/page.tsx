@@ -16,15 +16,14 @@ interface Firm {
   name: string
   address: string | null
   phone: string | null
-  logo_url: string | null
   color_profile: string | null
   font: string | null
 }
 
 const AVAILABLE_FONTS = [
-  { label: 'Noto Sans (Best Support)', value: 'Noto Sans' },
-  { label: 'Mukta Malar',             value: 'Mukta Malar' },
-  { label: 'Hind Madurai',            value: 'Hind Madurai' },
+  { label: 'Inter (Modern Standard)',     value: 'Inter' },
+  { label: 'Outfit (Geometric Premium)',   value: 'Outfit' },
+  { label: 'Noto Sans (Tamil Support)',    value: 'Noto Sans' },
 ]
 
 export default function AdminBrandingPage() {

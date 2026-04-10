@@ -17,7 +17,6 @@ export interface Firm {
   address:        string | null
   phone:          string | null
   // Branding
-  logo_url:       string | null
   font:           string | null
   theme_id:       string | null
   color_profile:  string | null

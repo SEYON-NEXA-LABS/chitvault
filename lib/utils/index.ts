@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'SEYON'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '2.6.0'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.0'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_DEVELOPER = 'SEYON NEXA LABS'
 export const SUPPORT_EMAIL = 'seyonnexalabs@gmail.com'
@@ -72,7 +72,7 @@ export function amtToWords(n: number | string | null | undefined): string {
   if (num === 0) return 'Zero Rupees Only'
 
   const a = [
-    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
     'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'
   ]
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']

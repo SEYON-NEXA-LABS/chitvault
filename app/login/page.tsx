@@ -5,14 +5,13 @@ import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
-import { usePwa } from '@/lib/pwa/context'
 import { usePinLock } from '@/lib/lock/context'
-import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2, Smartphone } from 'lucide-react'
+import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
 interface FirmBranding {
-  name: string; color_profile: string; logo_url: string | null
+  name: string; color_profile: string;
   font: string
 }
 
@@ -23,7 +22,6 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const firmSlug = searchParams.get('firm')
-  const { install, isInstallable } = usePwa()
   const { hasPin } = usePinLock()
 
   const [tab, setTab] = useState<Tab>('signin')
@@ -33,7 +31,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [branding, setBranding] = useState<FirmBranding>({
     name: APP_NAME,
-    color_profile: 'indigo', logo_url: null,
+    color_profile: 'indigo',
     font: 'Noto Sans'
   })
 
@@ -51,7 +49,6 @@ function LoginForm() {
         if (data) {
           setBranding({
             name: data.name, color_profile: data.color_profile || 'indigo',
-            logo_url: data.logo_url,
             font: data.font || 'Noto Sans'
           })
           applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
@@ -152,28 +149,11 @@ function LoginForm() {
         {/* ── Auth Form Side (Right) ───────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col justify-center p-8 sm:p-14 relative z-20 bg-white/[0.03]">
 
-          {/* PWA Floating Install (Mobile Only Header) */}
-          {isInstallable && (
-            <div className="lg:hidden absolute bottom-6 left-6 right-6 p-4 rounded-2xl glass-card flex items-center justify-between border-white/40">
-              <div className="flex items-center gap-3">
-                <Smartphone size={20} className="text-white" />
-                <div className="text-[11px] font-black text-white leading-tight uppercase tracking-wide">
-                  Install Official App<br /><span className="text-[9px] text-[var(--accent)] font-black">Faster & Secure</span>
-                </div>
-              </div>
-              <button onClick={install} className="px-4 py-2 rounded-lg bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-xl transition-transform active:scale-95">
-                Install
-              </button>
-            </div>
-          )}
+          {/* Auth Content */}
 
           <div className="max-w-sm w-full mx-auto">
             <div className="text-center mb-8">
-              {branding.logo_url ? (
-                <img src={branding.logo_url} alt={branding.name} className="h-24 mx-auto mb-8 object-contain" />
-              ) : (
-                <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain mx-auto mb-8 transition-transform hover:scale-105 duration-700 lg:hidden" />
-              )}
+              <img src="/icons/icon-512.png" alt="Logo" className="w-24 h-24 object-contain mx-auto mb-8 transition-transform hover:scale-105 duration-700" />
               <h2 className="text-3xl font-black tracking-tight text-white mb-2">{tab === 'signin' ? 'Sign In' : 'Reset Password'}</h2>
               <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em] mb-4 opacity-40">
                 {tab === 'signin' ? `Authorization for ${branding.name}` : 'Security check initiated'}

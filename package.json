@@ -1,6 +1,6 @@
 {
   "name": "chitvault",
-  "version": "2.6.0",
+  "version": "3.0.0",
   "description": "Auction Chit Fund Management Software",
   "private": true,
   "scripts": {

@@ -29,7 +29,6 @@ export default function SettingsPage() {
   const isOwner = role === 'owner' || isSuperAdmin
 
   const [email, setEmail] = useState('')
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system' | 'monochrome'>('light')
   const [resetting, setResetting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resetMsg, setResetMsg] = useState('')
@@ -69,9 +68,6 @@ export default function SettingsPage() {
       setStats({ groupCount: g.count || 0, memberCount: m.count || 0 })
     }
     loadStats()
-
-    const t = (localStorage.getItem('theme') || 'light') as 'light' | 'dark' | 'system' | 'monochrome'
-    setTheme(t)
     if (firm) {
       setName(firm.name || '')
       setAddress(firm.address || '')
@@ -83,11 +79,7 @@ export default function SettingsPage() {
     }
   }, [firm, supabase])
 
-  function updateTheme(val: 'light' | 'dark' | 'system' | 'monochrome') {
-    setTheme(val)
-    localStorage.setItem('theme', val)
-    document.documentElement.setAttribute('data-theme', val)
-  }
+
 
 
   function handleFontChange(f: string) {
@@ -460,44 +452,6 @@ export default function SettingsPage() {
             {resetMsg && <p className="text-xs" style={{ color: resetMsg.startsWith('✓') ? 'var(--success)' : 'var(--danger)' }}>{resetMsg}</p>}
           </div>
 
-        </div>
-      </Card>
-
-      {/* ── Personal Appearance & Selection ────────────────────────────────────── */}
-      <Card className="overflow-hidden">
-        <div className="px-5 py-4 border-b font-semibold text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-          🌗 Personal Theme & Appearance
-        </div>
-        <div className="p-5 space-y-6">
-
-
-          <hr style={{ borderColor: 'var(--border)' }} />
-
-          {/* High Level Theme (Light/Dark) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(['light', 'dark', 'system', 'monochrome'] as const).map(m => (
-              <button key={m} onClick={() => updateTheme(m)}
-                className="p-4 rounded-xl border flex flex-col items-center gap-2 transition-all group"
-                style={{
-                  borderColor: theme === m ? 'var(--accent)' : 'var(--border)',
-                  background: theme === m ? 'var(--accent-dim)' : 'transparent',
-                }}>
-                <div style={{ color: theme === m ? 'var(--accent)' : 'var(--text3)' }}>
-                  {m === 'light' && <Sun size={20} />}
-                  {m === 'dark' && <Moon size={20} />}
-                  {m === 'system' && <Monitor size={20} />}
-                  {m === 'monochrome' && <Palette size={20} />}
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-widest"
-                  style={{ color: theme === m ? 'var(--accent)' : 'var(--text2)' }}>
-                  {m}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] mt-4 opacity-50 px-1" style={{ color: 'var(--text2)' }}>
-            Choose Light for a clean look, Dark for high contrast, or System to follow your device settings.
-          </p>
         </div>
       </Card>
 

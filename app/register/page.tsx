@@ -10,7 +10,7 @@ import { APP_NAME } from '@/lib/utils'
 
 interface FirmByToken {
   id: string; name: string; slug: string
-  color_profile: string; logo_url: string | null
+  color_profile: string; font?: string
 }
 
 function RegisterForm() {
