@@ -68,12 +68,12 @@
    =============================== */
 
 :root {
-  /* Core Accent (Indigo Professional) */
-  --accent: #2563eb;
-  --accent-rgb: 37, 99, 235;
-  --accent-light: #60a5fa;
-  --accent-dim: rgba(37, 99, 235, 0.1);
-  --accent-border: rgba(37, 99, 235, 0.2);
+  /* Core Accent (Israel Blue Professional) */
+  --accent: #0038b8;
+  --accent-rgb: 0, 56, 184;
+  --accent-light: #3361e0;
+  --accent-dim: rgba(0, 56, 184, 0.1);
+  --accent-border: rgba(0, 56, 184, 0.2);
   --success: #10b981;
   --success-dim: #ecfdf5;
   --danger: #ef4444;
