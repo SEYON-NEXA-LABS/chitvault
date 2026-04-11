@@ -11,55 +11,34 @@ set search_path = public;
 
 -- 1.1 FIRMS
 create table if not exists firms (
-  id          uuid primary key default gen_random_uuid(),
-  name        text not null,
-  slug        text not null unique,
-  owner_id    uuid references auth.users(id) on delete set null,
-  plan        text default 'trial',
-  plan_status text default 'active',
-  trial_ends  timestamptz default (now() + interval '30 days'),
-  invoice_ref text,
-  city        text,
-  address     text,
-  phone       text,
-  -- Branding / white-label (LEGACY - DEPRECATED)
-  primary_color   text default '#2563eb',     -- hex colour (DEPRECATED: No longer used in UI)
-  accent_color    text default '#1e40af',     -- hex colour (DEPRECATED: No longer used in UI)
-  theme_id        text default 'theme1',      -- id from THEMES list (DEPRECATED: Fixed via Profile)
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  slug            text not null unique,
+  owner_id        uuid references auth.users(id) on delete set null,
+  plan            text default 'trial',
+  plan_status     text default 'active',
+  trial_ends      timestamptz default (now() + interval '30 days'),
+  invoice_ref     text,
+  city            text,
+  address         text,
+  phone           text,
   color_profile   text default 'indigo',      -- indigo | emerald | violet | crimson | graphite
   logo_url        text,                        -- hosted image URL
   font            text default 'DM Sans',      -- Google Font name
+  register_token  text unique,
   enabled_schemes text[] default array['DIVIDEND', 'ACCUMULATION'],
   created_at      timestamptz default now(),
   created_by      uuid references auth.users(id),
   updated_at      timestamptz default now(),
-  updated_by      uuid references auth.users(id)
+  updated_by      uuid references auth.users(id),
+  constraint firms_plan_chk check (plan in ('trial','basic','pro')),
+  constraint firms_plan_status_chk check (plan_status in ('active','suspended','cancelled'))
 );
 
-
--- Migration: add branding columns if table already exists
-alter table firms add column if not exists primary_color  text default '#2563eb';
-alter table firms add column if not exists accent_color   text default '#1e40af';
-alter table firms add column if not exists theme_id       text default 'theme1';
-alter table firms add column if not exists color_profile  text default 'indigo';
-alter table firms add column if not exists logo_url       text;
-alter table firms add column if not exists font           text default 'DM Sans';
-alter table firms add column if not exists register_token text unique;
-alter table firms add column if not exists address        text;
-alter table firms add column if not exists city           text;
-alter table firms add column if not exists phone          text;
-alter table firms add column if not exists enabled_schemes text[] default array['DIVIDEND', 'ACCUMULATION'];
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'firms_plan_chk') then
-    alter table firms add constraint firms_plan_chk
-      check (plan in ('trial','basic','pro'));
-  end if;
-  if not exists (select 1 from pg_constraint where conname = 'firms_plan_status_chk') then
-    alter table firms add constraint firms_plan_status_chk
-      check (plan_status in ('active','suspended','cancelled'));
-  end if;
-end $$;
+drop trigger if exists set_firms_updated_at on firms;
+create trigger set_firms_updated_at
+  before update on firms
+  for each row execute procedure moddatetime(updated_at);
 
 drop trigger if exists set_firms_updated_at on firms;
 create trigger set_firms_updated_at
@@ -109,13 +88,24 @@ create table if not exists groups (
   status               text default 'active',
   -- Scheme Configuration
   auction_scheme       text default 'ACCUMULATION',    -- 'DIVIDEND' (Direct Share) or 'ACCUMULATION' (Surplus Model)
-  accumulated_surplus  numeric(12,2) default 0.0,  -- Track saved bids for early closure
+  accumulated_surplus  numeric(12,2) default 0.0,      -- Track saved bids for early closure
+  -- Bidding & Commission Rules
+  min_bid_pct          numeric(12,4) default 0.0500,   -- 5% of chit_value
+  max_bid_pct          numeric(12,4) default 0.4000,   -- 40% of chit_value
+  discount_cap_pct     numeric(12,4) default 0.4000,   -- max discount cap
+  commission_type      text default 'percent_of_chit', -- percent_of_chit | percent_of_discount | fixed_amount
+  commission_value     numeric(12,2) default 5.00,
+  dividend_rule        text default 'equal_split',     -- equal_split | proportional
+  commission_recipient text default 'foreman',          -- foreman | firm
   created_at           timestamptz default now(),
   created_by           uuid references auth.users(id),
   updated_at           timestamptz default now(),
   updated_by           uuid references auth.users(id),
+  deleted_at           timestamptz,
   constraint groups_status_chk check (status in ('active','paused','closed')),
   constraint groups_scheme_chk check (auction_scheme in ('DIVIDEND','ACCUMULATION')),
+  constraint groups_comm_type_chk check (commission_type in ('percent_of_chit','percent_of_discount','percent_of_payout','fixed_amount')),
+  constraint groups_comm_recp_chk check (commission_recipient in ('foreman','firm')),
   constraint groups_nonneg_chk check (num_members > 0 and duration > 0 and chit_value >= 0 and monthly_contribution >= 0)
 );
 
@@ -130,17 +120,6 @@ create trigger set_groups_updated_at
   before update on groups
   for each row execute procedure moddatetime(updated_at);
 
--- Migration: add scheme columns if table already exists
-alter table groups add column if not exists auction_scheme       text default 'ACCUMULATION';
-alter table groups add column if not exists accumulated_surplus  numeric(12,2) default 0.0;
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'groups_scheme_chk') then
-    alter table groups add constraint groups_scheme_chk
-      check (auction_scheme in ('DIVIDEND','ACCUMULATION'));
-  end if;
-end $$;
-
 -- 1.3.5 PERSONS (Registry of unique individuals)
 create table if not exists persons (
   id               bigint primary key generated always as identity,
@@ -152,7 +131,8 @@ create table if not exists persons (
   created_at       timestamptz default now(),
   created_by       uuid references auth.users(id),
   updated_at       timestamptz default now(),
-  updated_by       uuid references auth.users(id)
+  updated_by       uuid references auth.users(id),
+  deleted_at       timestamptz,
 );
 
 do $$ begin
@@ -180,6 +160,7 @@ create table if not exists members (
   created_by       uuid references auth.users(id),
   updated_at       timestamptz default now(),
   updated_by       uuid references auth.users(id),
+  deleted_at       timestamptz,
   constraint members_status_chk check (status in ('active','transferred','exited','defaulter','foreman'))
 );
 
@@ -225,19 +206,11 @@ create table if not exists auctions (
   created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
   updated_by   uuid references auth.users(id),
+  deleted_at   timestamptz,
   unique(firm_id, group_id, month),
   constraint auctions_amounts_nonneg_chk check (auction_discount >= 0 and total_pot >= 0 and dividend >= 0),
   constraint auctions_status_chk check (status in ('draft','confirmed'))
 );
-
--- Migration: add net_payout & settlement columns to auctions
-alter table auctions add column if not exists net_payout          numeric(12,2) default 0.0;
-alter table auctions add column if not exists is_payout_settled   boolean default false;
-alter table auctions add column if not exists payout_date        date;
-alter table auctions add column if not exists payout_amount      numeric(12,2);
-alter table auctions add column if not exists payout_mode        text;
-alter table auctions add column if not exists payout_note        text;
-alter table auctions add column if not exists notes              text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'auctions_group_firm_fk') then
@@ -275,17 +248,10 @@ create table if not exists payments (
   created_by   uuid references auth.users(id),
   updated_at   timestamptz default now(),
   updated_by   uuid references auth.users(id),
+  deleted_at   timestamptz,
   constraint payments_amounts_nonneg_chk
     check (amount >= 0 and amount_due >= 0 and balance_due >= 0)
 );
-
--- Remove old unique constraint to allow multiple partial payments per month
-alter table payments
-  drop constraint if exists payments_firm_id_member_id_group_id_month_key,
-  drop constraint if exists payments_member_id_group_id_month_key;
-
--- Migration: add note to payments
-alter table payments add column if not exists note text;
 
 do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'payments_group_firm_fk') then
@@ -323,31 +289,71 @@ create trigger set_invites_updated_at
   before update on invites
   for each row execute procedure moddatetime(updated_at);
 
--- 1.8 DENOMINATIONS
-create table if not exists denominations (
-  id           bigint primary key generated always as identity,
-  firm_id      uuid not null references firms(id) on delete cascade,
-  entry_date   date not null default current_date,
-  collected_by uuid references auth.users(id) on delete set null default auth.uid(),
-  note_2000    int default 0, note_500  int default 0, note_200 int default 0,
-  note_100     int default 0, note_50   int default 0, note_20  int default 0,
-  note_10      int default 0, coin_5    int default 0, coin_2   int default 0,
-  coin_1       int default 0,
-  total        numeric generated always as (
-    note_2000*2000 + note_500*500 + note_200*200 + note_100*100 +
-    note_50*50 + note_20*20 + note_10*10 + coin_5*5 + coin_2*2 + coin_1*1
-  ) stored,
-  notes        text,
-  created_at   timestamptz default now(),
-  created_by   uuid references auth.users(id),
-  updated_at   timestamptz default now(),
-  updated_by   uuid references auth.users(id)
+-- 1.9 SETTLEMENTS (Member payout history)
+create table if not exists settlements (
+  id                bigint primary key generated always as identity,
+  firm_id           uuid not null references firms(id) on delete cascade,
+  member_id         bigint references members(id) on delete cascade,
+  group_id          bigint references groups(id) on delete cascade,
+  total_amount      numeric(12,2) not null default 0,
+  total_months      int not null default 1,
+  average_per_month numeric(12,2) not null default 0,
+  month_14_balance  numeric(12,2) not null default 0,
+  entries           jsonb not null default '[]'::jsonb,
+  notes             text,
+  created_at        timestamptz not null default now(),
+  created_by        uuid references auth.users(id) on delete set null,
+  deleted_at        timestamptz
 );
 
-drop trigger if exists set_denominations_updated_at on denominations;
-create trigger set_denominations_updated_at
-  before update on denominations
-  for each row execute procedure moddatetime(updated_at);
+-- 1.10 FOREMAN COMMISSIONS
+create table if not exists foreman_commissions (
+  id              bigint primary key generated always as identity,
+  firm_id         uuid not null references firms(id) on delete cascade,
+  group_id        bigint not null references groups(id) on delete cascade,
+  auction_id      bigint references auctions(id) on delete cascade,
+  month           int not null,
+  chit_value      numeric(12,2) not null,
+  auction_discount numeric(12,2) not null,
+  discount        numeric(12,2) not null,
+  commission_type text not null,
+  commission_rate numeric(12,4) not null,
+  commission_amt  numeric(12,2) not null,
+  net_dividend    numeric(12,2) not null,
+  per_member_div  numeric(12,2) not null,
+  paid_to         text default 'foreman',
+  foreman_member_id bigint references members(id) on delete set null,
+  notes           text,
+  status          text default 'confirmed',
+  created_at      timestamptz default now(),
+  created_by      uuid references auth.users(id),
+  updated_at      timestamptz default now(),
+  updated_by      uuid references auth.users(id),
+  deleted_at      timestamptz,
+  unique(firm_id, group_id, month),
+  constraint fc_status_chk check (status in ('draft','confirmed'))
+);
+
+-- 1.11 ACTIVITY LOGS (Audit Trail)
+create table if not exists activity_logs (
+  id           bigint primary key generated always as identity,
+  firm_id      uuid not null references firms(id) on delete cascade,
+  user_id      uuid references auth.users(id) on delete set null,
+  action       text not null,
+  entity_type  text,
+  entity_id    text,
+  metadata     jsonb,
+  created_at   timestamptz default now()
+);
+
+-- 1.12 ADMIN ACTIVITY (Superadmin only)
+create table if not exists admin_activity (
+  id          bigint primary key generated always as identity,
+  event_type  text not null,
+  details     jsonb default '{}',
+  firm_id     uuid references firms(id) on delete set null,
+  created_at  timestamptz default now()
+);
 
 -- ── 2. INDEXES ────────────────────────────────────────────────
 create index if not exists idx_groups_firm                 on groups(firm_id);
@@ -360,6 +366,9 @@ create index if not exists idx_payments_member_month       on payments(firm_id, 
 create index if not exists idx_payments_group_month_member on payments(group_id, month, member_id);
 create index if not exists idx_profiles_firm               on profiles(firm_id);
 create index if not exists idx_denominations_firm_date     on denominations(firm_id, entry_date desc);
+create index if not exists idx_fc_firm_group               on foreman_commissions(firm_id, group_id);
+create index if not exists idx_activity_logs_firm_date     on activity_logs(firm_id, created_at desc);
+create index if not exists idx_settlements_member          on settlements(member_id);
 
 -- ── 3. RLS & HELPER FUNCTIONS ─────────────────────────────────
 alter table firms         enable row level security;
@@ -821,319 +830,23 @@ begin
 end;
 $$;
 
+-- ── 9. MAINTENANCE ─────────────────────────────────────────
+-- Purges records from the "Trash" that are older than 90 days.
+create or replace function public.purge_old_trash()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.payments      where deleted_at < now() - interval '90 days';
+  delete from public.auctions      where deleted_at < now() - interval '90 days';
+  delete from public.settlements   where deleted_at < now() - interval '90 days';
+  delete from public.denominations where deleted_at < now() - interval '90 days';
+  delete from public.members       where deleted_at < now() - interval '90 days';
+  delete from public.persons       where deleted_at < now() - interval '90 days';
+  delete from public.profiles      where deleted_at < now() - interval '90 days';
+  delete from public.groups        where deleted_at < now() - interval '90 days';
+end;
+$$;
+
 grant execute on function public.purge_old_trash() to authenticated;
-
--- ── Auction rules columns on groups table ────────────────────
-alter table groups
-  add column if not exists min_bid_pct            numeric(5,4) default 0.05,   -- 5% of chit_value
-  add column if not exists max_bid_pct            numeric(5,4) default 0.40,   -- 40% of chit_value
-  add column if not exists discount_cap_pct       numeric(5,4) default 0.40,   -- max discount as % of chit_value
-  add column if not exists commission_type        text         default 'percent_of_chit',
-  -- percent_of_chit | percent_of_discount | fixed_amount
-  add column if not exists commission_value       numeric(12,2) default 5.00,
-  -- if percent_of_chit:     5.00  → 5% of chit_value per month
-  -- if percent_of_discount: 5.00  → 5% of discount
-  -- if fixed_amount:        500   → ₹500 flat per month
-  add column if not exists dividend_rule          text         default 'equal_split',
-  -- equal_split | proportional (future use)
-  add column if not exists commission_recipient   text         default 'foreman';
-  -- foreman | firm (who gets the commission)
-
-do $$ begin
-  if not exists (select 1 from pg_constraint where conname = 'groups_commission_type_chk') then
-    alter table groups add constraint groups_commission_type_chk
-      check (commission_type in ('percent_of_chit','percent_of_discount','percent_of_payout','fixed_amount'));
-  end if;
-  if not exists (select 1 from pg_constraint where conname = 'groups_commission_recipient_chk') then
-    alter table groups add constraint groups_commission_recipient_chk
-      check (commission_recipient in ('foreman','firm'));
-  end if;
-  if not exists (select 1 from pg_constraint where conname = 'groups_bid_pct_chk') then
-    alter table groups add constraint groups_bid_pct_chk
-      check (min_bid_pct >= 0 and min_bid_pct <= 1 and max_bid_pct > 0 and max_bid_pct <= 1 and min_bid_pct <= max_bid_pct);
-  end if;
-end $$;
-
--- ── Foreman commissions table ─────────────────────────────────
--- One row per auction month per group — tracks foreman earnings
-create table if not exists foreman_commissions (
-  id              bigint primary key generated always as identity,
-  firm_id         uuid not null references firms(id) on delete cascade,
-  group_id        bigint not null references groups(id) on delete cascade,
-  auction_id      bigint references auctions(id) on delete cascade,
-  month           int not null,
-  chit_value      numeric(12,2) not null,
-  auction_discount numeric(12,2) not null,
-  discount        numeric(12,2) not null,      -- redundant but kept for back-compat with old logic
-  commission_type text not null,
-  commission_rate numeric(12,4) not null,      -- % or fixed
-  commission_amt  numeric(12,2) not null,      -- final ₹ commission
-  net_dividend    numeric(12,2) not null,      -- discount - commission_amt
-  per_member_div  numeric(12,2) not null,      -- net_dividend / num_members
-  paid_to         text default 'foreman',      -- foreman | firm
-  foreman_member_id bigint references members(id) on delete set null,
-  notes           text,
-  status          text default 'confirmed',
-  created_at      timestamptz default now(),
-  created_by      uuid references auth.users(id),
-  updated_at      timestamptz default now(),
-  updated_by      uuid references auth.users(id),
-  unique(firm_id, group_id, month),
-  constraint fc_status_chk check (status in ('draft','confirmed'))
-);
-
-alter table foreman_commissions enable row level security;
-grant all on foreman_commissions to authenticated;
-grant usage, select on sequence foreman_commissions_id_seq to authenticated;
-
-create index if not exists idx_fc_firm_group on foreman_commissions(firm_id, group_id);
-
--- RLS: same firm isolation
-create policy "fc_select" on foreman_commissions for select
-  using (firm_id = my_firm_id() or is_superadmin());
-create policy "fc_insert" on foreman_commissions for insert
-  with check ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
-create policy "fc_update" on foreman_commissions for update
-  using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
-create policy "fc_delete" on foreman_commissions for delete
-  using ((firm_id = my_firm_id() and is_firm_owner()) or is_superadmin());
-
--- ── RPC: calculate_auction ───────────────────────────────────
--- Given a group + bid amount, returns the full breakdown
--- (bid limits enforced, commission deducted, dividend computed)
-create or replace function public.calculate_auction(
-  p_group_id  bigint,
-  p_auction_discount numeric
-)
-returns jsonb
-language plpgsql stable security definer set search_path = public
-as $$
-declare
-  g            groups%rowtype;
-  v_min_bid    numeric(12,2);
-  v_max_bid    numeric(12,2);
-  v_discount   numeric(12,2);
-  v_cap        numeric(12,2);
-  v_commission numeric(12,2);
-  v_net_div    numeric(12,2);
-  v_per_member numeric(12,2);
-  v_num_members int;
-  v_raw_payout numeric(12,2);
-  v_net_payout numeric(12,2);
-begin
-  select * into g from groups where id = p_group_id and firm_id = my_firm_id();
-  if not found then raise exception 'Group not found'; end if;
-
-  -- Logic: p_auction_discount IS the Discount Amount (the amount bid "away")
-  v_discount := p_auction_discount;
-  v_raw_payout := g.chit_value - p_auction_discount;
-
-  -- Enforce bid range (Now comparing discount against floor/cap)
-  v_min_bid := round(g.chit_value * g.min_bid_pct, 2);
-  v_max_bid := round(g.chit_value * g.max_bid_pct, 2);
-
-  -- Enforce bid range
-  if v_discount < v_min_bid then
-    raise exception 'Auction discount ₹% is below minimum allowed ₹%', v_discount, v_min_bid;
-  end if;
-  if v_discount > v_max_bid then
-    raise exception 'Auction discount ₹% exceeds maximum allowed ₹%', v_discount, v_max_bid;
-  end if;
-
-  -- Calculate foreman commission
-  CASE g.commission_type
-    WHEN 'percent_of_chit'     THEN v_commission := round(g.chit_value * g.commission_value / 100, 2);
-    WHEN 'percent_of_discount' THEN v_commission := round(v_discount    * g.commission_value / 100, 2);
-    WHEN 'percent_of_payout'   THEN v_commission := round(v_raw_payout * g.commission_value / 100, 2);
-    WHEN 'fixed_amount'        THEN v_commission := g.commission_value;
-    ELSE v_commission := 0;
-  END CASE;
-
-  -- Standard Logic: 
-  -- 1. Winner takes Payout = Chit - Discount
-  -- 2. Group gets Dividend = Discount - Commission
-  v_net_payout := v_raw_payout; 
-  v_net_div    := v_discount - v_commission;
-  
-  if v_net_div < 0 then v_net_div := 0; end if;
-
-  if g.auction_scheme = 'ACCUMULATION' then
-     v_per_member := 0;
-  else
-     -- Count active members
-     select count(*) into v_num_members from members
-     where group_id = p_group_id and firm_id = my_firm_id() and status in ('active','foreman');
-     v_num_members := greatest(v_num_members, 1);
-     v_per_member  := round(v_net_div / v_num_members, 2);
-  end if;
-
-  return jsonb_build_object(
-    'chit_value',      g.chit_value,
-    'auction_discount', p_auction_discount,
-    'min_bid',         v_min_bid,
-    'max_bid',         v_max_bid,
-    'discount',        v_discount,
-    'discount_cap',    v_cap,
-    'commission_type', g.commission_type,
-    'commission_rate', g.commission_value,
-    'commission_amt',  v_commission,
-    'commission_recipient', g.commission_recipient,
-    'net_dividend',    v_net_div,
-    'num_members',     v_num_members,
-    'per_member_div',  v_per_member,
-    'each_pays',       g.monthly_contribution - v_per_member,
-    'net_payout',      v_net_payout
-  );
-end;
-$$;
-
-grant execute on function public.calculate_auction(bigint, numeric) to authenticated;
-
--- ── RPC: record_auction_with_commission ──────────────────────
--- Inserts auction + foreman_commission row atomically
-create or replace function public.record_auction_with_commission(
-  p_group_id      bigint,
-  p_month         int,
-  p_auction_date  date,
-  p_winner_id     bigint,
-  p_auction_discount numeric,
-  p_foreman_member_id bigint default null,
-  p_notes         text default null,
-  p_status        text default 'confirmed',
-  p_auction_id    bigint default null
-)
-returns jsonb
-language plpgsql security definer set search_path = public
-as $$
-declare
-  g            groups%rowtype;
-  v_calc       jsonb;
-  v_auction_id bigint;
-  v_old_auction auctions%rowtype;
-  v_firm_id    uuid;
-begin
-  if not is_firm_owner() then
-    raise exception 'Owner access required to record auctions';
-  end if;
-
-  select * into g from groups where id = p_group_id and firm_id = my_firm_id();
-  if not found then raise exception 'Group not found'; end if;
-
-  v_firm_id := my_firm_id();
-
-  -- Get full calculation (also validates bid range)
-  v_calc := public.calculate_auction(p_group_id, p_auction_discount);
-
-  -- Handle Existing Auction (Edit Mode)
-  if p_auction_id is not null then
-    select * into v_old_auction from auctions where id = p_auction_id and firm_id = v_firm_id;
-    if not found then raise exception 'Original auction record not found'; end if;
-
-    -- Reverse old confirmed impact if present
-    if v_old_auction.status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
-        update groups 
-        set accumulated_surplus = accumulated_surplus - v_old_auction.auction_discount
-        where id = p_group_id;
-    end if;
-
-    -- Update existing auction
-    update auctions set
-      auction_date = p_auction_date,
-      winner_id = p_winner_id,
-      auction_discount = p_auction_discount,
-      total_pot = g.chit_value,
-      dividend = (v_calc->>'per_member_div')::numeric,
-      net_payout = (v_calc->>'net_payout')::numeric,
-      status = p_status,
-      updated_at = now()
-    where id = p_auction_id;
-    
-    v_auction_id := p_auction_id;
-
-    -- Update or Delete Foreman Commission
-    -- We can just delete and let it recreate to ensure all fields are fresh
-    delete from foreman_commissions where auction_id = v_auction_id;
-  else
-    -- Standard Insert Mode
-    insert into auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, status)
-    values (
-      v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
-      p_auction_discount, g.chit_value, (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric, p_status
-    )
-    returning id into v_auction_id;
-  end if;
-
-  -- Insert foreman commission record (Fresh row)
-  insert into foreman_commissions (
-    firm_id, group_id, auction_id, month,
-    chit_value, auction_discount, discount,
-    commission_type, commission_rate, commission_amt,
-    net_dividend, per_member_div,
-    paid_to, foreman_member_id, notes, status
-  ) values (
-    v_firm_id, p_group_id, v_auction_id, p_month,
-    g.chit_value, p_auction_discount, (v_calc->>'discount')::numeric,
-    (v_calc->>'commission_type')::text,
-    (v_calc->>'commission_rate')::numeric,
-    (v_calc->>'commission_amt')::numeric,
-    (v_calc->>'net_dividend')::numeric,
-    (v_calc->>'per_member_div')::numeric,
-    g.commission_recipient,
-    p_foreman_member_id,
-    p_notes,
-    p_status
-  );
-
-  -- Apply confirmed impact if status is confirmed
-  if p_status = 'confirmed' and g.auction_scheme = 'ACCUMULATION' then
-     update groups 
-     set accumulated_surplus = accumulated_surplus + p_auction_discount
-     where id = p_group_id;
-  end if;
-
-  return v_calc || jsonb_build_object('auction_id', v_auction_id);
-end;
-$$;
-
-grant execute on function public.record_auction_with_commission(bigint,int,date,bigint,numeric,bigint,text) to authenticated;
-
--- ── 9. ACTIVITY LOGS (Audit Trail) ──────────────────────────
-create table if not exists activity_logs (
-  id           bigint primary key generated always as identity,
-  firm_id      uuid not null references firms(id) on delete cascade,
-  user_id      uuid references auth.users(id) on delete set null,
-  action       text not null,
-  entity_type  text,
-  entity_id    text,
-  metadata     jsonb,
-  created_at   timestamptz default now()
-);
-
-alter table activity_logs enable row level security;
-grant all on activity_logs to authenticated;
-
-create index if not exists idx_activity_logs_firm_date on activity_logs(firm_id, created_at desc);
-
-create policy activity_logs_select on activity_logs for select
-  using (firm_id = my_firm_id() or is_superadmin());
-create policy activity_logs_insert on activity_logs for insert
-  with check (firm_id = my_firm_id() or is_superadmin());
--- ══════════════════════════════════════════════════════════════
--- SUPERADMIN COMMAND CENTER: GLOBAL ACTIVITY TRACKING
--- ══════════════════════════════════════════════════════════════
-
--- ── admin_activity table ────────────────────────────────────
-create table if not exists admin_activity (
-  id          bigint primary key generated always as identity,
-  event_type  text not null, -- 'firm_created', 'plan_changed', 'status_suspended', etc.
-  details     jsonb default '{}',
-  firm_id     uuid references firms(id) on delete set null,
-  created_at  timestamptz default now()
-);
-
-alter table admin_activity enable row level security;
-create policy admin_activity_select on admin_activity for select
-  using (is_superadmin());
 
 -- ── Trigger: Log New Firm Registration ───────────────────────
 create or replace function trg_log_new_firm()
@@ -1225,7 +938,32 @@ security definer
 set search_path = public
 as $$
 begin
-    return (select json_agg(t) from (select to_char(payment_date, 'YYYY-MM') as month, coalesce(sum(amount), 0) as actual from payments where firm_id = p_firm_id and deleted_at is null and payment_date >= (current_date - interval '6 months') group by 1 order by 1) t);
+    return (
+        select json_agg(t) from (
+            with top_groups as (
+                select group_id, sum(amount) as vol
+                from payments
+                where firm_id = p_firm_id 
+                  and deleted_at is null 
+                  and payment_date >= (current_date - interval '6 months')
+                group by 1
+                order by 2 desc
+                limit 10
+            )
+            select 
+                to_char(p.payment_date, 'YYYY-MM') as month,
+                g.name as group_name,
+                coalesce(sum(p.amount), 0) as actual
+            from payments p
+            join groups g on p.group_id = g.id
+            where p.group_id in (select group_id from top_groups)
+              and p.firm_id = p_firm_id 
+              and p.deleted_at is null 
+              and p.payment_date >= (current_date - interval '6 months')
+            group by 1, 2
+            order by 1, 2
+        ) t
+    );
 end;
 $$;
 
@@ -1237,7 +975,30 @@ security definer
 set search_path = public
 as $$
 begin
-    return (select json_agg(t) from (select g.id, (select count(*) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as auctions_done, (select count(*) from payments p where p.group_id = g.id and p.status = 'paid' and p.deleted_at is null) as payments_made from groups g where g.firm_id = p_firm_id and g.status != 'archived' and g.deleted_at is null) t);
+    return (
+        select json_agg(t) from (
+            select 
+                g.id,
+                (select count(*) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as auctions_done,
+                (
+                    select json_build_object(
+                        'winner', p.name,
+                        'discount', a.auction_discount,
+                        'month', a.month
+                    )
+                    from auctions a
+                    join members m on a.winner_id = m.id
+                    join persons p on m.person_id = p.id
+                    where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null
+                    order by a.month desc
+                    limit 1
+                ) as last_auction
+            from groups g 
+            where g.firm_id = p_firm_id 
+              and g.status != 'archived' 
+              and g.deleted_at is null
+        ) t
+    );
 end;
 $$;
 
@@ -1252,9 +1013,38 @@ declare
     v_early_bird_count int;
     v_highest_bid numeric(15,2);
 begin
-    select count(*) into v_early_bird_count from auctions a join groups g on a.group_id = g.id where a.firm_id = p_firm_id and a.status = 'confirmed' and a.month <= (g.duration / 4);
-    select coalesce(max(auction_discount), 0) into v_highest_bid from auctions where firm_id = p_firm_id and status = 'confirmed';
-    return json_build_object('earlyBirdCount', v_early_bird_count, 'highestSingleDiscount', v_highest_bid);
+    -- 1. Early Bird Count (Auctions in first 25% of duration)
+    select count(*) into v_early_bird_count
+    from auctions a
+    join groups g on a.group_id = g.id
+    where a.firm_id = p_firm_id 
+      and a.status = 'confirmed' 
+      and a.month <= (g.duration / 4);
+
+    -- 2. Single Highest Bid
+    select coalesce(max(auction_discount), 0) into v_highest_bid
+    from auctions
+    where firm_id = p_firm_id and status = 'confirmed' and deleted_at is null;
+
+    return json_build_object(
+        'earlyBirdCount', v_early_bird_count,
+        'highestSingleDiscount', v_highest_bid,
+        'topBorrower', (
+            select json_build_object(
+                'name', p.name,
+                'totalDiscount', sum(a.auction_discount)
+            )
+            from auctions a
+            join members m on a.winner_id = m.id
+            join persons p on m.person_id = p.id
+            where a.firm_id = p_firm_id 
+              and a.status = 'confirmed' 
+              and a.deleted_at is null
+            group by p.name
+            order by sum(a.auction_discount) desc
+            limit 1
+        )
+    );
 end;
 $$;
 

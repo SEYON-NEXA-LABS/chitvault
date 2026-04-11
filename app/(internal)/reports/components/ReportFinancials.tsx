@@ -7,9 +7,11 @@ import Link from 'next/link'
 import type { Group, Member, Auction, Payment, ForemanCommission } from '@/types'
 
 // 1. PNL
-export function ReportPNL({ groups, commissions, t, term }: { groups: Group[], commissions: ForemanCommission[], t: any, term: any }) {
-  const totalIncome = commissions.reduce((s, c) => s + Number(c.commission_amt), 0)
-  const potentialTotal = groups.reduce((sum, g) => {
+export function ReportPNL({ groups, commissions, stats, t, term }: { groups: Group[], commissions: ForemanCommission[], stats?: any, t: any, term: any }) {
+  const totalIncome = stats?.realizedCommissions ?? commissions.reduce((s, c) => s + Number(c.commission_amt), 0)
+  
+  // Projection logic using total income as anchor if stats are available
+  const potentialTotal = stats?.projectedCommissions ?? groups.reduce((sum, g) => {
     const realized = commissions.filter(c => c.group_id === g.id).reduce((s, c) => s + Number(c.commission_amt), 0)
     const confirmedCount = commissions.filter(c => c.group_id === g.id).length
     const remaining = Math.max(0, g.duration - confirmedCount)
