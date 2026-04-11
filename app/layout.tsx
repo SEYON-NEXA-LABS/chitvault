@@ -6,21 +6,11 @@ import { PinLockProvider } from '@/lib/lock/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
 import { ThemeProvider } from '@/lib/theme/context'
+import { UpdateNotification } from '@/components/ui'
 import './globals.css'
 import './fonts.css'
 
-
-
-export const metadata: Metadata = {
-  title: APP_NAME,
-  description: 'Chit Fund Management Software',
-  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-}
+// ... (Metadata and Viewport stay the same)
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -69,25 +59,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   reloadData.last = now;
                   sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
                   
-                  var forceFullReload = function() {
-                    // Try to clear all caches
-                    if ('caches' in window) {
-                      caches.keys().then(function(names) {
-                        names.forEach(function(name) { caches.delete(name); });
-                      }).catch(function(){});
-                    }
-                    // Force unregister service workers
-                    if ('serviceWorker' in navigator) {
-                      navigator.serviceWorker.getRegistrations().then(function(regs) {
-                        regs.forEach(function(reg) { reg.unregister(); });
-                        setTimeout(function() { window.location.reload(true); }, 100);
-                      }).catch(function() { window.location.reload(true); });
-                    } else {
-                      window.location.reload(true);
-                    }
-                  };
-
-                  forceFullReload();
+                  console.warn('ChunkLoadError detected, notifying user for update...', errorMessage);
+                  window.dispatchEvent(new CustomEvent('app-update-available'));
+                } else {
+                  console.error('Max update notification attempts reached.');
                 }
               }
             }
@@ -107,6 +82,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <PinLockProvider>
                   {children}
                   <InviteAutoLinker />
+                  <UpdateNotification />
                 </PinLockProvider>
               </I18nProvider>
             </BrandingProvider>

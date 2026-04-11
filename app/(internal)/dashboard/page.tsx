@@ -70,7 +70,7 @@ export default function DashboardPage() {
       }
     }
     load()
-  }, [supabase, isSuper, switchedFirmId, firm, firmsLoaded, dashboardStats])
+  }, [supabase, isSuper, switchedFirmId, firm])
 
   const { stats, chartData, groupSeries, onboardingSteps } = useMemo(() => {
     const s = dashboardStats || {}

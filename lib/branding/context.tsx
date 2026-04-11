@@ -67,7 +67,7 @@ export const AVAILABLE_FONTS = [
 ]
 
 export const COLOR_PROFILES = [
-  { id: 'indigo',       name: 'ChitVault Premium', color: '#2563eb' },
+  { id: 'indigo',       name: 'ChitVault Premium', color: '#0038b8' },
   { id: 'emerald',      name: 'Emerald Growth',   color: '#10b981' },
   { id: 'amber',        name: 'Amber Gold',       color: '#f59e0b' },
   { id: 'rose',         name: 'Rose Energy',      color: '#e11d48' },
