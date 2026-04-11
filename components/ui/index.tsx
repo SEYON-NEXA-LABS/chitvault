@@ -53,13 +53,14 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
   )
 }
 
-export function Card({ title, subtitle, headerAction, children, className, style, glass }: {
+export function Card({ title, subtitle, headerAction, children, className, style, glass, onClick }: {
   title?: React.ReactNode; subtitle?: React.ReactNode; headerAction?: React.ReactNode
-  children: React.ReactNode; className?: string; style?: React.CSSProperties; glass?: boolean
+  children: React.ReactNode; className?: string; style?: React.CSSProperties; glass?: boolean; onClick?: () => void
 }) {
   return (
     <div className={cn('rounded-[2rem] border transition-all duration-300', glass ? 'glass-card' : 'neumo-out', className)}
-      style={{ background: glass ? undefined : 'var(--surface)', borderColor: 'var(--border)', ...style }}>
+      onClick={onClick}
+      style={{ background: glass ? undefined : 'var(--surface)', borderColor: 'var(--border)', cursor: onClick ? 'pointer' : 'default', ...style }}>
       {(title || subtitle || headerAction) && (
         <div className="px-5 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
           <div>
@@ -77,27 +78,28 @@ export function Card({ title, subtitle, headerAction, children, className, style
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, color = 'accent', icon: Icon }: {
+export function StatCard({ label, value, sub, color = 'accent', icon: Icon, onClick }: {
   label: string; value: string | number; sub?: string
-  color?: 'accent' | 'success' | 'danger' | 'info'
-  icon?: any
+  color?: 'accent' | 'success' | 'danger' | 'info' | 'warning'
+  icon?: any; onClick?: () => void
 }) {
-  const colors = { accent: 'var(--accent)', success: 'var(--success)', danger: 'var(--danger)', info: 'var(--info)' }
+  const colors = { accent: 'var(--accent)', success: 'var(--success)', danger: 'var(--danger)', info: 'var(--info)', warning: 'var(--warning)' }
   const bgColors = { 
     accent: 'var(--accent-dim)', 
     success: 'var(--success-dim)', 
     danger: 'var(--danger-dim)', 
-    info: 'var(--info-dim)' 
+    info: 'var(--info-dim)',
+    warning: 'var(--warning-dim)'
   }
   
   return (
-    <Card className="p-6 overflow-hidden relative group" glass>
+    <Card className={cn("p-6 overflow-hidden relative group", onClick && "cursor-pointer active:scale-95")} glass onClick={onClick}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)] opacity-[0.03] rounded-full -mr-16 -mt-16 blur-3xl group-hover:opacity-10 transition-opacity" />
       <div className="flex items-start justify-between relative z-10">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-50" style={{ color: 'var(--text)' }}>{label}</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-70" style={{ color: 'var(--text)' }}>{label}</div>
           <div className="text-3xl font-black tracking-tighter" style={{ color: colors[color] }}>{value}</div>
-          {sub && <div className="text-[10px] font-bold mt-1 opacity-40 uppercase tracking-widest" style={{ color: 'var(--text)' }}>{sub}</div>}
+          {sub && <div className="text-[10px] font-bold mt-1 opacity-60 uppercase tracking-widest" style={{ color: 'var(--text)' }}>{sub}</div>}
         </div>
         {Icon && (
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-[var(--surface2)] neumo-out group-hover:scale-110" 

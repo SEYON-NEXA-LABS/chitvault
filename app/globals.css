@@ -82,8 +82,8 @@
   --info-dim: #eff6ff;
 
   /* Neumorphism (Light) */
-  --neumo-shadow-out: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
-  --neumo-shadow-in: inset 8px 8px 16px #d1d9e6, inset -8px -8px 16px #ffffff;
+  --neumo-shadow-out: 6px 6px 12px rgba(163, 177, 198, 0.4), -6px -6px 12px rgba(255, 255, 255, 1);
+  --neumo-shadow-in: inset 4px 4px 8px rgba(163, 177, 198, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
 }
 
 /* ── Emerald Growth ── */
@@ -124,8 +124,8 @@
 
 [data-theme="dark"] {
   /* Neumorphism (Dark) */
-  --neumo-shadow-out: 8px 8px 16px #000000, -8px -8px 16px #18181b;
-  --neumo-shadow-in: inset 8px 8px 16px #000000, inset -8px -8px 16px #18181b;
+  --neumo-shadow-out: 6px 6px 14px #000000, -4px -4px 10px #1e1e24;
+  --neumo-shadow-in: inset 6px 6px 12px #000000, inset -4px -4px 10px #1e1e24;
 }
 
 /* ===============================

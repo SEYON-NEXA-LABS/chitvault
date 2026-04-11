@@ -17,6 +17,7 @@ import {
 import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
+import { IdleTimeout } from '@/components/features/IdleTimeout'
 import type { Firm, Profile, UserRole } from '@/types'
 import { useTheme } from '@/lib/theme/context'
 
@@ -87,6 +88,7 @@ const NAV: NavItem[] = [
       { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
       { href: '/admin/branding', label: 'nav_branding', icon: Palette, ownerOnly: true },
       { href: '/settings', label: 'nav_settings', icon: Settings },
+      { href: '/usage', label: 'nav_usage_hub', icon: BarChart3, ownerOnly: true },
     ]
   },
   {
@@ -173,6 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <TourProvider>
       <NetworkStatus />
+      <IdleTimeout />
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 

@@ -38,6 +38,7 @@ function LoginForm() {
   // Form states
   const [siEmail, setSiEmail] = useState('')
   const [siPass, setSiPass] = useState('')
+  const [saveCreds, setSaveCreds] = useState(true)
   const [fpEmail, setFpEmail] = useState('')
 
   useEffect(() => {
@@ -181,9 +182,11 @@ function LoginForm() {
                       <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white transition-colors" />
                       <input
                         type="email"
+                        name="email"
+                        autoComplete="username email"
                         value={siEmail}
                         onChange={e => setSiEmail(e.target.value)}
-                        placeholder="name@email.com"
+                        placeholder="user@chitvault.in"
                         required
                         className="w-full pl-12 pr-4 py-4 rounded-2xl bg-black/40 border border-white/10 text-white placeholder:text-white/10 text-sm outline-none focus:border-[var(--accent)] transition-all font-medium"
                       />
@@ -198,6 +201,8 @@ function LoginForm() {
                       <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white transition-colors" />
                       <input
                         type={showPassword ? "text" : "password"}
+                        name="password"
+                        autoComplete="current-password"
                         value={siPass}
                         onChange={e => setSiPass(e.target.value)}
                         placeholder="••••••••"
@@ -214,6 +219,25 @@ function LoginForm() {
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Save Credentials Checkbox */}
+                  <div className="flex items-center gap-3 ml-1 mb-4">
+                    <label className="relative flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={saveCreds}
+                          onChange={e => setSaveCreds(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-5 h-5 rounded-lg border-2 border-white/20 bg-black/40 transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)] group-hover:border-white/40" />
+                        <CheckCircle2 size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white scale-0 peer-checked:scale-110 transition-transform" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">
+                        Save Credentials & Stay Logged In
+                      </span>
+                    </label>
                   </div>
 
                   <button

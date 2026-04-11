@@ -146,6 +146,31 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
               {resetting ? 'Resetting...' : 'Forgot PIN? Reset Private Vault'}
             </button>
         </div>
+
+        {/* ── Hidden Shadow Form for Password Manager Integration ── */}
+        <form 
+          className="sr-only" 
+          aria-hidden="true"
+          onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+        >
+          <input 
+            type="text" 
+            name="username" 
+            autoComplete="username" 
+            readOnly 
+            value="chitvault-user"
+          />
+          <input 
+            type="password" 
+            name="password" 
+            autoComplete="current-password" 
+            value={pin}
+            onChange={(e) => {
+              if (e.target.value.length <= 4) setPin(e.target.value)
+            }}
+          />
+          <button type="submit">Unlock</button>
+        </form>
       </div>
 
       {/* Re-use the shake animation from Global or add local inline */}
