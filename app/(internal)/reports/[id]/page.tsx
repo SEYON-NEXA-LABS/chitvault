@@ -18,7 +18,7 @@ import { Pagination } from '@/components/ui'
 import { ReportPNL, ReportTodayCollection } from '../components/ReportFinancials'
 import { ReportCashFlow, ReportMemberBenefits } from '../components/ReportGeneral'
 import { ReportWinners, ReportWinnerIntelligence } from '../components/ReportWinners'
-import { ReportUpcomingPay, ReportAuctionSched, ReportGroupEnrollment } from '../components/ReportOps'
+import { ReportUpcomingPay, ReportAuctionSched, ReportEnrollment } from '../components/ReportOps'
 import { ReportMemberHistory, ReportDefaulters } from '../components/ReportMemberTraits'
 import { ReportGroupLedger } from '../components/ReportGroupLedger'
 import { ReportReconciliation, ReportActivityLog } from '../components/ReportAudits'
@@ -72,62 +72,65 @@ function ReportContent() {
       try {
         const queries: any[] = []
         
-        // 1. Groups: Always needed for context/filters, but keep columns tight
+        // 1. Groups: Always needed for context/filters
         queries.push(withFirmScope(supabase.from('groups').select('id, name, duration, monthly_contribution, chit_value, start_date, status, auction_scheme'), targetId).order('name'))
 
-        // 2. Members: ONLY for reports that need a member picker or full list
+        const range = [(page - 1) * pageSize, page * pageSize - 1]
+
+        // 2. Members: Paginated
         if (['group_enrollment', 'group_ledger', 'member_history', 'defaulters', 'winners', 'upcoming_pay'].includes(id)) {
-          queries.push(withFirmScope(supabase.from('members').select('id, person_id, group_id, status, ticket_no, persons(name, phone)'), targetId))
+          let q = withFirmScope(supabase.from('members').select('id, person_id, group_id, status, ticket_no, persons(name, phone)', { count: 'exact' }), targetId)
+          if (id === 'defaulters') q = q.eq('status', 'defaulter')
+          queries.push(q.range(range[0], range[1]))
         } else {
           queries.push(Promise.resolve({ data: [] }))
         }
 
-        const range = [(page - 1) * pageSize, page * pageSize - 1]
-
-        // 3. Auctions: Paginated unless it's a summary like PNL/Cashflow
+        // 3. Auctions: Always Paginated
         if (['pnl', 'cashflow', 'dividend', 'auction_insights', 'winners', 'upcoming_pay', 'group_ledger', 'member_history', 'group_enrollment', 'auction_sched', 'defaulters'].includes(id)) {
-          let q = withFirmScope(supabase.from('auctions').select('id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status', { count: 'exact' }), targetId).order('month')
-          if (!['pnl', 'cashflow', 'auction_insights'].includes(id)) q = q.range(range[0], range[1])
-          queries.push(q)
+          let q = withFirmScope(supabase.from('auctions').select('id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status, created_at', { count: 'exact' }), targetId).order('month')
+          if (id === 'winners') q = q.not('winner_id', 'is', null)
+          queries.push(q.range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 
-        // 4. Payments: Paginated, only for relevant reports
+        // 4. Payments: Always Paginated
         if (['today_collection', 'cashflow', 'upcoming_pay', 'group_ledger', 'member_history', 'reconciliation', 'auction_insights'].includes(id)) {
-          let q = withFirmScope(supabase.from('payments').select('id, member_id, group_id, amount, mode, payment_date, created_at', { count: 'exact' }), targetId).order('payment_date', { ascending: false })
-          if (!['cashflow', 'auction_insights'].includes(id)) q = q.range(range[0], range[1])
-          queries.push(q)
+          queries.push(withFirmScope(supabase.from('payments').select('id, member_id, group_id, amount, mode, payment_date, created_at', { count: 'exact' }), targetId)
+            .order('payment_date', { ascending: false })
+            .range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 
-        // 5. Commissions (PNL Only)
+        // 5. Commissions
         if (id === 'pnl') {
-          queries.push(withFirmScope(supabase.from('foreman_commissions').select('id, group_id, month, commission_amt, status, created_at', { count: 'exact' }), targetId))
+          queries.push(withFirmScope(supabase.from('foreman_commissions').select('id, group_id, month, commission_amt, status, created_at', { count: 'exact' }), targetId)
+            .order('month')
+            .range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 
-        // 6. Denominations (Recon Only)
+        // 6. Denominations
         if (id === 'reconciliation') {
           queries.push(withFirmScope(supabase.from('denominations').select('id, entry_date, total, notes, created_at', { count: 'exact' }), targetId).order('entry_date', { ascending: false }).range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 
-        // 7. Activity Logs (Audit Only)
+        // 7. Activity Logs
         if (id === 'activity') {
           queries.push(withFirmScope(supabase.from('activity_logs').select('id, user_id, action, entity_type, entity_id, metadata, created_at', { count: 'exact' }), targetId).order('created_at', { ascending: false }).range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 
-        // 8. Stats & Profiles
-        if (id === 'today_collection') {
-           queries.push(supabase.rpc('get_firm_ledger_stats', { p_firm_id: targetId }))
+        // 8. Stats
+        if (['today_collection', 'pnl', 'cashflow', 'dividend', 'auction_insights', 'reconciliation'].includes(id)) {
+           queries.push(supabase.rpc('get_firm_summary_stats', { 
+             p_firm_id: targetId,
+             p_start_date: searchParams.get('start') || null,
+             p_end_date: searchParams.get('end') || null
+           }))
         } else { queries.push(Promise.resolve({ data: null })) }
 
         queries.push(withFirmScope(supabase.from('profiles').select('id, full_name'), targetId))
 
         const results = await Promise.all(queries)
         
-        // Pagination logic
-        const mainRes = results[2].count != null ? results[2] : 
-                       results[3].count != null ? results[3] : 
-                       results[4].count != null ? results[4] : 
-                       results[6].count != null ? results[6] : 
-                       results[5]
+        const mainRes = (results[1].count != null) ? results[1] : (results[2].count != null ? results[2] : (results[3].count != null ? results[3] : (results[4].count != null ? results[4] : (results[6].count != null ? results[6] : results[5]))))
         setTotalRecords(mainRes.count || 0)
 
         setData({
@@ -147,12 +150,12 @@ function ReportContent() {
     }
 
     fetchReportData()
-  }, [id, targetId, supabase, page, pageSize])
+  }, [id, targetId, supabase, page, pageSize, searchParams])
 
   const renderReport = () => {
     switch (id) {
       case 'today_collection': return <ReportTodayCollection payments={data.payments} members={data.members} groups={data.groups} stats={data.stats} />
-      case 'pnl': return <ReportPNL groups={data.groups} commissions={data.commissions} t={t} term={term} />
+      case 'pnl': return <ReportPNL groups={data.groups} commissions={data.commissions} stats={data.stats} t={t} term={term} />
       case 'cashflow': return <ReportCashFlow payments={data.payments} auctions={data.auctions} />
       case 'dividend': return <ReportMemberBenefits groups={data.groups} auctions={data.auctions} term={term} />
       case 'winners': return <ReportWinners auctions={data.auctions} groups={data.groups} members={data.members} filter={winnerFilter} onFilterChange={setWinnerFilter} />
@@ -170,7 +173,7 @@ function ReportContent() {
               {data.groups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </Field>
-          {selectedGroupId && <ReportGroupEnrollment groupId={Number(selectedGroupId)} members={data.members} groups={data.groups} auctions={data.auctions} />}
+          {selectedGroupId && <ReportEnrollment targetGroupId={Number(selectedGroupId)} members={data.members} groups={data.groups} auctions={data.auctions} />}
         </div>
       )
       case 'group_ledger': return (
@@ -215,14 +218,10 @@ function ReportContent() {
               variant="secondary" 
               size="sm" 
               onClick={async () => {
-                const sheets = Math.ceil(totalRecords / 25)
-                const isLarge = totalRecords > 500
-                const warning = isLarge ? "\n\n⚠️ WARNING: This is a large dataset. Fetching this will consume significant database bandwidth." : ""
-                
-                if (confirm(`Full CSV Export will fetch all ${totalRecords.toLocaleString()} records.${warning}\n\nEstimated Print: ~${sheets} A4 sheets.\n\nProceed with full data fetch?`)) {
+                const total = totalRecords
+                if (confirm(`Full CSV Export will fetch all ${total.toLocaleString()} records.\n\nProceed?`)) {
                   setLoading(true)
                   try {
-                    // Dynamic full fetch for CSV
                     const q = withFirmScope(supabase.from(id === 'activity' ? 'activity_logs' : id === 'reconciliation' ? 'denominations' : id === 'pnl' ? 'foreman_commissions' : (['today_collection', 'cashflow'].includes(id) ? 'payments' : 'auctions')).select('*'), targetId)
                     const { data: fullData } = await q
                     if (fullData) downloadCSV(fullData, `chitvault-report-${id}-${getToday()}.csv`)
@@ -238,15 +237,7 @@ function ReportContent() {
             <Btn 
               variant="secondary" 
               size="sm" 
-              onClick={() => {
-                const sheets = Math.ceil(totalRecords / 25)
-                const isLarge = totalRecords > 500
-                const warning = isLarge ? "\n\n⚠️ NOTE: Printing very large reports (500+ rows) may cause browser lag." : ""
-                
-                if (confirm(`Print Preview for all ${totalRecords.toLocaleString()} records?${warning}\n\nEstimated: ~${sheets} A4 sheets.\n\nContinue?`)) {
-                  window.print()
-                }
-              }} 
+              onClick={() => window.print()} 
               icon={Printer}
             >
               Print

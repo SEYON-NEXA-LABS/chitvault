@@ -135,22 +135,35 @@ as $$
 begin
     return (
         select json_agg(t) from (
+            with top_groups as (
+                select group_id, sum(amount) as vol
+                from payments
+                where firm_id = p_firm_id 
+                  and deleted_at is null 
+                  and payment_date >= (current_date - interval '6 months')
+                group by 1
+                order by 2 desc
+                limit 10
+            )
             select 
-                to_char(payment_date, 'YYYY-MM') as month,
-                coalesce(sum(amount), 0) as actual
-            from payments
-            where firm_id = p_firm_id 
-              and deleted_at is null 
-              and payment_date >= (current_date - interval '6 months')
-            group by 1
-            order by 1
+                to_char(p.payment_date, 'YYYY-MM') as month,
+                g.name as group_name,
+                coalesce(sum(p.amount), 0) as actual
+            from payments p
+            join groups g on p.group_id = g.id
+            where p.group_id in (select group_id from top_groups)
+              and p.firm_id = p_firm_id 
+              and p.deleted_at is null 
+              and p.payment_date >= (current_date - interval '6 months')
+            group by 1, 2
+            order by 1, 2
         ) t
     );
 end;
 $$;
 
 -- 5. Group Progress Summaries
--- Returns auction and payment counts for all active groups in one go.
+-- Returns detailed progress and latest auction info per group.
 create or replace function public.get_firm_group_summaries(p_firm_id uuid)
 returns json 
 language plpgsql 
@@ -163,10 +176,22 @@ begin
             select 
                 g.id,
                 (select count(*) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as auctions_done,
-                (select count(*) from payments p where p.group_id = g.id and p.status = 'paid' and p.deleted_at is null) as payments_made
-            from groups g
+                (
+                    select json_build_object(
+                        'winner', p.name,
+                        'discount', a.auction_discount,
+                        'month', a.month
+                    )
+                    from auctions a
+                    join members m on a.winner_id = m.id
+                    join persons p on m.person_id = p.id
+                    where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null
+                    order by a.month desc
+                    limit 1
+                ) as last_auction
+            from groups g 
             where g.firm_id = p_firm_id 
-              and g.status != 'archived'
+              and g.status != 'archived' 
               and g.deleted_at is null
         ) t
     );
@@ -196,11 +221,26 @@ begin
     -- 2. Single Highest Bid
     select coalesce(max(auction_discount), 0) into v_highest_bid
     from auctions
-    where firm_id = p_firm_id and status = 'confirmed';
+    where firm_id = p_firm_id and status = 'confirmed' and deleted_at is null;
 
     return json_build_object(
         'earlyBirdCount', v_early_bird_count,
-        'highestSingleDiscount', v_highest_bid
+        'highestSingleDiscount', v_highest_bid,
+        'topBorrower', (
+            select json_build_object(
+                'name', p.name,
+                'totalDiscount', sum(a.auction_discount)
+            )
+            from auctions a
+            join members m on a.winner_id = m.id
+            join persons p on m.person_id = p.id
+            where a.firm_id = p_firm_id 
+              and a.status = 'confirmed' 
+              and a.deleted_at is null
+            group by p.name
+            order by sum(a.auction_discount) desc
+            limit 1
+        )
     );
 end;
 $$;

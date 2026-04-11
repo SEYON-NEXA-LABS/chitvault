@@ -63,6 +63,13 @@ export function getToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Project the next auction date
+export function getNextAuctionDate(startDate: string, auctionsDone: number): string {
+  const d = new Date(startDate)
+  d.setMonth(d.getMonth() + auctionsDone)
+  return fmtDate(d.toISOString())
+}
+
 /**
  * Converts a numerical amount into English words (Indian Numbering System).
  * @example 125000 -> "One Lakh Twenty Five Thousand Rupees Only"

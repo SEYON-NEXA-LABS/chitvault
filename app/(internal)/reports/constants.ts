@@ -38,13 +38,6 @@ export const GET_REPORTS = (t: any, term: any) => [
   },
   
   { 
-    id: 'upcoming_pay', 
-    category: t('cat_operational'), 
-    title: t('report_upcoming_title'), 
-    desc: 'Forecast of projected collections and payout obligations for the next 30 days to assist in treasury planning.', 
-    icon: Calendar 
-  },
-  { 
     id: 'group_enrollment', 
     category: t('cat_operational'), 
     title: t('report_enrollment_title'), 

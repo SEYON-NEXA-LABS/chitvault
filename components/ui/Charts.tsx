@@ -33,15 +33,17 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 // ── Line Analytics ─────────────────────────────────────────────────────────────
-export function LineAnalytics({ title, data, dataKey, expectedKey, xKey, height = 300 }: {
-  title: string; data: any[]; dataKey: string; expectedKey?: string; xKey: string; height?: number
+export function LineAnalytics({ title, data, series, dataKey, expectedKey, xKey, height = 400 }: {
+  title: string; data: any[]; series?: string[]; dataKey?: string; expectedKey?: string; xKey: string; height?: number
 }) {
+  const activeSeries = series || (dataKey ? [dataKey] : [])
+  
   return (
     <Card className="p-4 overflow-hidden">
       <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-40">{title}</h3>
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>
@@ -62,6 +64,13 @@ export function LineAnalytics({ title, data, dataKey, expectedKey, xKey, height 
               tickFormatter={(v: number) => `₹${v >= 1000 ? (v/1000).toFixed(0) + 'k' : v}`}
             />
             <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              verticalAlign="top" 
+              align="right" 
+              iconType="circle"
+              wrapperStyle={{ fontSize: 10, paddingBottom: 20 }}
+            />
+            
             {expectedKey && (
               <Area 
                 type="monotone" 
@@ -73,15 +82,20 @@ export function LineAnalytics({ title, data, dataKey, expectedKey, xKey, height 
                 fill="transparent" 
               />
             )}
-            <Area 
-              type="monotone" 
-              dataKey={dataKey} 
-              name="Actual"
-              stroke="var(--accent)" 
-              strokeWidth={3}
-              fillOpacity={1} 
-              fill="url(#colorValue)" 
-            />
+
+            {activeSeries.map((key, i) => (
+              <Area 
+                key={key}
+                type="monotone" 
+                dataKey={key} 
+                name={key === 'actual' ? 'Actual' : key}
+                stroke={COLORS[i % COLORS.length]} 
+                strokeWidth={3}
+                fillOpacity={activeSeries.length === 1 ? 1 : 0} 
+                fill={activeSeries.length === 1 ? "url(#colorValue)" : "transparent"} 
+                activeDot={{ r: 6 }}
+              />
+            ))}
           </AreaChart>
         </ResponsiveContainer>
       </div>
