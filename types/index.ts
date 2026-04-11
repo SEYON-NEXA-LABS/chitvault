@@ -247,3 +247,32 @@ export const COMMISSION_TYPE_LABELS: Record<CommissionType, string> = {
   percent_of_payout:   '% of Payout Amount (deducted)',
   fixed_amount:        'Fixed Amount (per month)',
 }
+
+// ── Usage & Telemetry (SaaS Metrics) ────────────────────────
+export interface UserUsage {
+  full_name:   string
+  role:        UserRole
+  egress:      number
+  operations:  number
+}
+
+export interface UsageInsights {
+  egress: {
+    database:       number
+    storage:        number
+    api:            number
+    realtime:       number
+    auth:           number
+    edge_functions: number
+    total_estimate: number
+  }
+  metrics: {
+    ops:            number
+    emails:         number
+    users:          number
+  }
+  top_users:        UserUsage[]
+  cycle_start?:     string
+  cycle_end?:       string
+  status?:          'no_data'
+}

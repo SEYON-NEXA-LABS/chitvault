@@ -69,6 +69,17 @@ export async function updateSession(request: NextRequest) {
     .eq('id', user.id)
     .maybeSingle()
 
+  // Track Usage (Background)
+  if (profile?.firm_id) {
+    // We attribute a baseline of 5KB for the session check/profile load
+    supabase.rpc('record_user_usage', {
+      p_firm_id: profile.firm_id,
+      p_user_id: user.id,
+      p_egress_bytes: 5120, // 5KB
+      p_is_auth: true
+    }).then() 
+  }
+
   // 0. If account is inactive —> Force Access Denied
   if (profile?.status === 'inactive' && !isDenied) {
     const url = request.nextUrl.clone()

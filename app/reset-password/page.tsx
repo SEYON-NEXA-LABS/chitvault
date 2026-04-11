@@ -103,13 +103,36 @@ export default function ResetPasswordPage() {
 
         {isValidSession && !success && (
           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Hidden field for Password Manager association */}
+            <input type="text" name="username" autoComplete="username" value="vault-user" readOnly className="hidden" aria-hidden="true" style={{ display: 'none' }} />
+            
             <div>
               <label style={sty.lbl}>New Password</label>
-              <input className={inputClass} style={inputStyle} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 characters" required />
+              <input 
+                className={inputClass} 
+                style={inputStyle} 
+                type="password" 
+                name="new_password"
+                autoComplete="new-password"
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="Minimum 6 characters" 
+                required 
+              />
             </div>
             <div>
               <label style={sty.lbl}>Confirm New Password</label>
-              <input className={inputClass} style={inputStyle} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Retype password" required />
+              <input 
+                className={inputClass} 
+                style={inputStyle} 
+                type="password" 
+                name="confirm_password"
+                autoComplete="new-password"
+                value={confirmPassword} 
+                onChange={e => setConfirmPassword(e.target.value)} 
+                placeholder="Retype password" 
+                required 
+              />
             </div>
             
             <Btn variant="primary" loading={loading} style={{ marginTop: 10, width: '100%', padding: '12px 0' }}>

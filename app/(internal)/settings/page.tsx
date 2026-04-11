@@ -349,26 +349,40 @@ export default function SettingsPage() {
               <Key size={12} /> Change Password
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); updatePassword(); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="text" name="username" autoComplete="username" value={email} readOnly className="hidden" aria-hidden="true" />
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>New Password</label>
-                <input className={inputClass} style={inputStyle} type="password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Minimum 6 chars" />
+                <input 
+                  className={inputClass} 
+                  style={inputStyle} 
+                  type="password" 
+                  name="new_password"
+                  autoComplete="new-password"
+                  value={newPass} 
+                  onChange={e => setNewPass(e.target.value)} 
+                  placeholder="Minimum 6 chars" 
+                />
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Confirm Password</label>
-                <input className={inputClass} style={inputStyle} type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)} placeholder="Retype password" />
+                <input 
+                  className={inputClass} 
+                  style={inputStyle} 
+                  type="password" 
+                  name="confirm_password"
+                  autoComplete="new-password"
+                  value={confirmPass} 
+                  onChange={e => setConfirmPass(e.target.value)} 
+                  placeholder="Retype password" 
+                />
               </div>
-            </div>
-
-            {passMsg && (
-              <p className="text-sm font-medium" style={{ color: passMsg.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
-                {passMsg.type === 'success' ? '✓ ' : '✗ '}{passMsg.text}
-              </p>
-            )}
-
-            <Btn variant="primary" loading={passLoading} onClick={updatePassword} size="sm" disabled={!newPass}>
-              Update Password
-            </Btn>
+              <div className="md:col-span-2">
+                <Btn variant="primary" loading={passLoading} type="submit" size="sm" disabled={!newPass}>
+                  Update Password
+                </Btn>
+              </div>
+            </form>
           </div>
 
           <hr style={{ borderColor: 'var(--border)' }} />
@@ -405,11 +419,22 @@ export default function SettingsPage() {
             )}
 
             {(pinChange || !hasPin) && (
-              <div className="space-y-3 p-4 bg-accent/5 rounded-xl border border-accent/20">
+              <form 
+                onSubmit={(e) => { 
+                  e.preventDefault(); 
+                  setPin(pinInput); setPinInput(''); setPinChange(false); show('4-Digit PIN Saved Successfully!'); 
+                }} 
+                className="space-y-3 p-4 bg-accent/5 rounded-xl border border-accent/20"
+              >
                 <label className="text-xs font-bold text-accent uppercase tracking-wider block">Set New 4-Digit PIN</label>
+                {/* Hidden fields for Password Manager association */}
+                <input type="text" name="username" autoComplete="username" value="chitvault-pin" readOnly className="hidden" aria-hidden="true" />
+                
                 <div className="flex gap-2">
                   <input
                     type="password"
+                    name="password"
+                    autoComplete="new-password"
                     maxLength={4}
                     className={inputClass}
                     style={{ ...inputStyle, width: 100, letterSpacing: 8, textAlign: 'center', fontSize: 18 }}
@@ -417,15 +442,10 @@ export default function SettingsPage() {
                     onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
                     placeholder="••••"
                   />
-                  <Btn variant="primary" size="sm" disabled={pinInput.length !== 4} onClick={() => {
-                    setPin(pinInput)
-                    setPinInput('')
-                    setPinChange(false)
-                    show('4-Digit PIN Saved Successfully!')
-                  }}>Save PIN</Btn>
+                  <Btn variant="primary" type="submit" size="sm" disabled={pinInput.length !== 4}>Save PIN</Btn>
                   {hasPin && <Btn variant="secondary" size="sm" onClick={() => { setPinChange(false); setPinInput('') }}>Cancel</Btn>}
                 </div>
-              </div>
+              </form>
             )}
             <hr style={{ borderColor: 'var(--border)' }} />
           </div>
