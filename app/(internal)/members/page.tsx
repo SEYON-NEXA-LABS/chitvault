@@ -288,7 +288,7 @@ export default function MembersPage() {
           firm_id: firm.id,
           created_by: authData.user?.id
         })
-        .select()
+        .select('id')
         .single()
         
       if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }

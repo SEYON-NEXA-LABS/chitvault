@@ -63,7 +63,7 @@ BEGIN
         auth_requests         = user_usage_telemetry.auth_requests + EXCLUDED.auth_requests,
         emails_sent           = user_usage_telemetry.emails_sent + EXCLUDED.emails_sent,
         ops_count             = user_usage_telemetry.ops_count + 1,
-        api_traffic_bytes     = user_usage_telemetry.api_traffic_bytes + 1024; -- Baseline overhead
+        api_traffic_bytes     = user_usage_telemetry.api_traffic_bytes + 256; -- Baseline overhead (Calibrated)
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -78,6 +78,7 @@ DECLARE
     v_ops_count bigint;
     v_emails int;
     v_storage_bytes bigint;
+    v_api_traffic bigint;
     v_user_count int;
     v_start_date date;
 BEGIN
@@ -89,8 +90,9 @@ BEGIN
         coalesce(sum(realtime_egress_bytes), 0),
         coalesce(sum(edge_func_egress_bytes), 0),
         coalesce(sum(ops_count), 0),
-        coalesce(sum(emails_sent), 0)
-    INTO v_db_egress, v_realtime_egress, v_edge_func_egress, v_ops_count, v_emails
+        coalesce(sum(emails_sent), 0),
+        coalesce(sum(api_traffic_bytes), 0)
+    INTO v_db_egress, v_realtime_egress, v_edge_func_egress, v_ops_count, v_emails, v_api_traffic
     FROM public.user_usage_telemetry 
     WHERE firm_id = p_firm_id AND metric_date >= v_start_date;
     
@@ -105,11 +107,11 @@ BEGIN
         'egress', jsonb_build_object(
             'database', v_db_egress,
             'storage', v_storage_bytes,
-            'api', v_db_egress * 0.15, -- 15% PostgREST overhead estimate
-            'realtime', v_realtime_egress + (v_ops_count * 512), -- heuristic overhead
-            'auth', (v_user_count * 1024 * 5), -- Baseline auth redirect footprint
+            'api', v_api_traffic,
+            'realtime', v_realtime_egress + (v_ops_count * 256), -- heuristic overhead
+            'auth', (v_user_count * 1024 * 2), -- Baseline auth redirect footprint
             'edge_functions', v_edge_func_egress,
-            'total_estimate', v_db_egress + v_storage_bytes + v_realtime_egress + v_edge_func_egress + (v_db_egress * 0.1)
+            'total_estimate', v_db_egress + v_storage_bytes + v_realtime_egress + v_edge_func_egress + v_api_traffic
         ),
         'metrics', jsonb_build_object(
             'ops', v_ops_count,
@@ -140,6 +142,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- 4. RLS & Permissions
 ALTER TABLE public.user_usage_telemetry ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS usage_telemetry_select ON public.user_usage_telemetry;
 CREATE POLICY usage_telemetry_select ON public.user_usage_telemetry FOR SELECT
   USING (firm_id = (SELECT firm_id FROM profiles WHERE id = auth.uid()) OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'superadmin');
 

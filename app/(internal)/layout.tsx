@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     supabase.auth.getUser().then((res: any) => setUserEmail(res.data.user?.email || ''))
 
     if (role === 'superadmin') {
-      supabase.from('firms').select('*').order('name').then((res: { data: Firm[] | null }) => setFirms(res.data || []))
+      supabase.from('firms').select('id, name, slug').order('name').then((res: { data: Firm[] | null }) => setFirms(res.data || []))
     }
 
     if (firm?.name) {
