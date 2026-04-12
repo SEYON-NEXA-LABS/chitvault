@@ -134,7 +134,7 @@ export default function MembersPage() {
       setLoading(false)
       setSelectedIds(new Set())
     }
-  }, [supabase, isSuper, switchedFirmId, firm, firms.length, page, search, showToast, view])
+  }, [supabase, isSuper, switchedFirmId, firm?.id, page, search, showToast, view])
 
   // Reset to page 1 when search changes
   useEffect(() => {

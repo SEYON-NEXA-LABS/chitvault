@@ -69,7 +69,7 @@ export default function DashboardPage() {
       }
     }
     load()
-  }, [supabase, isSuper, switchedFirmId, firm])
+  }, [supabase, isSuper, switchedFirmId, firm?.id, dashboardStats === null, firmsLoaded])
 
   const { stats, chartData, groupSeries, onboardingSteps } = useMemo(() => {
     const s = dashboardStats || {}
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Today's Collection" value={fmt(stats.collectedToday)} icon={DollarSign} sub="+12%" color="success" />
+        <StatCard label="Today&apos;s Collection" value={fmt(stats.collectedToday)} icon={DollarSign} sub="+12%" color="success" />
         <StatCard label="Market Debt" value={fmt(stats.totalOutstanding)} icon={Wallet} sub="Action" color="danger" />
         <StatCard label="Active Groups" value={stats.activeGroups} icon={Layers} color="info" />
         <StatCard label="Total Subscribers" value={stats.activeMembers} icon={Users} color="accent" />

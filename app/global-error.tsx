@@ -1,7 +1,8 @@
 'use client'
  
 import React, { useEffect, useMemo } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
+import { isVersionMismatch, handleHardReset, getAutoRecoveryAction } from '@/lib/utils/recovery'
  
 export default function GlobalError({
   error,
@@ -10,105 +11,97 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  // Detection logic for asset mismatches (stale chunks/service workers)
-  const isChunkError = useMemo(() => {
-    const msg = error.message || ''
-    return (
-      msg.includes('ChunkLoadError') || 
-      msg.includes('Loading chunk') ||
-      msg.includes('Failed to fetch') ||
-      msg.includes("Unexpected token '<'") // Often indicates HTML being served instead of JS
-    )
-  }, [error.message])
-
-  const handleHardReset = async () => {
-    try {
-      // 1. Clear all browser caches (Service Worker caches)
-      if ('caches' in window) {
-        const cacheNames = await caches.keys()
-        await Promise.all(cacheNames.map(name => caches.delete(name)))
-      }
-      
-      // 2. Unregister service workers 
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations()
-        await Promise.all(registrations.map(reg => reg.unregister()))
-      }
-      
-      // 3. Force hard reload with a cache-busting parameter 
-      const url = new URL(window.location.href)
-      url.searchParams.set('recovery', Date.now().toString())
-      window.location.replace(url.toString())
-    } catch (e) {
-      console.error('Hard reset failed, falling back to reload', e)
-      window.location.reload()
-    }
-  }
+  const isSyncNeeded = useMemo(() => isVersionMismatch(error), [error])
+  const [isUpdating, setIsUpdating] = React.useState(false)
+  const [progress, setProgress] = React.useState(0)
 
   useEffect(() => {
-    // Log error to console for debugging
-    console.error('GLOBAL_ERROR:', error)
+    // Log for audit but don't alarm the user
+    console.error('VAULT_SYNC_REQUIRED:', error)
 
-    // Automatic recovery for ChunkLoadErrors
-    if (isChunkError) {
-      const storageKey = 'chitvault_chunk_reload_count'
-      const reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}')
-      const now = Date.now()
-
-      // Reset count if the last attempt was over 1 minute ago
-      if (now - reloadData.last > 60000) reloadData.count = 0
-
-      if (reloadData.count < 3) {
-        reloadData.count++
-        reloadData.last = now
-        sessionStorage.setItem(storageKey, JSON.stringify(reloadData))
-        
-        console.warn(`System: Automatic Recovery Attempt ${reloadData.count}/3...`)
-        
-        // On second attempt or higher, try a hard reset
-        if (reloadData.count > 1) {
-          handleHardReset()
-        } else {
-          window.location.reload()
-        }
-      }
+    const action = getAutoRecoveryAction(error)
+    if (action === 'HARD_RESET') {
+      handleHardReset()
+    } else if (action === 'RELOAD') {
+      window.location.reload()
     }
-  }, [error, isChunkError])
+  }, [error])
+
+  const handleUpdate = () => {
+    setIsUpdating(true)
+    let p = 0
+    const interval = setInterval(() => {
+      p += Math.random() * 10
+      if (p >= 100) {
+        setProgress(100)
+        clearInterval(interval)
+        setTimeout(() => {
+          if (isSyncNeeded) handleHardReset()
+          else reset()
+        }, 500)
+      } else {
+        setProgress(p)
+      }
+    }, 150)
+  }
+
+  const getStatusMessage = (pct: number) => {
+    if (pct < 30) return 'Cleaning data layers...'
+    if (pct < 70) return 'Downloading vault manifest...'
+    if (pct < 95) return 'Finalizing secure setup...'
+    return 'Reconnecting...'
+  }
  
   return (
     <html lang="en">
-      <body className="min-h-screen flex items-center justify-center p-6 bg-[#0a0a0b] text-white">
-        <div className="max-w-md w-full text-center space-y-8">
+      <body className="min-h-screen flex items-center justify-center p-6 bg-[#0a0a0b] text-white selection:bg-[#2563eb]/30">
+        <div className="max-w-md w-full text-center space-y-10">
            <div className="relative inline-block">
-              <div className="w-20 h-20 rounded-2xl bg-danger-500/10 flex items-center justify-center text-danger-500 border border-danger-500/20 mx-auto animate-bounce">
-                <AlertTriangle size={40} />
+              <div className="w-24 h-24 rounded-3xl bg-[#2563eb]/10 flex items-center justify-center text-[#2563eb] border border-[#2563eb]/20 mx-auto relative z-10">
+                <RefreshCw size={44} className="animate-spin-slow" />
               </div>
+              <div className="absolute inset-0 rounded-3xl bg-[#2563eb] opacity-20 blur-3xl animate-pulse" />
            </div>
            
            <div className="space-y-4">
-              <h1 className="text-3xl font-black tracking-tight">System Fault</h1>
-              <p className="text-sm opacity-50 leading-relaxed">
-                A critical error occurred in the application root. Our audit layer has been notified.
+              <h1 className="text-4xl font-black tracking-tighter italic">Vault Update in Progress</h1>
+              <p className="text-sm opacity-50 leading-relaxed max-w-sm mx-auto font-medium text-balance">
+                We&apos;re optimizing your secure vault environment. This usually happens after an update.
               </p>
            </div>
- 
-           <div className="p-4 rounded-xl bg-white/5 border border-white/10 font-mono text-[10px] break-all opacity-40">
-             {error.message || 'Unknown Root Failure'}
+
+           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 font-mono text-[10px] break-all opacity-30 shadow-inner">
+             {error.message || 'Optimizing vault secure layers...'}
            </div>
- 
-           <button
-             onClick={() => {
-               if (isChunkError) {
-                 handleHardReset()
-               } else {
-                 reset()
-               }
-             }}
-             className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-white text-black font-bold hover:bg-white/90 active:scale-[0.98] transition-all"
-           >
-             <RefreshCw size={18} />
-             {isChunkError ? 'Full System Recovery' : 'Attempt System Recovery'}
-           </button>
+
+           <div className="grid grid-cols-1 gap-6 px-4">
+              {isUpdating ? (
+                <div className="space-y-4 animate-in fade-in duration-500">
+                  <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+                    <span>{getStatusMessage(progress)}</span>
+                    <span className="font-mono text-xs">{Math.round(progress)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
+                    <div 
+                      className="h-full bg-[#2563eb] transition-all duration-300 ease-out shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleUpdate}
+                  className="flex items-center justify-center gap-3 w-full py-5 rounded-2xl bg-[#2563eb] text-white font-bold text-sm hover:bg-[#2563eb]/90 active:scale-[0.98] transition-all shadow-xl shadow-[#2563eb]/20"
+                >
+                  <RefreshCw size={18} />
+                  {isSyncNeeded ? 'Switch to Latest Version' : 'Ready to Resume'}
+                </button>
+              )}
+
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 font-mono text-[10px] break-all opacity-30 shadow-inner">
+                {error.message || 'Optimizing vault secure layers...'}
+              </div>
+           </div>
         </div>
       </body>
     </html>
