@@ -153,7 +153,7 @@ export default function AuctionsPage() {
   async function onGroupChange(groupId: string) {
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
     setCheckingWinner(true)
-    const { data: g } = await withFirmScope(supabase.from('groups').select('*').eq('id', +groupId), targetId).single()
+    const { data: g } = await withFirmScope(supabase.from('groups').select('id, name, start_date, duration, monthly_contribution, auction_scheme').eq('id', +groupId), targetId).single()
     if (!g) { setCheckingWinner(false); return }
     
     // Fetch confirmed auctions only for this group to suggest month
@@ -233,7 +233,7 @@ export default function AuctionsPage() {
     try {
       // 1. Fetch group rules and members for THIS specific group
       const [gRes, mRes] = await Promise.all([
-        withFirmScope(supabase.from('groups').select('*').eq('id', a.group_id), targetId).single(),
+        withFirmScope(supabase.from('groups').select('id, name, start_date, duration, monthly_contribution, auction_scheme').eq('id', a.group_id), targetId).single(),
         withFirmScope(supabase.from('members').select('id, ticket_no, persons(name)').eq('group_id', a.group_id).in('status', ['active', 'foreman']), targetId)
       ])
 

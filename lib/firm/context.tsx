@@ -50,7 +50,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     
     // Load profile
     const { data: prof } = await supabase
-      .from('profiles').select('*').eq('id', user.id).maybeSingle()
+      .from('profiles').select('id, firm_id, role, status').eq('id', user.id).maybeSingle()
     
     setProfile(prof)
     
@@ -63,7 +63,10 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     // Load firm if active ID exists
     if (activeFirmId) {
       const { data: f } = await supabase
-        .from('firms').select('*').eq('id', activeFirmId).maybeSingle()
+        .from('firms')
+        .select('id, name, slug, font, color_profile, plan, plan_status, trial_ends')
+        .eq('id', activeFirmId)
+        .maybeSingle()
       setFirm(f)
       if (f) applyBranding(f.font || 'Noto Sans', f.color_profile || 'indigo')
     } else {

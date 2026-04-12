@@ -13,7 +13,6 @@ import { StatCard, Card, Loading, Badge, LineAnalytics, TableCard, Table, Th, Td
 import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { useTerminology } from '@/lib/hooks/useTerminology'
-import { useUsage } from '@/lib/hooks/useUsage'
 import type { Group, Auction, Payment, Firm } from '@/types'
 
 export default function DashboardPage() {
@@ -34,7 +33,6 @@ export default function DashboardPage() {
   const [trends, setTrends] = useState<any[]>([])
   const [winnerInsightsRpc, setWinnerInsightsRpc] = useState<any>(null)
   const isSuper = role === 'superadmin'
-  const { data: usageData } = useUsage(isSuper ? switchedFirmId : firm?.id)
 
   useEffect(() => {
     async function load() {
@@ -138,16 +136,6 @@ export default function DashboardPage() {
         <StatCard label="Market Debt" value={fmt(stats.totalOutstanding)} icon={Wallet} sub="Action" color="danger" />
         <StatCard label="Active Groups" value={stats.activeGroups} icon={Layers} color="info" />
         <StatCard label="Total Subscribers" value={stats.activeMembers} icon={Users} color="accent" />
-        {(role === 'owner' || isSuper) && (
-          <StatCard 
-            label="Data Egress (Est)" 
-            value={usageData ? (usageData.egress.total_estimate / (1024 * 1024)).toFixed(1) + ' MB' : '0 MB'} 
-            icon={BarChart3} 
-            color="warning" 
-            sub="Monthly Usage"
-            onClick={() => router.push('/usage')}
-          />
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

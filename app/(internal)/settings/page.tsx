@@ -11,11 +11,12 @@ import { useToast } from '@/lib/hooks/useToast'
 import { APP_NAME, APP_VERSION, APP_COMMIT_ID, fmtDate } from '@/lib/utils'
 import {
   Sun, Moon, LogOut, Key, Palette, Type, Building, Building2,
-  Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
-  Lock, LockKeyhole, Monitor
+   Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
+  Lock, LockKeyhole, Monitor, BarChart3
 } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 import { usePinLock } from '@/lib/lock/context'
+import { useUsage } from '@/lib/hooks/useUsage'
 import Image from 'next/image'
 
 export default function SettingsPage() {
@@ -27,6 +28,8 @@ export default function SettingsPage() {
 
   const isSuperAdmin = role === 'superadmin'
   const isOwner = role === 'owner' || isSuperAdmin
+
+  const { data: usageData } = useUsage(isSuperAdmin ? 'all' : firm?.id)
 
   const [email, setEmail] = useState('')
   const [resetting, setResetting] = useState(false)
@@ -474,6 +477,39 @@ export default function SettingsPage() {
 
         </div>
       </Card>
+
+      {/* ── Resource Utilization (Moved from Dashboard) ────────────────── */}
+      {isOwner && (
+        <Card title="📊 Plan & Resource Usage" subtitle="Monitor your egress bandwidth and plan limits.">
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] font-black uppercase opacity-40">Monthly Egress Attribution</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black">
+                    {usageData ? (usageData.egress.total_estimate / (1024 * 1024)).toFixed(1) : '0'} MB
+                  </span>
+                  <span className="text-xs opacity-40">/ 5GB Limit</span>
+                </div>
+              </div>
+              <Btn variant="secondary" size="sm" onClick={() => router.push('/usage')}>
+                Full Usage Hub
+              </Btn>
+            </div>
+            
+            <div className="h-2 rounded-full bg-[var(--surface3)] overflow-hidden mb-3">
+              <div 
+                className="h-full bg-[var(--accent)] transition-all duration-1000" 
+                style={{ width: `${Math.min(100, (usageData?.egress.total_estimate || 0) / (5 * 1024 * 1024 * 1024) * 100)}%` }}
+              />
+            </div>
+            
+            <p className="text-[10px] opacity-60 font-medium">
+              Egress is updated every 15 minutes. To reduce bandwidth, avoid frequent full-page reloads and redundant reports.
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* ── Firm Passport & Identity ───────────────────────────────────── */}
       <Card className="overflow-hidden border-2 shadow-xl" style={{ borderColor: 'var(--accent)', background: 'var(--surface)' }}>

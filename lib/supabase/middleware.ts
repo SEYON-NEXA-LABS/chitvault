@@ -36,7 +36,6 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
   const isPublic = ['/login', '/register', '/', '/reset-password'].some(p => pathname === p)
   const isAdmin = pathname.startsWith('/admin')
@@ -56,26 +55,49 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Logged in — only fetch profile for protected routes or if we need to redirect from public pages
-  // To avoid 504 on initial public load, we skip profile fetch if on public page.
-  // The client-side Auth Context will handle redirection after load if needed.
+  // Logged in — only fetch profile for protected routes
   if (isPublic) {
     return supabaseResponse
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('firm_id, role, status')
-    .eq('id', user.id)
-    .maybeSingle()
+  // 1. Get Profile (Try Cache First)
+  let profile: { firm_id: string; role: string; status: string } | null = null
+  const cachedProfile = request.cookies.get('cv_profile')?.value
 
-  // Track Usage (Background)
-  if (profile?.firm_id) {
-    // We attribute a baseline of 5KB for the session check/profile load
+  if (cachedProfile) {
+    try {
+      profile = JSON.parse(atob(cachedProfile))
+    } catch {
+      profile = null
+    }
+  }
+
+  if (!profile) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('firm_id, role, status')
+      .eq('id', user.id)
+      .maybeSingle()
+    
+    if (data) {
+      profile = data as any
+      // Set Cache for 1 hour
+      supabaseResponse.cookies.set('cv_profile', btoa(JSON.stringify(data)), {
+        maxAge: 3600,
+        path: '/'
+      })
+    }
+  }
+
+  // Track Usage (Internal Telemetry - Precision Calibrated to Navigation only)
+  // We only record usage if it's a page navigation (not an internal API fetch/asset)
+  const isPage = !pathname.includes('.') && !pathname.startsWith('/api')
+  if (profile?.firm_id && isPage) {
+    // We attribute a baseline of 2KB for the session check
     supabase.rpc('record_user_usage', {
       p_firm_id: profile.firm_id,
       p_user_id: user.id,
-      p_egress_bytes: 5120, // 5KB
+      p_egress_bytes: 2048, 
       p_is_auth: true
     }).then() 
   }
