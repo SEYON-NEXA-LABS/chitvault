@@ -25,7 +25,7 @@ const Ctx = createContext<FirmContext>({
 })
 
 export function FirmProvider({ children }: { children: React.ReactNode }) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [firm,    setFirm]    = useState<Firm | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)

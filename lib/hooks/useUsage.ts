@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { UsageInsights } from '@/types'
 
@@ -9,12 +9,15 @@ const USAGE_TIMESTAMP_KEY = 'chitvault_usage_timestamp'
 const CACHE_DURATION = 15 * 60 * 1000 // 15 minutes
 
 export function useUsage(firmId: string | undefined) {
-  const supabase = createClient()
+  // 1. Memoize supabase client to ensure referential stability
+  const supabase = useMemo(() => createClient(), [])
+  
   const [data, setData] = useState<UsageInsights | null>(null)
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
 
   const fetchUsage = useCallback(async (force = false) => {
+    // 2. Early exit if firmId is not provided
     if (!firmId) return
     
     // Check Cache
@@ -53,6 +56,7 @@ export function useUsage(firmId: string | undefined) {
   }, [firmId, supabase])
 
   useEffect(() => {
+    // 3. Depends on memoized fetchUsage
     fetchUsage()
   }, [fetchUsage])
 

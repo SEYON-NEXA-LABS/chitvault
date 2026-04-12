@@ -94,7 +94,7 @@ export default function AuctionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, firm, role, switchedFirmId, firms.length, page])
+  }, [supabase, firm?.id, role, switchedFirmId, page])
 
   useEffect(() => { load(true) }, [load])
 
@@ -146,7 +146,7 @@ export default function AuctionsPage() {
       setCheckingWinner(false)
     }
     checkBalance()
-  }, [form.winner_id, form.group_id, addOpen])
+  }, [form.winner_id, form.group_id, addOpen, members, groups, role, switchedFirmId, firm?.id, supabase])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 

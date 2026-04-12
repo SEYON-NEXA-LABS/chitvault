@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
@@ -27,7 +27,7 @@ function TourTrigger() {
   if (!hasTourForPage || isActive) return null
 
   return (
-    <button 
+    <button
       onClick={startCurrentPageTour}
       className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] hover:border-[var(--accent)] transition-all"
     >
@@ -117,14 +117,14 @@ const planColor: Record<string, string> = {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { role, firm } = useFirm()
   const isOwner = role === 'owner' || role === 'superadmin'
   const { lang, setLang, t } = useI18n()
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
   const { switchedFirmId, setSwitchedFirmId } = useFirm()
   const [firms, setFirms] = useState<Firm[]>([])
-  
+
   const { theme, toggleTheme, adjustFont } = useTheme()
 
   const [userEmail, setUserEmail] = useState('')
@@ -145,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } else {
       document.title = (switchedFirmId === 'all') ? `${APP_BRAND} Control Center` : `${APP_BRAND} ${APP_NAME}`
     }
-  }, [firm, supabase, role, switchedFirmId])
+  }, [firm?.id, supabase, role, switchedFirmId])
 
   // Suspended check
   if (firm?.plan_status === 'suspended') {
@@ -189,7 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="font-bold tracking-tight uppercase" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
             </Link>
           </div>
-          
+
           <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4">
             {NAV.map((group, i) => {
               if (group.superAdminOnly && role !== 'superadmin') return null
@@ -200,13 +200,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               return (
                 <div key={i} className="space-y-1">
-                  <button 
+                  <button
                     onClick={() => setExpanded(e => ({ ...e, [group.label]: !e[group.label] }))}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity"
                   >
                     <div className="flex items-center gap-2">
-                       {Icon && <Icon size={14} className="opacity-50" />}
-                       {t(group.label)}
+                      {Icon && <Icon size={14} className="opacity-50" />}
+                      {t(group.label)}
                     </div>
                     <ChevronDown size={14} className={cn("transition-transform duration-300", !isExp && "-rotate-90")} />
                   </button>
@@ -223,8 +223,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           href={item.href}
                           className={cn(
                             'flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all ml-2',
-                            active 
-                              ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]' 
+                            active
+                              ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]'
                               : 'text-[var(--text2)] hover:bg-[var(--surface2)]'
                           )}
                           onClick={() => setSidebarOpen(false)}
@@ -242,7 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="p-4 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between px-2">
-              <button 
+              <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)]"
                 title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
@@ -255,7 +255,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="w-8" /> {/* Spacer for symmetry since mono is removed */}
             </div>
-            
+
             <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 rounded-lg bg-[var(--surface3)] text-[var(--text2)]">
@@ -274,7 +274,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </div>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
                 className="w-full py-2 rounded-xl bg-[var(--danger-dim)] text-[var(--danger)] text-xs font-bold hover:opacity-80 transition-opacity"
               >
@@ -298,7 +298,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex items-center gap-4">
               {hasPin ? (
-                <button 
+                <button
                   onClick={lock}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] text-[var(--text2)] border border-[var(--border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white"
                   title="Lock Vault"
@@ -307,7 +307,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="hidden sm:inline">Lock</span>
                 </button>
               ) : (
-                <Link 
+                <Link
                   href="/settings#lock-config"
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-bold transition-all hover:bg-orange-500 hover:text-white shadow-sm"
                   title="Secure Your Vault"

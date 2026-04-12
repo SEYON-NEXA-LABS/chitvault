@@ -70,7 +70,7 @@ export default function GroupsPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, isSuper, switchedFirmId, firm, firms.length])
+  }, [supabase, isSuper, switchedFirmId, firm?.id])
 
   useEffect(() => { load(true) }, [load])
 

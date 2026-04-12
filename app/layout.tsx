@@ -34,42 +34,41 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `
         }} />
         {/* Local Fonts are now loaded via fonts.css */}
-        {/* ── Early-Activation Self-Healing for ChunkLoadErrors ── */}
+        {/* ── Version Sync & Self-Healing (Earliest Activation) ── */}
         <script dangerouslySetInnerHTML={{
           __html: `
           (function() {
             var storageKey = 'chitvault_chunk_reload_count';
-            function handleRecovery(errorMessage) {
-              var isChunkError = errorMessage && (
+            function handleSync(errorMessage) {
+              var isVersionMismatch = errorMessage && (
                 errorMessage.indexOf('ChunkLoadError') !== -1 || 
                 errorMessage.indexOf('Loading chunk') !== -1 ||
                 errorMessage.indexOf('Failed to fetch') !== -1 ||
                 errorMessage.indexOf("Unexpected token '<'") !== -1 ||
                 errorMessage.indexOf("Unexpected token '{'") !== -1
               );
-              if (isChunkError) {
+              
+              if (isVersionMismatch) {
                 var now = Date.now();
-                var reloadData = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
+                var data = JSON.parse(sessionStorage.getItem(storageKey) || '{"count":0, "last":0}');
                 
-                // If it's been more than a minute, reset the counter
-                if (now - reloadData.last > 60000) reloadData.count = 0;
+                if (now - data.last > 60000) data.count = 0;
                 
-                if (reloadData.count < 5) {
-                  reloadData.count++;
-                  reloadData.last = now;
-                  sessionStorage.setItem(storageKey, JSON.stringify(reloadData));
+                if (data.count < 3) {
+                  data.count++;
+                  data.last = now;
+                  sessionStorage.setItem(storageKey, JSON.stringify(data));
                   
-                  console.warn('ChunkLoadError detected, notifying user for update...', errorMessage);
+                  console.info('System Sync: New version detected, updating session components...');
+                  // Dispatch to show the "Update Available" banner
                   window.dispatchEvent(new CustomEvent('app-update-available'));
-                } else {
-                  console.error('Max update notification attempts reached.');
                 }
               }
             }
-            window.addEventListener('error', function(e) { handleRecovery(e.message); }, true);
+            window.addEventListener('error', function(e) { handleSync(e.message); }, true);
             window.addEventListener('unhandledrejection', function(e) { 
               var msg = (e.reason && e.reason.message) || String(e.reason);
-              handleRecovery(msg); 
+              handleSync(msg); 
             });
           })();
         `}} />
