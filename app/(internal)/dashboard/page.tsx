@@ -149,12 +149,15 @@ export default function DashboardPage() {
           />
         </div>
         <div>
-          <TableCard title="Recent Activity" subtitle="Real-time collection & auction feed">
+          <TableCard title="Recent Activity" subtitle="Real-time collection feed">
             <Table>
-              <thead><Tr><Th>Type</Th><Th right>Amount</Th></Tr></thead>
+              <thead><Tr><Th>Date</Th><Th>Member</Th><Th right>Amount</Th></Tr></thead>
               <tbody>
                 {payments.map(p => (
                   <Tr key={p.id}>
+                    <Td className="whitespace-nowrap font-mono text-[9px] opacity-60">
+                      {fmtDate(p.payment_date)}
+                    </Td>
                     <Td>
                        <div className="font-bold text-xs">{(p.members as any)?.persons?.name}</div>
                        <div className="text-[9px] opacity-40 uppercase tracking-tighter">Receipt Received</div>
@@ -162,7 +165,7 @@ export default function DashboardPage() {
                     <Td right className="text-[var(--success)] font-bold">{fmt(p.amount)}</Td>
                   </Tr>
                 ))}
-                {payments.length === 0 && <Tr><Td colSpan={2} className="text-center py-10 opacity-40 italic">No recent payments.</Td></Tr>}
+                {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-10 opacity-40 italic">No recent payments.</Td></Tr>}
               </tbody>
             </Table>
           </TableCard>
