@@ -36,10 +36,10 @@ export default function DefaultersPage() {
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
 
     const [g, m, a, p] = await Promise.all([
-      withFirmScope(supabase.from('groups').select('*').neq('status', 'closed'), targetId),
-      withFirmScope(supabase.from('members').select('*, persons(*)').in('status', ['active', 'foreman', 'defaulter']), targetId),
-      withFirmScope(supabase.from('auctions').select('*'), targetId),
-      withFirmScope(supabase.from('payments').select('*'), targetId)
+      withFirmScope(supabase.from('groups').select('id, name, auction_scheme, monthly_contribution, start_date, duration, num_members, status').neq('status', 'closed'), targetId),
+      withFirmScope(supabase.from('members').select('id, ticket_no, group_id, person_id, status, persons(id, name, phone)').in('status', ['active', 'foreman', 'defaulter']), targetId),
+      withFirmScope(supabase.from('auctions').select('id, group_id, month, dividend, status, auction_date').is('deleted_at', null), targetId),
+      withFirmScope(supabase.from('payments').select('id, member_id, group_id, month, amount, type, date').is('deleted_at', null), targetId)
     ])
 
     const groupsList = g.data || []

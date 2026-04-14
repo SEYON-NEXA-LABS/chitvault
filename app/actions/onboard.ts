@@ -10,6 +10,8 @@ export async function onboardFirmAction(formData: {
   ownerEmail: string
   ownerName: string
   initialPassword?: string
+  font?: string
+  color_profile?: string
 }) {
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -45,7 +47,9 @@ export async function onboardFirmAction(formData: {
         slug: formData.slug.toLowerCase(),
         city: formData.city,
         owner_id: authUser.user.id,
-        plan: 'trial'
+        plan: 'trial',
+        font: formData.font || 'Noto Sans',
+        color_profile: formData.color_profile || 'indigo'
       })
       .select()
       .single()

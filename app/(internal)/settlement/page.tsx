@@ -113,21 +113,21 @@ function SettlementPage() {
 
     // Load Groups
     const { data: grps } = await withFirmScope(
-       supabase.from('groups').select('*'),
+       supabase.from('groups').select('id, name, duration'),
        targetId
     )
     setGroups((grps as Group[]) || [])
 
     // Load Members
     const { data: mems } = await withFirmScope(
-       supabase.from('members').select('*, persons(*), groups(name, duration)'),
+       supabase.from('members').select('id, group_id, person_id, persons(id, name), groups(id, name, duration)'),
        targetId
     )
     setMembers((mems as MemberWithDetails[]) || [])
 
     // Load Settlement History (Recent 5)
     const { data: hist } = await withFirmScope(
-       supabase.from('settlements').select('*, members(persons(name), groups(name))'),
+       supabase.from('settlements').select('id, total_amount, month_14_balance, created_at, members(id, persons(name), groups(name))'),
        targetId
     ).order('created_at', { ascending: false }).limit(5)
     
@@ -206,7 +206,7 @@ function SettlementPage() {
     const { data: aucs } = await withFirmScope(
        supabase
          .from('auctions')
-         .select('*')
+         .select('id, month, is_payout_settled, net_payout, status')
          .eq('winner_id', Number(mId))
          .eq('status', 'confirmed'),
        firm.id

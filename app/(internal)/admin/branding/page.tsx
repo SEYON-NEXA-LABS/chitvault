@@ -56,7 +56,7 @@ export default function AdminBrandingPage() {
       setIsLoading(true)
       
       if (role === 'superadmin') {
-        const { data, error } = await supabase.from('firms').select('*')
+        const { data, error } = await supabase.from('firms').select('id, name, address, phone, color_profile, font')
         if (!error) setFirms(data as Firm[])
       } else if (currentFirm) {
         // If owner, just set their own firm
@@ -114,7 +114,7 @@ export default function AdminBrandingPage() {
     
     // Refresh
     if (role === 'superadmin') {
-      const { data } = await supabase.from('firms').select('*')
+      const { data } = await supabase.from('firms').select('id, name, address, phone, color_profile, font')
       if (data) setFirms(data as Firm[])
     } else {
       // Local refresh for owner

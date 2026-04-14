@@ -39,11 +39,11 @@ function SettlementHistoryPage() {
 
     const [h, g] = await Promise.all([
       withFirmScope(
-        supabase.from('settlements').select('*, members(id, persons(name, phone), groups(id, name, duration))'),
+        supabase.from('settlements').select('id, created_at, group_id, total_amount, average_per_month, month_14_balance, members(id, persons(name, phone), groups(id, name, duration))'),
         firm.id
       ).is('deleted_at', null).order('created_at', { ascending: false }),
       withFirmScope(
-        supabase.from('groups').select('*').neq('status', 'archived'),
+        supabase.from('groups').select('id, name').neq('status', 'archived'),
         firm.id
       ).order('name')
     ])

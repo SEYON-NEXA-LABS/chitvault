@@ -51,17 +51,42 @@ export default function GroupLedgerPage() {
   const [settling, setSettling] = useState<Auction | null>(null)
   const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '', mode: 'Cash' })
   const [payoutOpen, setPayoutOpen] = useState(false)
+  const [mathModal, setMathModal] = useState<{ auction: Auction, commission: ForemanCommission } | null>(null)
 
-  // --- Analytic Data Derivations (Zero-Query) ---
+  // --- Record Auction States ---
+  const [aucFormOpen, setAucFormOpen] = useState(false)
+  const [aucForm, setAucForm] = useState({
+    month: '', auction_date: '', winner_id: '',
+    auction_discount: '', foreman_member_id: '', notes: ''
+  })
+  const [eligibleList, setEligibleList] = useState<Member[]>([])
+  const [calc, setCalc] = useState<any>(null)
+  const [calcError, setCalcError] = useState('')
+  const [winnerBalance, setWinnerBalance] = useState(0)
+  const [winnerAging, setWinnerAging] = useState(0)
+  const [acknowledge, setAcknowledge] = useState(false)
+  const [checkingWinner, setCheckingWinner] = useState(false)
+
+  // --- Analytic Data Derivations (Zero-Audit) ---
+  const auditedAuctions = useMemo(() => {
+    return auctionHistory.map(a => {
+      const comm = commissions.find(c => c.auction_id === a.id);
+      const commissionAmt = comm ? Number(comm.commission_amt) : 0;
+      const pool = Number(a.auction_discount) - commissionAmt;
+      const perMemberShare = pool / (group?.num_members || 1);
+      return { ...a, audited_div: perMemberShare, audited_pool: pool };
+    });
+  }, [auctionHistory, commissions, group]);
+
   const yieldData = useMemo(() => {
-    return auctionHistory
+    return auditedAuctions
       .filter(a => a.status === 'confirmed')
       .map(a => ({
         name: `M${a.month}`,
         discount: Number(a.auction_discount || 0),
-        dividend: Number(a.dividend || 0),
+        dividend: a.audited_div,
       }))
-  }, [auctionHistory])
+  }, [auditedAuctions])
 
   const healthData = useMemo(() => {
     const counts = { success: 0, info: 0, danger: 0 }
@@ -89,13 +114,13 @@ export default function GroupLedgerPage() {
   const load = useCallback(async (isInitial = false) => {
     if (!firm && role !== 'superadmin') return
     if (isInitial && !group) setLoading(true)
-    
-    const gQuery = supabase.from('groups').select('*').eq('id', groupId)
-    const mQuery = supabase.from('members').select('*, persons(*)').eq('group_id', groupId).order('ticket_no')
-    const aQuery = supabase.from('auctions').select('*').eq('group_id', groupId).order('month')
-    const fcQuery = supabase.from('foreman_commissions').select('*').eq('group_id', groupId).order('month')
-    const payQuery = supabase.from('payments').select('*').eq('group_id', groupId).is('deleted_at', null)
-    const pQuery = supabase.from('persons').select('*').order('name')
+
+    const gQuery = supabase.from('groups').select('id, firm_id, name, duration, monthly_contribution, auction_scheme, start_date, num_members, accumulated_surplus, chit_value, commission_type, commission_value, commission_recipient').eq('id', groupId)
+    const mQuery = supabase.from('members').select('id, ticket_no, group_id, person_id, status, persons(id, name, phone)').eq('group_id', groupId).order('ticket_no')
+    const aQuery = supabase.from('auctions').select('id, group_id, month, auction_date, payout_date, winner_id, auction_discount, dividend, net_payout, status, is_payout_settled').eq('group_id', groupId).order('month')
+    const fcQuery = supabase.from('foreman_commissions').select('id, auction_id, group_id, month, commission_amt, foreman_member_id').eq('group_id', groupId).order('month')
+    const payQuery = supabase.from('payments').select('id, member_id, group_id, month, amount, type, date').eq('group_id', groupId).is('deleted_at', null)
+    const pQuery = supabase.from('persons').select('id, name, phone').order('name')
 
     if (role !== 'superadmin' && firm) {
       gQuery.eq('firm_id', firm.id)
@@ -253,6 +278,103 @@ export default function GroupLedgerPage() {
     else { showToast('Removed!', 'success'); load() }
   }
 
+  // --- Auction Recording Logic ---
+  const checkWinnerBalance = useCallback(async (winnerId: string) => {
+    if (!winnerId || !group || !aucFormOpen) {
+      setWinnerBalance(0); setWinnerAging(0); setAcknowledge(false); return
+    }
+    setCheckingWinner(true)
+    const mem = members.find(m => m.id === +winnerId)
+    if (!mem) { setCheckingWinner(false); return }
+
+    const [gAucs, mPays] = await Promise.all([
+      supabase.from('auctions').select('month, dividend, status').eq('group_id', group.id).eq('status', 'confirmed').is('deleted_at', null),
+      supabase.from('payments').select('amount, month').eq('member_id', mem.id).eq('group_id', group.id).is('deleted_at', null)
+    ])
+
+    const auctionsArr = gAucs.data || []
+    const paymentsArr = mPays.data || []
+    const latestMonth = auctionsArr.length > 0 ? Math.max(...auctionsArr.map((a: any) => Number(a.month))) : 0
+    const nextDate = new Date(group.start_date || getToday())
+    nextDate.setMonth(nextDate.getMonth() + latestMonth)
+    const currentMonth = Math.min(group.duration, new Date() >= nextDate ? latestMonth + 1 : latestMonth)
+
+    let totalDue = 0; let missedCount = 0
+    const isAccumulation = group.auction_scheme === 'ACCUMULATION'
+
+    for (let mCount = 1; mCount <= currentMonth; mCount++) {
+      const prevAuc = auctionsArr.find((a: any) => a.month === mCount - 1)
+      const div = (isAccumulation || !prevAuc) ? 0 : Number(prevAuc.dividend || 0)
+      const due = Number(group.monthly_contribution) - div
+      const paid = paymentsArr.filter((p: any) => p.month === mCount).reduce((s: number, p: any) => s + Number(p.amount), 0)
+      if (due - paid > 0.01) { totalDue += (due - paid); missedCount++ }
+    }
+    setWinnerBalance(totalDue); setWinnerAging(missedCount); setAcknowledge(totalDue <= 0.01)
+    setCheckingWinner(false)
+  }, [group, aucFormOpen, members, supabase])
+
+  const prepareAuctionRecord = (isInitial = false) => {
+    if (!group) return
+    const confirmed = auctionHistory.filter(a => a.status === 'confirmed').sort((a, b) => a.month - b.month)
+    const winnerIds = auctionHistory.map(a => a.winner_id)
+    const eligible = members.filter(m => !winnerIds.includes(m.id) && (m.status === 'active' || m.status === 'foreman'))
+    const foremanList = members.filter(m => m.status === 'foreman')
+
+    let nextDate = group.start_date || getToday()
+    if (confirmed.length > 0) {
+      const d = new Date((confirmed[confirmed.length - 1].auction_date || group.start_date || getToday()) as string)
+      d.setMonth(d.getMonth() + 1)
+      nextDate = d.toISOString().split('T')[0]
+    }
+
+    setEligibleList(eligible)
+    setAucForm({
+      month: String(confirmed.length + 1),
+      auction_date: nextDate,
+      winner_id: '',
+      auction_discount: '',
+      foreman_member_id: foremanList[0]?.id?.toString() || '',
+      notes: ''
+    })
+    setCalc(null); setCalcError(''); setWinnerBalance(0); setAcknowledge(false)
+    setAucFormOpen(true)
+  }
+
+  async function onBidChange(bid: string) {
+    setAucForm(f => ({ ...f, auction_discount: bid }))
+    setCalc(null); setCalcError('')
+    if (!bid || !group || isNaN(+bid)) return
+    const { data, error } = await supabase.rpc('calculate_auction', {
+      p_group_id: group.id,
+      p_bid_amount: +bid
+    })
+    if (error) { setCalcError(error.message); return }
+    setCalc(data)
+  }
+
+  async function handleSaveAuction(status: 'draft' | 'confirmed' = 'confirmed') {
+    if (!group || !aucForm.winner_id || !aucForm.auction_discount || !aucForm.auction_date) {
+      showToast('Fill in all required fields.', 'error'); return
+    }
+    if (status === 'confirmed' && winnerBalance > 0.01 && !acknowledge) {
+      showToast('Please acknowledge outstanding dues.', 'error'); return
+    }
+    setSaving(true)
+    const { error } = await supabase.rpc('record_auction_with_commission', {
+      p_group_id: group.id,
+      p_month: +aucForm.month,
+      p_auction_date: aucForm.auction_date,
+      p_winner_id: +aucForm.winner_id,
+      p_bid_amount: +aucForm.auction_discount,
+      p_foreman_member_id: aucForm.foreman_member_id ? +aucForm.foreman_member_id : null,
+      p_notes: aucForm.notes || '',
+      p_status: status
+    })
+    setSaving(false)
+    if (error) showToast(error.message, 'error')
+    else { showToast('Recorded!'); setAucFormOpen(false); load() }
+  }
+
   async function handleSettlePayout() {
     if (!settling) return
     setSaving(true)
@@ -402,18 +524,18 @@ export default function GroupLedgerPage() {
 
   if (loading || !group) return <Loading />
 
-  const confirmedAucs = auctionHistory.filter(a => a.status === 'confirmed')
-  const draftAucs = auctionHistory.filter(a => a.status === 'draft')
-  const totalDividends = confirmedAucs.reduce((s, a) => s + Number(a.dividend || 0), 0)
+  const confirmedAucs = auditedAuctions.filter(a => a.status === 'confirmed')
+  const draftAucs = auditedAuctions.filter(a => a.status === 'draft')
+  const totalDividends = confirmedAucs.reduce((s, a) => s + a.audited_div, 0)
   const totalPayouts = confirmedAucs.reduce((s, a) => s + Number(a.net_payout || 0), 0)
   const totalSurplus = confirmedAucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0)
   const pendingSurplus = draftAucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0)
-  
+
   const confirmedComms = commissions.filter(c => c.status === 'confirmed')
   const totalComm = confirmedComms.reduce((s, c) => s + Number(c.commission_amt || 0), 0)
   const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0)
-  const actualPayouts = auctionHistory.filter(a => a.is_payout_settled).reduce((s, a) => s + Number(a.payout_amount || 0), 0)  
-  
+  const actualPayouts = auctionHistory.filter(a => a.is_payout_settled).reduce((s, a) => s + Number(a.payout_amount || 0), 0)
+
   const monthsCompleted = confirmedAucs.length
   const totalMonths = group.duration
 
@@ -435,102 +557,103 @@ export default function GroupLedgerPage() {
           {members.length < group.num_members && (
             <Btn variant="primary" onClick={() => setAddOpen(true)} icon={UserPlus}>{t('add_member')}</Btn>
           )}
-          <Btn variant="secondary" onClick={() => { 
+          <Btn variant="secondary" onClick={() => {
             router.refresh()
             load()
             showToast('Data Synced! ✓', 'success')
           }} icon={RefreshCw}>Sync</Btn>
+          <Btn variant="primary" onClick={() => prepareAuctionRecord()} icon={Plus}>{t('record_auction')}</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/settlement?groupId=${groupId}`)} icon={Calculator}>{t('nav_settlements')}</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/groups/${groupId}/settings`)} icon={Settings2}>{t('nav_settings')}</Btn>
         </div>
       </div>
 
-        {draftAucs.length > 0 && (
+      {draftAucs.length > 0 && (
         <div className="bg-[var(--surface2)] border border-[var(--border)] p-5 rounded-[32px] flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500 shadow-sm">
-           <div className="flex items-center gap-5">
-              <div className="w-14 h-14 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
-                 <AlertTriangle size={28} strokeWidth={2.5} />
-              </div>
-              <div>
-                 <h4 className="font-black text-lg text-[var(--text)] uppercase tracking-tight leading-tight">Confirmation Required</h4>
-                 <p className="text-xs font-medium opacity-70 mt-0.5 max-w-[500px]">
-                    You have <strong className="font-bold underline">{draftAucs.length} Draft Auction(s)</strong> which are not yet reflected in the Surplus Pool or Member Balances. 
-                    Please confirm them to finalize the financial ledger.
-                 </p>
-              </div>
-           </div>
-           <Btn variant="secondary" onClick={() => router.push('/auctions')} className="bg-white/50 border-white hover:bg-white" icon={ExternalLink}>Go to Auctions</Btn>
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+              <AlertTriangle size={28} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h4 className="font-black text-lg text-[var(--text)] uppercase tracking-tight leading-tight">Confirmation Required</h4>
+              <p className="text-xs font-medium opacity-70 mt-0.5 max-w-[500px]">
+                You have <strong className="font-bold underline">{draftAucs.length} Draft Auction(s)</strong> which are not yet reflected in the Surplus Pool or Member Balances.
+                Please confirm them to finalize the financial ledger.
+              </p>
+            </div>
+          </div>
+          <Btn variant="secondary" onClick={() => router.push('/auctions')} className="bg-white/50 border-white hover:bg-white" icon={ExternalLink}>Go to Auctions</Btn>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-5 border relative hover:shadow-xl transition-all">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
-                <Gavel size={22} strokeWidth={2.5} />
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
+              <Gavel size={22} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-start">
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('auction_rules')}</div>
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('auction_rules')}</div>
+              <div className="flex gap-4 mt-1">
+                <div className="text-xs">
+                  <span className="opacity-50">{t('min_floor')}:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.min_bid_pct || 0.05))}</strong>
+                  <span className="text-[9px] opacity-40 ml-1">({(group.min_bid_pct || 0.05) * 100}%)</span>
                 </div>
-                <div className="flex gap-4 mt-1">
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('min_floor')}:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.min_bid_pct || 0.05))}</strong>
-                    <span className="text-[9px] opacity-40 ml-1">({(group.min_bid_pct || 0.05)*100}%)</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('max_cap')}:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.max_bid_pct || 0.40))}</strong>
-                    <span className="text-[9px] opacity-40 ml-1">({(group.max_bid_pct || 0.40)*100}%)</span>
-                  </div>
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('scheme')}:</span> <strong className="uppercase">{group.auction_scheme}</strong>
-                  </div>
+                <div className="text-xs">
+                  <span className="opacity-50">{t('max_cap')}:</span> <strong className="font-mono text-[var(--accent)]">{fmt(group.chit_value * (group.max_bid_pct || 0.40))}</strong>
+                  <span className="text-[9px] opacity-40 ml-1">({(group.max_bid_pct || 0.40) * 100}%)</span>
+                </div>
+                <div className="text-xs">
+                  <span className="opacity-50">{t('scheme')}:</span> <strong className="uppercase">{group.auction_scheme}</strong>
                 </div>
               </div>
             </div>
+          </div>
         </Card>
 
         <Card className="p-5 border hover:shadow-xl transition-all">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-[var(--info-dim)] text-[var(--info)]">
-                <Calculator size={22} strokeWidth={2.5} />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('revenue_comm')}</div>
-                <div className="flex gap-4 mt-1">
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('action')}:</span> <strong className="uppercase">{group.commission_type?.replace(/_/g, ' ') || 'Percent of Chit'}</strong>
-                  </div>
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('rate')}:</span> <strong className="font-mono">{group.commission_type === 'fixed_amount' ? fmt(group.commission_value) : `${group.commission_value}%`}</strong>
-                  </div>
-                  <div className="text-xs">
-                    <span className="opacity-50">{t('recipient')}:</span> <strong className="uppercase">{group.commission_recipient || 'Foreman'}</strong>
-                  </div>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-[var(--info-dim)] text-[var(--info)]">
+              <Calculator size={22} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{t('revenue_comm')}</div>
+              <div className="flex gap-4 mt-1">
+                <div className="text-xs">
+                  <span className="opacity-50">{t('action')}:</span> <strong className="uppercase">{group.commission_type?.replace(/_/g, ' ') || 'Percent of Chit'}</strong>
+                </div>
+                <div className="text-xs">
+                  <span className="opacity-50">{t('rate')}:</span> <strong className="font-mono">{group.commission_type === 'fixed_amount' ? fmt(group.commission_value) : `${group.commission_value}%`}</strong>
+                </div>
+                <div className="text-xs">
+                  <span className="opacity-50">{t('recipient')}:</span> <strong className="uppercase">{group.commission_recipient || 'Foreman'}</strong>
                 </div>
               </div>
             </div>
+          </div>
         </Card>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard label={t('current_month')} value={`${monthsCompleted}/${totalMonths}`} color="info" />
         <StatCard label={t('open_spots')} value={group.num_members - members.length} color="accent" />
-        
+
         {group.auction_scheme === 'ACCUMULATION' ? (
           <div className="relative group">
-             <StatCard 
-               label={term.groupSurplusLabel} 
-               value={fmt(group.accumulated_surplus)} 
-               color="success" 
-               sub={`Gross: ${fmt(totalSurplus)}`}
-             />
-             {pendingSurplus > 0 && (
-               <div className="absolute -bottom-2 left-4 right-4 bg-[var(--surface)] border px-2 py-0.5 rounded-full text-[9px] font-bold text-[var(--warning-text)] flex items-center justify-center gap-1 shadow-sm border-[var(--warning-border)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />
-                  +{fmt(pendingSurplus)} Potential
-               </div>
-             )}
+            <StatCard
+              label={term.groupSurplusLabel}
+              value={fmt(group.accumulated_surplus)}
+              color="success"
+              sub={`Projected: ${fmt(Number(group.accumulated_surplus || 0) / (group.num_members || 1))} / mem`}
+            />
+            {pendingSurplus > 0 && (
+              <div className="absolute -bottom-2 left-4 right-4 bg-[var(--surface)] border px-2 py-0.5 rounded-full text-[9px] font-bold text-[var(--warning-text)] flex items-center justify-center gap-1 shadow-sm border-[var(--warning-border)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />
+                +{fmt(pendingSurplus)} Potential
+              </div>
+            )}
           </div>
         ) : (
           <StatCard label={term.benefitLabel} value={fmt(totalDividends)} color="success" />
@@ -551,18 +674,18 @@ export default function GroupLedgerPage() {
                 <AreaChart data={yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorDisc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="var(--danger)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="var(--danger)" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorDiv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} tickFormatter={v => `₹${v/1000}k`} />
-                  <Tooltip 
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} tickFormatter={v => `₹${v / 1000}k`} />
+                  <Tooltip
                     contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--surface)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                     labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
                   />
@@ -594,7 +717,7 @@ export default function GroupLedgerPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '16px', border: 'none', background: 'var(--surface)', boxShadow: 'var(--shadow-xl)' }}
                   />
                 </PieChart>
@@ -611,9 +734,9 @@ export default function GroupLedgerPage() {
                 </div>
               ))}
               <div className="pt-3 border-t border-dashed mt-3">
-                 <div className="text-[10px] font-bold uppercase opacity-40">Group Liquidity</div>
-                 <div className="text-lg font-black">{((totalCollected/totalPossibleCollection)*100 || 0).toFixed(1)}%</div>
-                 <ProgressBar pct={(totalCollected/totalPossibleCollection)*100} color={totalCollected >= totalPossibleCollection * 0.9 ? 'success' : 'accent'} />
+                <div className="text-[10px] font-bold uppercase opacity-40">Group Liquidity</div>
+                <div className="text-lg font-black">{((totalCollected / totalPossibleCollection) * 100 || 0).toFixed(1)}%</div>
+                <ProgressBar pct={(totalCollected / totalPossibleCollection) * 100} color={totalCollected >= totalPossibleCollection * 0.9 ? 'success' : 'accent'} />
               </div>
             </div>
           </div>
@@ -622,13 +745,13 @@ export default function GroupLedgerPage() {
 
       <TableCard title={t('auction_ledger')}>
         <div className="px-6 py-3 border-b border-dashed bg-[var(--surface2)] flex items-center gap-3">
-           <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--accent-o10)]">Σ</div>
-           <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Calculation Logic</span>
-              <span className="text-xs font-mono font-bold">
-                 Benefit / Mem = ({t('auction_discount')} — {t('commission')}) ÷ {group.num_members} {t('members')}
-              </span>
-           </div>
+          <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--accent-o10)]">Σ</div>
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Calculation Logic</span>
+            <span className="text-xs font-mono font-bold">
+              Benefit / Mem = ({t('auction_discount')} — {t('commission')}) ÷ {group.num_members} {t('members')}
+            </span>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
@@ -638,14 +761,14 @@ export default function GroupLedgerPage() {
                 <Th>{t('winner')}</Th>
                 <Th right>{t('auction_discount')}</Th>
                 <Th right className="hidden lg:table-cell text-[var(--danger)]">
-                   <div className="flex items-center justify-end gap-1">
-                      <span className="opacity-40 font-mono">−</span> {t('commission')}
-                   </div>
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="opacity-40 font-mono">−</span> {t('commission')}
+                  </div>
                 </Th>
                 <Th right className="hidden md:table-cell text-[var(--accent)]">
-                   <div className="flex items-center justify-end gap-1">
-                      <span className="opacity-40 font-mono">=</span> Benefit / Mem
-                   </div>
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="opacity-40 font-mono">=</span> Benefit / Mem
+                  </div>
                 </Th>
                 <Th right>{t('net_payout')}</Th>
                 <Th right className="hidden sm:table-cell">
@@ -658,77 +781,108 @@ export default function GroupLedgerPage() {
             <tbody>
               {auctionHistory.length === 0 ? (
                 <Tr><Td colSpan={8} className="text-center py-12 opacity-50 italic">{t('no_auctions')}</Td></Tr>
-              ) : auctionHistory.map((a) => {
+              ) : confirmedAucs.concat(draftAucs).sort((a, b) => a.month - b.month).map((a) => {
                 const winner = members.find(m => m.id === a.winner_id)
                 const comm = commissions.find(c => c.auction_id === a.id)
                 const isAcc = group.auction_scheme === 'ACCUMULATION'
                 const monthlyDue = Number(group.monthly_contribution)
-                const dividend = Number(a.dividend || 0)
+                const dividend = a.audited_div
                 const eachPays = isAcc ? monthlyDue : (monthlyDue - dividend)
+
                 return (
                   <Tr key={a.id}>
                     <Td>
-                       <div className="flex flex-col">
-                          <Badge variant={a.status === 'draft' ? 'gray' : 'info'} className="font-mono text-[10px] bg-[var(--surface2)]">{fmtMonth(a.month, group?.start_date)}</Badge>
-                          {a.status === 'draft' && <span className="text-[8px] font-bold text-[var(--accent)] mt-1 uppercase tracking-tighter">Draft Plan</span>}
-                       </div>
+                      <div className="flex flex-col min-h-[48px] justify-center">
+                        <span className="text-[13px] font-black font-mono text-[var(--text)]">{fmtMonth(a.month, group?.start_date)}</span>
+                        <span className={cn("text-[8px] font-black uppercase tracking-tighter", a.status === 'draft' ? "text-[var(--accent)]" : "opacity-40")}>
+                          {a.status === 'draft' ? "Draft Plan" : (a.auction_date ? fmtDate(a.auction_date) : "Confirmed")}
+                        </span>
+                      </div>
                     </Td>
                     <Td>
-                      {winner ? (
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold truncate max-w-[80px] md:max-w-full">{winner.persons?.name}</span>
-                          <span className="text-[9px] opacity-40 italic font-mono uppercase tracking-tighter">Ticket #{winner.ticket_no}</span>
-                        </div>
-                      ) : '—'}
-                    </Td>
-                    <Td right className="font-mono font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</Td>
-                    
-                    <Td right className="hidden lg:table-cell font-mono text-[var(--danger)] opacity-80">
-                      <div className="flex flex-col items-end">
-                         <span>{comm ? fmt(comm.commission_amt) : '—'}</span>
-                         {comm && <span className="text-[8px] opacity-40 uppercase tracking-tighter">Comm.</span>}
-                      </div>
-                    </Td>
-
-                    <Td right className="hidden md:table-cell font-mono font-bold text-[var(--accent)] bg-[var(--accent-o5)]">
-                      <div className="flex flex-col items-end">
-                         <span>{`+${fmt(a.dividend)}`}</span>
-                         <span className="text-[8px] opacity-60 uppercase tracking-tighter">Net Benefit</span>
-                      </div>
-                    </Td>
-
-                    <Td right className="font-mono font-black text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</Td>
-                    
-                    <Td right className="hidden sm:table-cell font-mono font-bold">
-                      {fmt(eachPays)}
-                      <div className="text-[8px] opacity-30 mt-0.5">
-                        {group.auction_scheme === 'ACCUMULATION' ? 'Full Contribution' : t('after_div')}
+                      <div className="flex flex-col min-h-[48px] justify-center">
+                        <span className="text-[13px] font-extrabold truncate max-w-[120px] text-[var(--text)]">
+                          {winner?.persons?.name || '—'}
+                        </span>
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                          {winner ? `Ticket #${winner.ticket_no}` : 'No Winner'}
+                        </span>
                       </div>
                     </Td>
                     <Td right>
-                      {a.is_payout_settled ? (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <div className="flex items-center gap-1 text-[var(--success)] font-black text-[10px] uppercase tracking-wider">
-                            <CheckCircle2 size={11} className="shrink-0" /> {t('settled')}
-                          </div>
-                          <div className="text-[10px] font-mono font-black opacity-80">{fmt(a.payout_amount || a.net_payout || a.auction_discount)}</div>
-                          <div className="text-[9px] opacity-40 font-mono">{fmtDate(a.payout_date)}</div>
-                          <div className="no-print mt-1.5 flex gap-1">
-                             <Btn size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => handlePrintVoucher(a)} icon={Printer}>Voucher</Btn>
-                          </div>
+                      <div className="flex flex-col min-h-[48px] justify-center items-end">
+                        <span className="text-[13px] font-black font-mono text-[var(--danger)]">{fmt(a.auction_discount)}</span>
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Gross Discount</span>
+                      </div>
+                    </Td>
+
+                    <Td right className="hidden lg:table-cell">
+                      <div className="flex flex-col min-h-[48px] justify-center items-end">
+                        <span className="text-[13px] font-bold font-mono text-[var(--text)] opacity-80">{comm ? fmt(comm.commission_amt) : '—'}</span>
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Foreman Fee</span>
+                      </div>
+                    </Td>
+
+                    <Td right className="hidden md:table-cell">
+                      <div className="flex flex-col min-h-[48px] justify-center items-end relative group/math">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[13px] font-black font-mono text-[var(--accent)]">+{fmt(dividend)}</span>
+                          {comm && (
+                            <button
+                              onClick={() => setMathModal({ auction: a, commission: comm })}
+                              className="p-1.5 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] transition-all hover:scale-110 active:scale-95 shadow-sm"
+                              title="Click for Audit"
+                            >
+                              <Calculator size={13} strokeWidth={3} />
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <div className="flex justify-end gap-1 no-print">
-                          {a.status === 'confirmed' && winner && <Btn size="sm" variant="primary" className="h-8 px-3 text-[11px]" onClick={() => {
-                            setSettling(a)
-                            setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
-                          }} icon={Wallet}>{t('settle')}</Btn>}
-                          {a.status === 'draft' && <Badge variant="gray">{t('draft')}</Badge>}
-                        </div>
-                      )}
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Individual Benefit</span>
+                      </div>
+                    </Td>
+
+                    <Td right>
+                      <div className="flex flex-col min-h-[48px] justify-center items-end">
+                        <span className="text-[13px] font-black font-mono text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</span>
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                          {a.is_payout_settled ? `Paid: ${fmtDate(a.payout_date || '')}` : 'Net Payable'}
+                        </span>
+                      </div>
+                    </Td>
+
+                    <Td right className="hidden sm:table-cell">
+                      <div className="flex flex-col min-h-[48px] justify-center items-end">
+                        <span className="text-[13px] font-bold font-mono text-[var(--text)]">{fmt(eachPays)}</span>
+                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                          {isAcc ? 'Fixed Pay' : 'Due Amount'}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td right>
+                      <div className="flex flex-col min-h-[48px] justify-center items-end">
+                        {a.is_payout_settled ? (
+                          <>
+                            <div className="flex items-center gap-1 text-[var(--success)] font-black text-[9px] uppercase tracking-wider">
+                              <CheckCircle2 size={10} strokeWidth={3} /> {t('settled')}
+                            </div>
+                            <span className="text-[11px] font-mono font-black opacity-90">{fmtDate(a.payout_date)}</span>
+                          </>
+                        ) : (
+                          <div className="no-print">
+                            {a.status === 'confirmed' && winner ? (
+                              <Btn size="sm" variant="primary" className="h-7 px-3 text-[10px] uppercase font-black" onClick={() => {
+                                setSettling(a)
+                                setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
+                              }}>{t('settle')}</Btn>
+                            ) : (
+                              <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Pending</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </Td>
                     <Td className="only-print">
-                      <div className="h-8 w-24 border-b border-black text-[8px] opacity-30 flex items-end justify-center">{t('sign_here')}</div>
+                      <div className="h-8 w-24 border-b border-black opacity-20"></div>
                     </Td>
                   </Tr>
                 )
@@ -759,55 +913,55 @@ export default function GroupLedgerPage() {
             ) : members.map((m) => {
               const financial = group ? getMemberFinancialStatus(m, group, auctionHistory, payments) : null
               return (
-              <Tr key={m.id}>
-                <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
-                <Td className="font-semibold text-xs md:text-sm">
-                  {m.persons?.name}
-                  {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2 px-1 py-0 text-[8px]">Winner</Badge>}
-                </Td>
-                <Td className="hidden md:table-cell">{m.status === 'foreman' ? <Badge variant="info" className="text-[9px] px-1 py-0">Foreman</Badge> : <Badge variant="success" className="text-[9px] px-1 py-0">Active</Badge>}</Td>
-                <Td className="hidden sm:table-cell">
-                  {(() => {
-                    const auc = auctionHistory.find(a => a.winner_id === m.id && a.status === 'confirmed')
-                    return auc ? <Badge variant="accent" className="text-[9px] px-1 py-0">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
-                  })()}
-                </Td>
-                <Td className="hidden xl:table-cell">
-                  <div className="flex gap-0.5">
-                    {financial?.streak.slice(0, 10).map(s => (
-                      <div key={s.month} className="w-1 h-3 rounded-[1px]" style={{ background: `var(--${s.status})` }} title={`M${s.month}: ${s.status}`} />
-                    ))}
-                  </div>
-                </Td>
-                <Td right className="hidden lg:table-cell font-mono text-[10px] opacity-60">
-                  {(() => {
-                    const mPays = payments.filter(p => Number(p.member_id) === Number(m.id) && Number(p.group_id) === Number(group?.id))
-                    if (mPays.length === 0) return '—'
-                    const last = mPays.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-                    return fmtDate(last.created_at)
-                  })()}
-                </Td>
-                <Td right className="hidden sm:table-cell">
-                   <span className="font-mono text-xs opacity-60">{financial ? fmt(financial.totalPaid) : '—'}</span>
-                </Td>
-                <Td right>
-                   {financial && (
-                     <span className={cn("font-bold text-xs", financial.missedCount > 0 ? "text-[var(--danger)]" : financial.balance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>
+                <Tr key={m.id}>
+                  <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
+                  <Td className="font-semibold text-xs md:text-sm">
+                    {m.persons?.name}
+                    {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2 px-1 py-0 text-[8px]">Winner</Badge>}
+                  </Td>
+                  <Td className="hidden md:table-cell">{m.status === 'foreman' ? <Badge variant="info" className="text-[9px] px-1 py-0">Foreman</Badge> : <Badge variant="success" className="text-[9px] px-1 py-0">Active</Badge>}</Td>
+                  <Td className="hidden sm:table-cell">
+                    {(() => {
+                      const auc = auctionHistory.find(a => a.winner_id === m.id && a.status === 'confirmed')
+                      return auc ? <Badge variant="accent" className="text-[9px] px-1 py-0">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
+                    })()}
+                  </Td>
+                  <Td className="hidden xl:table-cell">
+                    <div className="flex gap-0.5">
+                      {financial?.streak.slice(0, 10).map(s => (
+                        <div key={s.month} className="w-1 h-3 rounded-[1px]" style={{ background: `var(--${s.status})` }} title={`M${s.month}: ${s.status}`} />
+                      ))}
+                    </div>
+                  </Td>
+                  <Td right className="hidden lg:table-cell font-mono text-[10px] opacity-60">
+                    {(() => {
+                      const mPays = payments.filter(p => Number(p.member_id) === Number(m.id) && Number(p.group_id) === Number(group?.id))
+                      if (mPays.length === 0) return '—'
+                      const last = mPays.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+                      return fmtDate(last.created_at)
+                    })()}
+                  </Td>
+                  <Td right className="hidden sm:table-cell">
+                    <span className="font-mono text-xs opacity-60">{financial ? fmt(financial.totalPaid) : '—'}</span>
+                  </Td>
+                  <Td right>
+                    {financial && (
+                      <span className={cn("font-bold text-xs", financial.missedCount > 0 ? "text-[var(--danger)]" : financial.balance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>
                         {financial.balance > 0.01 ? fmt(financial.balance) : 'Paid'}
-                     </span>
-                   )}
-                </Td>
-                <Td right className="no-print">
-                  <div className="flex justify-end gap-1">
-                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports/member_history?member_id=${m.id}`)} icon={History}>{t('ledger')}</Btn>
-                    <Btn size="sm" variant="ghost" onClick={() => router.push(`/members/${m.person_id}`)} icon={Info}>{t('profile')}</Btn>
-                    {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>{t('remove')}</Btn>}
-                  </div>
-                </Td>
-                <Td className="only-print">
-                  <div className="h-8 w-24 border-b border-black opacity-30"></div>
-                </Td>
-              </Tr>
+                      </span>
+                    )}
+                  </Td>
+                  <Td right className="no-print">
+                    <div className="flex justify-end gap-1">
+                      <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports/member_history?member_id=${m.id}`)} icon={History}>{t('ledger')}</Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => router.push(`/members/${m.person_id}`)} icon={Info}>{t('profile')}</Btn>
+                      {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>{t('remove')}</Btn>}
+                    </div>
+                  </Td>
+                  <Td className="only-print">
+                    <div className="h-8 w-24 border-b border-black opacity-30"></div>
+                  </Td>
+                </Tr>
               )
             })}
           </tbody>
@@ -850,17 +1004,17 @@ export default function GroupLedgerPage() {
             const winner = members.find(m => m.id === settling.winner_id)
             return (
               <div className="p-4 rounded-2xl border-2 flex items-center gap-4 transition-all" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
-                 <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-xl shadow-lg ring-4 ring-[var(--accent-dim)]">
-                    {winner?.persons?.name.charAt(0)}
-                 </div>
-                 <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] opacity-60">Settling Payout For</div>
-                    <div className="text-xl font-black text-[var(--text)] leading-tight">{winner?.persons?.name}</div>
-                    <div className="flex gap-3 mt-1">
-                       <Badge variant="gray" className="text-[9px] font-mono">Ticket #{winner?.ticket_no}</Badge>
-                       <Badge variant="info" className="text-[9px] font-mono">{fmtMonth(settling.month, group?.start_date)}</Badge>
-                    </div>
-                 </div>
+                <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-xl shadow-lg ring-4 ring-[var(--accent-dim)]">
+                  {winner?.persons?.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] opacity-60">Settling Payout For</div>
+                  <div className="text-xl font-black text-[var(--text)] leading-tight">{winner?.persons?.name}</div>
+                  <div className="flex gap-3 mt-1">
+                    <Badge variant="gray" className="text-[9px] font-mono">Ticket #{winner?.ticket_no}</Badge>
+                    <Badge variant="info" className="text-[9px] font-mono">{fmtMonth(settling.month, group?.start_date)}</Badge>
+                  </div>
+                </div>
               </div>
             )
           })()}
@@ -875,7 +1029,7 @@ export default function GroupLedgerPage() {
               />
             </Field>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <Field label="Payout Date">
               <input
@@ -955,20 +1109,172 @@ export default function GroupLedgerPage() {
 
       <div className="pt-4 opacity-70 hover:opacity-100 transition-opacity no-print">
         <div className="p-5 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface2)] flex flex-col md:flex-row items-center justify-between gap-4">
-           <div className="flex items-center gap-4 text-center md:text-left">
-              <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
-                 <History size={20} className="animate-pulse" />
-              </div>
-              <div>
-                 <h4 className="font-black text-sm uppercase tracking-wide">Intelligent Member Substitution</h4>
-                 <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">Ticket transfers, arrears migration & replacement audit · <span className="text-[var(--accent)] font-black uppercase">Coming Soon</span></p>
-              </div>
-           </div>
-           <Badge variant="gray" className="text-[8px] italic py-1 px-3">Roadmap v2.4</Badge>
+          <div className="flex items-center gap-4 text-center md:text-left">
+            <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
+              <History size={20} className="animate-pulse" />
+            </div>
+            <div>
+              <h4 className="font-black text-sm uppercase tracking-wide">Intelligent Member Substitution</h4>
+              <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">Ticket transfers, arrears migration & replacement audit · <span className="text-[var(--accent)] font-black uppercase">Coming Soon</span></p>
+            </div>
+          </div>
+          <Badge variant="gray" className="text-[8px] italic py-1 px-3">Roadmap v2.4</Badge>
         </div>
       </div>
 
+      {mathModal && (
+        <Modal open={!!mathModal} onClose={() => setMathModal(null)} title={`${group.auction_scheme === 'ACCUMULATION' ? 'Accumulation' : 'Dividend'} Audit Report`} size="sm">
+          <div className="space-y-6">
+            <div className="p-6 rounded-[32px] bg-[var(--surface2)] border border-[var(--border)] shadow-inner">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center font-black text-2xl shadow-lg ring-4 ring-[var(--accent-dim)]">
+                  <Calculator size={28} />
+                </div>
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Audit Ledger Report</div>
+                  <div className="text-xl font-black text-[var(--text)] tracking-tight">Month {mathModal.auction.month} Dividend</div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Step 1: Net Benefit Pool */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--danger)]">Step 1: Benefit Pool</span>
+                    <span className="text-[9px] font-bold opacity-40 uppercase">(Discount — Fee)</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] font-mono shadow-sm">
+                    <span className="text-xs">{fmt(mathModal.auction.auction_discount)} — {fmt(mathModal.commission.commission_amt)}</span>
+                    <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt(mathModal.auction.auction_discount - mathModal.commission.commission_amt)}</span>
+                  </div>
+                </div>
+
+                {/* Step 2: Per Member Share */}
+                {(() => {
+                  const pool = mathModal.auction.auction_discount - mathModal.commission.commission_amt;
+                  const share = pool / (group?.num_members || 1);
+                  const isAcc = group.auction_scheme === 'ACCUMULATION';
+                  const monthlyDue = Number(group.monthly_contribution);
+                  const youPay = isAcc ? monthlyDue : (monthlyDue - share);
+
+                  return (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">Step 2: Individual Share</span>
+                          <span className="text-[9px] font-bold opacity-40 uppercase">(Pool ÷ {group?.num_members} Members)</span>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] font-mono shadow-sm">
+                          <span className="text-xs">{fmt(pool)} ÷ {group?.num_members}</span>
+                          <span className="font-extrabold text-sm text-[var(--accent)]">= {fmt(share)}</span>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Payment Impact */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--success)]">Step 3: {isAcc ? 'Fixed Payment' : 'Member Due'}</span>
+                          <span className="text-[9px] font-bold opacity-40 uppercase">{isAcc ? '(Accumulation Plan)' : '(Direct Deduction)'}</span>
+                        </div>
+                        <div className={cn("flex items-center justify-between p-4 rounded-2xl border border-[var(--success)] font-mono shadow-md", isAcc ? "bg-[var(--surface)]" : "bg-[var(--success-dim)]")}>
+                          {isAcc ? (
+                            <>
+                              <span className="text-xs">Full Contribution</span>
+                              <span className="font-extrabold text-sm text-[var(--success)]">{fmt(monthlyDue)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs">{fmt(monthlyDue)} — {fmt(share)}</span>
+                              <span className="font-extrabold text-sm text-[var(--success)]">= {fmt(youPay)}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-[9px] px-2 opacity-50 italic">
+                          {isAcc
+                            ? `* In Accumulation scheme, your ${fmt(share)} benefit is added to the Group Surplus instead of being deducted.`
+                            : `* Your ${fmt(share)} benefit is deducted from your ${fmt(monthlyDue)} monthly contribution.`
+                          }
+                        </div>
+                      </div>
+
+                      <div className="relative overflow-hidden p-5 bg-[var(--surface3)] border border-[var(--border)] rounded-[24px]">
+                        <div className="absolute top-0 right-0 p-2 opacity-5">
+                          <CheckCircle2 size={48} />
+                        </div>
+                        <div className="relative z-10">
+                          <div className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Mathematical Reconciliation</div>
+                          <p className="text-[11px] font-bold leading-relaxed italic opacity-80">
+                            &quot;The total auction discount of {fmt(mathModal.auction.auction_discount)} is perfectly accounted for:
+                            {fmt(mathModal.commission.commission_amt)} as foreman fee and
+                            {fmt(share * (group?.num_members || 1))} as {isAcc ? 'surplus accumulation' : 'member dividends'}.&quot;
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Btn variant="primary" className="w-full h-12 rounded-2xl font-black uppercase tracking-widest" onClick={() => setMathModal(null)}>Close Audit Log</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
+
+      <Modal open={aucFormOpen} onClose={() => setAucFormOpen(false)} title="Record Group Auction" size="lg">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Auction Month" disabled>
+            <input className={inputClass} style={inputStyle} value={`Month ${aucForm.month}`} disabled />
+          </Field>
+          <Field label="Auction Date">
+            <input className={inputClass} type="date" value={aucForm.auction_date} onChange={e => setAucForm(f => ({ ...f, auction_date: e.target.value }))} />
+          </Field>
+
+          <Field label={t('winner_bidder')} className="col-span-2">
+            <select className={inputClass} style={inputStyle} value={aucForm.winner_id} onChange={e => {
+              setAucForm(f => ({ ...f, winner_id: e.target.value }))
+              checkWinnerBalance(e.target.value)
+            }}>
+              <option value="">{t('select_winner')}</option>
+              {eligibleList.map(m => <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no})</option>)}
+            </select>
+          </Field>
+
+          {checkingWinner ? <div className="col-span-2 flex justify-center py-2"><Loading /></div> : winnerBalance > 0.01 && (
+            <div className="col-span-2 p-4 rounded-2xl border bg-red-500/5 border-red-500/20">
+              <div className="text-red-600 font-black text-sm uppercase tracking-tight">Owes ₹{fmt(winnerBalance)} ({winnerAging} months)</div>
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input type="checkbox" checked={acknowledge} onChange={e => setAcknowledge(e.target.checked)} />
+                <span className="text-[10px] font-black uppercase opacity-60">I acknowledge these dues and the member is eligible to win</span>
+              </label>
+            </div>
+          )}
+
+          <Field label={group?.auction_scheme === 'DIVIDEND' ? 'Winning Bid (Amount Taken)' : 'Discount Bid (Amount Shared)'} className="col-span-2">
+            <input className={inputClass} type="number" value={aucForm.auction_discount} onChange={e => onBidChange(e.target.value)} placeholder={group?.auction_scheme === 'DIVIDEND' ? 'e.g. 80000' : 'e.g. 5000'} />
+            {calc && (
+              <div className="mt-3 p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] grid grid-cols-2 gap-y-2">
+                <div className="text-[9px] font-black uppercase opacity-40">Gross Discount</div>
+                <div className="text-xs font-black text-right">{fmt(calc.auction_discount)}</div>
+                <div className="text-[9px] font-black uppercase opacity-40">Foreman Fee</div>
+                <div className="text-xs font-black text-right">{fmt(calc.commission_amt)}</div>
+                <div className="text-[9px] font-black uppercase opacity-40">Individual Share</div>
+                <div className="text-xs font-black text-right text-[var(--accent)]">{fmt(calc.per_member_div)}</div>
+              </div>
+            )}
+            {calcError && <div className="text-[10px] text-red-500 mt-1 font-bold">{calcError}</div>}
+          </Field>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-white/5">
+          <Btn variant="secondary" onClick={() => setAucFormOpen(false)}>{t('cancel')}</Btn>
+          <Btn variant="primary" loading={saving} onClick={() => handleSaveAuction('confirmed')} disabled={!!calcError || checkingWinner}>{t('record_auction')}</Btn>
+        </div>
+      </Modal>
     </div>
   )
 }

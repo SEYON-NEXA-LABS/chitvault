@@ -25,6 +25,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_defaulters: 'Defaulters',
     nav_trash: 'Trash',
     nav_usage_hub: 'Usage Hub & Statistics',
+    usage_hub_title: 'Usage Hub',
     
     // Header
     sign_out: 'Sign Out',
@@ -338,6 +339,7 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     nav_defaulters: 'நிலுவைதாரர்கள்',
     nav_trash: 'காப்பகம் / நீக்கப்பட்டவை',
     nav_usage_hub: 'பயன்பாட்டு புள்ளிவிவரங்கள்',
+    usage_hub_title: 'பயன்பாட்டு மேலோட்டம்',
     
     // Header
     sign_out: 'வெளியேறு',

@@ -52,14 +52,16 @@ export default function TrashPage() {
 
     // Fetch active tab data
     const currentTable = activeTab === 'staff' ? 'profiles' : activeTab
+    let exportCols = 'id, deleted_at'
     
-    let query = withFirmScope(supabase.from(currentTable).select('*'), targetId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
-    
-    // Add specific joins for context
-    if (activeTab === 'members') query = query.select('*, persons(*), groups(name)')
-    if (activeTab === 'payments') query = query.select('*, members(ticket_no, persons(name)), groups(name)')
-    if (activeTab === 'auctions') query = query.select('*, groups(name), members(persons(name))')
-    if (activeTab === 'settlements') query = query.select('*, members(persons(name))')
+    if (activeTab === 'groups') exportCols = 'id, name, chit_value, duration, deleted_at'
+    if (activeTab === 'members') exportCols = 'id, ticket_no, group_id, person_id, deleted_at, persons(id, name), groups(id, name)'
+    if (activeTab === 'payments') exportCols = 'id, amount, month, member_id, group_id, deleted_at, members(id, ticket_no, persons(name)), groups(id, name)'
+    if (activeTab === 'auctions') exportCols = 'id, month, group_id, winner_id, deleted_at, groups(id, name), members(id, persons(name))'
+    if (activeTab === 'settlements') exportCols = 'id, total_amount, member_id, deleted_at, members(id, persons(name))'
+    if (activeTab === 'staff') exportCols = 'id, full_name, role, status, deleted_at'
+
+    let query = withFirmScope(supabase.from(currentTable).select(exportCols), targetId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
 
     const { data: list } = await query
     setData(list || [])

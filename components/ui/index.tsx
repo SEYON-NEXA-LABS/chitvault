@@ -153,9 +153,9 @@ export function Table({ children, className, responsive, ...props }: {
 
 export function Th({ children, right, className, ...props }: { children?: React.ReactNode; right?: boolean } & React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn('px-4 py-3 text-xs font-semibold uppercase tracking-wide text-left whitespace-nowrap',
+    <th className={cn('px-4 py-3 text-xs font-black uppercase tracking-widest text-left whitespace-nowrap',
       right && 'text-right', className)}
-      style={{ background: 'var(--surface2)', color: 'var(--text3)', borderBottom: '1px solid var(--border)' }}
+      style={{ background: 'var(--surface2)', color: 'var(--text)', borderBottom: '1px solid var(--border)' }}
       {...props}>
       {children}
     </th>
@@ -435,3 +435,4 @@ export * from './Tour'
 export * from './NetworkStatus'
 export * from './BottomNav'
 export * from './UpdateNotification'
+export * from './CookieConsent'

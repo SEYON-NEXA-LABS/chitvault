@@ -42,7 +42,7 @@ export default function MemberProfilePage() {
       if (!targetId || !personId) return
 
       try {
-        const { data: pData } = await withFirmScope(supabase.from('persons').select('*').eq('id', personId), targetId).single()
+        const { data: pData } = await withFirmScope(supabase.from('persons').select('id, name, phone, email, address, nickname').eq('id', personId), targetId).single()
         if (pData) {
           setPerson(pData)
           setEditForm({ 
@@ -54,7 +54,7 @@ export default function MemberProfilePage() {
           })
         }
 
-        const { data: mData } = await withFirmScope(supabase.from('members').select('*, groups(*)').eq('person_id', personId), targetId).is('deleted_at', null)
+        const { data: mData } = await withFirmScope(supabase.from('members').select('id, ticket_no, group_id, person_id, status, groups(id, name, duration, monthly_contribution, status, auction_scheme)').eq('person_id', personId), targetId).is('deleted_at', null)
         if (mData) {
           setMemberships(mData.map((m: any) => ({ ...m, group: m.groups })) || [])
         }

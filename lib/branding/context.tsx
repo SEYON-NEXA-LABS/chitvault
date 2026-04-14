@@ -9,11 +9,13 @@ interface BrandingContext {
   name: string
   font: string
   colorProfile: string
+  setTheme: (id: string) => void
 }
 
 const Ctx = createContext<BrandingContext>({
   name: 'Seyon Chit Vault',
-  font: 'Inter', colorProfile: 'indigo'
+  font: 'Inter', colorProfile: 'indigo',
+  setTheme: () => {}
 })
 
 export function BrandingProvider({ children }: {
@@ -23,13 +25,21 @@ export function BrandingProvider({ children }: {
   const name = firm?.name || APP_NAME
   const font = firm?.font || 'Inter'
   
-  const [colorProfile, setColorProfile] = useState<string>(firm?.color_profile || 'indigo')
+  const [colorProfile, setColorProfile] = useState<string>('indigo')
+  const [isBrandingReady, setIsBrandingReady] = useState(false)
 
   useEffect(() => {
-    // Only run on client after mount to prevent hydration mismatch
-    const saved = localStorage.getItem('chitvault-user-color-profile')
-    if (saved) setColorProfile(saved)
-  }, [])
+    // Enforcement: Only Firm Default is used (Managed White-Labeling)
+    const firmDefault = firm?.color_profile || 'indigo'
+    setColorProfile(firmDefault)
+    setIsBrandingReady(true)
+  }, [firm?.color_profile])
+
+  const setTheme = (id: string) => {
+    // This now only exists for potential future superadmin usage or local testing
+    // Regular users no longer have a UI to trigger this for Profiles
+    console.warn('Manual Profile override is disabled for managed white-labeling.')
+  }
 
   useEffect(() => {
     applyBranding(font, colorProfile)
@@ -52,7 +62,7 @@ export function BrandingProvider({ children }: {
   }, [firm?.name, font, colorProfile])
 
   return (
-    <Ctx.Provider value={{ name, font, colorProfile }}>
+    <Ctx.Provider value={{ name, font, colorProfile, setTheme }}>
       {children}
     </Ctx.Provider>
   )
@@ -68,10 +78,14 @@ export const AVAILABLE_FONTS = [
 
 export const COLOR_PROFILES = [
   { id: 'indigo',       name: 'ChitVault Premium', color: '#0038b8' },
+  { id: 'royal',        name: 'Royal Heritage',   color: '#003830' },
   { id: 'emerald',      name: 'Emerald Growth',   color: '#10b981' },
   { id: 'amber',        name: 'Amber Gold',       color: '#f59e0b' },
   { id: 'rose',         name: 'Rose Energy',      color: '#e11d48' },
   { id: 'slate',        name: 'Onyx Stealth',     color: '#475569' },
+  { id: 'midnight',     name: 'Midnight Sun',     color: '#0b3c5d' },
+  { id: 'mountain',     name: 'Mountain Fresh',   color: '#015249' },
+  { id: 'sunset',       name: 'Sunset Earth',     color: '#07889b' },
 ]
 
 // For backward compatibility with picker UI

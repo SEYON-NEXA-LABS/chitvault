@@ -4,25 +4,27 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS, COLOR_PROFILES } from '@/lib/branding/context'
+import { applyBranding, AVAILABLE_FONTS, PRESET_COLORS, COLOR_PROFILES, useBranding } from '@/lib/branding/context'
 import { Btn, Card, Badge, Toast } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { APP_NAME, APP_VERSION, APP_COMMIT_ID, fmtDate } from '@/lib/utils'
 import {
   Sun, Moon, LogOut, Key, Palette, Type, Building, Building2,
-   Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
+  Smartphone, MapPin, Link, Trash2, Image as ImageIcon, ShieldCheck, User,
   Lock, LockKeyhole, Monitor, BarChart3
 } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 import { usePinLock } from '@/lib/lock/context'
 import { useUsage } from '@/lib/hooks/useUsage'
+import { useTheme } from '@/lib/theme/context'
 import Image from 'next/image'
 
 export default function SettingsPage() {
   const supabase = createClient()
   const router = useRouter()
   const { profile, role, firm, can, refresh } = useFirm()
+  const { theme, setTheme } = useTheme()
   const { toast, show, hide } = useToast()
   const { isElectron, hasPin, setPin, lock } = usePinLock()
 
@@ -48,8 +50,8 @@ export default function SettingsPage() {
   const [name, setName] = useState(firm?.name || '')
   const [address, setAddress] = useState(firm?.address || '')
   const [phone, setPhone] = useState(firm?.phone || '')
-  const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
   const [font, setFont] = useState(firm?.font || 'Noto Sans')
+  const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
   const [regToken, setRegToken] = useState(firm?.register_token || '')
   const [enabledSchemes, setEnabledSchemes] = useState<string[]>(firm?.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
 
@@ -75,8 +77,8 @@ export default function SettingsPage() {
       setName(firm.name || '')
       setAddress(firm.address || '')
       setPhone(firm.phone || '')
-      setColorProfile(firm.color_profile || 'indigo')
       setFont(firm.font || 'Noto Sans')
+      setColorProfile(firm.color_profile || 'indigo')
       setRegToken(firm.register_token || '')
       setEnabledSchemes(firm.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
     }
@@ -87,7 +89,7 @@ export default function SettingsPage() {
 
   function handleFontChange(f: string) {
     setFont(f)
-    applyBranding(f, colorProfile)
+    applyBranding(f, userTheme)
   }
 
   async function saveBranding() {
@@ -97,8 +99,8 @@ export default function SettingsPage() {
       name: name.trim() || undefined,
       address: address.trim() || null,
       phone: phone.trim() || null,
-      color_profile: colorProfile,
       font,
+      color_profile: colorProfile,
       enabled_schemes: enabledSchemes,
     }).eq('id', firm.id)
     setSaving(false)
@@ -148,8 +150,45 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-4">
 
-      {/* ── Firm Profile (Basic Info for Admin/Owner) ────────────────── */}
-      {isOwner && (
+      {/* ── Personal Appearance (All Users) ────────────────── */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
+          style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+          <Monitor size={15} /> Platform Appearance & Contrast
+        </div>
+        <div className="p-5">
+          <p className="text-xs opacity-60 mb-4 font-medium leading-relaxed">
+            Customize how ChitVault looks on this device. These settings are personal to you and don&apos;t affect other users.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { id: 'light', name: 'Light', icon: Sun },
+              { id: 'dark', name: 'Dark', icon: Moon },
+              { id: 'system', name: 'System', icon: Monitor },
+              { id: 'mono', name: 'Monochrome', icon: Palette }
+            ].map(mode => (
+              <button
+                key={mode.id}
+                onClick={() => setTheme(mode.id as any)}
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border transition-all gap-2 group ${theme === mode.id
+                    ? 'border-indigo-600 bg-indigo-50/50'
+                    : 'border-[var(--border)] bg-[var(--surface2)] hover:border-indigo-200'
+                  }`}
+              >
+                <div className={`p-2 rounded-xl transition-colors ${theme === mode.id ? 'bg-indigo-600 text-white' : 'bg-[var(--surface)] text-[var(--text2)] group-hover:text-indigo-600'
+                  }`}>
+                  <mode.icon size={18} />
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-wider ${theme === mode.id ? 'text-indigo-600' : 'opacity-40'
+                  }`}>{mode.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Firm Profile (Superadmin Only) ────────────────── */}
+      {isSuperAdmin && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
             style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -173,6 +212,70 @@ export default function SettingsPage() {
             <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
               <Btn variant="primary" loading={saving} onClick={saveBranding}>
                 Save Changes
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Branding & Aesthetics (Superadmin Only) ────────────────────── */}
+      {isSuperAdmin && (
+        <Card className="overflow-hidden">
+          <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+            <Palette size={15} /> Firm-Wide Branding & Aesthetics
+          </div>
+          <div className="p-5 space-y-8">
+
+            {/* Global Color Profile */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                <Palette size={13} /> Global Brand Theme
+              </div>
+              <p className="text-[10px] opacity-40 mb-3 uppercase font-bold tracking-widest">Sets the default accent color for all users in this firm</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {COLOR_PROFILES.map(cp => (
+                  <button key={cp.id}
+                    onClick={() => { setColorProfile(cp.id); applyBranding(font, cp.id) }}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-[11px] font-bold transition-all"
+                    style={{
+                      borderColor: colorProfile === cp.id ? 'var(--accent)' : 'var(--border)',
+                      background: colorProfile === cp.id ? 'var(--accent-dim)' : 'var(--surface2)',
+                      color: colorProfile === cp.id ? 'var(--accent)' : 'var(--text)',
+                    }}>
+                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ background: cp.color }} />
+                    <span className="truncate">{cp.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font */}
+            <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
+                <Type size={13} /> Corporate Typography
+              </div>
+              <p className="text-[10px] opacity-40 mb-3 uppercase font-bold tracking-widest">Default font stack for reports and dashboards</p>
+              <div className="grid grid-cols-2 gap-2">
+                {AVAILABLE_FONTS.map(f => (
+                  <button key={f.value} onClick={() => handleFontChange(f.value)}
+                    className="text-left px-4 py-3 rounded-lg border text-sm transition-all"
+                    style={{
+                      fontFamily: `'${f.value}', sans-serif`,
+                      borderColor: font === f.value ? 'var(--accent)' : 'var(--border)',
+                      background: font === f.value ? 'var(--accent-dim)' : 'var(--surface2)',
+                      color: font === f.value ? 'var(--accent)' : 'var(--text2)',
+                      fontWeight: font === f.value ? 700 : 400,
+                    }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <Btn variant="primary" loading={saving} onClick={saveBranding}>
+                Apply Global Branding
               </Btn>
             </div>
           </div>
@@ -250,47 +353,6 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* ── Branding (Superadmin Only) ─────────────────────────────────── */}
-      {isOwner && (
-        <Card className="overflow-hidden">
-          <div className="px-5 py-4 border-b flex items-center gap-2 font-semibold text-sm"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-            <Palette size={15} /> Branding & Appearance
-          </div>
-          <div className="p-5 space-y-5">
-
-
-
-            {/* Font */}
-            <div className="pt-2">
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text2)' }}>
-                <Type size={13} /> Typography
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {AVAILABLE_FONTS.map(f => (
-                  <button key={f.value} onClick={() => handleFontChange(f.value)}
-                    className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all"
-                    style={{
-                      fontFamily: `'${f.value}', sans-serif`,
-                      borderColor: font === f.value ? 'var(--accent)' : 'var(--border)',
-                      background: font === f.value ? 'var(--accent-dim)' : 'var(--surface2)',
-                      color: font === f.value ? 'var(--accent)' : 'var(--text2)',
-                      fontWeight: font === f.value ? 700 : 400,
-                    }}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-              <Btn variant="primary" loading={saving} onClick={saveBranding}>
-                Save Branding
-              </Btn>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* ── Registration Link (Superadmin Only) ─────────────────────────── */}
       {isOwner && (
@@ -356,28 +418,28 @@ export default function SettingsPage() {
               <input type="text" name="username" autoComplete="username" value={email} readOnly className="hidden" aria-hidden="true" />
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>New Password</label>
-                <input 
-                  className={inputClass} 
-                  style={inputStyle} 
-                  type="password" 
+                <input
+                  className={inputClass}
+                  style={inputStyle}
+                  type="password"
                   name="new_password"
                   autoComplete="new-password"
-                  value={newPass} 
-                  onChange={e => setNewPass(e.target.value)} 
-                  placeholder="Minimum 6 chars" 
+                  value={newPass}
+                  onChange={e => setNewPass(e.target.value)}
+                  placeholder="Minimum 6 chars"
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Confirm Password</label>
-                <input 
-                  className={inputClass} 
-                  style={inputStyle} 
-                  type="password" 
+                <input
+                  className={inputClass}
+                  style={inputStyle}
+                  type="password"
                   name="confirm_password"
                   autoComplete="new-password"
-                  value={confirmPass} 
-                  onChange={e => setConfirmPass(e.target.value)} 
-                  placeholder="Retype password" 
+                  value={confirmPass}
+                  onChange={e => setConfirmPass(e.target.value)}
+                  placeholder="Retype password"
                 />
               </div>
               <div className="md:col-span-2">
@@ -422,17 +484,17 @@ export default function SettingsPage() {
             )}
 
             {(pinChange || !hasPin) && (
-              <form 
-                onSubmit={(e) => { 
-                  e.preventDefault(); 
-                  setPin(pinInput); setPinInput(''); setPinChange(false); show('4-Digit PIN Saved Successfully!'); 
-                }} 
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setPin(pinInput); setPinInput(''); setPinChange(false); show('4-Digit PIN Saved Successfully!');
+                }}
                 className="space-y-3 p-4 bg-accent/5 rounded-xl border border-accent/20"
               >
                 <label className="text-xs font-bold text-accent uppercase tracking-wider block">Set New 4-Digit PIN</label>
                 {/* Hidden fields for Password Manager association */}
                 <input type="text" name="username" autoComplete="username" value="chitvault-pin" readOnly className="hidden" aria-hidden="true" />
-                
+
                 <div className="flex gap-2">
                   <input
                     type="password"
@@ -496,14 +558,14 @@ export default function SettingsPage() {
                 Full Usage Hub
               </Btn>
             </div>
-            
+
             <div className="h-2 rounded-full bg-[var(--surface3)] overflow-hidden mb-3">
-              <div 
-                className="h-full bg-[var(--accent)] transition-all duration-1000" 
+              <div
+                className="h-full bg-[var(--accent)] transition-all duration-1000"
                 style={{ width: `${Math.min(100, (usageData?.egress.total_estimate || 0) / (5 * 1024 * 1024 * 1024) * 100)}%` }}
               />
             </div>
-            
+
             <p className="text-[10px] opacity-60 font-medium">
               Egress is updated every 15 minutes. To reduce bandwidth, avoid frequent full-page reloads and redundant reports.
             </p>

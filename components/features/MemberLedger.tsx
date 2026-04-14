@@ -56,11 +56,11 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
       if (!m) return
       
       const [a, p] = await Promise.all([
-        withFirmScope(supabase.from('auctions').select('*'), firmId)
+        withFirmScope(supabase.from('auctions').select('id, month, dividend, winner_id'), firmId)
           .eq('group_id', m.group_id)
           .is('deleted_at', null)
           .order('month'),
-        withFirmScope(supabase.from('payments').select('*'), firmId)
+        withFirmScope(supabase.from('payments').select('id, amount, month'), firmId)
           .eq('member_id', selectedMid)
           .is('deleted_at', null)
           .order('month', { ascending: false })

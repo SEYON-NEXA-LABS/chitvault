@@ -76,14 +76,14 @@ export default function TeamPage() {
 
     // Load pending invites (Scoped)
     const { data: inv } = await withFirmScope(
-      supabase.from('invites').select('*'),
+      supabase.from('invites').select('id, email, role, status, created_at, expires_at'),
       targetId
     ).order('created_at', { ascending: false })
 
     setInvites(inv || [])
 
     if (isSuper && firms.length === 0) {
-      const { data: f } = await supabase.from('firms').select('*').order('name')
+      const { data: f } = await supabase.from('firms').select('id, name').order('name')
       setFirms(f || [])
     }
     setLoading(false)
