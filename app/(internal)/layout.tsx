@@ -186,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
             <Link href="/dashboard" className="flex items-center gap-3 group">
               <Image src="/icons/icon-512.png" alt={APP_NAME} width={42} height={42} className="w-[42px] h-[42px] object-contain transition-transform group-hover:scale-110 duration-500" />
-              <span className="font-bold tracking-tight uppercase" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
+              <span className="font-bold tracking-tight uppercase font-brand" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
             </Link>
           </div>
 
@@ -262,7 +262,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <UserCog size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black truncate uppercase" style={{ color: 'var(--text)' }}>
+                  <p className="text-[11px] font-black truncate uppercase font-brand" style={{ color: 'var(--text)' }}>
                     {firm?.name || APP_BRAND}
                   </p>
                   <p className="text-[9px] opacity-40 font-mono truncate">

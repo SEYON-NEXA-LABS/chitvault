@@ -64,7 +64,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     if (activeFirmId) {
       const { data: f } = await supabase
         .from('firms')
-        .select('id, name, slug, font, color_profile, plan, plan_status, trial_ends')
+        .select('id, name, slug, font, color_profile, plan, plan_status, trial_ends, address, phone, register_token, enabled_schemes')
         .eq('id', activeFirmId)
         .maybeSingle()
       setFirm(f)

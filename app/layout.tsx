@@ -7,8 +7,8 @@ import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
 import { APP_NAME } from '@/lib/utils/index'
 import { ThemeProvider } from '@/lib/theme/context'
 import { UpdateNotification } from '@/components/ui'
+import { CookieConsent } from '@/components/ui/CookieConsent'
 import './globals.css'
-import './fonts.css'
 
 // ... (Metadata and Viewport stay the same)
 
@@ -17,6 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#2563eb" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&family=Outfit:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&family=Audiowide&display=swap" rel="stylesheet" />
         {/* Blocking script to prevent theme flickering */}
         <script dangerouslySetInnerHTML={{
           __html: `
@@ -24,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               try {
                 var theme = localStorage.getItem('theme') || 'light';
                 var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                var active = theme === 'system' ? (supportDark ? 'dark' : 'light') : theme;
+                var active = theme === 'system' ? (supportDark ? 'dark' : 'light') : (theme === 'mono' ? 'light' : theme);
                 
                 document.documentElement.classList.add(active);
                 document.documentElement.setAttribute('data-theme', theme);
@@ -82,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {children}
                   <InviteAutoLinker />
                   <UpdateNotification />
+                  <CookieConsent />
                 </PinLockProvider>
               </I18nProvider>
             </BrandingProvider>

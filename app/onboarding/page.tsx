@@ -17,7 +17,7 @@ export default function OnboardingPage() {
       if (!user) { router.push('/login'); return }
       const { data: profile } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
       if (!profile?.firm_id) { router.push('/register'); return }
-      const { data: f } = await supabase.from('firms').select('*').eq('id', profile.firm_id).maybeSingle()
+      const { data: f } = await supabase.from('firms').select('id, name').eq('id', profile.firm_id).maybeSingle()
       setFirm(f)
     }
     load()

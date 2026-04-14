@@ -61,12 +61,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 1. Get Profile (Try Cache First)
-  let profile: { firm_id: string; role: string; status: string } | null = null
+  let profile: { id: string; firm_id: string; role: string; status: string } | null = null
   const cachedProfile = request.cookies.get('cv_profile')?.value
 
   if (cachedProfile) {
     try {
-      profile = JSON.parse(atob(cachedProfile))
+      const parsed = JSON.parse(atob(cachedProfile))
+      // ONLY use cache if it belongs to the CURRENT user
+      if (parsed.id === user.id) {
+        profile = parsed
+      }
     } catch {
       profile = null
     }
@@ -75,13 +79,13 @@ export async function updateSession(request: NextRequest) {
   if (!profile) {
     const { data } = await supabase
       .from('profiles')
-      .select('firm_id, role, status')
+      .select('id, firm_id, role, status')
       .eq('id', user.id)
       .maybeSingle()
     
     if (data) {
       profile = data as any
-      // Set Cache for 1 hour
+      // Set Cache for 1 hour (User-specific)
       supabaseResponse.cookies.set('cv_profile', btoa(JSON.stringify(data)), {
         maxAge: 3600,
         path: '/'

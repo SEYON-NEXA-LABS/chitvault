@@ -56,16 +56,10 @@ BEGIN
 
   v_comm_amt := round(v_comm_amt, 2);
   
-  -- 4. Dividend calculation
-  IF v_group.auction_scheme = 'DIVIDEND' THEN
-    v_net_div_pool := v_discount - v_comm_amt;
-    IF v_net_div_pool < 0 THEN v_net_div_pool := 0; END IF;
-    v_per_member_div := round(v_net_div_pool / v_group.num_members, 2);
-  ELSE 
-    -- Accumulation groups don't pay immediate dividends
-    v_net_div_pool := 0;
-    v_per_member_div := 0;
-  END IF;
+  -- 4. Dividend calculation (Always calculate pool and per-member share for auditing)
+  v_net_div_pool := v_discount - v_comm_amt;
+  IF v_net_div_pool < 0 THEN v_net_div_pool := 0; END IF;
+  v_per_member_div := round(v_net_div_pool / v_group.num_members, 2);
 
   RETURN json_build_object(
     'chit_value',           v_group.chit_value,
@@ -76,7 +70,7 @@ BEGIN
     'commission_recipient', v_eff_recipient,
     'net_dividend',         v_net_div_pool,
     'per_member_div',       v_per_member_div,
-    'each_pays',            v_group.monthly_contribution - v_per_member_div,
+    'each_pays',            CASE WHEN v_group.auction_scheme = 'DIVIDEND' THEN (v_group.monthly_contribution - v_per_member_div) ELSE v_group.monthly_contribution END,
     'net_payout',           v_raw_payout - v_comm_amt, -- Payout is net of commission
     'raw_payout',           v_raw_payout,
     'auction_scheme',       v_group.auction_scheme

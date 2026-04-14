@@ -10,7 +10,7 @@ import { PostgrestQueryBuilder } from '@supabase/postgrest-js'
  * For Superadmins, if 'all' is passed, the filter is omitted initially 
  * (though Row Level Security still applies if not bypassed).
  * 
- * @param query - The Supabase query object (e.g. supabase.from('groups').select('*'))
+ * @param query - The Supabase query object (e.g. supabase.from('groups').select('id, name'))
  * @param firmId - The ID of the firm to filter by, or 'all' to fetch everything.
  */
 export function withFirmScope<T extends any>(query: T, firmId: string | 'all' | null | undefined): T {
@@ -27,7 +27,7 @@ export function withFirmScope<T extends any>(query: T, firmId: string | 'all' | 
  * const targetId = role === 'superadmin' ? selectedFirmId : firm?.id
  * 
  * const { data } = await withFirmScope(
- *   supabase.from('groups').select('*'),
+ *   supabase.from('groups').select('id, name'),
  *   targetId
  * )
  */

@@ -52,7 +52,7 @@ function AdminDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: firmsData } = await supabase.from('firms').select('*').order('created_at', { ascending: false })
+    const { data: firmsData } = await supabase.from('firms').select('id, name, slug, city, phone, font, plan, plan_status, invoice_ref, trial_ends, created_at').order('created_at', { ascending: false })
     if (!firmsData) { setLoading(false); return }
 
     const enriched = await Promise.all(firmsData.map(async (f: Firm) => {
@@ -87,7 +87,7 @@ function AdminDashboard() {
     setRevStats({ setup, amc, hosting: 85200, profit: amc - 85200 })
 
     // Fetch Global Activity
-    const { data: act } = await supabase.from('admin_activity').select('*').order('created_at', { ascending: false }).limit(20)
+    const { data: act } = await supabase.from('admin_activity').select('id, event_type, details, created_at').order('created_at', { ascending: false }).limit(20)
     setActivities(act || [])
 
     setLoading(false)
@@ -194,7 +194,7 @@ function AdminDashboard() {
       role: inviteRole,
       invited_by: user?.id,
       status: 'pending'
-    }).select().single()
+    }).select('id').single()
 
     setInviteSaving(false)
     if (error) { show(error.message, 'error'); return }

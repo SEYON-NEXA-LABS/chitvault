@@ -51,7 +51,7 @@ export default function GroupSettingsPage() {
   useEffect(() => {
     async function load() {
       if (!firm) return
-      const { data } = await supabase.from('groups').select('*').eq('id', groupId).eq('firm_id', firm.id).single()
+      const { data } = await supabase.from('groups').select('id, firm_id, name, chit_value, min_bid_pct, max_bid_pct, discount_cap_pct, commission_type, commission_value, commission_recipient, dividend_rule, auction_scheme').eq('id', groupId).eq('firm_id', firm.id).single()
       if (!data) { router.push('/groups'); return }
       setGroup(data)
       setRules({

@@ -62,19 +62,31 @@ function LoginForm() {
 
   const handleRedirect = useCallback(async (user: { id: string }) => {
     try {
+      // 1. Refresh router to ensure middleware and server components see the new session
       router.refresh()
+      
+      // 2. Resolve target profile
       const { data: profile } = await supabase
-        .from('profiles').select('firm_id, role').eq('id', user.id).single()
+        .from('profiles')
+        .select('firm_id, role')
+        .eq('id', user.id)
+        .single()
+
+      const nextPath = searchParams.get('next')
 
       if (!profile) {
-        router.push('/onboarding')
+        window.location.replace('/onboarding')
       } else if (profile.role === 'superadmin') {
-        router.push(searchParams.get('next') || '/admin')
+        // 3. User window.location.replace for the final jump to internal pages.
+        // This clears the address bar of login params (like ?reason=idle) and ensures 
+        // the browser state is fully initialized for the dashboard.
+        window.location.replace(nextPath || '/admin')
       } else {
-        router.push(searchParams.get('next') || '/dashboard')
+        window.location.replace(nextPath || '/dashboard')
       }
     } catch (err) {
-      window.location.href = searchParams.get('next') || '/dashboard'
+      // Fallback to hard redirect if anything fails
+      window.location.replace(searchParams.get('next') || '/dashboard')
     }
   }, [supabase, router, searchParams])
 
@@ -119,7 +131,7 @@ function LoginForm() {
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-10 translate-x-[-8px]">
               <Image src="/icons/icon-512.png" alt="Logo" width={96} height={96} className="object-contain transition-transform hover:scale-105 duration-700" />
-              <span className="text-6xl font-black text-white uppercase tracking-tighter">ChitVault</span>
+              <span className="text-6xl font-black text-white uppercase tracking-tighter font-brand">ChitVault</span>
             </div>
 
             <div className="max-w-md">
@@ -135,8 +147,8 @@ function LoginForm() {
 
           <div className="relative z-10 mt-auto pt-8 border-t border-white/10 flex items-center justify-between text-[var(--text2)] font-bold uppercase tracking-widest text-[9px] opacity-30">
             <div className="flex flex-col gap-1">
-              <span>{APP_DEVELOPER} &copy; 2026</span>
-              <span className="text-[var(--accent)]">V{APP_VERSION} &bull; {APP_COMMIT_ID}</span>
+              <span className="font-brand">{APP_DEVELOPER} &copy; 2026</span>
+              <span className="text-[var(--accent)] font-medium">V{APP_VERSION} &bull; {APP_COMMIT_ID}</span>
             </div>
             <div className="flex gap-6">
               <span className="text-white/50">SECURE AUDIT ACTIVE</span>
@@ -316,7 +328,7 @@ function LoginForm() {
           </div>
 
           <div className="lg:hidden mt-auto pt-10 text-center text-white/30 text-[9px] font-black uppercase tracking-widest">
-            {APP_DEVELOPER} &copy; 2026 &bull; V{APP_VERSION} ({APP_COMMIT_ID})
+            <span className="font-brand">{APP_DEVELOPER}</span> &copy; 2026 &bull; V{APP_VERSION} ({APP_COMMIT_ID})
           </div>
 
         </div>

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
-type ThemeMode = 'light' | 'dark' | 'system'
+type ThemeMode = 'light' | 'dark' | 'system' | 'mono'
 
 interface ThemeContextType {
   theme: ThemeMode
@@ -36,7 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     // Sync "active" theme for flickering prevention script
     const supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const active = t === 'system' ? (supportDark ? 'dark' : 'light') : t
+    const active = t === 'system' ? (supportDark ? 'dark' : 'light') : (t === 'mono' ? 'light' : t)
     document.documentElement.setAttribute('data-active-theme', active)
   }
 
@@ -58,7 +58,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleTheme = () => {
-    const modes: ThemeMode[] = ['light', 'dark', 'system']
+    const modes: ThemeMode[] = ['light', 'dark', 'system', 'mono']
     const next = modes[(modes.indexOf(theme) + 1) % modes.length]
     setTheme(next)
   }

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Mail, Lock, User, MapPin, Loader2, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Building2, Mail, Lock, User, MapPin, Loader2, CheckCircle2, AlertCircle, ArrowLeft, Palette, Type } from 'lucide-react'
 import { onboardFirmAction } from '@/app/actions/onboard'
+import { AVAILABLE_FONTS, COLOR_PROFILES } from '@/lib/branding/context'
 
 export default function SuperadminOnboardPage() {
   const router = useRouter()
@@ -17,7 +18,9 @@ export default function SuperadminOnboardPage() {
     city: '',
     ownerEmail: '',
     ownerName: '',
-    password: ''
+    password: '',
+    font: 'Noto Sans',
+    color_profile: 'indigo'
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +34,9 @@ export default function SuperadminOnboardPage() {
       city: form.city,
       ownerEmail: form.ownerEmail,
       ownerName: form.ownerName,
-      initialPassword: form.password || undefined
+      initialPassword: form.password || undefined,
+      font: form.font,
+      color_profile: form.color_profile
     })
 
     if (result.success) {
@@ -187,6 +192,76 @@ export default function SuperadminOnboardPage() {
                       value={form.password}
                       onChange={e => setForm({...form, password: e.target.value})}
                     />
+                 </div>
+              </div>
+           </div>
+
+           {/* Section 3: Platform Aesthetics */}
+           <div className="md:col-span-2 space-y-8 pt-8 border-t border-[var(--border)]">
+              <div className="flex items-center gap-3 text-xs font-bold opacity-30 uppercase tracking-widest">
+                 <Palette size={14} /> Platform Aesthetics
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                 {/* Color Profile Selector */}
+                 <div className="space-y-4">
+                    <label className="text-sm font-bold opacity-60 flex items-center gap-2">
+                       <Palette size={14} className="text-indigo-600" /> Primary Brand Accent
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                       {COLOR_PROFILES.map(cp => (
+                          <button
+                            key={cp.id}
+                            type="button"
+                            onClick={() => setForm({...form, color_profile: cp.id})}
+                            className={`group relative p-4 rounded-2xl border-2 transition-all text-left overflow-hidden ${
+                              form.color_profile === cp.id 
+                              ? 'border-indigo-600 bg-indigo-50/50' 
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:border-indigo-200'
+                            }`}
+                          >
+                             <div 
+                               className="w-6 h-6 rounded-full mb-3 shadow-inner ring-2 ring-white" 
+                               style={{ backgroundColor: cp.color }} 
+                             />
+                             <div className="text-[10px] font-black uppercase tracking-tighter leading-tight">{cp.name}</div>
+                             {form.color_profile === cp.id && (
+                                <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                             )}
+                          </button>
+                       ))}
+                    </div>
+                 </div>
+
+                 {/* Font Selector */}
+                 <div className="space-y-4">
+                    <label className="text-sm font-bold opacity-60 flex items-center gap-2">
+                       <Type size={14} className="text-indigo-600" /> Corporate Typography
+                    </label>
+                    <div className="space-y-2">
+                       {AVAILABLE_FONTS.map(f => (
+                          <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => setForm({...form, font: f.value})}
+                            className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center justify-between ${
+                              form.font === f.value 
+                              ? 'border-indigo-600 bg-indigo-50/50' 
+                              : 'border-[var(--border)] bg-[var(--surface)] hover:border-indigo-200'
+                            }`}
+                          >
+                             <div className="space-y-0.5">
+                                <div className="text-sm font-bold" style={{ fontFamily: f.value }}>{f.label.split('(')[0]}</div>
+                                <div className="text-[10px] opacity-40 uppercase font-bold tracking-widest">{f.value}</div>
+                             </div>
+                             {form.font === f.value && (
+                                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                                   <CheckCircle2 size={16} />
+                                </div>
+                             )}
+                          </button>
+                       ))}
+                    </div>
                  </div>
               </div>
            </div>

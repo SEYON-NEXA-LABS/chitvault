@@ -3,21 +3,22 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 const IDLE_TIMEOUT = 30 * 60 * 1000 // 30 minutes
 
 export function IdleTimeout() {
   const supabase = createClient()
   const router = useRouter()
+  const pathname = usePathname()
   const { profile } = useFirm()
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const logout = useCallback(async () => {
     console.log('Idle timeout reached. Logging out...')
     await supabase.auth.signOut()
-    router.push('/login?reason=idle')
-  }, [supabase.auth, router])
+    router.push(`/login?reason=idle&next=${encodeURIComponent(pathname)}`)
+  }, [supabase.auth, router, pathname])
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)

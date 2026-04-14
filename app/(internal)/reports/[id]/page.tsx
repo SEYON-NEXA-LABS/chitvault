@@ -222,7 +222,22 @@ function ReportContent() {
                 if (confirm(`Full CSV Export will fetch all ${total.toLocaleString()} records.\n\nProceed?`)) {
                   setLoading(true)
                   try {
-                    const q = withFirmScope(supabase.from(id === 'activity' ? 'activity_logs' : id === 'reconciliation' ? 'denominations' : id === 'pnl' ? 'foreman_commissions' : (['today_collection', 'cashflow'].includes(id) ? 'payments' : 'auctions')).select('*'), targetId)
+                    let exportCols = '*'
+                    let table = ''
+                    
+                    if (id === 'activity') {
+                      table = 'activity_logs'; exportCols = 'id, user_id, action, entity_type, entity_id, metadata, created_at'
+                    } else if (id === 'reconciliation') {
+                      table = 'denominations'; exportCols = 'id, entry_date, total, notes, created_at'
+                    } else if (id === 'pnl') {
+                      table = 'foreman_commissions'; exportCols = 'id, group_id, month, commission_amt, status, created_at'
+                    } else if (['today_collection', 'cashflow'].includes(id)) {
+                      table = 'payments'; exportCols = 'id, member_id, group_id, amount, mode, payment_date, created_at'
+                    } else {
+                      table = 'auctions'; exportCols = 'id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status, created_at'
+                    }
+
+                    const q = withFirmScope(supabase.from(table).select(exportCols), targetId)
                     const { data: fullData } = await q
                     if (fullData) downloadCSV(fullData, `chitvault-report-${id}-${getToday()}.csv`)
                   } finally {
