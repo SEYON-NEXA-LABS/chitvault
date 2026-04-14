@@ -76,7 +76,7 @@ export default function GroupSettingsPage() {
     // Instead of local JS math, use the "What-If" RPC for perfect accuracy
     const { data, error } = await supabase.rpc('calculate_auction', {
       p_group_id:   groupId,
-      p_auction_discount: bid,
+      p_bid_amount: bid,
       p_comm_type:  rules.commission_type,
       p_comm_val:   rules.commission_value,
       p_comm_recipient: rules.commission_recipient
@@ -269,7 +269,9 @@ export default function GroupSettingsPage() {
       <Card title="🧪 Live Simulator" subtitle="Real-time preview of how these rules apply">
         <div className="p-5 space-y-5">
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest opacity-50 block mb-2">Simulated Bid Amount (₹)</label>
+            <label className="text-xs font-bold uppercase tracking-widest opacity-50 block mb-2">
+              Simulated {group.auction_scheme === 'DIVIDEND' ? 'Winning Bid' : 'Discount Bid'} (₹)
+            </label>
             <input type="number" className="w-full px-4 py-3 rounded-2xl border text-xl font-black outline-none mb-3"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}
               value={testBid} onChange={e => setTestBid(e.target.value)} />
