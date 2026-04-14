@@ -1054,3 +1054,361 @@ grant execute on function public.get_firm_dashboard_stats(uuid) to authenticated
 grant execute on function public.get_firm_collection_trends(uuid) to authenticated;
 grant execute on function public.get_firm_group_summaries(uuid) to authenticated;
 grant execute on function public.get_firm_winner_insights(uuid) to authenticated;
+-- Migration: 013_fix_auction_payout_logic.sql
+-- Goal: Update calculate_auction to handle different auction schemes correctly and persist net_payout.
+
+DROP FUNCTION IF EXISTS public.calculate_auction(bigint, numeric, text, numeric, text);
+
+CREATE OR REPLACE FUNCTION public.calculate_auction(
+  p_group_id bigint,
+  p_bid_amount numeric, -- The amount entered by the user (Winning Bid or Discount Bid)
+  p_comm_type text DEFAULT NULL,
+  p_comm_val numeric DEFAULT NULL,
+  p_comm_recipient text DEFAULT NULL
+)
+RETURNS json AS $$
+DECLARE
+  v_group record;
+  v_comm_amt numeric;
+  v_raw_payout numeric;
+  v_discount numeric;
+  v_eff_type text;
+  v_eff_val numeric;
+  v_eff_recipient text;
+  v_net_div_pool numeric;
+  v_per_member_div numeric;
+BEGIN
+  SELECT * INTO v_group FROM groups WHERE id = p_group_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Group not found'; END IF;
+
+  -- 1. Determine Payout & Discount based on scheme
+  IF v_group.auction_scheme = 'DIVIDEND' THEN
+    -- Dividend (Normal): User enters the Winning Bid (what the member takes)
+    v_raw_payout := p_bid_amount;
+    v_discount   := v_group.chit_value - p_bid_amount;
+  ELSE 
+    -- Accumulation: User enters the Discount Bid (what stays with the firm/group)
+    v_raw_payout := v_group.chit_value - p_bid_amount;
+    v_discount   := p_bid_amount;
+  END IF;
+
+  -- 2. Resolve Commission settings (overrides or group defaults)
+  v_eff_type      := COALESCE(p_comm_type, v_group.commission_type);
+  v_eff_val       := COALESCE(p_comm_val, v_group.commission_value);
+  v_eff_recipient := COALESCE(p_comm_recipient, v_group.commission_recipient);
+
+  -- 3. Calculate Commission
+  IF v_eff_type = 'percent_of_chit' THEN
+    v_comm_amt := (v_group.chit_value * v_eff_val) / 100;
+  ELSIF v_eff_type = 'percent_of_discount' THEN
+    v_comm_amt := (v_discount * v_eff_val) / 100;
+  ELSIF v_eff_type = 'percent_of_payout' THEN
+    v_comm_amt := (v_raw_payout * v_eff_val) / 100;
+  ELSIF v_eff_type = 'fixed_amount' THEN
+    v_comm_amt := v_eff_val;
+  ELSE
+    v_comm_amt := (v_group.chit_value * 5) / 100; 
+  END IF;
+
+  v_comm_amt := round(v_comm_amt, 2);
+  
+  -- 4. Dividend calculation
+  IF v_group.auction_scheme = 'DIVIDEND' THEN
+    v_net_div_pool := v_discount - v_comm_amt;
+    IF v_net_div_pool < 0 THEN v_net_div_pool := 0; END IF;
+    v_per_member_div := round(v_net_div_pool / v_group.num_members, 2);
+  ELSE 
+    -- Accumulation groups don't pay immediate dividends
+    v_net_div_pool := 0;
+    v_per_member_div := 0;
+  END IF;
+
+  RETURN json_build_object(
+    'chit_value',           v_group.chit_value,
+    'auction_discount',     v_discount,
+    'commission_type',      v_eff_type,
+    'commission_rate',      v_eff_val,
+    'commission_amt',       v_comm_amt,
+    'commission_recipient', v_eff_recipient,
+    'net_dividend',         v_net_div_pool,
+    'per_member_div',       v_per_member_div,
+    'each_pays',            v_group.monthly_contribution - v_per_member_div,
+    'net_payout',           v_raw_payout - v_comm_amt, -- Payout is net of commission
+    'raw_payout',           v_raw_payout,
+    'auction_scheme',       v_group.auction_scheme
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update record_auction_with_commission to use the new calculator results correctly
+CREATE OR REPLACE FUNCTION public.record_auction_with_commission(
+  p_group_id bigint,
+  p_month int,
+  p_auction_date date,
+  p_winner_id bigint,
+  p_bid_amount numeric, -- Entered amount
+  p_foreman_member_id bigint,
+  p_notes text,
+  p_status text,
+  p_auction_id bigint DEFAULT NULL
+)
+RETURNS json AS $$
+DECLARE
+  v_firm_id uuid;
+  v_auction_id bigint;
+  v_calc json;
+  g record;
+BEGIN
+  SELECT * INTO g FROM groups WHERE id = p_group_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Group not found'; END IF;
+  
+  v_firm_id := g.firm_id;
+  
+  -- Calculate using the corrected logic
+  SELECT calculate_auction(p_group_id, p_bid_amount) INTO v_calc;
+
+  IF p_auction_id IS NOT NULL THEN
+    v_auction_id := p_auction_id;
+    UPDATE auctions SET
+      auction_date = p_auction_date,
+      winner_id = p_winner_id,
+      auction_discount = (v_calc->>'auction_discount')::numeric,
+      total_pot = (v_calc->>'chit_value')::numeric,
+      dividend = (v_calc->>'per_member_div')::numeric,
+      net_payout = (v_calc->>'net_payout')::numeric,
+      status = p_status,
+      notes = p_notes,
+      updated_at = now()
+    WHERE id = v_auction_id;
+    
+    DELETE FROM foreman_commissions WHERE auction_id = v_auction_id;
+  ELSE
+    INSERT INTO auctions (firm_id, group_id, month, auction_date, winner_id, auction_discount, total_pot, dividend, net_payout, status, notes)
+    VALUES (
+      v_firm_id, p_group_id, p_month, p_auction_date, p_winner_id,
+      (v_calc->>'auction_discount')::numeric, (v_calc->>'chit_value')::numeric, 
+      (v_calc->>'per_member_div')::numeric, (v_calc->>'net_payout')::numeric, p_status, p_notes
+    ) RETURNING id INTO v_auction_id;
+  END IF;
+
+  INSERT INTO foreman_commissions (
+    firm_id, group_id, auction_id, month,
+    chit_value, auction_discount, discount,
+    commission_type, commission_rate, commission_amt,
+    net_dividend, per_member_div, paid_to, foreman_member_id, notes, status
+  ) VALUES (
+    v_firm_id, p_group_id, v_auction_id, p_month,
+    g.chit_value, (v_calc->>'auction_discount')::numeric, p_bid_amount,
+    (v_calc->>'commission_type')::text, (v_calc->>'commission_rate')::numeric, (v_calc->>'commission_amt')::numeric,
+    (v_calc->>'net_dividend')::numeric, (v_calc->>'per_member_div')::numeric, 
+    (v_calc->>'commission_recipient')::text, p_foreman_member_id, p_notes, p_status
+  );
+
+  -- Update accumulated surplus for ACCUMULATION groups
+  UPDATE groups g_upd
+  SET accumulated_surplus = (
+    SELECT COALESCE(SUM(a.auction_discount - c.commission_amt), 0)
+    FROM auctions a
+    JOIN foreman_commissions c ON c.auction_id = a.id
+    WHERE a.group_id = p_group_id 
+      AND a.status = 'confirmed' 
+      AND c.status = 'confirmed'
+  )
+  WHERE id = p_group_id AND g_upd.auction_scheme = 'ACCUMULATION';
+
+  RETURN json_build_object('auction_id', v_auction_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Migration: 014_fix_dividend_attribution.sql
+-- Goal: Fix the off-by-one error where dividends were applied to the same month as the auction.
+-- Dividends from Auction Month M must reduce the amount_due for Month M+1.
+
+CREATE OR REPLACE FUNCTION public.get_collection_workspace(
+  p_firm_id uuid,
+  p_search text DEFAULT '',
+  p_limit int DEFAULT 20,
+  p_offset int DEFAULT 0
+)
+RETURNS TABLE (
+  person_id bigint,
+  person_name text,
+  person_phone text,
+  person_address text,
+  total_balance numeric,
+  overdue_count int,
+  is_overdue boolean,
+  memberships jsonb,
+  total_count bigint
+) AS $$
+DECLARE
+  v_total_count bigint;
+BEGIN
+  -- 1. Get total count for pagination
+  SELECT COUNT(DISTINCT p.id) INTO v_total_count
+  FROM persons p
+  JOIN members m ON m.person_id = p.id
+  WHERE p.firm_id = p_firm_id
+    AND m.deleted_at IS NULL
+    AND (p.name ILIKE '%' || p_search || '%' OR p.phone ILIKE '%' || p_search || '%');
+
+  RETURN QUERY
+  WITH person_list AS (
+    -- Get paginated list of persons
+    SELECT p.id, p.name, p.phone, p.address
+    FROM persons p
+    JOIN members m ON m.person_id = p.id
+    WHERE p.firm_id = p_firm_id
+      AND m.deleted_at IS NULL
+      AND (p.name ILIKE '%' || p_search || '%' OR p.phone ILIKE '%' || p_search || '%')
+    GROUP BY p.id
+    ORDER BY p.name ASC
+    LIMIT p_limit OFFSET p_offset
+  ),
+  membership_financials AS (
+    -- Calculate dues for each membership of these persons
+    SELECT 
+      m.id as member_id,
+      m.person_id,
+      m.group_id,
+      g.name as group_name,
+      g.auction_scheme,
+      g.monthly_contribution,
+      -- Get latest auction month
+      COALESCE((SELECT MAX(month) FROM auctions WHERE group_id = m.group_id AND status = 'confirmed'), 0) as latest_month,
+      -- Total paid ever for this membership
+      COALESCE((SELECT SUM(amount) FROM payments WHERE member_id = m.id AND group_id = m.group_id AND deleted_at IS NULL), 0) as total_paid
+    FROM members m
+    JOIN groups g ON g.id = m.group_id
+    WHERE m.person_id IN (SELECT id FROM person_list)
+      AND m.deleted_at IS NULL
+  ),
+  detailed_dues AS (
+    -- Calculate specific months due
+    SELECT 
+      mf.member_id,
+      mf.person_id,
+      mf.group_id,
+      mf.group_name,
+      mf.total_paid,
+      mf.latest_month,
+      mf.monthly_contribution,
+      mf.auction_scheme,
+      (
+        SELECT jsonb_agg(d) FROM (
+          SELECT 
+            gs.m as month,
+            -- FIX: amount_due for month M is (Contribution - Dividend of Month M-1)
+            mf.monthly_contribution - COALESCE(
+              (SELECT a.per_member_div 
+               FROM foreman_commissions a 
+               WHERE a.group_id = mf.group_id AND a.month = gs.m - 1 AND a.status = 'confirmed'
+              ), 0
+            ) as amount_due,
+            (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE member_id = mf.member_id AND month = gs.m AND deleted_at IS NULL) as amount_paid,
+            (SELECT status FROM auctions WHERE group_id = mf.group_id AND month = gs.m) as auction_status
+          FROM generate_series(1, mf.latest_month + 1) gs(m)
+          WHERE gs.m <= (SELECT duration FROM groups WHERE id = mf.group_id)
+        ) d
+        WHERE d.amount_paid < (d.amount_due - 0.01)
+      ) as pending_months
+    FROM membership_financials mf
+  ),
+  aggregated_memberships AS (
+    -- Aggregate memberships back to persons
+    SELECT 
+      dd.person_id,
+      SUM(
+        COALESCE((SELECT SUM(amount_due - amount_paid) FROM jsonb_to_recordset(dd.pending_months) as x(month int, amount_due numeric, amount_paid numeric)), 0)
+      ) as total_person_balance,
+      MAX(
+        COALESCE((SELECT COUNT(*) FROM jsonb_to_recordset(dd.pending_months) as x(month int, status text) WHERE x.status = 'confirmed'), 0)::int
+      ) as overdue_months_count,
+      jsonb_agg(jsonb_build_object(
+        'member', (SELECT row_to_json(m) FROM members m WHERE m.id = dd.member_id),
+        'group', (SELECT row_to_json(g) FROM groups g WHERE g.id = dd.group_id),
+        'totalBalance', COALESCE((SELECT SUM(amount_due - amount_paid) FROM jsonb_to_recordset(dd.pending_months) as x(month int, amount_due numeric, amount_paid numeric)), 0),
+        'dues', dd.pending_months
+      )) as membership_data
+    FROM detailed_dues dd
+    GROUP BY dd.person_id
+  )
+  SELECT 
+    pl.id,
+    pl.name,
+    pl.phone,
+    pl.address,
+    COALESCE(am.total_person_balance, 0),
+    COALESCE(am.overdue_months_count, 0),
+    COALESCE(am.total_person_balance, 0) > 0.01,
+    COALESCE(am.membership_data, '[]'::jsonb),
+    v_total_count
+  FROM person_list pl
+  LEFT JOIN aggregated_memberships am ON am.person_id = pl.id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Migration: 009_recalculate_ledger_logic.sql
+-- Goal: Provide a way to retroactively update all auction records when group rules change.
+
+CREATE OR REPLACE FUNCTION public.recalculate_group_ledger(p_group_id bigint)
+RETURNS json AS $$
+DECLARE
+  r record;
+  v_calc json;
+  v_group record;
+  v_bid_to_use numeric;
+BEGIN
+  SELECT * INTO v_group FROM groups WHERE id = p_group_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Group not found'; END IF;
+
+  -- 1. Loop through all confirmed auctions for this group
+  FOR r IN (
+    SELECT a.id, a.auction_discount, g.auction_scheme, g.chit_value 
+    FROM auctions a 
+    JOIN groups g ON g.id = a.group_id
+    WHERE a.group_id = p_group_id AND a.status = 'confirmed'
+  ) LOOP
+    -- Determine what the "Bid" was based on existing columns
+    IF r.auction_scheme = 'DIVIDEND' THEN
+      v_bid_to_use := r.chit_value - r.auction_discount;
+    ELSE
+      v_bid_to_use := r.auction_discount;
+    END IF;
+
+    -- Recalculate based on NEWEST group rules
+    v_calc := public.calculate_auction(p_group_id, v_bid_to_use);
+    
+    -- Update the auction's dividend/payout
+    UPDATE auctions SET
+      dividend   = (v_calc->>'per_member_div')::numeric,
+      net_payout = (v_calc->>'net_payout')::numeric,
+      auction_discount = (v_calc->>'auction_discount')::numeric
+    WHERE id = r.id;
+
+    -- Update the linked commission record
+    UPDATE foreman_commissions SET
+      commission_amt  = (v_calc->>'commission_amt')::numeric,
+      commission_type = (v_calc->>'commission_type')::text,
+      paid_to        = (v_calc->>'commission_recipient')::text,
+      commission_rate = (v_calc->>'commission_rate')::numeric,
+      net_dividend    = (v_calc->>'net_dividend')::numeric,
+      per_member_div  = (v_calc->>'per_member_div')::numeric,
+      auction_discount = (v_calc->>'auction_discount')::numeric,
+      discount       = v_bid_to_use
+    WHERE auction_id = r.id;
+  END LOOP;
+
+  -- 2. Sync the accumulated_surplus for the group
+  UPDATE groups g
+  SET accumulated_surplus = (
+    SELECT COALESCE(SUM(a.auction_discount - c.commission_amt), 0)
+    FROM auctions a
+    JOIN foreman_commissions c ON c.auction_id = a.id
+    WHERE a.group_id = p_group_id 
+      AND a.status = 'confirmed' 
+      AND c.status = 'confirmed'
+  )
+  WHERE id = p_group_id AND g.auction_scheme = 'ACCUMULATION';
+
+  RETURN json_build_object('success', true, 'group_id', p_group_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

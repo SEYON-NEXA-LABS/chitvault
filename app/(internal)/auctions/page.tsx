@@ -193,7 +193,7 @@ export default function AuctionsPage() {
     if (!bid || !form.group_id || isNaN(+bid)) return
     const { data, error } = await supabase.rpc('calculate_auction', {
       p_group_id:   +form.group_id,
-      p_auction_discount: +bid
+      p_bid_amount: +bid
     })
     if (error) { setCalcError(error.message); return }
     setCalc(data)
@@ -212,7 +212,7 @@ export default function AuctionsPage() {
       p_month:              +form.month,
       p_auction_date:       form.auction_date,
       p_winner_id:          +form.winner_id,
-      p_auction_discount:   +form.auction_discount,
+      p_bid_amount:         +form.auction_discount,
       p_foreman_member_id:  form.foreman_member_id ? +form.foreman_member_id : null,
       p_notes:              form.notes || '',
       p_status:             status,
@@ -249,7 +249,7 @@ export default function AuctionsPage() {
         month: String(a.month),
         auction_date: a.auction_date || '',
         winner_id: String(a.winner_id),
-        auction_discount: String(a.auction_discount),
+        auction_discount: String(commissions.find(c => c.auction_id === a.id)?.discount || a.auction_discount),
         foreman_member_id: commissions.find(c => c.auction_id === a.id)?.foreman_member_id?.toString() || '',
         notes: (a as any).notes || ''
       })
@@ -257,7 +257,7 @@ export default function AuctionsPage() {
       // Calculate auction result for edit mode
       const { data: cData } = await supabase.rpc('calculate_auction', {
         p_group_id: a.group_id,
-        p_auction_discount: a.auction_discount
+        p_bid_amount: commissions.find(c => c.auction_id === a.id)?.discount || a.auction_discount
       })
       setCalc(cData)
       setAddOpen(true)
@@ -326,7 +326,7 @@ export default function AuctionsPage() {
             <Th>{t('group')}</Th>
             <Th>{t('auction_month')}</Th>
             <Th>{t('winner')}</Th>
-            <Th right>{t('auction_discount')}</Th>
+            <Th right>{t('bid_amount')}</Th>
             <Th right>{t('net_payout')}</Th>
             <Th>{t('action')}</Th>
           </tr></thead>
@@ -390,7 +390,9 @@ export default function AuctionsPage() {
                 </div>
               )}
 
-              <Field label="Auction Discount (₹)" className="col-span-2"><input className={inputClass} type="number" value={form.auction_discount} onChange={e => onBidChange(e.target.value)} /></Field>
+              <Field label={`${groupRules?.auction_scheme === 'DIVIDEND' ? 'Winning Bid' : 'Discount Bid'} (₹)`} className="col-span-2">
+                <input className={inputClass} type="number" value={form.auction_discount} onChange={e => onBidChange(e.target.value)} />
+              </Field>
             </>
           )}
         </div>
