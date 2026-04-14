@@ -1227,7 +1227,7 @@ export default function GroupLedgerPage() {
 
       <Modal open={aucFormOpen} onClose={() => setAucFormOpen(false)} title="Record Group Auction" size="lg">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Auction Month" disabled>
+          <Field label="Auction Month">
             <input className={inputClass} style={inputStyle} value={`Month ${aucForm.month}`} disabled />
           </Field>
           <Field label="Auction Date">

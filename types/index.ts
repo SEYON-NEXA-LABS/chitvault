@@ -211,7 +211,7 @@ export interface Settlement {
   total_amount:         number
   total_months:         number
   average_per_month:    number
-  month_14_balance:     number
+  final_payout_amount:  number
   entries:              { date: string; amount: number }[]
   notes:                string | null
   created_at:           string

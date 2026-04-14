@@ -127,7 +127,7 @@ function SettlementPage() {
 
     // Load Settlement History (Recent 5)
     const { data: hist } = await withFirmScope(
-       supabase.from('settlements').select('id, total_amount, month_14_balance, created_at, members(id, persons(name), groups(name))'),
+       supabase.from('settlements').select('id, total_amount, final_payout_amount, created_at, members(id, persons(name), groups(name))'),
        targetId
     ).order('created_at', { ascending: false }).limit(5)
     
@@ -156,7 +156,7 @@ function SettlementPage() {
         total_amount: totalAmount,
         total_months: targetMonths,
         average_per_month: averagePerMonth,
-        month_14_balance: settlementTotal,
+        final_payout_amount: settlementTotal,
         entries: entries,
         created_by: user?.id
       })
@@ -378,7 +378,7 @@ function SettlementPage() {
                             </div>
                          </Td>
                          <Td right className="font-bold">{fmt(s.total_amount)}</Td>
-                         <Td right><Badge variant="accent" className="text-[10px]">{fmt(s.month_14_balance)}</Badge></Td>
+                         <Td right><Badge variant="accent" className="text-[10px]">{fmt(s.final_payout_amount)}</Badge></Td>
                          <Td className="text-center">
                             {can('deleteSettlement') && (
                                <button onClick={() => deleteSettlement(s.id)} className="p-1 opacity-50 hover:opacity-100 hover:text-danger-500">

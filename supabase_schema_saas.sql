@@ -298,7 +298,7 @@ create table if not exists settlements (
   total_amount      numeric(12,2) not null default 0,
   total_months      int not null default 1,
   average_per_month numeric(12,2) not null default 0,
-  month_14_balance  numeric(12,2) not null default 0,
+  final_payout_amount numeric(12,2) not null default 0,
   entries           jsonb not null default '[]'::jsonb,
   notes             text,
   created_at        timestamptz not null default now(),
