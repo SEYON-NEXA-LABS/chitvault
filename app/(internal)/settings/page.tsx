@@ -89,7 +89,7 @@ export default function SettingsPage() {
 
   function handleFontChange(f: string) {
     setFont(f)
-    applyBranding(f, userTheme)
+    applyBranding(f, theme)
   }
 
   async function saveBranding() {

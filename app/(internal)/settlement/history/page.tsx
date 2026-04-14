@@ -39,7 +39,7 @@ function SettlementHistoryPage() {
 
     const [h, g] = await Promise.all([
       withFirmScope(
-        supabase.from('settlements').select('id, created_at, group_id, total_amount, average_per_month, month_14_balance, members(id, persons(name, phone), groups(id, name, duration))'),
+        supabase.from('settlements').select('id, created_at, group_id, total_amount, average_per_month, final_payout_amount, members(id, persons(name, phone), groups(id, name, duration))'),
         firm.id
       ).is('deleted_at', null).order('created_at', { ascending: false }),
       withFirmScope(
@@ -74,7 +74,7 @@ function SettlementHistoryPage() {
   }, [history, searchTerm, selectedGroupId, dateRange])
 
   const stats = useMemo(() => {
-    const totalVolume = filtered.reduce((sum, s) => sum + (s.month_14_balance || 0), 0)
+    const totalVolume = filtered.reduce((sum, s) => sum + (s.final_payout_amount || 0), 0)
     const count = filtered.length
     return { totalVolume, count }
   }, [filtered])
@@ -231,7 +231,7 @@ function SettlementHistoryPage() {
                      <Td right className="text-xs">{fmt(s.average_per_month)}</Td>
                      <Td right>
                         <Badge variant="success" className="font-mono font-bold text-sm border-2 border-success-500/20">
-                           {fmt(s.month_14_balance)}
+                           {fmt(s.final_payout_amount)}
                         </Badge>
                      </Td>
                      <Td className="text-center">
