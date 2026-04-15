@@ -15,6 +15,28 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_COMMIT_ID: commitId,
   },
+
+  // Prevent stale HTML cache after deployments (Hostinger/CDN fix)
+  async headers() {
+    return [
+      {
+        // HTML pages — always revalidate with server
+        source: '/((?!_next/static|_next/image|icons|favicon.ico).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Expires', value: '0' },
+        ],
+      },
+      {
+        // Hashed static assets (JS/CSS) — immutable long-term cache (safe because filenames change on rebuild)
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig
