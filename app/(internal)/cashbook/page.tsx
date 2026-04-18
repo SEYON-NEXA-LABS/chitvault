@@ -68,7 +68,7 @@ export default function CashbookPage() {
           p_start_date: fromDate,
           p_end_date: toDate
         }),
-        withFirmScope(supabase.from('denominations').select('*', { count: 'exact' }), targetId)
+        withFirmScope(supabase.from('denominations').select('id, entry_date, note_2000, note_500, note_200, note_100, note_50, note_20, note_10, coin_5, coin_2, coin_1, total, notes, created_at, collected_by', { count: 'exact' }), targetId)
           .is('deleted_at', null)
           .gte('entry_date', fromDate)
           .lte('entry_date', toDate)
