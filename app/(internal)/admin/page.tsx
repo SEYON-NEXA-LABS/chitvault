@@ -57,8 +57,8 @@ function AdminDashboard() {
 
     const enriched = await Promise.all(firmsData.map(async (f: Firm) => {
       const [{ count: gCount }, { count: mCount }] = await Promise.all([
-        supabase.from('groups').select('*', { count: 'exact', head: true }).eq('firm_id', f.id),
-        supabase.from('members').select('*', { count: 'exact', head: true }).eq('firm_id', f.id),
+        supabase.from('groups').select('id', { count: 'exact', head: true }).eq('firm_id', f.id),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('firm_id', f.id),
       ])
       return { ...f, groupCount: gCount || 0, memberCount: mCount || 0, ownerEmail: '' }
     }))

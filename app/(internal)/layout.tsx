@@ -12,7 +12,8 @@ import {
   LayoutDashboard, Users, UsersRound, Gavel, Crown,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
-  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass
+  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass,
+  ShieldCheck
 } from 'lucide-react'
 import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
@@ -104,8 +105,9 @@ const NAV: NavItem[] = [
     icon: Crown,
     superAdminOnly: true,
     items: [
-      { href: '/superadmin', label: 'Overview', icon: Crown },
+      { href: '/superadmin/dashboard', label: 'Overview', icon: Crown },
       { href: '/superadmin/onboard', label: 'Onboard Firm', icon: Building2 },
+      { href: '/superadmin/integrity', label: 'Database Integrity', icon: ShieldCheck },
     ]
   }
 ]
@@ -143,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (firm?.name) {
       document.title = `${firm.name} (${firm.slug}) | ${APP_BRAND}`
     } else {
-      document.title = (switchedFirmId === 'all') ? `${APP_BRAND} Control Center` : `${APP_BRAND} ${APP_NAME}`
+      document.title = (switchedFirmId === 'all') ? `${APP_NAME} Control Center` : `${APP_NAME} ${APP_BRAND}`
     }
   }, [firm?.id, supabase, role, switchedFirmId])
 
@@ -215,12 +217,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {group.items?.map((item, j) => {
                       if (item.ownerOnly && !isOwner) return null
                       const SIcon = item.icon
-                      const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+                      const effectiveHref = item.href === '/dashboard' && role === 'superadmin' ? '/superadmin/dashboard' : item.href
+                      const active = pathname === effectiveHref || (effectiveHref !== '/dashboard' && pathname.startsWith(effectiveHref))
 
                       return (
                         <Link
                           key={j}
-                          href={item.href}
+                          href={effectiveHref}
                           className={cn(
                             'flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all ml-2',
                             active
@@ -270,7 +273,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </p>
                   <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5">
                     <p className="text-[9px] opacity-60 uppercase font-black">{role}</p>
-                    <p className="text-[9px] opacity-30 font-mono">v{APP_VERSION}</p>
+                    <p className="text-[9px] opacity-30 font-mono" suppressHydrationWarning>v{APP_VERSION}</p>
                   </div>
                 </div>
               </div>

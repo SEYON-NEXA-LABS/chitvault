@@ -80,7 +80,7 @@ function LoginForm() {
         // 3. User window.location.replace for the final jump to internal pages.
         // This clears the address bar of login params (like ?reason=idle) and ensures 
         // the browser state is fully initialized for the dashboard.
-        window.location.replace(nextPath || '/admin')
+        window.location.replace(nextPath || '/superadmin/dashboard')
       } else {
         window.location.replace(nextPath || '/dashboard')
       }

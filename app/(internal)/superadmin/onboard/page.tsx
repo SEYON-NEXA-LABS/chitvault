@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Mail, Lock, User, MapPin, Loader2, CheckCircle2, AlertCircle, ArrowLeft, Palette, Type } from 'lucide-react'
+import { Building2, Mail, Lock, User, MapPin, Loader2, CheckCircle2, AlertCircle, ArrowLeft, Palette, Type, Eye, EyeOff } from 'lucide-react'
 import { onboardFirmAction } from '@/app/actions/onboard'
 import { AVAILABLE_FONTS, COLOR_PROFILES } from '@/lib/branding/context'
 
@@ -11,6 +11,7 @@ export default function SuperadminOnboardPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<any>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -102,7 +103,7 @@ export default function SuperadminOnboardPage() {
               <p className="opacity-50 text-sm">Industrial Deployment & Managed Onboarding</p>
            </div>
            <button 
-             onClick={() => router.push('/superadmin')}
+             onClick={() => router.push('/superadmin/dashboard')}
              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-xs font-bold hover:bg-[var(--surface2)] transition-all w-fit shadow-sm"
            >
              <ArrowLeft size={14} /> Back to Control Plane
@@ -182,17 +183,24 @@ export default function SuperadminOnboardPage() {
                     />
                  </div>
 
-                 <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-                    <input 
-                      required
-                      type="password"
-                      placeholder="Initial Access Password"
-                      className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all placeholder:opacity-40"
-                      value={form.password}
-                      onChange={e => setForm({...form, password: e.target.value})}
-                    />
-                 </div>
+                  <div className="relative group">
+                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 group-focus-within:opacity-100 transition-opacity" size={18} />
+                     <input 
+                       required
+                       type={showPassword ? "text" : "password"}
+                       placeholder="Initial Access Password"
+                       className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-12 focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all placeholder:opacity-40"
+                       value={form.password}
+                       onChange={e => setForm({...form, password: e.target.value})}
+                     />
+                     <button
+                       type="button"
+                       onClick={() => setShowPassword(!showPassword)}
+                       className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text)] opacity-30 hover:opacity-100 transition-opacity"
+                     >
+                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                     </button>
+                  </div>
               </div>
            </div>
 
