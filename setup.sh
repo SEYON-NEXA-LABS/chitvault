@@ -1,10 +1,9 @@
-#!/bin/bash
-# SEYON ChitVault — Setup Script
+# ChitVault — Setup Script
 # Run this once after extracting the zip
 
 set -e
 
-echo "🚀 Setting up SEYON ChitVault..."
+echo "🚀 Setting up ChitVault..."
 
 # 1. Install dependencies
 echo "📦 Installing dependencies..."
@@ -24,7 +23,7 @@ fi
 if [ ! -d .git ]; then
   git init
   git add .
-  git commit -m "feat: initial SEYON ChitVault setup"
+  git commit -m "feat: initial ChitVault setup"
   echo "✅ Git repository initialised"
 fi
 

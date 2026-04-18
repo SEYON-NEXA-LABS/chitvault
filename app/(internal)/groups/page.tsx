@@ -46,6 +46,7 @@ export default function GroupsPage() {
     commission_type: 'percent_of_chit', commission_value: '5'
   })
   const [saving, setSaving] = useState(false)
+  const [totalGroupCount, setTotalGroupCount] = useState(0)
 
   const [groupSummaries, setGroupSummaries] = useState<any[]>([])
 
@@ -55,13 +56,15 @@ export default function GroupsPage() {
     if (!targetId) return
 
     try {
-      const [g, summaries] = await Promise.all([
+      const [g, summaries, totalG] = await Promise.all([
         withFirmScope(supabase.from('groups').select('id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, firms(name)').neq('status', 'archived'), targetId).is('deleted_at', null).order('id'),
-        supabase.rpc('get_firm_group_summaries', { p_firm_id: targetId })
+        supabase.rpc('get_firm_group_summaries', { p_firm_id: targetId }),
+        withFirmScope(supabase.from('groups').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null)
       ])
       
       setGroups((g.data as any) || [])
       setGroupSummaries(summaries.data || [])
+      setTotalGroupCount(totalG.count || 0)
 
       if (isSuper && firms.length === 0) {
         const { data: f } = await supabase.from('firms').select('id, name').order('name')
@@ -283,7 +286,9 @@ export default function GroupsPage() {
       {/* Active */}
       <TableCard title={
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black text-[var(--text)]">{t('active_groups')}</h1>
+          <h1 className="text-3xl font-black text-[var(--text)]">
+            {t('active_groups')} <span className="text-sm opacity-30 ml-2">({active.length} / {totalGroupCount})</span>
+          </h1>
           <div className="flex gap-2">
             {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
             {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus} id="tour-group-add">{t('new_group')}</Btn>}
@@ -292,8 +297,8 @@ export default function GroupsPage() {
       }>
         <div id="tour-group-list">
           {active.length === 0
-            ? <Empty icon="🏦" text="No active groups. Create your first group." action={
-              <Btn variant="primary" onClick={() => setAddOpen(true)}>+ New Group</Btn>
+            ? <Empty icon="🏦" text={t('no_active_groups')} action={
+              <Btn variant="primary" onClick={() => setAddOpen(true)}>+ {t('new_group')}</Btn>
             } />
             : <GroupTable list={active} showArchBtn={false} />}
         </div>
@@ -301,8 +306,8 @@ export default function GroupsPage() {
 
       {/* Completed */}
       {completed.length > 0 && (
-        <TableCard title={`✅ Completed — Ready to Archive (${completed.length})`}
-          subtitle="All auctions done & all payments collected."
+        <TableCard title={`✅ ${t('groups_ready_arch')} (${completed.length})`}
+          subtitle={t('groups_ready_arch_desc')}
           actions={<Btn size="sm" onClick={archiveAll} style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
             <Archive size={12} /> {t('archive_all')}
           </Btn>}>
@@ -319,31 +324,31 @@ export default function GroupsPage() {
             else setShowArch(false)
           }}>
           <div>
-            <div className="font-semibold text-sm">📦 Archived Groups</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>Click to load</div>
+            <div className="font-semibold text-sm">📦 {t('archived_groups_label')}</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>{t('archived_click_load')}</div>
           </div>
           {showArch ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </button>
         {showArch && (
-          archLoading ? <Loading text="Loading archived groups..." /> :
+          archLoading ? <Loading text={t('arch_loading')} /> :
             archived.length === 0
-              ? <Empty icon="📦" text="No archived groups yet." />
+              ? <Empty icon="📦" text={t('archived_no_groups')} />
               : <div className="p-3"><GroupTable list={archived} showArchBtn={false} /></div>
         )}
       </Card>
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Create Chit Group">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('groups_create_title')}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label={t('group_name')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. SEP2026-A" /></Field>
           <Field label={`${t('chit_value')} (₹)`}><input className={inputClass} style={inputStyle} value={form.chit_value} type="number" onChange={e => setForm(f => ({ ...f, chit_value: e.target.value }))} placeholder="100000" /></Field>
           {(!firm?.enabled_schemes || firm.enabled_schemes.length > 1) && (
-            <Field label="Auction Scheme">
+            <Field label={t('scheme')}>
               <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
                 {(!firm?.enabled_schemes || firm.enabled_schemes.includes('ACCUMULATION')) && (
-                  <option value="ACCUMULATION">SURPLUS MODEL (Fixed Payout)</option>
+                  <option value="ACCUMULATION">{t('scheme_surplus_name')}</option>
                 )}
                 {(!firm?.enabled_schemes || firm.enabled_schemes.includes('DIVIDEND')) && (
-                  <option value="DIVIDEND">DIVIDEND MODEL (Conventional)</option>
+                  <option value="DIVIDEND">{t('scheme_dividend_name')}</option>
                 )}
               </select>
             </Field>
@@ -355,7 +360,7 @@ export default function GroupsPage() {
 
           <div className="col-span-1 md:col-span-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
             <h3 className="text-xs font-black uppercase tracking-widest opacity-40 mb-3 flex items-center gap-2">
-              <Gavel size={14} /> Auction Rules & Commission
+              <Gavel size={14} /> {t('rules_comm_header')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('min_discount')}>
@@ -371,9 +376,9 @@ export default function GroupsPage() {
                   <option value="fixed_amount">Fixed Amount</option>
                 </select>
                 <div className="text-[10px] mt-1.5 opacity-60 font-medium leading-tight">
-                  {form.commission_type === 'percent_of_chit' && "Calculated from the Total Fund (Chit Value)."}
-                  {form.commission_type === 'percent_of_discount' && "Calculated from the Bid Amount (Winner's Sacrifice)."}
-                  {form.commission_type === 'fixed_amount' && "A flat fee charged every month."}
+                  {form.commission_type === 'percent_of_chit' && t('comm_chit_desc')}
+                  {form.commission_type === 'percent_of_discount' && t('comm_auction_desc')}
+                  {form.commission_type === 'fixed_amount' && t('comm_fixed_desc')}
                 </div>
               </Field>
               <Field label={t('commission_val')}>

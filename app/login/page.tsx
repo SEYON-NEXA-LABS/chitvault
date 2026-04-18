@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { applyBranding } from '@/lib/branding/context'
 import { usePinLock } from '@/lib/lock/context'
@@ -66,20 +67,31 @@ function LoginForm() {
       router.refresh()
       
       // 2. Resolve target profile
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('firm_id, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
+
+      // Retry once if profile is missing (handles sync delay between Auth and DB)
+      if (!profile) {
+        await new Promise(resolve => setTimeout(resolve, 800))
+        const { data: retryProfile } = await supabase
+          .from('profiles')
+          .select('firm_id, role')
+          .eq('id', user.id)
+          .maybeSingle()
+        profile = retryProfile
+      }
 
       const nextPath = searchParams.get('next')
 
       if (!profile) {
-        window.location.replace('/onboarding')
-      } else if (profile.role === 'superadmin') {
-        // 3. User window.location.replace for the final jump to internal pages.
-        // This clears the address bar of login params (like ?reason=idle) and ensures 
-        // the browser state is fully initialized for the dashboard.
+        window.location.replace('/access-denied')
+        return
+      }
+
+      if (profile.role === 'superadmin') {
         window.location.replace(nextPath || '/superadmin/dashboard')
       } else {
         window.location.replace(nextPath || '/dashboard')
@@ -139,8 +151,10 @@ function LoginForm() {
                 Welcome to <br /> <span className="text-[var(--accent)]">{branding.name}.</span>
               </h1>
               <p className="text-lg text-white font-medium leading-relaxed opacity-60">
-                Access your firm&apos;s professional financial management portal.
-                Secure, efficient, and built for modern business.
+                A professional digital ledger for secure financial auditing. 
+                Manage your firm&apos;s auction cycles with absolute transparency.
+                <br />
+                <span className="text-xs italic opacity-80">* This platform is for record-keeping; actual payments occur externally.</span>
               </p>
             </div>
           </div>
@@ -311,7 +325,13 @@ function LoginForm() {
               )}
             </div>
 
-            <div className="mt-10 text-center space-y-4">
+            <div className="mt-10 text-center space-y-6">
+              <div className="flex items-center justify-center gap-6 opacity-30">
+                <Link href="/legal/terms" className="text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors">Terms of Service</Link>
+                <div className="w-1 h-1 rounded-full bg-white/20" />
+                <Link href="/legal/privacy" className="text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors">Privacy Policy</Link>
+              </div>
+
               {!hasPin && (
                 <button
                   onClick={() => router.push('/settings#lock-config')}

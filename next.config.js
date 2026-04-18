@@ -28,13 +28,6 @@ const nextConfig = {
           { key: 'Expires', value: '0' },
         ],
       },
-      {
-        // Hashed static assets (JS/CSS) — immutable long-term cache (safe because filenames change on rebuild)
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
     ]
   },
 }

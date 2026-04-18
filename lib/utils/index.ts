@@ -6,12 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
-export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'SEYON'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.8'
+export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.10'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
-export const APP_DEVELOPER = 'SEYON NEXA LABS'
-export const SUPPORT_EMAIL = 'seyonnexalabs@gmail.com'
-export const SUPERADMIN_EMAIL = 'seyonnexalabs@gmail.com'
+export const APP_SLOGAN = 'Professional Digital Ledger'
+export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and auction auditing. Record-keeping only; actual payments occur externally.'
+export const APP_DEVELOPER = 'Foundation Finance Systems'
+export const SUPPORT_EMAIL = 'support@example.local'
+export const SUPERADMIN_EMAIL = 'admin@example.local'
 
 // Format Indian Rupees
 export function fmt(n: number | string | null | undefined): string {

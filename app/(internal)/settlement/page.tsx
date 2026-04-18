@@ -184,7 +184,7 @@ function SettlementPage() {
      const { error } = await supabase.from('settlements').delete().eq('id', id).eq('firm_id', firm.id)
      if (error) return show(error.message, 'error')
      
-     show('Settlement deleted')
+     show(t('delete_success'))
      logActivity(firm.id, 'SETTLEMENT_DELETED', 'settlements', String(id))
      load()
   }
@@ -221,7 +221,7 @@ function SettlementPage() {
 
     const auc = auctions.find(a => String(a.id) === aId)
     if (auc && auc.net_payout) {
-      show(t('settlement_payout') + ' ' + (t('auto_filled_from_auction') || 'Auto-filled'))
+      show(t('settlement_payout') + ' ' + t('auto_filled_from_auction'))
       const updated = [...entries]
       updated[0] = { ...updated[0], amount: Number(auc.net_payout) }
       setEntries(updated)
@@ -261,7 +261,7 @@ function SettlementPage() {
     <div className="flex items-center justify-center py-20 text-center">
       <div>
         <div className="text-4xl mb-3">🔒</div>
-        <div className="text-sm" style={{ color: 'var(--text2)' }}>Access Denied: You do not have permission to view settlements.</div>
+        <div className="text-sm" style={{ color: 'var(--text2)' }}>{t('access_denied_settle')}</div>
       </div>
     </div>
   )
@@ -274,10 +274,10 @@ function SettlementPage() {
             <Calculator size={24} style={{ color: 'var(--accent)' }} />
             {term.settlementLabel}
           </h1>
-          <p className="text-sm opacity-60">Final prize money calculation and payoff registry based on group duration and historical averages.</p>
+          <p className="text-sm opacity-60">{t('settlement_desc_page')}</p>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 md:pb-0">
-           <Btn onClick={() => router.push('/settlement/history')} icon={History} variant="secondary">Audit Log</Btn>
+           <Btn onClick={() => router.push('/settlement/history')} icon={History} variant="secondary">{t('audit_log')}</Btn>
            <Btn onClick={addEntry} icon={Plus} variant="secondary">{t('add_month')}</Btn>
            <Btn onClick={handleSave} icon={Save} loading={saving} variant="primary" id="tour-settle-btn">{t('save_record')}</Btn>
         </div>

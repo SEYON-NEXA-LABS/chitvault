@@ -53,9 +53,7 @@ BEGIN
 END
 $config$;
 
-
-
--- ── 2. FIRM & TARGETED CLEANUP: Setup/Reset Demo Corp ───────────────────
+-- ── 2. FIRM & TARGETED CLEANUP: Setup/Reset Diamond Finance ───────────────────
 do $demo_seed$
 DECLARE
   v_demo_firm_id uuid := 'd0000000-0000-0000-0000-000000000001'::uuid;
@@ -75,9 +73,9 @@ BEGIN
   SELECT id INTO manager_uuid    FROM auth.users WHERE email = 'manager@dev.chitvault.local';
   SELECT id INTO staff_uuid      FROM auth.users WHERE email = 'staff@dev.chitvault.local';
 
-  -- Upsert Firm: "Seyon Demo Corp" (Owned by Superadmin)
+  -- Upsert Firm: "Diamond Finance" (Owned by Superadmin)
   INSERT INTO public.firms (id, name, slug, owner_id, city, phone, theme_id, color_profile, font)
-  VALUES (v_demo_firm_id, 'Seyon Demo Corp', 'seyon-demo', superadmin_uuid, 'Madurai', '+91-98765-43210', 'theme2', 'indigo', 'Outfit')
+  VALUES (v_demo_firm_id, 'Diamond Finance', 'diamond-fin', superadmin_uuid, 'Main City', '+91-00000-00000', 'theme2', 'indigo', 'Outfit')
   ON CONFLICT (id) DO UPDATE 
   SET name = EXCLUDED.name, slug = EXCLUDED.slug, owner_id = EXCLUDED.owner_id, city = EXCLUDED.city, phone = EXCLUDED.phone, theme_id = EXCLUDED.theme_id;
 
@@ -96,7 +94,7 @@ BEGIN
   -- Sync profiles
   INSERT INTO public.profiles (id, firm_id, full_name, role)
   VALUES 
-    (superadmin_uuid, v_demo_firm_id, 'Seyon Boss', 'superadmin'),
+    (superadmin_uuid, v_demo_firm_id, 'Administrator', 'superadmin'),
     (admin_uuid,      v_demo_firm_id, 'Admin Demo', 'owner'),
     (manager_uuid,    v_demo_firm_id, 'Manager Demo', 'owner'),
     (staff_uuid,      v_demo_firm_id, 'Staff Demo', 'staff')
@@ -117,7 +115,7 @@ BEGIN
   -- ── 4. PERSONS & MEMBERS: Create/Enroll 10 unified individuals ───────
   FOR i IN 1..10 LOOP
     INSERT INTO public.persons (firm_id, name, phone, address)
-    VALUES (v_demo_firm_id, format('Member %s', i), format('+91-900%02s-0000', i), format('Lane %s, Madurai', i))
+    VALUES (v_demo_firm_id, format('Member %s', i), format('+91-900%02s-0000', i), format('Lane %s, City Center', i))
     RETURNING id INTO p_id;
     
     INSERT INTO public.members (firm_id, person_id, group_id, ticket_no, status)
@@ -211,10 +209,10 @@ BEGIN
 
   INSERT INTO public.activity_logs (firm_id, user_id, action, entity_type, entity_id, metadata)
   VALUES 
-    (v_demo_firm_id, admin_uuid, 'FIRM_CREATED', 'firms', v_demo_firm_id::text, '{"name": "Demo Corp"}'),
+    (v_demo_firm_id, admin_uuid, 'FIRM_CREATED', 'firms', v_demo_firm_id::text, '{"name": "Diamond Finance"}'),
     (v_demo_firm_id, admin_uuid, 'GROUP_CREATED', 'groups', g_div_id::text, '{"name": "DIV-10x10K"}');
 
-  RAISE NOTICE 'Demo seeding with FIXED ID COMPLETE! 🚀 Firm "Demo Corp" (d0000000-0000-0000-0000-000000000001) is ready.';
+  RAISE NOTICE 'Demo seeding with FIXED ID COMPLETE! 🚀 Firm "Diamond Finance" (d0000000-0000-0000-0000-000000000001) is ready.';
 
 END
 $demo_seed$;

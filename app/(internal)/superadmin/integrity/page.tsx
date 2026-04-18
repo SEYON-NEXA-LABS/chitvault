@@ -17,20 +17,31 @@ import {
   Terminal
 } from 'lucide-react';
 import Link from 'next/link';
-import { getDeepIntegrityReport, DeepIntegrityReport } from '@/app/actions/integrity';
+import { Badge } from '@/components/ui';
+import { 
+  getDeepIntegrityReport, 
+  DeepIntegrityReport, 
+  getSecurityContext, 
+  SecurityContext 
+} from '@/app/actions/integrity';
 
 export default function IntegrityPage() {
   const [report, setReport] = useState<DeepIntegrityReport | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
+  const [secContext, setSecContext] = useState<SecurityContext | null>(null);
 
   const runDiagnostics = () => {
     setError(null);
     startTransition(async () => {
       try {
-        const data = await getDeepIntegrityReport();
+        const [data, sec] = await Promise.all([
+          getDeepIntegrityReport(),
+          getSecurityContext()
+        ]);
         setReport(data);
+        setSecContext(sec);
       } catch (err: any) {
         setError(err.message || 'Failed to run diagnostics');
       }
@@ -98,7 +109,62 @@ export default function IntegrityPage() {
             {/* Health Gauge Card */}
             <div className="lg:col-span-3 p-12 rounded-[3rem] border flex flex-col md:flex-row items-center gap-16 shadow-sm"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-              <div className="relative w-48 h-48 flex items-center justify-center">
+              
+              {/* Security Context Spotlight */}
+              <div className="flex-1 w-full space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                    <Lock size={20} />
+                  </div>
+                  <h3 className="text-xl font-black uppercase tracking-tight">Security Session Health</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)]">
+                    <p className="text-[10px] font-black uppercase opacity-40 mb-2">Firm ID in JWT</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-mono font-bold truncate ${secContext?.firm_id_in_jwt === 'N/A' || !secContext?.firm_id_in_jwt ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {secContext?.firm_id_in_jwt || 'Locating...'}
+                      </span>
+                      {secContext?.firm_id_in_jwt && secContext.firm_id_in_jwt !== 'N/A' && <CheckCircle2 size={14} className="text-emerald-500" />}
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)]">
+                    <p className="text-[10px] font-black uppercase opacity-40 mb-2">Active Role</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-indigo-500">
+                        {secContext?.role_in_jwt || 'Identifying...'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)]">
+                    <p className="text-[10px] font-black uppercase opacity-40 mb-2">RLS Visibility</p>
+                    <div className="flex items-center gap-2">
+                       <Badge variant={secContext?.can_see_own_profile ? 'success' : 'danger'}>
+                         {secContext?.can_see_own_profile ? 'PROFILES UNLOCKED' : 'PROFILE BLOCKED'}
+                       </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {!secContext?.can_see_own_profile && secContext && (
+                  <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-start gap-4 animate-pulse">
+                    <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                    <div className="text-xs font-bold leading-relaxed">
+                      CRITICAL: Your session is missing the "Firm ID" metadata. Calculations and lists will appear as 0 or empty.
+                      <br/>
+                      <span className="opacity-70">Action: Run Deep Repair (027) and then Log Out/Log In.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-px h-24 bg-[var(--border)] hidden md:block opacity-30" />
+
+              <div className="flex flex-col items-center">
+                <div className="relative w-48 h-48 flex items-center justify-center">
                  <svg className="w-full h-full -rotate-90">
                    <circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="16" fill="transparent" className="opacity-10" />
                    <circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="16" fill="transparent" 
@@ -116,22 +182,23 @@ export default function IntegrityPage() {
                  </div>
               </div>
 
-              <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-12">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Tracked Tables</p>
-                  <p className="text-3xl font-black">{report.tables.length}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 opacity-60">Verified Sync</p>
-                  <p className="text-3xl font-black text-emerald-500">{report.tables.filter(t => t.isAligned).length}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-rose-600 opacity-60">Live Mismatches</p>
-                  <p className="text-3xl font-black text-rose-500">{report.tables.reduce((acc, t) => acc + t.missingColumns.length, 0)}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black uppercase tracking-widest opacity-30">Last Verified</p>
-                  <p className="text-lg font-black opacity-50 mt-2 uppercase tracking-tight">{new Date(report.timestamp).toLocaleTimeString()}</p>
+                <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-12">
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Tracked Tables</p>
+                    <p className="text-3xl font-black">{report.tables.length}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 opacity-60">Verified Sync</p>
+                    <p className="text-3xl font-black text-emerald-500">{report.tables.filter(t => t.isAligned).length}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-rose-600 opacity-60">Live Mismatches</p>
+                    <p className="text-3xl font-black text-rose-500">{report.tables.reduce((acc, t) => acc + t.missingColumns.length, 0)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-widest opacity-30">Last Verified</p>
+                    <p className="text-lg font-black opacity-50 mt-2 uppercase tracking-tight">{new Date(report.timestamp).toLocaleTimeString()}</p>
+                  </div>
                 </div>
               </div>
             </div>

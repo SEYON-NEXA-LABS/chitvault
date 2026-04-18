@@ -45,6 +45,7 @@ export default function MembersPage() {
   
   const [view,   setView]   = useState<'people' | 'groups'>('people')
   const [search, setSearch] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
   const [firms,  setFirms]  = useState<Firm[]>([])
 
   const [addOpen,       setAddOpen]       = useState(false)
@@ -61,7 +62,14 @@ export default function MembersPage() {
   const [totalCount, setTotalCount] = useState(0)
   const PAGE_SIZE = 20
 
-  const [regStats, setRegStats] = useState({ totalPeople: 0, activeTickets: 0, totalOutstanding: 0, totalPaid: 0 })
+  const [summaryStats, setSummaryStats] = useState({ 
+    activePeople: 0, 
+    totalPeople: 0, 
+    activeTickets: 0, 
+    totalTickets: 0,
+    totalOutstanding: 0, 
+    totalPaid: 0 
+  })
 
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -69,59 +77,96 @@ export default function MembersPage() {
     if (!targetId) return
 
     try {
-      // 1. Fetch Global Stats via RPC
-      const { data: sData } = await supabase.rpc('get_firm_registry_stats', { p_firm_id: targetId })
-      if (sData) setRegStats(sData)
-
-      // 2. Fetch Paginated Persons (Optimized Select)
-      let pQuery = withFirmScope(supabase.from('persons').select('id, name, nickname, phone, address, firm_id, firms(name)', { count: 'exact' }), targetId).is('deleted_at', null)
+      // 1. Fetch Global Stats
+      const [sData, totalPCount, totalTCount] = await Promise.all([
+        supabase.rpc('get_firm_registry_stats', { p_firm_id: targetId }),
+        withFirmScope(supabase.from('persons').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null),
+        withFirmScope(supabase.from('members').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null)
+      ])
       
-      if (search) {
-        pQuery = pQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+      if (sData.data) {
+        setSummaryStats({
+          ...sData.data,
+          totalPeople: totalPCount.count || 0,
+          totalTickets: totalTCount.count || 0
+        })
       }
 
-      const { data: pData, count, error: pErr } = await pQuery
-        .order('name')
-        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-
-      if (pErr) showToast(pErr.message, 'error')
-      const currentPersons = pData || []
-      setPersons(currentPersons)
-      setTotalCount(count || 0)
-
-      // 3. Fetch Dependent Data for current page ONLY
-      const personIds = (currentPersons as any[]).map(p => p.id)
+      // 2. Fetch Context based on view & showInactive filter
+      const isPeopleView = view === 'people'
+      const activeStatuses = ['active', 'foreman', 'defaulter']
       
-      // Secondary fetch for members to identify relevant groups
-      const { data: mData } = await withFirmScope(supabase.from('members').select('id, group_id, person_id, ticket_no, status, notes'), targetId)
-        .in('person_id', personIds)
-        .is('deleted_at', null)
-      
-      const relevantGroupIds = Array.from(new Set((mData as any[])?.map(m => m.group_id) || []))
+      let pData: Person[] = []
+      let mData: any[] = []
+      let gData: Group[] = []
+      let aData: Auction[] = []
+      let payData: Payment[] = []
 
+      if (isPeopleView) {
+        // Mode A: Paginated People Directory
+        let pQuery = withFirmScope(supabase.from('persons').select('id, name, nickname, phone, address', { count: 'exact' }), targetId).is('deleted_at', null)
+        if (search) pQuery = pQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+        
+        // If not showing inactive, we might still show the person, but they'll have 0 tickets in summary
+        const { data, count, error: pErr } = await pQuery
+          .order('name')
+          .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
+
+        if (pErr) showToast(pErr.message, 'error')
+        pData = data || []
+        setTotalCount(count || 0)
+        
+        const pIds = pData.map(p => p.id)
+        
+        // Fetch members for these people
+        let mQuery = withFirmScope(supabase.from('members').select('id, group_id, person_id, ticket_no, status, notes'), targetId)
+          .in('person_id', pIds)
+          .is('deleted_at', null)
+        
+        if (!showInactive) mQuery = mQuery.in('status', activeStatuses)
+        
+        const { data: mems } = await mQuery
+        mData = mems || []
+      } else {
+        // Mode B: Complete Group Enrollment Context (Optimized Deep Join)
+        let mQuery = withFirmScope(supabase.from('members').select('id, group_id, person_id, ticket_no, status, notes, persons(id, name, nickname, phone)'), targetId).is('deleted_at', null)
+        
+        if (!showInactive) mQuery = mQuery.in('status', activeStatuses)
+        if (search) mQuery = mQuery.or(`persons.name.ilike.%${search}%,persons.phone.ilike.%${search}%`)
+        
+        const { data: mems, error: mErr } = await mQuery.order('ticket_no')
+        if (mErr) showToast(mErr.message, 'error')
+        
+        mData = mems || []
+        const pMap = new Map()
+        mData.forEach(m => { if (m.persons) pMap.set(m.persons.id, m.persons) })
+        pData = Array.from(pMap.values())
+      }
+
+      const relevantGroupIds = Array.from(new Set(mData.map(m => m.group_id)))
+      const relevantPersonIds = Array.from(new Set(mData.map(m => m.person_id)))
+
+      // 3. Fetch Collateral Data
       const [g, a, pay] = await Promise.all([
-        // Only groups relevant to the current page slice
         withFirmScope(supabase.from('groups').select('id, name, duration, monthly_contribution, chit_value, status, auction_scheme, accumulated_surplus, num_members'), targetId)
           .in('id', relevantGroupIds)
           .is('deleted_at', null),
-        // Only auctions for these groups
-        withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status'), targetId)
+        withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status, payout_amount, is_payout_settled'), targetId)
           .in('group_id', relevantGroupIds)
           .is('deleted_at', null)
           .order('month'),
-        // Only payments for these specific members
         withFirmScope(supabase.from('payments').select('id, member_id, group_id, person_id, amount, month, payment_date, created_at'), targetId)
-          .in('person_id', personIds)
+          .in('person_id', relevantPersonIds)
           .is('deleted_at', null)
       ])
 
-      setMembers(mData || [])
+      setMembers(mData)
+      setPersons(pData)
       setAllGroups(g.data || [])
       setAuctions(a.data || [])
       setPayments(pay.data || [])
 
-      // Still need full group list for the "Add Member" dropdown and "By Groups" view
-      if (isInitial || view === 'groups') {
+      if (isInitial) {
         const { data: allG } = await withFirmScope(supabase.from('groups').select('id, name, chit_value, duration, status'), targetId).is('deleted_at', null).order('name')
         setAllGroups(allG || [])
       }
@@ -134,7 +179,7 @@ export default function MembersPage() {
       setLoading(false)
       setSelectedIds(new Set())
     }
-  }, [supabase, isSuper, switchedFirmId, firm?.id, page, search, showToast, view])
+  }, [supabase, isSuper, switchedFirmId, firm?.id, page, search, showToast, view, firms.length, showInactive])
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -257,14 +302,6 @@ export default function MembersPage() {
 
   const filteredPeople = contacts.sort((a,b) => b.activeCount - a.activeCount || a.name.localeCompare(b.name))
 
-  const summaryStats = useMemo(() => {
-    return {
-      totalPeople: regStats.totalPeople,
-      activeTickets: regStats.activeTickets,
-      totalOutstanding: regStats.totalOutstanding,
-      totalPaid: regStats.totalPaid
-    }
-  }, [regStats])
 
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
@@ -416,7 +453,7 @@ export default function MembersPage() {
             {t('member_directory')}
           </h1>
           <p className="text-xs font-medium opacity-40 mt-1 uppercase tracking-widest leading-loose">
-            Manage your customer registry and ticket enrollments
+            {t('members_page_desc')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -461,80 +498,96 @@ export default function MembersPage() {
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-4">
              <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)]"><User size={18}/></div>
-             <Badge variant="accent">Registry</Badge>
+             <Badge variant="accent">{t('registry_label')}</Badge>
           </div>
           <div>
-            <div className="text-2xl font-black text-[var(--text)]">{summaryStats.totalPeople}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Persons</div>
+            <div className="text-2xl font-black text-[var(--text)]">
+              {summaryStats.activePeople} <span className="text-sm opacity-30">/ {summaryStats.totalPeople}</span>
+            </div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('registry_members')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-4">
              <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)]"><UserCheck size={18}/></div>
-             <Badge variant="info">Subscribers</Badge>
+             <Badge variant="info">{t('subscribers_label')}</Badge>
           </div>
           <div>
-            <div className="text-2xl font-black text-[var(--text)]">{summaryStats.activeTickets}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Tickets</div>
+            <div className="text-2xl font-black text-[var(--text)]">
+              {summaryStats.activeTickets} <span className="text-sm opacity-30">/ {summaryStats.totalTickets}</span>
+            </div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('active_tickets_label')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
            <div className="flex items-center justify-between mb-4">
              <div className="p-2 rounded-lg bg-[var(--danger-dim)] text-[var(--danger)]"><CreditCard size={18}/></div>
-             <Badge variant="danger">Market Debt</Badge>
+             <Badge variant="danger">{t('market_debt_label')}</Badge>
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalOutstanding)}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Outstanding</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('total_outstanding')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
            <div className="flex items-center justify-between mb-4">
              <div className="p-2 rounded-lg bg-[var(--success-dim)] text-[var(--success)]"><History size={18}/></div>
-             <Badge variant="success">Life Time</Badge>
+             <Badge variant="success">{t('life_time_label')}</Badge>
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalPaid)}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Paid</div>
+            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('paid_label')}</div>
           </div>
         </div>
       </div>
 
-      <div className="relative group">
-         <input 
-            className="w-full bg-[var(--surface)] border-2 rounded-2xl p-4 pl-12 font-bold text-sm focus:border-[var(--accent)] transition-all outline-none"
-            style={{ borderColor: 'var(--border)' }}
-            placeholder="Search by name, phone, or address..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-         />
-         <Plus className="absolute left-4 top-1/2 -translate-y-1/2 rotate-45 opacity-30" size={20} />
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 group">
+           <input 
+              className="w-full bg-[var(--surface)] border-2 rounded-2xl p-4 pl-12 font-bold text-sm focus:border-[var(--accent)] transition-all outline-none"
+              style={{ borderColor: 'var(--border)' }}
+              placeholder="Search by name, phone, or address..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+           />
+           <Plus className="absolute left-4 top-1/2 -translate-y-1/2 rotate-45 opacity-30" size={20} />
+        </div>
+        
+        <label className="flex items-center gap-2 cursor-pointer bg-[var(--surface2)] px-4 py-3 rounded-2xl border-2 hover:border-[var(--accent)] transition-all shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <input 
+            type="checkbox" 
+            className="w-4 h-4 rounded-lg bg-[var(--surface)] text-[var(--accent)] border-none ring-offset-0 focus:ring-0" 
+            checked={showInactive} 
+            onChange={e => setShowInactive(e.target.checked)} 
+          />
+          <span className="text-[10px] font-black uppercase tracking-wider opacity-60">{t('past_members_label')}</span>
+        </label>
       </div>
 
       {view === 'people' && (
          <div className="flex items-center justify-between text-xs font-bold opacity-60 uppercase tracking-widest px-2">
-            <span>Showing {(page-1)*PAGE_SIZE + 1} to {Math.min(page*PAGE_SIZE, totalCount)} of {totalCount} people</span>
+            <span>{t('showing')} {(page-1)*PAGE_SIZE + 1} {t('to')} {Math.min(page*PAGE_SIZE, totalCount)} {t('of')} {totalCount} {t('people')}</span>
             <div className="flex gap-2">
                <button 
                 disabled={page === 1}
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
                >
-                 Previous
+                 {t('previous')}
                </button>
                <button 
                 disabled={page * PAGE_SIZE >= totalCount}
                 onClick={() => setPage(p => p + 1)}
                 className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
                >
-                 Next
+                 {t('next')}
                </button>
             </div>
          </div>
       )}
 
       {view === 'people' ? (
-        <TableCard title={`Total Registry (${filteredPeople.length} People)`} subtitle="All unique individuals registered in the system.">
+        <TableCard title={`${t('total_registry_label')} (${summaryStats.activePeople} / ${summaryStats.totalPeople})`} subtitle={t('members_page_desc')}>
           <Table responsive>
             <thead><tr>
               <Th className="w-10">
@@ -563,7 +616,7 @@ export default function MembersPage() {
                           <div className="font-bold text-[var(--text)] tracking-tight leading-tight">
                             {c.name} {c.nickname && <span className="text-[var(--accent)] font-medium text-xs ml-1 opacity-70">({c.nickname})</span>}
                           </div>
-                          <div className="text-[10px] opacity-40 flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || 'No address registered'}</div>
+                          <div className="text-[10px] opacity-40 flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || t('no_address')}</div>
                         </div>
                       </div>
                     </Td>
@@ -571,7 +624,7 @@ export default function MembersPage() {
                     <Td label="Tickets" className="hidden sm:table-cell">
                       {c.activeCount > 0 ? (
                         <div className="flex items-center gap-1.5">
-                          <Badge variant="info">{c.activeCount} ACTIVE</Badge>
+                          <Badge variant="info">{c.activeCount} {t('status_active')}</Badge>
                           <div className="flex -space-x-1 ml-1 opacity-40 group-hover:opacity-100 transition-opacity">
                             {c.tickets.slice(0, 3).map((t, i) => (
                               <div key={i} className="w-4 h-4 rounded-full border border-white bg-[var(--info)]" />

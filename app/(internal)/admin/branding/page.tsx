@@ -20,11 +20,7 @@ interface Firm {
   font: string | null
 }
 
-const AVAILABLE_FONTS = [
-  { label: 'Inter (Modern Standard)',     value: 'Inter' },
-  { label: 'Outfit (Geometric Premium)',   value: 'Outfit' },
-  { label: 'Noto Sans (Tamil Support)',    value: 'Noto Sans' },
-]
+
 
 export default function AdminBrandingPage() {
   const router = useRouter()
@@ -90,10 +86,7 @@ export default function AdminBrandingPage() {
     applyBranding(font, id)
   }, [font]);
 
-  const handleFontChange = useCallback((f: string) => {
-    setFont(f)
-    applyBranding(f, colorProfile)
-  }, [colorProfile]);
+
 
   async function saveBranding() {
     if (!selectedFirm) return
@@ -196,18 +189,6 @@ export default function AdminBrandingPage() {
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold uppercase tracking-wide">
-                <Type size={13} /> Font
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {AVAILABLE_FONTS.map(f => (
-                  <button key={f.value} onClick={() => handleFontChange(f.value)} className="text-left px-3 py-2.5 rounded-lg border text-sm transition-all" style={{ fontFamily: `'${f.value}', sans-serif`, borderColor: font === f.value ? 'var(--accent)' : 'var(--border)', background: font === f.value ? 'var(--accent-dim)' : 'var(--surface2)', color: font === f.value ? 'var(--accent)' : 'var(--text2)', fontWeight: font === f.value ? 700 : 400 }}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className="flex justify-end pt-2 border-t">
               <Btn variant="primary" loading={saving} onClick={saveBranding}>

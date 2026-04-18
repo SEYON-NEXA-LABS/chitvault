@@ -57,7 +57,7 @@ function PaymentsContent() {
 
   const isSuper = role === 'superadmin'
 
-  const [viewMode, setViewMode] = useState<'pending' | 'all'>('pending') // Default to pending focus
+  const [viewMode, setViewMode] = useState<'pending' | 'all' | 'ledger'>('pending')
 
   const [historyModal, setHistoryModal] = useState<PersonSummary | null>(null)
   const [payModal,     setPayModal]     = useState<PersonSummary | null>(null)
@@ -68,6 +68,7 @@ function PaymentsContent() {
   const [personSummariesData, setPersonSummariesData] = useState<any[]>([])
   const [pageAuctions, setPageAuctions] = useState<Auction[]>([])
   const [pagePayments, setPagePayments] = useState<Payment[]>([])
+  const [ledgerPayments, setLedgerPayments] = useState<any[]>([])
   
   const load = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true)
@@ -125,6 +126,19 @@ function PaymentsContent() {
       setPagePayments(paymentsData.data || [])
       setPersonSummariesData(summaries || [])
 
+      // 4. Ledger Mode - Fetch all recent payments in firm
+      if (viewMode === 'ledger') {
+        const { data: lData } = await withFirmScope(supabase.from('payments').select(`
+          id, amount, payment_date, created_at, mode, month,
+          groups(name),
+          persons:person_id(name)
+        `), targetId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(50)
+        setLedgerPayments(lData || [])
+      }
+
       if (isSuper && firms.length === 0) {
         const { data: f } = await supabase.from('firms').select('id, name').order('name')
         setFirms(f || [])
@@ -163,8 +177,9 @@ function PaymentsContent() {
         
         const missed: number[] = []
         for (let month = 1; month <= currentMonth; month++) {
+           const isAcc = g.auction_scheme === 'ACCUMULATION'
            const prevMonthAuc = gAuctions.find(a => a.group_id === g.id && a.month === month - 1)
-           const due = Number(g.monthly_contribution) - (prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0)
+           const due = isAcc ? Number(g.monthly_contribution) : Number(g.monthly_contribution) - (prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0)
            const paid = mPayments.filter(p => p.month === month).reduce((s, p) => s + Number(p.amount), 0)
            if (due - paid > 0.1) missed.push(month)
         }
@@ -181,8 +196,8 @@ function PaymentsContent() {
           group: groups.find(g => g.id === m.group_id)!
         })),
         pendingBreakdown: breakdown,
-        overallTotalBalance: Number(row.total_balance || 0),
-        isOverdue: Number(row.missed_count || 0) > 0,
+        overallTotalBalance: Number(row.overall_balance || 0),
+        isOverdue: !!row.is_overdue,
         lastPaymentDate: row.last_payment_date
       }
     }).filter(Boolean) as PersonSummary[]
@@ -199,8 +214,8 @@ function PaymentsContent() {
     <div className="space-y-6 pb-24">
       <div className="flex flex-col lg:flex-row items-baseline justify-between gap-4">
         <div>
-           <h1 className="text-3xl font-black text-[var(--text)] tracking-tight">Collection Workspace</h1>
-           <p className="text-xs font-medium opacity-40 uppercase tracking-widest mt-1">Direct auditing & receipt management</p>
+           <h1 className="text-3xl font-black text-[var(--text)] tracking-tight">Collection & Dues</h1>
+           <p className="text-xs font-medium opacity-40 uppercase tracking-widest mt-1">Audit, Receipts & Transaction History</p>
         </div>
         
         <div className="flex p-1 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
@@ -220,7 +235,16 @@ function PaymentsContent() {
               viewMode === 'all' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
             )}
           >
-            Full Registry
+            {t('view_full_registry')}
+          </button>
+          <button 
+            onClick={() => setViewMode('ledger')}
+            className={cn(
+              "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2",
+              viewMode === 'ledger' ? "bg-[var(--surface)] text-indigo-500 shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
+            )}
+          >
+            <History size={14}/> {t('view_recent_receipts')}
           </button>
         </div>
       </div>
@@ -229,7 +253,7 @@ function PaymentsContent() {
          <input 
             className="w-full bg-[var(--surface)] border-2 rounded-2xl p-4 pl-12 font-bold text-sm focus:border-[var(--accent)] transition-all outline-none"
             style={{ borderColor: 'var(--border)' }}
-            placeholder="Search Registry by name or phone..."
+            placeholder={t('search_registry_placeholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
          />
@@ -237,76 +261,125 @@ function PaymentsContent() {
       </div>
 
       <div className="md:hidden space-y-3">
-        {summaries.length === 0 ? <Empty text="No pending payments in this view." /> : summaries.map(s => (
-          <div key={s.person.id} className="p-4 rounded-2xl border bg-[var(--surface)] shadow-sm" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <div className="font-black text-lg" onClick={() => router.push(`/members/${s.person.id}`)}>{s.person.name}</div>
-                <div className="text-[10px] opacity-40 uppercase tracking-widest font-bold mb-2">{s.person.phone || '—'}</div>
-                
-                <div className="space-y-1">
-                  {s.pendingBreakdown.length === 0 ? (
-                    <div className="text-[9px] opacity-40 italic">No current dues pending.</div>
-                  ) : s.pendingBreakdown.map((b, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold opacity-60 uppercase truncate max-w-[120px]">{b.groupName}</span>
-                      <div className="flex gap-1">
-                        {b.months.map(m => <Badge key={m} variant="gray" className="text-[8px] py-0 px-1 border-0 bg-[var(--surface2)] opacity-80">M{m}</Badge>)}
+        {viewMode === 'ledger' ? (
+          ledgerPayments.length === 0 ? <Empty text={t('no_transactions')} /> : ledgerPayments.map(p => (
+            <div key={p.id} className="p-5 rounded-[2rem] border bg-[var(--surface)] shadow-sm border-[var(--border)]">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                   <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">{fmtDate(p.payment_date || p.created_at)}</div>
+                   <div className="font-black text-lg text-[var(--text)]">{p.persons?.name}</div>
+                   <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-tight">{p.groups?.name}</div>
+                </div>
+                <div className="text-right">
+                   <div className="text-xl font-black text-emerald-500 font-brand">+{fmt(p.amount)}</div>
+                   <Badge variant="gray" className="mt-1">{p.mode}</Badge>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          summaries.length === 0 ? <Empty text={t('nothing_to_show')} /> : summaries.map(s => (
+            <div key={s.person.id} className="p-5 rounded-[2rem] border bg-[var(--surface)] shadow-sm border-[var(--border)]">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="font-black text-lg hover:text-indigo-500 cursor-pointer" onClick={() => router.push(`/members/${s.person.id}`)}>{s.person.name}</div>
+                  <div className="text-[10px] opacity-40 uppercase tracking-widest font-bold mb-2">{s.person.phone || '—'}</div>
+                  
+                  <div className="space-y-1">
+                    {s.pendingBreakdown.length === 0 ? (
+                      <div className="text-[9px] opacity-40 italic">{t('no_dues_pending')}</div>
+                    ) : s.pendingBreakdown.map((b, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold opacity-60 uppercase truncate max-w-[120px]">{b.groupName}</span>
+                        <div className="flex gap-1">
+                          {b.months.map(m => <Badge key={m} variant="gray" className="text-[8px] py-0 px-1 border-0 bg-[var(--surface2)] opacity-80">M{m}</Badge>)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={cn("text-xl font-black font-brand", s.overallTotalBalance > 0.01 ? (s.isOverdue ? "text-[var(--danger)]" : "text-indigo-500") : "text-emerald-500")}>
+                    {fmt(s.overallTotalBalance)}
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className={cn("text-xl font-black font-mono", s.overallTotalBalance > 0.01 ? (s.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]") : "text-[var(--success)]")}>
-                  {fmt(s.overallTotalBalance)}
-                </div>
+              <div className="flex gap-2">
+                <Btn size="md" variant="secondary" className="flex-1 py-4" icon={History} onClick={() => setHistoryModal(s)}>{t('audit')}</Btn>
+                <Btn size="md" variant="primary" className="flex-1 py-4 shadow-lg shadow-indigo-500/20" icon={CreditCard} onClick={() => router.push(`/payments?person_id=${s.person.id}`)}>{t('collect')}</Btn>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Btn size="sm" variant="secondary" className="flex-1 py-3" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
-              <Btn size="sm" variant="primary" className="flex-1 py-3" icon={CreditCard} onClick={() => router.push(`/payments?person_id=${s.person.id}`)}>Collect</Btn>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       <div className="hidden md:block">
-        <TableCard title={viewMode === 'pending' ? "Actionable Dues" : "Complete Listing"}>
-          <Table>
-            <thead><Tr><Th>Person</Th><Th>Pending Breakdown</Th><Th right>Total Balance</Th><Th right>Action</Th></Tr></thead>
-            <tbody>
-              {summaries.length === 0 ? <Tr><Td colSpan={4}><Empty text="Nothing to show." /></Td></Tr> : summaries.map(s => (
-                <Tr key={s.person.id}>
-                  <Td>
-                    <div className="font-bold text-base cursor-pointer hover:text-[var(--accent)]" onClick={() => router.push(`/members/${s.person.id}`)}>{s.person.name}</div>
-                    <div className="text-[10px] opacity-40 font-mono">{s.person.phone}</div>
-                  </Td>
-                  <Td>
-                    <div className="space-y-1">
-                      {s.pendingBreakdown.length === 0 ? (
-                        <Badge variant="success" className="text-[9px]">Account Clear</Badge>
-                      ) : s.pendingBreakdown.map((b, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold opacity-40 uppercase truncate max-w-[150px]">{b.groupName}</span>
-                          <div className="flex flex-wrap gap-1">
-                            {b.months.map(m => <Badge key={m} variant="gray" className="text-[8px] py-0 px-1 border-0 bg-[var(--surface2)]">M{m}</Badge>)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Td>
-                  <Td right className={cn("font-bold font-mono text-xl", s.overallTotalBalance > 0.01 ? (s.isOverdue ? "text-[var(--danger)]" : "text-[#0ea5e9]") : "text-[var(--success)]")}>
-                    {fmt(s.overallTotalBalance)}
-                  </Td>
-                  <Td right><div className="flex gap-1 justify-end">
-                    <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(s)}>Ledger</Btn>
-                    <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => router.push(`/payments?person_id=${s.person.id}`)}>Collect</Btn>
-                  </div></Td>
+        <TableCard title={
+          viewMode === 'ledger' ? t('recent_receipts_audit') : 
+          viewMode === 'pending' ? t('view_actionable') : t('full_registry_tracking')
+        }>
+          {viewMode === 'ledger' ? (
+            <Table>
+              <thead>
+                <Tr>
+                  <Th>{t('received_on')}</Th>
+                  <Th>{t('payer_group')}</Th>
+                  <Th right>{t('amount_collected')}</Th>
+                  <Th>{t('payment_mode')}</Th>
                 </Tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {ledgerPayments.length === 0 ? <Tr><Td colSpan={4}><Empty text="No receipts found." /></Td></Tr> : ledgerPayments.map(p => (
+                  <Tr key={p.id}>
+                    <Td className="whitespace-nowrap font-medium opacity-60">{fmtDate(p.payment_date || p.created_at)}</Td>
+                    <Td>
+                      <div className="font-black text-[var(--text)]">{p.persons?.name}</div>
+                      <div className="text-[10px] uppercase tracking-widest font-bold text-indigo-500/60 mt-0.5">{p.groups?.name} <span className="opacity-20 mx-1">/</span> Month {p.month}</div>
+                    </Td>
+                    <Td right className="text-xl font-black text-emerald-500 font-brand">+{fmt(p.amount)}</Td>
+                    <Td><Badge variant="gray">{p.mode}</Badge></Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <Table>
+              <thead><Tr><Th>{t('person')}</Th><Th>{t('pending_breakdown')}</Th><Th right>{t('total_balance')}</Th><Th right>{t('action')}</Th></Tr></thead>
+              <tbody>
+                {summaries.length === 0 ? <Tr><Td colSpan={4}><Empty text="Nothing to show." /></Td></Tr> : summaries.map(s => (
+                  <Tr key={s.person.id}>
+                    <Td>
+                      <div className="font-black text-base cursor-pointer hover:text-indigo-500 transition-colors" onClick={() => router.push(`/members/${s.person.id}`)}>{s.person.name}</div>
+                      <div className="text-[10px] opacity-40 font-bold uppercase tracking-widest">{s.person.phone}</div>
+                    </Td>
+                    <Td>
+                      <div className="space-y-1">
+                        {s.pendingBreakdown.length === 0 ? (
+                          <Badge variant="success" className="text-[9px]">{t('account_clear')}</Badge>
+                        ) : s.pendingBreakdown.map((b, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold opacity-40 uppercase truncate max-w-[150px]">{b.groupName}</span>
+                            <div className="flex flex-wrap gap-1">
+                              {b.months.map(m => <Badge key={m} variant="gray" className="text-[8px] py-0 px-1 border-0 bg-[var(--surface2)]">M{m}</Badge>)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Td>
+                    <Td right className={cn("font-black text-xl font-brand", s.overallTotalBalance > 0.01 ? (s.isOverdue ? "text-[var(--danger)]" : "text-indigo-500") : "text-emerald-500")}>
+                      {fmt(s.overallTotalBalance)}
+                    </Td>
+                    <Td right>
+                       <div className="flex items-center justify-end gap-2">
+                          <Btn size="sm" variant="secondary" icon={History} onClick={() => setHistoryModal(s)} />
+                          <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => router.push(`/payments?person_id=${s.person.id}`)}>Collect</Btn>
+                       </div>
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
         </TableCard>
       </div>
 

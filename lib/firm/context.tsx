@@ -49,16 +49,19 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Load profile
-    const { data: prof } = await supabase
-      .from('profiles').select('id, firm_id, role, status').eq('id', user.id).maybeSingle()
+    const { data: dbProfile, error: profErr } = await supabase
+      .from('profiles').select('id, firm_id, role, status, full_name').eq('id', user.id).maybeSingle()
     
-    setProfile(prof)
+    if (profErr) console.error('Profile fetch error:', profErr)
+    setProfile(dbProfile)
     
     // Determine active firm ID: use switchedFirmId if superadmin
-    const role = prof?.role as UserRole | null
-    const activeFirmId = (role === 'superadmin' && switchedFirmId !== 'all') 
+    const dbRole = dbProfile?.role as UserRole | null
+    const activeFirmId = (dbRole === 'superadmin' && switchedFirmId !== 'all') 
       ? switchedFirmId 
-      : prof?.firm_id
+      : dbProfile?.firm_id
+
+    console.log('DEBUG: Calculated Active Firm ID:', activeFirmId)
 
     // Load firm if active ID exists
     if (activeFirmId) {

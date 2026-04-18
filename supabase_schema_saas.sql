@@ -106,6 +106,10 @@ create table if not exists groups (
   constraint groups_scheme_chk check (auction_scheme in ('DIVIDEND','ACCUMULATION')),
   constraint groups_comm_type_chk check (commission_type in ('percent_of_chit','percent_of_discount','percent_of_payout','fixed_amount')),
   constraint groups_comm_recp_chk check (commission_recipient in ('foreman','firm')),
+  constraint groups_comm_limit_chk check (
+    (commission_type IN ('percent_of_chit', 'percent_of_discount', 'percent_of_payout') AND commission_value <= 5.00) OR
+    (commission_type = 'fixed_amount' AND commission_value <= (chit_value * 0.05 + 0.01))
+  ),
   constraint groups_nonneg_chk check (num_members > 0 and duration > 0 and chit_value >= 0 and monthly_contribution >= 0)
 );
 
@@ -881,11 +885,56 @@ as $$
 declare
     v_total_people int;
     v_active_tickets int;
+    v_total_paid numeric(15,2);
+    v_total_due numeric(15,2);
+    v_total_outstanding numeric(15,2);
 begin
+    -- 1. Counts
     select count(*) into v_total_people from persons where firm_id = p_firm_id and deleted_at is null;
-    select count(m.id) into v_active_tickets from members m join groups g on m.group_id = g.id
-    where m.firm_id = p_firm_id and m.deleted_at is null and g.status != 'archived';
-    return json_build_object('totalPeople', v_total_people, 'activeTickets', v_active_tickets);
+    
+    select count(m.id) into v_active_tickets 
+    from members m 
+    join groups g on m.group_id = g.id
+    where m.firm_id = p_firm_id 
+      and m.deleted_at is null 
+      and m.status in ('active','foreman','defaulter')
+      and g.status != 'archived';
+
+    -- 2. Financial Aggregation
+    select coalesce(sum(amount), 0) into v_total_paid 
+    from payments 
+    where firm_id = p_firm_id and deleted_at is null;
+
+    -- Calculate total expected collection based on actual group progress
+    with group_metrics as (
+        select 
+            g.id,
+            g.monthly_contribution,
+            g.auction_scheme,
+            (select count(*) from members m where m.group_id = g.id and m.deleted_at is null and m.status in ('active','foreman','defaulter')) as member_count,
+            (select count(*) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as auctions_done,
+            (select coalesce(sum(dividend), 0) from auctions a where a.group_id = g.id and a.status = 'confirmed' and a.deleted_at is null) as total_group_dividends
+        from groups g
+        where g.firm_id = p_firm_id and g.status != 'archived' and g.deleted_at is null
+    )
+    select 
+        coalesce(sum(
+            case 
+                when auction_scheme = 'ACCUMULATION' then (monthly_contribution * auctions_done) * member_count
+                else ((monthly_contribution * auctions_done) - total_group_dividends) * member_count
+            end
+        ), 0) 
+    into v_total_due
+    from group_metrics;
+
+    v_total_outstanding := greatest(0, v_total_due - v_total_paid);
+
+    return json_build_object(
+        'totalPeople', v_total_people, 
+        'activeTickets', v_active_tickets,
+        'totalPaid', v_total_paid,
+        'totalOutstanding', v_total_outstanding
+    );
 end;
 $$;
 

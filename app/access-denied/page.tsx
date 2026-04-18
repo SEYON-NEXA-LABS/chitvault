@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { LogOut, ShieldAlert } from 'lucide-react'
+import { useEffect } from 'react'
 
 export default function AccessDeniedPage() {
   const router = useRouter()

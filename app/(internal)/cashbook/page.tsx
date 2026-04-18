@@ -12,6 +12,7 @@ import type { Denomination, Firm } from '@/types'
 import { Printer, Plus, Trash2, ChevronDown, ChevronUp, History } from 'lucide-react'
 import { logActivity } from '@/lib/utils/logger'
 import { Pagination } from '@/components/ui'
+import { useI18n } from '@/lib/i18n/context'
 
 type DenomKey = typeof DENOMINATIONS[number]['key']
 type DenomCounts = Record<DenomKey, number>
@@ -23,6 +24,7 @@ export default function CashbookPage() {
   const supabase = createClient()
   const { firm, role, can, switchedFirmId } = useFirm()
   const { toast, show, hide } = useToast()
+  const { t } = useI18n()
 
   const [entries,  setEntries]  = useState<Denomination[]>([])
   const [profiles, setProfiles] = useState<any[]>([])
@@ -160,64 +162,72 @@ export default function CashbookPage() {
   return (
     <div className="space-y-6">
       {/* Header with Firm Filter */}
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-black text-[var(--text)]">Daily Cashbook</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <div>
+          <h1 className="text-3xl font-black text-[var(--text)]">{t('cashbook_title')}</h1>
+          <p className="text-xs opacity-60 mt-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+            {t('cashbook_desc')}
+          </p>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <StatCard label="Collections (In)" value={fmt(totalCollections)} color="info" />
-        <StatCard label="Payouts (Out)"     value={fmt(totalPayouts)}     color="danger"  />
+        <StatCard label={t('collections_in')} value={fmt(totalCollections)} color="info" />
+        <StatCard label={t('payouts_out')}     value={fmt(totalPayouts)}     color="danger"  />
         <StatCard 
-          label="Book Balance" 
+          label={t('book_balance')} 
           value={fmt(totalCollections - totalPayouts)} 
           color="accent" 
-          sub="Expected Cash"
+          sub={t('expected_cash')}
         />
         <StatCard 
-          label="Physical Cash" 
+          label={t('physical_cash')} 
           value={fmt(totalInRange)} 
           color={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'success' : 'danger'} 
-          sub={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? 'Matches Book' : `Diff: ${fmt(totalInRange - (totalCollections - totalPayouts))}`}
+          sub={Math.abs(totalInRange - (totalCollections - totalPayouts)) < 1 ? t('matches_book') : `${t('diff')}: ${fmt(totalInRange - (totalCollections - totalPayouts))}`}
         />
       </div>
 
       {Math.abs(totalInRange - (totalCollections - totalPayouts)) > 1 && (
         <div className="p-4 rounded-xl border border-danger-500/20 bg-danger-500/5 text-danger-500 text-sm font-semibold flex items-center gap-3 mb-6 no-print">
            <div className="p-1.5 rounded-full bg-danger-500 text-white"><Trash2 size={14} /></div>
-           Cash Discrepancy detected! Your physical count does not match the total collections/payouts in this period.
+           {t('discrepancy_detected')}
         </div>
       )}
 
       {/* Controls */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text2)' }}>
-          <span>From</span>
+        <div className="flex items-center gap-2 group">
+          <span className="text-[10px] font-black uppercase opacity-20 group-hover:opacity-100 transition-opacity tracking-widest">{t('from')}</span>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
             className="px-3 py-1.5 rounded-lg border text-sm outline-none"
             style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
-          <span>To</span>
+        </div>
+        <div className="flex items-center gap-2 group">
+          <span className="text-[10px] font-black uppercase opacity-20 group-hover:opacity-100 transition-opacity tracking-widest">{t('to')}</span>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
             className="px-3 py-1.5 rounded-lg border text-sm outline-none"
             style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
         </div>
         <div className="flex gap-2 ml-auto">
           <Btn variant="secondary" size="sm" onClick={() => window.print()} className="no-print">
-            <Printer size={13} /> Print
+            <Printer size={13} /> {t('print')}
           </Btn>
           <Btn variant="primary" size="sm" onClick={async () => { 
             const { data } = await supabase.auth.getUser();
             setStaffId(data.user?.id || null);
             setCounts(EMPTY_COUNTS()); setLiveTotal(0); setNotes(''); setAddOpen(true) 
           }}>
-            <Plus size={13} /> New Entry
+            <Plus size={13} /> {t('new_entry')}
           </Btn>
         </div>
       </div>
 
       {/* Entries */}
       {entries.length === 0
-        ? <Empty icon="💵" text="No cash entries yet. Click '+ New Entry' to record today's collection." />
+        ? <Empty icon="💵" text={t('no_cash_entries')} />
         : (
           <div className="space-y-3">
             {entries.map(e => {
@@ -245,7 +255,7 @@ export default function CashbookPage() {
                     </div>
                     {e.collected_by && (
                       <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-3" style={{ background: 'var(--info-dim)', color: 'var(--info)' }}>
-                         <span className="text-[10px] font-bold uppercase opacity-60">Collected By:</span>
+                         <span className="text-[10px] font-bold uppercase opacity-60">{t('collected_by')}:</span>
                          <span className="text-xs font-semibold">
                            {profiles.find(p => p.id === e.collected_by)?.full_name || 'Staff User'}
                          </span>
@@ -261,11 +271,11 @@ export default function CashbookPage() {
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         {/* Notes */}
                         <div>
-                          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>Notes</div>
+                          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>{t('notes_label')}</div>
                           <table className="w-full text-sm">
                             <thead>
                               <tr>
-                                {['Denomination','Count','Amount'].map(h => (
+                                {[t('col_denominations'), t('col_count'), t('amount')].map(h => (
                                   <th key={h} className="text-left text-xs font-medium pb-1.5" style={{ color: 'var(--text3)' }}>{h}</th>
                                 ))}
                               </tr>
@@ -287,11 +297,11 @@ export default function CashbookPage() {
                         </div>
                         {/* Coins */}
                         <div>
-                          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>Coins</div>
+                          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>{t('coins_label')}</div>
                           <table className="w-full text-sm">
                             <thead>
                               <tr>
-                                {['Coin','Count','Amount'].map(h => (
+                                {[t('col_coin'), t('col_count'), t('amount')].map(h => (
                                   <th key={h} className="text-left text-xs font-medium pb-1.5" style={{ color: 'var(--text3)' }}>{h}</th>
                                 ))}
                               </tr>
@@ -309,7 +319,7 @@ export default function CashbookPage() {
                                 )
                               })}
                               {coins_section.every(d => !(e as any)[d.key]) && (
-                                <tr><td colSpan={3} className="text-xs py-2" style={{ color: 'var(--text3)' }}>No coins</td></tr>
+                                <tr><td colSpan={3} className="text-xs py-2" style={{ color: 'var(--text3)' }}>{t('no_coins')}</td></tr>
                               )}
                             </tbody>
                           </table>
@@ -321,7 +331,7 @@ export default function CashbookPage() {
                         <div>
                           {e.notes && <div className="text-sm" style={{ color: 'var(--text2)' }}>📝 {e.notes}</div>}
                           <div className="text-xs mt-1" style={{ color: 'var(--text3)' }}>
-                            {e.created_at ? `Recorded ${new Date(e.created_at).toLocaleString('en-IN')}` : ''}
+                            {e.created_at ? `${t('recorded')} ${new Date(e.created_at).toLocaleString('en-IN')}` : ''}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -348,7 +358,7 @@ export default function CashbookPage() {
             <div className="flex justify-end">
               <div className="px-5 py-3 rounded-xl font-semibold text-sm flex items-center gap-3"
                 style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text2)' }}>Total for period</span>
+                <span style={{ color: 'var(--text2)' }}>{t('total_for_period')}</span>
                 <span className="font-mono font-bold text-xl" style={{ color: 'var(--accent)' }}>{fmt(totalInRange)}</span>
               </div>
             </div>
@@ -357,16 +367,16 @@ export default function CashbookPage() {
       }
 
       {/* Add Entry Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Daily Cash Entry" size="lg">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('denomination_entry')} size="lg">
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Date</label>
+            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>{t('date')}</label>
             <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Collected By (Staff)</label>
+            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>{t('collected_by')}</label>
             <select value={staffId || ''} onChange={e => setStaffId(e.target.value || null)}
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}>

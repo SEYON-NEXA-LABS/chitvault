@@ -18,7 +18,7 @@ import type { Group, Auction, Payment, Firm } from '@/types'
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, switchedFirmId } = useFirm()
+  const { firm, role, switchedFirmId, profile } = useFirm()
   const { t } = useI18n()
   const term = useTerminology(firm)
   
@@ -32,22 +32,28 @@ export default function DashboardPage() {
   const [dashboardStats, setDashboardStats] = useState<any>(null)
   const [trends, setTrends] = useState<any[]>([])
   const [winnerInsightsRpc, setWinnerInsightsRpc] = useState<any>(null)
+  const [totalCounts, setTotalCounts] = useState({ groups: 0, members: 0 })
   const isSuper = role === 'superadmin'
 
   useEffect(() => {
     async function load() {
       if (!dashboardStats) setLoading(true)
       const targetId = isSuper ? switchedFirmId : firm?.id
-      if (!targetId) return
+      if (!targetId) {
+        setLoading(false)
+        return
+      }
 
       try {
-        const [g, a, p, dStats, collTrends, wInsights] = await Promise.all([
+        const [g, a, p, dStats, collTrends, wInsights, totalG, totalM] = await Promise.all([
           withFirmScope(supabase.from('groups').select('id, name, auction_scheme').neq('status','archived'), targetId).is('deleted_at', null),
-          withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status, members!winner_id(id, ticket_no, persons(id, name))'), targetId).is('deleted_at', null).order('month', { ascending: false }).limit(10),
+          withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status, is_payout_settled, payout_amount, payout_date, members!winner_id(id, ticket_no, persons(id, name))'), targetId).is('deleted_at', null).order('month', { ascending: false }).limit(10),
           withFirmScope(supabase.from('payments').select('id, amount, payment_date, created_at, members!member_id(persons(id, name))'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }).limit(5),
           supabase.rpc('get_firm_dashboard_stats', { p_firm_id: targetId }),
           supabase.rpc('get_firm_collection_trends', { p_firm_id: targetId }),
-          supabase.rpc('get_firm_winner_insights', { p_firm_id: targetId })
+          supabase.rpc('get_firm_winner_insights', { p_firm_id: targetId }),
+          withFirmScope(supabase.from('groups').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null),
+          withFirmScope(supabase.from('members').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null)
         ])
 
         setGroups(g.data || [])
@@ -56,6 +62,10 @@ export default function DashboardPage() {
         setDashboardStats(dStats.data)
         setTrends(collTrends.data || [])
         setWinnerInsightsRpc(wInsights.data)
+        setTotalCounts({ 
+          groups: totalG.count || 0, 
+          members: totalM.count || 0 
+        })
 
         if (isSuper && !firmsLoaded) {
           const { data: f } = await supabase.from('firms').select('id, name').order('name')
@@ -78,8 +88,10 @@ export default function DashboardPage() {
       totalChitValue: s.totalChitValue || 0,
       collectedToday: s.collectedToday || 0,
       totalOutstanding: s.totalOutstanding || 0,
-      activeMembers: s.totalMembers || 0,
-      activeGroups: groups.length
+      activeMembersCount: s.totalActiveMembers || s.totalMembers || 0,
+      totalMembersCount: totalCounts.members || s.totalMembers || 0,
+      activeGroupsCount: groups.length,
+      totalGroupsCount: totalCounts.groups || groups.length
     }
 
     const trendMap = new Map<string, any>()
@@ -99,7 +111,7 @@ export default function DashboardPage() {
     const onboardingSteps = [
       { id: '1', title: t('onboarding_step1_title'), desc: t('onboarding_step1_desc'), link: '/settings', completed: !!firm },
       { id: '2', title: t('onboarding_step2_title'), desc: t('onboarding_step2_desc'), link: '/groups', completed: groups.length > 0 },
-      { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/members', completed: stats.activeMembers >= 5 },
+      { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/members', completed: stats.activeMembersCount >= 5 },
       { id: '4', title: t('onboarding_step4_title'), desc: t('onboarding_step4_desc'), link: '/payments', completed: stats.collectedToday > 0 },
     ]
 
@@ -118,11 +130,17 @@ export default function DashboardPage() {
       <div className="relative group overflow-hidden rounded-[3rem] p-8 bg-[var(--surface2)] border-2 shadow-xl" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
           <div className="lg:col-span-3 flex flex-col justify-center">
-              <h2 className="text-3xl font-black mb-2">Welcome back, {firm?.name}!</h2>
-              <p className="opacity-60 font-medium mb-6">Manage your collections and monitor group growth in one place.</p>
+              <h2 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>
+                {t('dash_welcome_back')}, {firm?.name || profile?.full_name || 'User'}!
+              </h2>
+              <p className="text-sm opacity-50 font-medium max-w-md mb-6">
+                {isSuper 
+                  ? t('dash_super_plane_desc')
+                  : t('dash_firm_plane_desc')}
+              </p>
               <div className="flex flex-wrap gap-4">
-                 <Btn variant="primary" icon={Users} onClick={() => router.push('/members')}>Manage Registry</Btn>
-                 <Btn variant="secondary" icon={Layers} onClick={() => router.push('/groups')}>View Groups</Btn>
+                 <Btn variant="primary" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
+                 <Btn variant="secondary" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
               </div>
           </div>
           <div className="hidden lg:flex items-center justify-center">
@@ -132,10 +150,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Today&apos;s Collection" value={fmt(stats.collectedToday)} icon={DollarSign} sub="+12%" color="success" />
-        <StatCard label="Market Debt" value={fmt(stats.totalOutstanding)} icon={Wallet} sub="Action" color="danger" />
-        <StatCard label="Active Groups" value={stats.activeGroups} icon={Layers} color="info" />
-        <StatCard label="Total Subscribers" value={stats.activeMembers} icon={Users} color="accent" />
+        <StatCard label={t('report_today_title')} value={fmt(stats.collectedToday)} icon={DollarSign} sub="+12%" color="success" />
+        <StatCard label={t('market_debt_label')} value={fmt(stats.totalOutstanding)} icon={Wallet} sub="Action" color="danger" />
+        <StatCard label={t('nav_groups')} value={`${stats.activeGroupsCount} / ${stats.totalGroupsCount}`} icon={Layers} color="info" />
+        <StatCard label={t('nav_members')} value={`${stats.activeMembersCount} / ${stats.totalMembersCount}`} icon={Users} color="accent" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -149,9 +167,9 @@ export default function DashboardPage() {
           />
         </div>
         <div>
-          <TableCard title="Recent Activity" subtitle="Real-time collection feed">
+          <TableCard title={t('dash_recent_activity')} subtitle={t('dash_realtime_feed')}>
             <Table>
-              <thead><Tr><Th>Date</Th><Th>Member</Th><Th right>Amount</Th></Tr></thead>
+              <thead><Tr><Th>{t('date')}</Th><Th>{t('nav_members')}</Th><Th right>{t('amount')}</Th></Tr></thead>
               <tbody>
                 {payments.map(p => (
                   <Tr key={p.id}>
@@ -160,12 +178,12 @@ export default function DashboardPage() {
                     </Td>
                     <Td>
                        <div className="font-bold text-xs">{(p.members as any)?.persons?.name}</div>
-                       <div className="text-[9px] opacity-40 uppercase tracking-tighter">Receipt Received</div>
+                       <div className="text-[9px] opacity-40 uppercase tracking-tighter">{t('receipt_received')}</div>
                     </Td>
                     <Td right className="text-[var(--success)] font-bold">{fmt(p.amount)}</Td>
                   </Tr>
                 ))}
-                {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-10 opacity-40 italic">No recent payments.</Td></Tr>}
+                {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-10 opacity-40 italic">{t('dash_no_recent_payments')}</Td></Tr>}
               </tbody>
             </Table>
           </TableCard>
