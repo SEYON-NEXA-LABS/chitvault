@@ -21,6 +21,42 @@ export interface DeepIntegrityReport {
   overallHealth: number; // 0 to 100
 }
 
+export interface SecurityContext {
+  uid: string;
+  role_in_jwt: string;
+  firm_id_in_jwt: string;
+  full_jwt_metadata: any;
+  platform_role: string;
+  can_see_own_profile: boolean;
+}
+
+export async function getSecurityContext(): Promise<SecurityContext> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase.rpc('check_my_security_context');
+  
+  if (error) {
+    console.error('Security Context RPC Error:', error);
+    // Fallback if RPC isn't installed yet
+    return {
+      uid: user.id,
+      role_in_jwt: user.app_metadata?.role || user.user_metadata?.role || 'N/A',
+      firm_id_in_jwt: user.app_metadata?.firm_id || user.user_metadata?.firm_id || 'N/A',
+      full_jwt_metadata: user.user_metadata,
+      platform_role: user.role || 'authenticated',
+      can_see_own_profile: false
+    };
+  }
+
+  return {
+    ...data,
+    platform_role: user.role || 'authenticated'
+  };
+}
+
 export async function getDeepIntegrityReport(): Promise<DeepIntegrityReport> {
   const supabase = await createClient();
   

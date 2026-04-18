@@ -92,6 +92,22 @@ export default function SettingsPage() {
     applyBranding(f, theme)
   }
 
+  // Profile state
+  const [fullName, setFullName] = useState(profile?.full_name || '')
+  const [profileSaving, setProfileSaving] = useState(false)
+
+  async function saveProfile() {
+    if (!profile) return
+    setProfileSaving(true)
+    const { error } = await supabase.from('profiles').update({
+      full_name: fullName.trim()
+    }).eq('id', profile.id)
+    setProfileSaving(false)
+    if (error) { show(error.message, 'error'); return }
+    show('Profile updated successfully! ✓')
+    refresh() // This will update the sidebar name immediately
+  }
+
   async function saveBranding() {
     if (!firm) return
     setSaving(true)
@@ -397,14 +413,28 @@ export default function SettingsPage() {
         <div className="p-5 space-y-6">
 
           {/* Profile info */}
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide block mb-1.5" style={{ color: 'var(--text2)' }}>Display Name</label>
+                <input 
+                  className={inputClass} 
+                  style={inputStyle} 
+                  value={fullName} 
+                  onChange={e => setFullName(e.target.value)} 
+                  placeholder="Your full name"
+                />
+              </div>
+              <div className="flex items-end">
+                <Btn variant="primary" size="sm" loading={profileSaving} onClick={saveProfile} disabled={!fullName}>
+                  Save Name
+                </Btn>
+              </div>
+            </div>
+
             <div className="flex justify-between py-2.5 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
               <span className="opacity-60">Email Address</span>
               <span className="font-semibold">{email}</span>
-            </div>
-            <div className="flex justify-between py-2.5 border-b text-sm" style={{ borderColor: 'var(--border)' }}>
-              <span className="opacity-60">Status</span>
-              <Badge variant="success">Active Account ✓</Badge>
             </div>
           </div>
 

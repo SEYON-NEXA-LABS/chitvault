@@ -5,21 +5,18 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth, getToday, cn, APP_NAME, getGroupDisplayName, amtToWords } from '@/lib/utils'
-import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr } from '@/components/ui'
+import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Field, Toast, Empty, Table, Th, Td, Tr, LineAnalytics, PieDistribution } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History, AlertTriangle, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useTerminology } from '@/lib/hooks/useTerminology'
 import Link from 'next/link'
 import { CSVImportModal } from '@/components/ui'
 import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules, Payment } from '@/types'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, BarChart, Bar
-} from 'recharts'
+// Recharts removed - favoring Foundation Charts (SVG)
 
 export default function GroupLedgerPage() {
   const params = useParams()
@@ -40,6 +37,11 @@ export default function GroupLedgerPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMember, setSelectedMember] = useState<number | null>(null)
   const [showAdv, setShowAdv] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const { toast, show: showToast, hide: hideToast } = useToast()
   const [addOpen, setAddOpen] = useState(false)
@@ -79,30 +81,21 @@ export default function GroupLedgerPage() {
   }, [auctionHistory, commissions, group]);
 
   const yieldData = useMemo(() => {
+    let runningTotal = 0;
     return auditedAuctions
       .filter(a => a.status === 'confirmed')
-      .map(a => ({
-        name: `M${a.month}`,
-        discount: Number(a.auction_discount || 0),
-        dividend: a.audited_div,
-      }))
-  }, [auditedAuctions])
+      .map(a => {
+        runningTotal += a.audited_div;
+        return {
+          name: `M${a.month}`,
+          [t('auction_discount')]: Number(a.auction_discount || 0),
+          [t('yield_per_member_gain')]: a.audited_div,
+          [t('yield_cumulative_gain')]: runningTotal
+        }
+      })
+  }, [auditedAuctions, t])
 
-  const healthData = useMemo(() => {
-    const counts = { success: 0, info: 0, danger: 0 }
-    members.forEach(m => {
-      if (!group) return
-      const status = getMemberFinancialStatus(m, group, auctionHistory, payments)
-      if (status.overallStatus === 'overdue') counts.danger++
-      else if (status.overallStatus === 'current') counts.info++
-      else counts.success++
-    })
-    return [
-      { name: 'On Track', value: counts.success, color: 'var(--success)' },
-      { name: 'Current', value: counts.info, color: 'var(--info)' },
-      { name: 'Overdue', value: counts.danger, color: 'var(--danger)' },
-    ].filter(x => x.value > 0)
-  }, [members, group, auctionHistory, payments])
+
 
   const totalPossibleCollection = useMemo(() => {
     if (!group) return 0
@@ -117,9 +110,9 @@ export default function GroupLedgerPage() {
 
     const gQuery = supabase.from('groups').select('id, firm_id, name, duration, monthly_contribution, auction_scheme, start_date, num_members, accumulated_surplus, chit_value, commission_type, commission_value, commission_recipient').eq('id', groupId)
     const mQuery = supabase.from('members').select('id, ticket_no, group_id, person_id, status, persons(id, name, phone)').eq('group_id', groupId).order('ticket_no')
-    const aQuery = supabase.from('auctions').select('id, group_id, month, auction_date, payout_date, winner_id, auction_discount, dividend, net_payout, status, is_payout_settled').eq('group_id', groupId).order('month')
-    const fcQuery = supabase.from('foreman_commissions').select('id, auction_id, group_id, month, commission_amt, foreman_member_id').eq('group_id', groupId).order('month')
-    const payQuery = supabase.from('payments').select('id, member_id, group_id, month, amount, type, date').eq('group_id', groupId).is('deleted_at', null)
+    const aQuery = supabase.from('auctions').select('id, group_id, month, auction_date, payout_date, winner_id, auction_discount, dividend, net_payout, status, is_payout_settled, payout_amount').eq('group_id', groupId).order('month')
+    const fcQuery = supabase.from('foreman_commissions').select('id, auction_id, group_id, month, commission_amt, foreman_member_id, status').eq('group_id', groupId).order('month')
+    const payQuery = supabase.from('payments').select('id, member_id, group_id, month, amount, payment_type, payment_date, created_at').eq('group_id', groupId).is('deleted_at', null)
     const pQuery = supabase.from('persons').select('id, name, phone').order('name')
 
     if (role !== 'superadmin' && firm) {
@@ -375,6 +368,16 @@ export default function GroupLedgerPage() {
     else { showToast('Recorded!'); setAucFormOpen(false); load() }
   }
 
+  async function handleConfirmDraft(auctionId: number | string) {
+    if (!confirm('Confirm this draft auction and make it official?')) return
+    setSaving(true)
+    const { error: e1 } = await supabase.from('auctions').update({ status: 'confirmed' }).eq('id', auctionId)
+    const { error: e2 } = await supabase.from('foreman_commissions').update({ status: 'confirmed' }).eq('auction_id', auctionId)
+    setSaving(false)
+    if (e1 || e2) showToast(e1?.message || e2?.message || 'Error updating draft status', 'error')
+    else { showToast('Draft Marked as Confirmed!', 'success'); load() }
+  }
+
   async function handleSettlePayout() {
     if (!settling) return
     setSaving(true)
@@ -582,7 +585,7 @@ export default function GroupLedgerPage() {
               </p>
             </div>
           </div>
-          <Btn variant="secondary" onClick={() => router.push('/auctions')} className="bg-white/50 border-white hover:bg-white" icon={ExternalLink}>Go to Auctions</Btn>
+          <Btn variant="secondary" onClick={() => document.getElementById('tour-auction-ledger')?.scrollIntoView({ behavior: 'smooth' })} className="bg-white/50 border-white hover:bg-white text-[10px] uppercase font-black tracking-widest text-[var(--accent)]" icon={ChevronDown}>Review Drafts Below</Btn>
         </div>
       )}
 
@@ -638,7 +641,7 @@ export default function GroupLedgerPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard label={t('current_month')} value={`${monthsCompleted}/${totalMonths}`} color="info" />
-        <StatCard label={t('open_spots')} value={group.num_members - members.length} color="accent" />
+        <StatCard label={t('enrollment_label')} value={`${members.length} / ${group.num_members}`} color="accent" />
 
         {group.auction_scheme === 'ACCUMULATION' ? (
           <div className="relative group">
@@ -651,7 +654,7 @@ export default function GroupLedgerPage() {
             {pendingSurplus > 0 && (
               <div className="absolute -bottom-2 left-4 right-4 bg-[var(--surface)] border px-2 py-0.5 rounded-full text-[9px] font-bold text-[var(--warning-text)] flex items-center justify-center gap-1 shadow-sm border-[var(--warning-border)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] animate-pulse" />
-                +{fmt(pendingSurplus)} Potential
+                +{fmt(pendingSurplus)} {t('potential_label')}
               </div>
             )}
           </div>
@@ -666,84 +669,20 @@ export default function GroupLedgerPage() {
       </div>
 
       {/* Analytics Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="tour-group-analytics">
-        <Card title={t('yield_trend')} subtitle="Auction Discount & Member Dividend Over Time">
-          <div className="h-[280px] w-full pt-4">
-            {yieldData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorDisc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="var(--danger)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorDiv" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text2)' }} tickFormatter={v => `₹${v / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--surface)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                    labelStyle={{ fontWeight: 900, marginBottom: '4px' }}
-                  />
-                  <Area type="monotone" dataKey="discount" stroke="var(--danger)" fillOpacity={1} fill="url(#colorDisc)" strokeWidth={3} name={t('auction_discount')} />
-                  <Area type="monotone" dataKey="dividend" stroke="var(--accent)" fillOpacity={1} fill="url(#colorDiv)" strokeWidth={3} name="Dividend / Mem" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center opacity-30 text-xs italic">Awaiting first successful auction...</div>
-            )}
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 gap-6" id="tour-group-analytics">
+        <LineAnalytics 
+          title={t('yield_trend')} 
+          series={[t('auction_discount'), t('yield_per_member_gain'), t('yield_cumulative_gain')]}
+          data={yieldData} 
+          height={280} 
+          xKey="name" 
+        />
 
-        <Card title="Collection Health" subtitle="Overall Member Payment Status Distribution">
-          <div className="grid grid-cols-1 md:grid-cols-5 items-center gap-4 h-[280px]">
-            <div className="md:col-span-3 h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={healthData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {healthData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ borderRadius: '16px', border: 'none', background: 'var(--surface)', boxShadow: 'var(--shadow-xl)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="md:col-span-2 space-y-3 pr-4">
-              {healthData.map((d) => (
-                <div key={d.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: d.color }} />
-                    <span className="text-xs font-bold opacity-70 uppercase tracking-tighter">{d.name}</span>
-                  </div>
-                  <span className="text-sm font-black">{d.value}</span>
-                </div>
-              ))}
-              <div className="pt-3 border-t border-dashed mt-3">
-                <div className="text-[10px] font-bold uppercase opacity-40">Group Liquidity</div>
-                <div className="text-lg font-black">{((totalCollected / totalPossibleCollection) * 100 || 0).toFixed(1)}%</div>
-                <ProgressBar pct={(totalCollected / totalPossibleCollection) * 100} color={totalCollected >= totalPossibleCollection * 0.9 ? 'success' : 'accent'} />
-              </div>
-            </div>
-          </div>
-        </Card>
+
       </div>
 
-      <TableCard title={t('auction_ledger')}>
+      <div id="tour-auction-ledger">
+        <TableCard title={t('auction_ledger')}>
         <div className="px-6 py-3 border-b border-dashed bg-[var(--surface2)] flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--accent-o10)]">Σ</div>
           <div className="flex flex-col">
@@ -767,7 +706,7 @@ export default function GroupLedgerPage() {
                 </Th>
                 <Th right className="hidden md:table-cell text-[var(--accent)]">
                   <div className="flex items-center justify-end gap-1">
-                    <span className="opacity-40 font-mono">=</span> Benefit / Mem
+                    <span className="opacity-40 font-mono">=</span> {t('benefit_per_mem')}
                   </div>
                 </Th>
                 <Th right>{t('net_payout')}</Th>
@@ -874,6 +813,8 @@ export default function GroupLedgerPage() {
                                 setSettling(a)
                                 setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
                               }}>{t('settle')}</Btn>
+                            ) : a.status === 'draft' ? (
+                               <Btn size="sm" variant="primary" className="h-7 px-3 text-[10px] uppercase font-black" onClick={() => handleConfirmDraft(a.id)}>Confirm Draft</Btn>
                             ) : (
                               <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Pending</span>
                             )}
@@ -891,6 +832,7 @@ export default function GroupLedgerPage() {
           </Table>
         </div>
       </TableCard>
+      </div>
 
       <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
         actions={

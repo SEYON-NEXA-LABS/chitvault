@@ -37,7 +37,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
-  const isPublic = ['/login', '/register', '/', '/reset-password'].some(p => pathname === p)
+  const isPublic = ['/login', '/', '/reset-password'].some(p => pathname === p)
   const isAdmin = pathname.startsWith('/admin')
   const isOnboarding = pathname === '/onboarding'
   const isInvite = pathname.startsWith('/invite')
@@ -83,10 +83,22 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .maybeSingle()
     
-    if (data) {
+    // Retry once if missing to handle eventual consistency during login
+    if (!data) {
+      await new Promise(r => setTimeout(r, 800))
+      const { data: retryData } = await supabase
+        .from('profiles')
+        .select('id, firm_id, role, status')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (retryData) profile = retryData as any
+    } else {
       profile = data as any
+    }
+
+    if (profile) {
       // Set Cache for 1 hour (User-specific)
-      supabaseResponse.cookies.set('cv_profile', btoa(JSON.stringify(data)), {
+      supabaseResponse.cookies.set('cv_profile', btoa(JSON.stringify(profile)), {
         maxAge: 3600,
         path: '/'
       })
@@ -94,10 +106,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Track Usage (Internal Telemetry - Precision Calibrated to Navigation only)
-  // We only record usage if it's a page navigation (not an internal API fetch/asset)
   const isPage = !pathname.includes('.') && !pathname.startsWith('/api')
   if (profile?.firm_id && isPage) {
-    // We attribute a baseline of 2KB for the session check
     supabase.rpc('record_user_usage', {
       p_firm_id: profile.firm_id,
       p_user_id: user.id,
@@ -119,15 +129,18 @@ export async function updateSession(request: NextRequest) {
   }
 
   // 2. If on Protected route —> Enforce guards
-  if (!isPublic && !isOnboarding && !isInvite && !isDenied) {
+  if (!isPublic && !isInvite && !isDenied) {
     // Superadmin-only areas
     if (isSuperadminRoute && profile?.role !== 'superadmin') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // If no profile at all, force onboarding
-    if (!profile && !isAdmin && !isSuperadminRoute) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
+    // FINAL NORMALIZATION: We re-enable the security guard now that
+    // the database RLS is stabilized and recursion-free.
+    if (!profile && !isAdmin && !isSuperadminRoute && !isOnboarding) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/access-denied'
+      return NextResponse.redirect(url)
     }
   }
 

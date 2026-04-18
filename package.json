@@ -1,7 +1,7 @@
 {
   "name": "chitvault",
-  "version": "3.0.8",
-  "description": "Auction Chit Fund Management Software",
+  "version": "3.0.10",
+  "description": "Professional Digital Ledger for Auction Chit Fund Management",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,30 +14,28 @@
     "electron:dev": "cd electron && npm start"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.9.0",
-    "@supabase/supabase-js": "^2.100.1",
+    "@supabase/ssr": "0.10.2",
+    "@supabase/supabase-js": "2.103.3",
     "@types/papaparse": "^5.5.2",
-    "clsx": "^2.1.1",
-    "date-fns": "^3.6.0",
-    "lucide-react": "^1.7.0",
-    "next": "15.1.9",
-    "papaparse": "^5.5.3",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "recharts": "^2.12.7"
+    "clsx": "2.1.1",
+    "date-fns": "4.1.0",
+    "lucide-react": "1.8.0",
+    "next": "16.2.4",
+    "papaparse": "5.5.3",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
-    "@types/react": "19.0.1",
-    "@types/react-dom": "19.0.1",
-    "@types/recharts": "^1.8.29",
-    "autoprefixer": "^10.4.19",
-    "cross-env": "^10.1.0",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.3",
-    "postcss": "^8.4.38",
-    "supabase": "^2.84.4",
-    "tailwindcss": "^3.4.4",
-    "typescript": "^5.4.5"
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "autoprefixer": "10.5.0",
+    "cross-env": "10.1.0",
+    "eslint": "10.2.1",
+    "eslint-config-next": "16.2.4",
+    "postcss": "8.5.10",
+    "supabase": "2.92.1",
+    "tailwindcss": "3.4.4",
+    "typescript": "6.0.3"
   }
 }

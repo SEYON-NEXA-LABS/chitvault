@@ -1,292 +1,140 @@
-# ChitVault SaaS
+# ChitVault
 
-**Auction Chit Fund Management Software** — Multi-tenant SaaS built with Next.js 14, Supabase and TypeScript.
+**Professional Digital Ledger for Auction Chit Fund Management** — A modern, multi-tenant SaaS platform built for transparency, accuracy, and absolute auditing integrity.
 
----
-
-## Stack
-
-| Layer       | Technology                        |
-|-------------|-----------------------------------|
-| Framework   | Next.js 14 (App Router)           |
-| Database    | Supabase PostgreSQL                |
-| Auth        | Supabase Auth (email + password)  |
-| Styling     | Tailwind CSS + CSS Variables      |
-| Language    | TypeScript                        |
-| Deployment  | Hostinger (VPS)               |
-| Desktop     | Electron (optional .exe build)    |
+> [!IMPORTANT]
+> **Financial Scope**: ChitVault is a specialized **Digital Ledger** for record-keeping and auditing. It does **not** handle actual bank transfers or financial transactions. All payments mentioned within the app are manual records of external transactions.
 
 ---
 
-## How Multi-Tenancy Works
+## 🚀 Key Value Propositions
 
-Single domain. All firms log in at the same URL. Data is isolated by `firm_id` on every table, enforced at the database level via Supabase Row Level Security (RLS).
-
-```
-chitvault.in/login    → All firms log in here
-chitvault.in/register → New firm self-registration
-chitvault.in/admin    → Super admin (your panel)
-chitvault.in/dashboard → Each firm's private workspace
-```
-
-After login, middleware reads `profiles.firm_id` and routes the user to their own dashboard. Firm A can never see Firm B's data — enforced at the DB level, not just the UI.
+- **Mathematical Integrity**: Automated dividend and commission calculations based on real-world auction models.
+- **Multi-Tenant Architecture**: Robust data isolation for multiple firms, each with its own branding and data silo.
+- **Audit-Ready**: Comprehensive activity logs, secure auction recording, and printable financial vouchers.
+- **Zero-Friction Operations**: Streamlined collection centers, daily cashbook reconciliation, and defaulter tracking.
 
 ---
 
-## User Roles
+## 🛠️ Technology Stack
 
-| Role       | Access |
-|------------|--------|
-| **Owner**  | Full access — create groups, add members, record auctions, manage team, settings |
-| **Staff**  | Limited — view all data, record payments and cash entries only |
-| **Superadmin** | Your master account — see all firms, change plans, suspend accounts |
-
----
-
-## Pages
-
-| Route | Description | Who |
-|---|---|---|
-| `/` | Public landing page with pricing | Everyone |
-| `/register` | 2-step firm registration | New firms |
-| `/login` | Sign in / sign up / forgot password | All users |
-| `/onboarding` | Welcome wizard after registration | New owners |
-| `/dashboard` | Stats, recent auctions, group progress | All |
-| `/groups` | Create and manage chit groups | Owner |
-| `/members` | Members with ticket dots, status, actions | Owner / Staff |
-| `/auctions` | Record monthly auctions + auto dividend calc | Owner |
-| `/payments` | Payment matrix with partial payment support | Owner / Staff |
-| `/cashbook` | Daily denomination entry (₹2000, ₹500 … ₹1) | Owner / Staff |
-| `/collection` | Printable pending collection report | Owner / Staff |
-| `/reports` | Group and member summary reports | Owner / Staff |
-| `/team` | Invite staff, manage roles | Owner |
-| `/settings` | Account, theme, database info | Owner |
-| `/invite/[id]` | Staff invite acceptance page | Invited staff |
-| `/admin` | Super admin — all firms, plans, billing | Superadmin |
+| Layer | Technology |
+|---|---|
+| **Framework** | Next.js 16 (App Router) |
+| **Backend** | Supabase (PostgreSQL + RLS) |
+| **Auth** | Supabase Auth (Unified Identity) |
+| **Styles** | Vanilla CSS + Tailwind Core |
+| **Logic** | TypeScript (Strict Mode) |
+| **Desktop** | Electron (Cross-platform builds) |
 
 ---
 
-## Quick Start
+## 🏗️ Core Financial Modules
 
+### 1. Advanced Auction Engine
+Supports two distinct auction methodologies out of the box:
+- **Dividend (Conventional)**: Members bid for the pot; the discount is distributed among fellow members.
+- **Accumulation (Fixed Payout)**: A structured model focused on fixed payouts with accumulated surplus tracking.
+
+### 2. Market Debt & Analytics
+Real-time visibility into the financial health of your firm:
+- **Market Debt**: Total liabilities from paid auctions.
+- **Life Time Paid**: Cumulative member contributions.
+- **Arrears Tracking**: Priority lists for members with outstanding dues.
+
+### 3. Smart Collection Center
+- Matrix-style payment tracking with support for partial installments.
+- Visual indicators for payment status (Full, Partial, Pending).
+- External payment mode labels (Cash, UPI, Bank Transfer) for internal reconciliation.
+
+### 4. Daily Digital Cashbook
+- Precision reconciliation of physical cash holdings.
+- Denomination-based tracking (₹2000 down to ₹1).
+- Automated daily totals and printable audit logs.
+
+---
+
+## 🔐 Security & Architecture
+
+### Multi-Tenancy (SaaS)
+ChitVault utilizes a secure, single-domain multi-tenant architecture. Data isolation is enforced at the database level using **PostgreSQL Row Level Security (RLS)**. 
+- A custom `my_firm_id()` function ensures that users can *never* access data from another firm.
+- Middleware handles routing based on user roles and firm affiliation.
+
+### Role-Based Access Control (RBAC)
+- **Superadmin**: Global oversight, firm management, and plan configuration.
+- **Owner**: Full administrative control over a specific firm, its groups, and its team.
+- **Staff**: Operational access restricted to data entry and record-keeping.
+
+---
+
+## 📦 Getting Started (Developers)
+
+### Prerequisites
+- Node.js (v20+)
+- Supabase account & project
+
+### Setup Instructions
 ```bash
-# 1. Clone
-git clone https://github.com/YOUR_USERNAME/chitvault.git
+# 1. Clone the repository
+git clone https://github.com/seyon-nexa-labs/chitvault.git
 cd chitvault
 
-# 2. Install
+# 2. Install dependencies
 npm install
 
-# 3. Environment
+# 3. Configure Environment
 cp .env.example .env.local
-# Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+# Update with your Supabase URL and Anon Key
 
-# 4. Database
-# Paste supabase_schema_saas.sql into Supabase → SQL Editor → Run
+# 4. Initialize Database
+# Execute the contents of 'supabase_schema_saas.sql' in your Supabase SQL Editor.
 
-# 5. Dev server
+# 5. Run Development Server
 npm run dev
-# Open http://localhost:3000
 ```
 
 ---
 
-## First-Time Superadmin Setup
+## 🖥️ Desktop Distribution (Electron)
 
-1. Register an account at `/register` (creates a firm — you can leave it as a test firm)
-2. In Supabase SQL Editor, set yourself as superadmin:
-```sql
-update profiles set role = 'superadmin' where id = '<your-user-id>';
--- Find your id: select id, email from auth.users;
-```
-3. Sign out and sign back in → you'll land at `/admin`
-
----
-
-## Database Schema
-
-Tables and what they do:
-
-```
-firms           → registered businesses (name, slug, plan, status, trial_ends)
-profiles        → auth users linked to firms + role (owner/staff/superadmin)
-groups          → chit groups (firm_id, chit_value, duration, monthly_contribution)
-members         → chit members (firm_id, group_id, ticket_no, status, contact_id)
-auctions        → monthly auctions (firm_id, group_id, month, winner_id, dividend)
-payments        → payment records (firm_id, partial support, balance_due, collected_by)
-denominations   → daily cash entries (firm_id, note_2000…coin_1, computed total)
-invites         → staff invite links (firm_id, email, role, expires_at)
-```
-
-**RLS rules (enforced at DB level):**
-- `groups / members / auctions` — Staff can SELECT only; INSERT/UPDATE/DELETE requires owner role
-- `payments / denominations` — Both owner and staff can INSERT
-- All tables filtered by `my_firm_id()` helper function automatically
-
----
-
-## Key Features
-
-**Groups & Members**
-- Create chit groups with value, duration, monthly contribution
-- Add members across multiple groups (linked by `contact_id`)
-- Ticket transfer, foreman absorption, defaulter tracking
-
-**Auctions**
-- Record winner + bid amount per month
-- Auto-calculates discount, dividend per member
-- Eligible bidder list (excludes previous winners)
-
-**Payments — Partial Payment Support**
-- Payment matrix: ✓ green = full, `65%` gold = partial, number = unpaid
-- Click partial cell → history modal with all installments + progress bar
-- "Pay Balance ₹X" button in history modal
-- `payment_type` (full/partial), `balance_due`, `collected_by` tracked per entry
-
-**Daily Cash Book**
-- Staff enters denomination counts: ₹2000 × 5, ₹500 × 12 etc.
-- Computed `total` stored in DB (generated column)
-- Date range filter, expandable entries, printable
-
-**Collection Report**
-- Lists all pending and partial members with phone numbers
-- Partial months marked with `M3 ~` (tilde indicator)
-- Defaulters in separate section with notes
-
-**Team Management**
-- Owner invites staff via email
-- Invite link sent → staff clicks → creates account → joins firm automatically
-- 7-day invite expiry, revokable, role selectable (staff / owner)
-
-**Billing (Manual)**
-- Trial: 30 days free, 2 groups, 20 members
-- Basic: ₹2,000/yr, 10 groups, 200 members
-- Pro: ₹5,000/yr, unlimited
-- Admin panel: change plan with dropdown → reflected instantly
-- Suspend non-paying accounts → firm sees suspended screen
-
----
-
-## Project Structure
-
-```
-chitvault-saas/
-├── app/
-│   ├── page.tsx              → Public landing page
-│   ├── register/             → 2-step firm registration
-│   ├── login/                → Auth page
-│   ├── onboarding/           → Post-registration wizard
-│   ├── invite/[id]/          → Staff invite accept
-│   ├── admin/                → Superadmin dashboard
-│   ├── dashboard/            → Stats + layout (shared by all pages below)
-│   ├── groups/
-│   ├── members/
-│   ├── auctions/
-│   ├── payments/
-│   ├── cashbook/
-│   ├── collection/
-│   ├── reports/
-│   ├── team/
-│   └── settings/
-├── components/
-│   └── ui/                   → Badge, Btn, Card, Modal, Table, Toast, etc.
-├── electron/
-│   ├── main.js               → Electron entry (starts Next.js server)
-│   ├── preload.js            → Secure renderer bridge
-│   ├── loading.html          → Splash screen
-│   ├── package.json          → electron-builder config
-│   ├── LICENSE.txt
-│   ├── ELECTRON_BUILD.md     → Desktop build guide
-│   └── build/icon.ico
-├── lib/
-│   ├── firm/
-│   │   ├── context.tsx       → FirmProvider (firm + profile + role + can())
-│   │   ├── permissions.ts    → PERMISSIONS map + can() function
-│   │   └── useFirmId.ts      → Hook for firm_id
-│   ├── supabase/
-│   │   ├── client.ts         → Browser Supabase client
-│   │   └── server.ts         → Server Supabase client
-│   └── utils/index.ts        → fmt(), fmtDate(), APP_NAME
-├── types/index.ts            → All TypeScript interfaces
-├── middleware.ts             → Auth guard + firm check + admin guard
-├── supabase_schema_saas.sql  → Full DB schema with RLS
-├── DEPLOYMENT.md             → Hostinger deploy + domain setup guide
-└── .env.example              → Environment variables template
-```
-
----
-
-## Git Workflow
+ChitVault can be packaged as a professional Windows/MacOS desktop application.
 
 ```bash
-# New feature
-git checkout -b feat/sms-reminders
-# ... make changes ...
-git add .
-git commit -m "feat: add WhatsApp payment reminders"
-git push origin feat/sms-reminders
-# Open Pull Request on GitHub → merge to main → Hostinger auto-deploys (via CI/CD)
-
-# Quick fix
-git add .
-git commit -m "fix: partial payment balance calculation"
-git push
-```
-
-**Commit convention:**
-- `feat:` — new feature
-- `fix:` — bug fix
-- `style:` — UI/CSS changes
-- `refactor:` — code restructure
-- `docs:` — documentation
-
----
-
-## Deploy
-
-```bash
-# Refer to DEPLOYMENT.md for Hostinger VPS setup
-```
-
-See `DEPLOYMENT.md` for full instructions including custom domain setup.
-
----
-
-## Desktop App (Electron)
-
-```bash
-# Build Windows .exe
+# Build for Windows
 npm run build:electron:win
-# Output: electron/dist/ChitVault Setup 2.0.0.exe
 
-# Test desktop app locally
-npm run dev          # Terminal 1
-npm run electron:dev # Terminal 2
+# Local Testing
+npm run dev           # Terminal 1
+npm run electron:dev  # Terminal 2
 ```
-
-See `electron/ELECTRON_BUILD.md` for full build guide.
+*See `electron/ELECTRON_BUILD.md` for detailed build configurations.*
 
 ---
 
-## Adding a New Page
+## 📂 Project Organization
 
-1. Create `app/your-page/page.tsx`
-2. Create `app/your-page/layout.tsx` → `export { default } from '@/app/dashboard/layout'`
-3. Add to sidebar in `app/dashboard/layout.tsx` (NAV array)
-4. Add icon import from `lucide-react`
-5. Add TypeScript types to `types/index.ts` if needed
-6. Add RLS policy to `supabase_schema_saas.sql` if new table
+```text
+├── app/              # Next.js App Router (Internal & Auth routes)
+├── components/       # Premium UI components and complex modals
+├── lib/              # Context Providers, Supabase clients, and utilities
+├── types/            # Centralized TypeScript definitions
+├── electron/         # Desktop application source and build assets
+└── sql/              # (Reference) Supabase schema and RPC definitions
+```
 
 ---
 
-## Useful Commands
+## 🛡️ Non-Destructive Operations
+The platform includes a **Trash System** that protects against accidental data loss. Deleted groups or members are moved to a temporary state and can be recovered within a 90-day grace period before permanent removal.
 
-```bash
-npm run dev              # Start development server
-npm run build            # Production build
-npm run start            # Run production build locally
-npm run type-check       # TypeScript checks
-npm run lint             # ESLint
-npm run build:electron   # Build Next.js in standalone mode (for Electron)
-npm run build:electron:win  # Full Windows .exe build
-npm run electron:dev     # Run Electron pointing at dev server
-```
+---
+
+## 🤝 Contribution & Standards
+- **Commit Pattern**: `feat:`, `fix:`, `style:`, `refactor:`, `docs:`.
+- **Styling**: Adhere to the established CSS variables and design tokens for UI consistency.
+- **Versioning**: All releases follow Semantic Versioning (SemVer).
+
+---
+
+© 2026 **Foundation Finance Systems**. All Rights Reserved.

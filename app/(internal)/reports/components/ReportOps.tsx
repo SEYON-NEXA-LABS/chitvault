@@ -30,7 +30,9 @@ export function ReportUpcomingPay({ groups, members, auctions, payments }: any) 
 
     for (let month = 1; month <= currentMonth; month++) {
       const prevMonthAuc = groupAuctions.find((a: Auction) => a.month === month - 1)
-      const due = Number(group.monthly_contribution) - (prevMonthAuc ? Number(prevMonthAuc.dividend || 0) : 0)
+      const isAcc = group.auction_scheme === 'ACCUMULATION'
+      const div = (isAcc || !prevMonthAuc) ? 0 : Number(prevMonthAuc.dividend || 0)
+      const due = Number(group.monthly_contribution) - div
       const paid = memberPayments.filter((p: Payment) => p.month === month).reduce((s: number, p: Payment) => s + Number(p.amount), 0)
       mTotalDue += due
       if (due - paid > 0.1) mPending.push({ month, amount: due - paid })

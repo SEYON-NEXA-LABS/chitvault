@@ -3,19 +3,21 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useFirm } from '@/lib/firm/context'
 import { fmt, cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n/context'
 import { Btn, Card, Loading, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { Info, Settings2, Gavel, ArrowLeft, RefreshCcw, Database } from 'lucide-react'
 import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
+import { useFirm } from '@/lib/firm/context'
 
 export default function GroupSettingsPage() {
   const params   = useParams()
   const router   = useRouter()
   const supabase = createClient()
   const { firm } = useFirm()
+  const { t }    = useI18n()
   const { toast, show, hide } = useToast()
 
   const groupId = Number(params.id)
@@ -94,9 +96,18 @@ export default function GroupSettingsPage() {
   }, [testBid, calculatePreview])
 
   async function save() {
-    if (!firm) return
+    if (!firm || !group) return
     setSaving(true)
     
+    const isPercentType = ['percent_of_chit', 'percent_of_discount', 'percent_of_payout'].includes(rules.commission_type)
+    const limit = isPercentType ? 5 : (group.chit_value * 0.05)
+    
+    if (rules.commission_value > limit) {
+      show(`Legal limit exceeded: Maximum allowed commission is ${isPercentType ? '5%' : fmt(limit)}.`, 'error')
+      setSaving(false)
+      return
+    }
+
     // Safety: Only update columns that exist in the DB schema
     const { dividend_rule, ...safeRules } = rules as any;
     
@@ -140,7 +151,7 @@ export default function GroupSettingsPage() {
         <div className="fixed top-20 right-8 z-50 animate-bounce">
            <div className="bg-[var(--warning)] text-[var(--warning-text)] px-4 py-2 rounded-2xl border border-[var(--warning-border)] shadow-2xl flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-widest">Unsaved Changes</span>
+              <span className="text-xs font-black uppercase tracking-widest">{t('unsaved_changes')}</span>
            </div>
         </div>
       )}
@@ -152,26 +163,26 @@ export default function GroupSettingsPage() {
           </button>
           <div>
              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50 mb-1">
-               <Settings2 size={12} /> Execution Settings
+               <Settings2 size={12} /> {t('execution_settings')}
              </div>
-             <h1 className="text-2xl font-bold">{group.name}</h1>
+             <h1 className="text-2xl font-bold">{group?.name}</h1>
           </div>
         </div>
         <Btn onClick={() => router.push(`/groups/${groupId}`)} icon={Gavel}>View Ledger</Btn>
       </div>
 
-      <Card title="🎯 Bid Thresholds" subtitle="Configure auction floor and ceiling">
+      <Card title={t('nav_auctions')} subtitle={t('bid_thresholds_desc')}>
         <div className="p-5 space-y-6">
            <div className="p-3 rounded-xl text-sm flex gap-2"
             style={{ background: 'rgba(91,138,245,0.07)', border: '1px solid rgba(91,138,245,0.2)', color: 'var(--info)' }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            These limits ensure auctions remain fair and within financial boundaries.
+            {t('bid_thresholds_desc')}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="flex justify-between mb-2">
-                <label className="text-xs font-black uppercase opacity-40">Minimum Floor</label>
+                <label className="text-xs font-black uppercase opacity-40">{t('min_bid_floor')}</label>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--surface2)]" style={{ color: 'var(--accent)' }}>
                   {Math.round(rules.min_bid_pct * 100)}%
                 </span>
@@ -185,7 +196,7 @@ export default function GroupSettingsPage() {
 
             <div>
               <div className="flex justify-between mb-2">
-                <label className="text-xs font-black uppercase opacity-40">Maximum Ceiling</label>
+                <label className="text-xs font-black uppercase opacity-40">{t('max_bid_cap')}</label>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--surface2)]" style={{ color: 'var(--danger)' }}>
                   {Math.round(rules.max_bid_pct * 100)}%
                 </span>
@@ -200,7 +211,7 @@ export default function GroupSettingsPage() {
         </div>
       </Card>
 
-      <Card title="👑 Commission Logic" subtitle="Revenue strategy for the group">
+      <Card title={t('comm_logic_title')} subtitle={t('comm_logic_desc')}>
         <div className="p-5 space-y-5">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(Object.entries(CTL) as [CommissionType, string][]).map(([type, label]) => (
@@ -220,9 +231,17 @@ export default function GroupSettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] font-black uppercase opacity-40 mb-1.5 block">Commission Value</label>
+                <div className="flex justify-between items-center mb-1.5 ">
+                  <label className="text-[10px] font-black uppercase opacity-40">Commission Value</label>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 text-[8px] font-black uppercase tracking-tighter">
+                    <Info size={10} /> Max 5% Legal Limit
+                  </div>
+                </div>
                 <div className="relative">
-                  <input type="number" value={rules.commission_value}
+                  <input 
+                    type="number" 
+                    value={rules.commission_value}
+                    max={['fixed_amount'].includes(rules.commission_type) ? (group?.chit_value || 0) * 0.05 : 5}
                     onChange={e => setRules(r => ({...r, commission_value: +e.target.value}))}
                     className="w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none"
                     style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
@@ -249,7 +268,7 @@ export default function GroupSettingsPage() {
         </div>
       </Card>
 
-      <Card title="⚖️ Dividend Strategy" subtitle="How surplus is distributed to members">
+      <Card title={t('div_strategy_title')} subtitle={t('div_strategy_desc')}>
          <div className="p-5">
             <div className="flex bg-[var(--surface2)] p-1 rounded-2xl border" style={{ borderColor: 'var(--border)' }}>
               <button onClick={() => setRules(r => ({...r, dividend_rule: 'equal_split'}))}
@@ -266,11 +285,11 @@ export default function GroupSettingsPage() {
          </div>
       </Card>
 
-      <Card title="🧪 Live Simulator" subtitle="Real-time preview of how these rules apply">
+      <Card title={t('live_simulator_title')} subtitle={t('live_simulator_desc')}>
         <div className="p-5 space-y-5">
           <div>
             <label className="text-xs font-bold uppercase tracking-widest opacity-50 block mb-2">
-              Simulated {group.auction_scheme === 'DIVIDEND' ? 'Winning Bid' : 'Discount Bid'} (₹)
+              Simulated {group?.auction_scheme === 'DIVIDEND' ? 'Winning Bid' : 'Discount Bid'} (₹)
             </label>
             <input type="number" className="w-full px-4 py-3 rounded-2xl border text-xl font-black outline-none mb-3"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}
@@ -303,9 +322,9 @@ export default function GroupSettingsPage() {
               <div>
                 <div className="text-sm font-bold flex items-center gap-2">
                   <Database size={14} className="text-[var(--accent)]" /> 
-                  Retroactive Sync
+                  {t('retroactive_sync')}
                 </div>
-                <div className="text-[10px] opacity-40">Apply current rules to all past auctions in this group</div>
+                <div className="text-[10px] opacity-40">{t('retroactive_sync_desc')}</div>
               </div>
               <Btn variant="secondary" size="sm" onClick={recalculateLedger} loading={syncing} icon={RefreshCcw}>
                 Recalculate Ledger

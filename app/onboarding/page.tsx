@@ -15,8 +15,21 @@ export default function OnboardingPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
-      if (!profile?.firm_id) { router.push('/register'); return }
+      
+      let { data: profile } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
+      
+      if (!profile) {
+        // Retry once after a short delay to handle potential eventual consistency
+        await new Promise(resolve => setTimeout(resolve, 800))
+        const { data: retryProfile } = await supabase.from('profiles').select('firm_id').eq('id', user.id).maybeSingle()
+        profile = retryProfile
+      }
+
+      if (!profile?.firm_id) { 
+        router.push('/access-denied'); 
+        return 
+      }
+      
       const { data: f } = await supabase.from('firms').select('id, name').eq('id', profile.firm_id).maybeSingle()
       setFirm(f)
     }

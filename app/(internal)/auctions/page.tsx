@@ -85,7 +85,7 @@ export default function AuctionsPage() {
           <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
           <p className="text-xs opacity-60 mt-1 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-            Centralized Read-Only History Log
+            {t('auctions_history_log')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -95,16 +95,16 @@ export default function AuctionsPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 no-print">
         <div className="bg-[var(--surface)] p-4 rounded-3xl neumo-out">
-          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">Page Yield</div>
+          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">{t('page_yield')}</div>
           <div className="text-xl font-black italic text-[var(--accent)]">{fmt(pageYield)}</div>
         </div>
         <div className="bg-[var(--surface)] p-4 rounded-3xl neumo-out">
-          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">Total Payouts</div>
+          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">{t('total_payouts')}</div>
           <div className="text-xl font-black italic text-[var(--success)]">{fmt(pagePayouts)}</div>
         </div>
       </div>
 
-      <TableCard title="Auction Ledger" subtitle={`Page ${page} of ${totalPages || 1} • Total records: ${totalCount}`}>
+      <TableCard title={t('auction_ledger')} subtitle={`${t('page')} ${page} ${t('of')} ${totalPages || 1} • ${t('total_records')}: ${totalCount}`}>
         <Table responsive>
           <thead><tr>
             <Th>{t('group')}</Th>
@@ -123,14 +123,14 @@ export default function AuctionsPage() {
                     <Link href={`/groups/${a.group_id}`} className="flex flex-col min-h-[48px] justify-center hover:opacity-70 transition-opacity">
                       <span className="text-[13px] font-extrabold text-[var(--accent)]">{g ? getGroupDisplayName(g, t) : '—'}</span>
                       <span className="text-[9px] font-black opacity-40 uppercase tracking-widest flex items-center gap-1">
-                        Chit Group <ExternalLink size={8} />
+                        {t('group')} <ExternalLink size={8} />
                       </span>
                     </Link>
                   </Td>
                   <Td label="Month">
                     <div className="flex flex-col min-h-[48px] justify-center">
                       <span className="text-[13px] font-black font-mono text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
-                      <span className="text-[8px] font-black uppercase tracking-tighter opacity-40">{a.auction_date ? fmtDate(a.auction_date) : 'No Date Set'}</span>
+                      <span className="text-[8px] font-black uppercase tracking-tighter opacity-40">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
                     </div>
                   </Td>
                   <Td label="Winner">
@@ -142,14 +142,14 @@ export default function AuctionsPage() {
                   <Td label="Bid" right>
                     <div className="flex flex-col min-h-[48px] justify-center items-end">
                       <span className="text-[13px] font-black font-mono text-[var(--danger)]">{fmt(a.auction_discount)}</span>
-                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Winning Bid</span>
+                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">{t('winning_bid_label')}</span>
                     </div>
                   </Td>
                   <Td label="Payout" right>
                     <div className="flex flex-col min-h-[48px] justify-center items-end">
                       <span className="text-[13px] font-black font-mono text-[var(--success)]">{fmt(a.net_payout)}</span>
                       <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                        {a.is_payout_settled ? `Paid: ${fmtDate(a.payout_date || '')}` : 'Unsettled'}
+                        {a.is_payout_settled ? `${t('payout_amt')}: ${fmtDate(a.payout_date || '')}` : t('unsettled')}
                       </span>
                     </div>
                   </Td>
@@ -161,7 +161,7 @@ export default function AuctionsPage() {
         
         <div className="flex justify-center items-center gap-2 mt-6 p-4 border-t border-white/5">
           <Btn variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} icon={ChevronLeft} />
-          <span className="text-xs font-bold opacity-40 uppercase tracking-widest px-4">Page {page} of {totalPages}</span>
+          <span className="text-xs font-bold opacity-40 uppercase tracking-widest px-4">{t('page')} {page} {t('of')} {totalPages}</span>
           <Btn variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} icon={ChevronRight} />
         </div>
       </TableCard>

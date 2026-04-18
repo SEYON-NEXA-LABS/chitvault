@@ -4,13 +4,29 @@ import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
-import { APP_NAME } from '@/lib/utils/index'
+import { APP_NAME, APP_DESCRIPTION, APP_SLOGAN } from '@/lib/utils/index'
 import { ThemeProvider } from '@/lib/theme/context'
 import { UpdateNotification } from '@/components/ui'
 import { CookieConsent } from '@/components/ui/CookieConsent'
 import './globals.css'
+export const metadata: Metadata = {
+  title: {
+    default: `${APP_NAME} | ${APP_SLOGAN}`,
+    template: `%s | ${APP_NAME}`
+  },
+  description: APP_DESCRIPTION,
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png'
+  }
+}
 
-// ... (Metadata and Viewport stay the same)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#2563eb" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&family=Outfit:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&family=Audiowide&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Hind+Madurai:wght@300;400;500;600;700&family=Audiowide&display=swap" rel="stylesheet" />
         {/* Blocking script to prevent theme flickering */}
         <script dangerouslySetInnerHTML={{
           __html: `

@@ -13,7 +13,7 @@ interface BrandingContext {
 }
 
 const Ctx = createContext<BrandingContext>({
-  name: 'Seyon Chit Vault',
+  name: 'ChitVault Manager',
   font: 'Inter', colorProfile: 'indigo',
   setTheme: () => {}
 })
@@ -71,9 +71,9 @@ export function BrandingProvider({ children }: {
 export function useBranding() { return useContext(Ctx) }
 
 export const AVAILABLE_FONTS = [
-  { label: 'Inter (Modern Standard)', value: 'Inter' },
-  { label: 'Outfit (Geometric Premium)', value: 'Outfit' },
-  { label: 'Noto Sans (Best Support)', value: 'Noto Sans' },
+  { label: 'AudioWide (Brand Header)', value: 'Audiowide' },
+  { label: 'Outfit (English Standard)', value: 'Outfit' },
+  { label: 'Hind Madurai (Tamil Standard)', value: 'Hind Madurai' },
 ]
 
 export const COLOR_PROFILES = [
@@ -99,9 +99,7 @@ export function applyBranding(font: string, colorProfile: string = 'indigo') {
   root.setAttribute('data-color-profile', colorProfile)
 
   // Apply font stack
-  // Map 'Noto Sans' to our local 'Noto Sans Tamil' definition
-  const family = font === 'Noto Sans' ? 'Noto Sans Tamil' : font
-  const fontStack = `'${family}', sans-serif`
+  const fontStack = `'${font}', sans-serif`
   
   root.style.setProperty('--font-body', fontStack)
   document.body.style.fontFamily = fontStack

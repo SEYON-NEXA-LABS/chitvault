@@ -13,7 +13,7 @@ import {
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass,
-  ShieldCheck
+  ShieldCheck, Scale
 } from 'lucide-react'
 import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
@@ -25,6 +25,7 @@ import { useTheme } from '@/lib/theme/context'
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function TourTrigger() {
   const { startCurrentPageTour, hasTourForPage, isActive } = useTour()
+  const { t } = useI18n()
   if (!hasTourForPage || isActive) return null
 
   return (
@@ -33,7 +34,7 @@ function TourTrigger() {
       className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] hover:border-[var(--accent)] transition-all"
     >
       <Compass size={14} className="text-[var(--accent)] group-hover:rotate-45 transition-transform" />
-      <span className="text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Explore Page</span>
+      <span className="text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">{t('explore_page')}</span>
     </button>
   )
 }
@@ -67,7 +68,7 @@ const NAV: NavItem[] = [
     icon: Gavel,
     items: [
       { href: '/auctions', label: 'nav_auctions', icon: Gavel },
-      { href: '/payments', label: 'nav_payments', icon: CreditCard },
+      { href: '/payments', label: 'nav_due_collection', icon: CreditCard },
       { href: '/settlement', label: 'nav_settlements', icon: Calculator },
     ]
   },
@@ -97,6 +98,7 @@ const NAV: NavItem[] = [
     icon: HelpCircle,
     items: [
       { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
+      { href: '/legal', label: 'nav_legal', icon: Scale },
       { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
     ]
   },
@@ -120,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const { role, firm } = useFirm()
+  const { role, firm, profile } = useFirm()
   const isOwner = role === 'owner' || role === 'superadmin'
   const { lang, setLang, t } = useI18n()
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
@@ -253,10 +255,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
               <div className="flex items-center gap-1">
-                <button onClick={() => adjustFont(-1)} className="p-1 text-xs opacity-50 hover:opacity-100">A-</button>
-                <button onClick={() => adjustFont(1)} className="p-1 text-base opacity-50 hover:opacity-100">A+</button>
+                <button onClick={() => adjustFont(-1)} className="p-1 text-xs opacity-50 hover:opacity-100" title="Decrease Font">A-</button>
+                <button onClick={() => adjustFont(1)} className="p-1 text-base opacity-50 hover:opacity-100" title="Increase Font">A+</button>
               </div>
-              <div className="w-8" /> {/* Spacer for symmetry since mono is removed */}
+              
+              <button
+                onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface2)] text-[10px] font-black uppercase tracking-tighter hover:border-[var(--accent)] transition-all"
+                title={lang === 'en' ? 'Switch to Tamil' : 'Switch to English'}
+              >
+                <Languages size={10} className="text-[var(--accent)]" />
+                <span>{lang === 'en' ? 'EN' : 'தமிழ்'}</span>
+              </button>
             </div>
 
             <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
@@ -266,10 +276,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-black truncate uppercase font-brand" style={{ color: 'var(--text)' }}>
-                    {firm?.name || APP_BRAND}
+                    {profile?.full_name || 'Personal Account'}
                   </p>
                   <p className="text-[9px] opacity-40 font-mono truncate">
-                    ID: {firm?.slug || 'GLOBAL'}
+                    {firm?.name || 'GLOBAL'}
                   </p>
                   <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5">
                     <p className="text-[9px] opacity-60 uppercase font-black">{role}</p>
