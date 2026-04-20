@@ -9,13 +9,19 @@ import { Card, TableCard, Loading, Badge, StatCard, Btn, ProgressBar, Modal, Fie
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, Upload, FileSpreadsheet, CheckCircle2, Wallet, Printer, History, AlertTriangle, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react'
+import { Gavel, Settings2, Calendar, Users, DollarSign, ArrowLeft, Calculator, Plus, UserPlus, Info, Trash2, MapPin, Phone, Download, CheckCircle2, Wallet, ExternalLink, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useTerminology } from '@/lib/hooks/useTerminology'
 import Link from 'next/link'
 import { CSVImportModal } from '@/components/ui'
-import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules, Payment } from '@/types'
+import type { Group, Auction, Member, ForemanCommission, Person, GroupWithRules, Payment, AuctionCalculation } from '@/types'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+import { getWhatsAppLink } from '@/lib/utils'
+
+// Refactored Sub-components
+import { AuctionLedger } from './_components/AuctionLedger'
+import { MemberDirectory } from './_components/MemberDirectory'
+import { AuctionForm } from './_components/AuctionForm'
 // Recharts removed - favoring Foundation Charts (SVG)
 
 export default function GroupLedgerPage() {
@@ -62,7 +68,7 @@ export default function GroupLedgerPage() {
     auction_discount: '', foreman_member_id: '', notes: ''
   })
   const [eligibleList, setEligibleList] = useState<Member[]>([])
-  const [calc, setCalc] = useState<any>(null)
+  const [calc, setCalc] = useState<AuctionCalculation | null>(null)
   const [calcError, setCalcError] = useState('')
   const [winnerBalance, setWinnerBalance] = useState(0)
   const [winnerAging, setWinnerAging] = useState(0)
@@ -76,7 +82,8 @@ export default function GroupLedgerPage() {
       const commissionAmt = comm ? Number(comm.commission_amt) : 0;
       const pool = Number(a.auction_discount) - commissionAmt;
       const perMemberShare = pool / (group?.num_members || 1);
-      return { ...a, audited_div: perMemberShare, audited_pool: pool };
+      // We keep the derived values in the component's internal mapping
+      return { ...a, dividend: perMemberShare };
     });
   }, [auctionHistory, commissions, group]);
 
@@ -85,11 +92,11 @@ export default function GroupLedgerPage() {
     return auditedAuctions
       .filter(a => a.status === 'confirmed')
       .map(a => {
-        runningTotal += a.audited_div;
+        runningTotal += a.dividend;
         return {
           name: `M${a.month}`,
           [t('auction_discount')]: Number(a.auction_discount || 0),
-          [t('yield_per_member_gain')]: a.audited_div,
+          [t('yield_per_member_gain')]: a.dividend,
           [t('yield_cumulative_gain')]: runningTotal
         }
       })
@@ -529,7 +536,7 @@ export default function GroupLedgerPage() {
 
   const confirmedAucs = auditedAuctions.filter(a => a.status === 'confirmed')
   const draftAucs = auditedAuctions.filter(a => a.status === 'draft')
-  const totalDividends = confirmedAucs.reduce((s, a) => s + a.audited_div, 0)
+  const totalDividends = confirmedAucs.reduce((s, a) => s + a.dividend, 0)
   const totalPayouts = confirmedAucs.reduce((s, a) => s + Number(a.net_payout || 0), 0)
   const totalSurplus = confirmedAucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0)
   const pendingSurplus = draftAucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0)
@@ -682,233 +689,35 @@ export default function GroupLedgerPage() {
       </div>
 
       <div id="tour-auction-ledger">
-        <TableCard title={t('auction_ledger')}>
-        <div className="px-6 py-3 border-b border-dashed bg-[var(--surface2)] flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs ring-4 ring-[var(--accent-o10)]">Σ</div>
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Calculation Logic</span>
-            <span className="text-xs font-mono font-bold">
-              Benefit / Mem = ({t('auction_discount')} — {t('commission')}) ÷ {group.num_members} {t('members')}
-            </span>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <Table>
-            <thead>
-              <Tr>
-                <Th>{t('auction_month')}</Th>
-                <Th>{t('winner')}</Th>
-                <Th right>{t('auction_discount')}</Th>
-                <Th right className="hidden lg:table-cell text-[var(--danger)]">
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="opacity-40 font-mono">−</span> {t('commission')}
-                  </div>
-                </Th>
-                <Th right className="hidden md:table-cell text-[var(--accent)]">
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="opacity-40 font-mono">=</span> {t('benefit_per_mem')}
-                  </div>
-                </Th>
-                <Th right>{t('net_payout')}</Th>
-                <Th right className="hidden sm:table-cell">
-                  {group.auction_scheme === 'ACCUMULATION' ? 'Monthly Pay' : t('after_div')}
-                </Th>
-                <Th right>{t('settlement')}</Th>
-                <Th className="only-print">{t('sign_here')}</Th>
-              </Tr>
-            </thead>
-            <tbody>
-              {auctionHistory.length === 0 ? (
-                <Tr><Td colSpan={8} className="text-center py-12 opacity-50 italic">{t('no_auctions')}</Td></Tr>
-              ) : confirmedAucs.concat(draftAucs).sort((a, b) => a.month - b.month).map((a) => {
-                const winner = members.find(m => m.id === a.winner_id)
-                const comm = commissions.find(c => c.auction_id === a.id)
-                const isAcc = group.auction_scheme === 'ACCUMULATION'
-                const monthlyDue = Number(group.monthly_contribution)
-                const dividend = a.audited_div
-                const eachPays = isAcc ? monthlyDue : (monthlyDue - dividend)
-
-                return (
-                  <Tr key={a.id}>
-                    <Td>
-                      <div className="flex flex-col min-h-[48px] justify-center">
-                        <span className="text-[13px] font-black font-mono text-[var(--text)]">{fmtMonth(a.month, group?.start_date)}</span>
-                        <span className={cn("text-[8px] font-black uppercase tracking-tighter", a.status === 'draft' ? "text-[var(--accent)]" : "opacity-40")}>
-                          {a.status === 'draft' ? "Draft Plan" : (a.auction_date ? fmtDate(a.auction_date) : "Confirmed")}
-                        </span>
-                      </div>
-                    </Td>
-                    <Td>
-                      <div className="flex flex-col min-h-[48px] justify-center">
-                        <span className="text-[13px] font-extrabold truncate max-w-[120px] text-[var(--text)]">
-                          {winner?.persons?.name || '—'}
-                        </span>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                          {winner ? `Ticket #${winner.ticket_no}` : 'No Winner'}
-                        </span>
-                      </div>
-                    </Td>
-                    <Td right>
-                      <div className="flex flex-col min-h-[48px] justify-center items-end">
-                        <span className="text-[13px] font-black font-mono text-[var(--danger)]">{fmt(a.auction_discount)}</span>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Gross Discount</span>
-                      </div>
-                    </Td>
-
-                    <Td right className="hidden lg:table-cell">
-                      <div className="flex flex-col min-h-[48px] justify-center items-end">
-                        <span className="text-[13px] font-bold font-mono text-[var(--text)] opacity-80">{comm ? fmt(comm.commission_amt) : '—'}</span>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Foreman Fee</span>
-                      </div>
-                    </Td>
-
-                    <Td right className="hidden md:table-cell">
-                      <div className="flex flex-col min-h-[48px] justify-center items-end relative group/math">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[13px] font-black font-mono text-[var(--accent)]">+{fmt(dividend)}</span>
-                          {comm && (
-                            <button
-                              onClick={() => setMathModal({ auction: a, commission: comm })}
-                              className="p-1.5 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] transition-all hover:scale-110 active:scale-95 shadow-sm"
-                              title="Click for Audit"
-                            >
-                              <Calculator size={13} strokeWidth={3} />
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">Individual Benefit</span>
-                      </div>
-                    </Td>
-
-                    <Td right>
-                      <div className="flex flex-col min-h-[48px] justify-center items-end">
-                        <span className="text-[13px] font-black font-mono text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</span>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                          {a.is_payout_settled ? `Paid: ${fmtDate(a.payout_date || '')}` : 'Net Payable'}
-                        </span>
-                      </div>
-                    </Td>
-
-                    <Td right className="hidden sm:table-cell">
-                      <div className="flex flex-col min-h-[48px] justify-center items-end">
-                        <span className="text-[13px] font-bold font-mono text-[var(--text)]">{fmt(eachPays)}</span>
-                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
-                          {isAcc ? 'Fixed Pay' : 'Due Amount'}
-                        </span>
-                      </div>
-                    </Td>
-                    <Td right>
-                      <div className="flex flex-col min-h-[48px] justify-center items-end">
-                        {a.is_payout_settled ? (
-                          <>
-                            <div className="flex items-center gap-1 text-[var(--success)] font-black text-[9px] uppercase tracking-wider">
-                              <CheckCircle2 size={10} strokeWidth={3} /> {t('settled')}
-                            </div>
-                            <span className="text-[11px] font-mono font-black opacity-90">{fmtDate(a.payout_date)}</span>
-                          </>
-                        ) : (
-                          <div className="no-print">
-                            {a.status === 'confirmed' && winner ? (
-                              <Btn size="sm" variant="primary" className="h-7 px-3 text-[10px] uppercase font-black" onClick={() => {
-                                setSettling(a)
-                                setSettleForm(s => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
-                              }}>{t('settle')}</Btn>
-                            ) : a.status === 'draft' ? (
-                               <Btn size="sm" variant="primary" className="h-7 px-3 text-[10px] uppercase font-black" onClick={() => handleConfirmDraft(a.id)}>Confirm Draft</Btn>
-                            ) : (
-                              <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Pending</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </Td>
-                    <Td className="only-print">
-                      <div className="h-8 w-24 border-b border-black opacity-20"></div>
-                    </Td>
-                  </Tr>
-                )
-              })}
-            </tbody>
-          </Table>
-        </div>
-      </TableCard>
+        <AuctionLedger
+          group={group}
+          auctionHistory={auctionHistory}
+          commissions={commissions}
+          members={members}
+          t={t}
+          setSettling={setSettling}
+          setSettleForm={setSettleForm}
+          handleConfirmDraft={handleConfirmDraft}
+          setMathModal={setMathModal}
+        />
       </div>
-
-      <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
-        actions={
-          <div className="flex gap-2">
-            <Btn variant="secondary" size="sm" onClick={handlePrintMemberList} icon={Printer}>Print</Btn>
-            {isOwner && (
-              <>
-                <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet}>{t('export_people')}</Btn>
-                <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload}>{t('import_people')}</Btn>
-              </>
-            )}
-            {can('addMember') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={UserPlus}>{t('add_member')}</Btn>}
-          </div>
-        }>
-        <Table>
-          <thead><tr><Th>#</Th><Th>Name</Th><Th className="hidden md:table-cell">{t('status')}</Th><Th className="hidden sm:table-cell">{t('won_month')}</Th><Th className="hidden xl:table-cell">Streak</Th><Th className="hidden lg:table-cell text-[10px] uppercase opacity-40">Last Pay</Th><Th right className="hidden sm:table-cell text-[10px] uppercase opacity-40">Paid</Th><Th right>Outstanding</Th><Th right className="no-print">Actions</Th></tr></thead>
-          <tbody>
-            {members.length === 0 ? (
-              <Tr><Td colSpan={8} className="text-center py-12 opacity-50 italic">{t('no_members')}</Td></Tr>
-            ) : members.map((m) => {
-              const financial = group ? getMemberFinancialStatus(m, group, auctionHistory, payments) : null
-              return (
-                <Tr key={m.id}>
-                  <Td><span className="font-mono font-black text-[10px] bg-[var(--surface2)] px-1.5 py-0.5 rounded">{m.ticket_no}</span></Td>
-                  <Td className="font-semibold text-xs md:text-sm">
-                    {m.persons?.name}
-                    {auctionHistory.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2 px-1 py-0 text-[8px]">Winner</Badge>}
-                  </Td>
-                  <Td className="hidden md:table-cell">{m.status === 'foreman' ? <Badge variant="info" className="text-[9px] px-1 py-0">Foreman</Badge> : <Badge variant="success" className="text-[9px] px-1 py-0">Active</Badge>}</Td>
-                  <Td className="hidden sm:table-cell">
-                    {(() => {
-                      const auc = auctionHistory.find(a => a.winner_id === m.id && a.status === 'confirmed')
-                      return auc ? <Badge variant="accent" className="text-[9px] px-1 py-0">{fmtMonth(auc.month, group?.start_date)}</Badge> : <span className="opacity-30">—</span>
-                    })()}
-                  </Td>
-                  <Td className="hidden xl:table-cell">
-                    <div className="flex gap-0.5">
-                      {financial?.streak.slice(0, 10).map(s => (
-                        <div key={s.month} className="w-1 h-3 rounded-[1px]" style={{ background: `var(--${s.status})` }} title={`M${s.month}: ${s.status}`} />
-                      ))}
-                    </div>
-                  </Td>
-                  <Td right className="hidden lg:table-cell font-mono text-[10px] opacity-60">
-                    {(() => {
-                      const mPays = payments.filter(p => Number(p.member_id) === Number(m.id) && Number(p.group_id) === Number(group?.id))
-                      if (mPays.length === 0) return '—'
-                      const last = mPays.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-                      return fmtDate(last.created_at)
-                    })()}
-                  </Td>
-                  <Td right className="hidden sm:table-cell">
-                    <span className="font-mono text-xs opacity-60">{financial ? fmt(financial.totalPaid) : '—'}</span>
-                  </Td>
-                  <Td right>
-                    {financial && (
-                      <span className={cn("font-bold text-xs", financial.missedCount > 0 ? "text-[var(--danger)]" : financial.balance > 0 ? "text-[var(--info)]" : "text-[var(--success)]")}>
-                        {financial.balance > 0.01 ? fmt(financial.balance) : 'Paid'}
-                      </span>
-                    )}
-                  </Td>
-                  <Td right className="no-print">
-                    <div className="flex justify-end gap-1">
-                      <Btn size="sm" variant="ghost" onClick={() => router.push(`/reports/member_history?member_id=${m.id}`)} icon={History}>{t('ledger')}</Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => router.push(`/members/${m.person_id}`)} icon={Info}>{t('profile')}</Btn>
-                      {can('deleteMember') && auctionHistory.length === 0 && <Btn size="sm" variant="danger" onClick={() => deleteMember(m.id)} icon={Trash2}>{t('remove')}</Btn>}
-                    </div>
-                  </Td>
-                  <Td className="only-print">
-                    <div className="h-8 w-24 border-b border-black opacity-30"></div>
-                  </Td>
-                </Tr>
-              )
-            })}
-          </tbody>
-        </Table>
-      </TableCard>
+      <MemberDirectory
+        group={group}
+        members={members}
+        auctionHistory={auctionHistory}
+        payments={payments}
+        isOwner={isOwner}
+        can={can as any}
+        t={t}
+        firm={firm || undefined}
+        handlePrintMemberList={handlePrintMemberList}
+        handleExport={handleExport}
+        setImportOpen={setImportOpen}
+        setAddOpen={setAddOpen}
+        router={router}
+        deleteMember={deleteMember}
+        setSelectedMember={setSelectedMember}
+      />
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('add_member')} size="lg">
         <div className="flex gap-1 mb-5 bg-[var(--surface2)] p-1 rounded-xl">
@@ -947,7 +756,7 @@ export default function GroupLedgerPage() {
             return (
               <div className="p-4 rounded-2xl border-2 flex items-center gap-4 transition-all" style={{ borderColor: 'var(--accent-border)', background: 'var(--accent-dim)' }}>
                 <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-black text-xl shadow-lg ring-4 ring-[var(--accent-dim)]">
-                  {winner?.persons?.name.charAt(0)}
+                  {winner?.persons?.name?.charAt(0)}
                 </div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] opacity-60">Settling Payout For</div>
@@ -1022,15 +831,21 @@ export default function GroupLedgerPage() {
           <Modal open={!!selectedMember} onClose={() => setSelectedMember(null)} title="Member Details">
             <div className="space-y-4">
               <div className="bg-[var(--surface2)] p-4 rounded-2xl flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{m.persons?.name.charAt(0)}</div>
+                <div className="w-12 h-12 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-xl font-bold">{m.persons?.name?.charAt(0)}</div>
                 <div>
                   <div className="font-bold text-lg">{m.persons?.name}</div>
-                  <div className="text-xs opacity-50">Ticket #{m.ticket_no} · {m.status}</div>
+                  <div className="text-xs opacity-50">Ticket #{m?.ticket_no} · {m?.status}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-3 border rounded-xl" style={{ borderColor: 'var(--border)' }}><div className="opacity-40 mb-1 uppercase tracking-tighter">Phone</div><div className="font-bold">{m.persons?.phone || '—'}</div></div>
-                <div className="p-3 border rounded-xl" style={{ borderColor: 'var(--border)' }}><div className="opacity-40 mb-1 uppercase tracking-tighter">Joined</div><div className="font-bold">{fmtDate(m.created_at)}</div></div>
+                <div className="p-3 border rounded-xl" style={{ borderColor: 'var(--border)' }}>
+                  <div className="opacity-40 mb-1 uppercase tracking-tighter">Phone</div>
+                  <div className="font-bold">{m.persons?.phone || '—'}</div>
+                </div>
+                <div className="p-3 border rounded-xl" style={{ borderColor: 'var(--border)' }}>
+                  <div className="opacity-40 mb-1 uppercase tracking-tighter">Joined</div>
+                  <div className="font-bold">{fmtDate(m.created_at)}</div>
+                </div>
               </div>
               <p className="text-[10px] opacity-40 px-1 italic">Address: {m.persons?.address || 'Not provided'}</p>
             </div>
@@ -1053,7 +868,7 @@ export default function GroupLedgerPage() {
         <div className="p-5 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface2)] flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-center md:text-left">
             <div className="p-3 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)]">
-              <History size={20} className="animate-pulse" />
+              <HistoryIcon size={20} className="animate-pulse" />
             </div>
             <div>
               <h4 className="font-black text-sm uppercase tracking-wide">Intelligent Member Substitution</h4>
@@ -1065,7 +880,7 @@ export default function GroupLedgerPage() {
       </div>
 
       {mathModal && (
-        <Modal open={!!mathModal} onClose={() => setMathModal(null)} title={`${group.auction_scheme === 'ACCUMULATION' ? 'Accumulation' : 'Dividend'} Audit Report`} size="sm">
+        <Modal open={!!mathModal} onClose={() => setMathModal(null)} title={`${group?.auction_scheme === 'ACCUMULATION' ? 'Accumulation' : 'Dividend'} Audit Report`} size="sm">
           <div className="space-y-6">
             <div className="p-6 rounded-[32px] bg-[var(--surface2)] border border-[var(--border)] shadow-inner">
               <div className="flex items-center gap-4 mb-8">
@@ -1074,7 +889,7 @@ export default function GroupLedgerPage() {
                 </div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Audit Ledger Report</div>
-                  <div className="text-xl font-black text-[var(--text)] tracking-tight">Month {mathModal.auction.month} Dividend</div>
+                  <div className="text-xl font-black text-[var(--text)] tracking-tight">Month {mathModal?.auction?.month} Dividend</div>
                 </div>
               </div>
 
@@ -1086,14 +901,14 @@ export default function GroupLedgerPage() {
                     <span className="text-[9px] font-bold opacity-40 uppercase">(Discount — Fee)</span>
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] font-mono shadow-sm">
-                    <span className="text-xs">{fmt(mathModal.auction.auction_discount)} — {fmt(mathModal.commission.commission_amt)}</span>
-                    <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt(mathModal.auction.auction_discount - mathModal.commission.commission_amt)}</span>
+                    <span className="text-xs">{fmt(mathModal?.auction?.auction_discount || 0)} — {fmt(mathModal?.commission?.commission_amt || 0)}</span>
+                    <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt((mathModal?.auction?.auction_discount || 0) - (mathModal?.commission?.commission_amt || 0))}</span>
                   </div>
                 </div>
 
                 {/* Step 2: Per Member Share */}
                 {(() => {
-                  const pool = mathModal.auction.auction_discount - mathModal.commission.commission_amt;
+                  const pool = (mathModal?.auction?.auction_discount || 0) - (mathModal?.commission?.commission_amt || 0);
                   const share = pool / (group?.num_members || 1);
                   const isAcc = group.auction_scheme === 'ACCUMULATION';
                   const monthlyDue = Number(group.monthly_contribution);
@@ -1146,8 +961,8 @@ export default function GroupLedgerPage() {
                         <div className="relative z-10">
                           <div className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Mathematical Reconciliation</div>
                           <p className="text-[11px] font-bold leading-relaxed italic opacity-80">
-                            &quot;The total auction discount of {fmt(mathModal.auction.auction_discount)} is perfectly accounted for:
-                            {fmt(mathModal.commission.commission_amt)} as foreman fee and
+                            &quot;The total auction discount of {fmt(mathModal?.auction?.auction_discount || 0)} is perfectly accounted for:
+                            {fmt(mathModal?.commission?.commission_amt || 0)} as foreman fee and
                             {fmt(share * (group?.num_members || 1))} as {isAcc ? 'surplus accumulation' : 'member dividends'}.&quot;
                           </p>
                         </div>
@@ -1167,56 +982,26 @@ export default function GroupLedgerPage() {
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
 
-      <Modal open={aucFormOpen} onClose={() => setAucFormOpen(false)} title="Record Group Auction" size="lg">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Auction Month">
-            <input className={inputClass} style={inputStyle} value={`Month ${aucForm.month}`} disabled />
-          </Field>
-          <Field label="Auction Date">
-            <input className={inputClass} type="date" value={aucForm.auction_date} onChange={e => setAucForm(f => ({ ...f, auction_date: e.target.value }))} />
-          </Field>
-
-          <Field label={t('winner_bidder')} className="col-span-2">
-            <select className={inputClass} style={inputStyle} value={aucForm.winner_id} onChange={e => {
-              setAucForm(f => ({ ...f, winner_id: e.target.value }))
-              checkWinnerBalance(e.target.value)
-            }}>
-              <option value="">{t('select_winner')}</option>
-              {eligibleList.map(m => <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no})</option>)}
-            </select>
-          </Field>
-
-          {checkingWinner ? <div className="col-span-2 flex justify-center py-2"><Loading /></div> : winnerBalance > 0.01 && (
-            <div className="col-span-2 p-4 rounded-2xl border bg-red-500/5 border-red-500/20">
-              <div className="text-red-600 font-black text-sm uppercase tracking-tight">Owes ₹{fmt(winnerBalance)} ({winnerAging} months)</div>
-              <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                <input type="checkbox" checked={acknowledge} onChange={e => setAcknowledge(e.target.checked)} />
-                <span className="text-[10px] font-black uppercase opacity-60">I acknowledge these dues and the member is eligible to win</span>
-              </label>
-            </div>
-          )}
-
-          <Field label={group?.auction_scheme === 'DIVIDEND' ? 'Winning Bid (Amount Taken)' : 'Discount Bid (Amount Shared)'} className="col-span-2">
-            <input className={inputClass} type="number" value={aucForm.auction_discount} onChange={e => onBidChange(e.target.value)} placeholder={group?.auction_scheme === 'DIVIDEND' ? 'e.g. 80000' : 'e.g. 5000'} />
-            {calc && (
-              <div className="mt-3 p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] grid grid-cols-2 gap-y-2">
-                <div className="text-[9px] font-black uppercase opacity-40">Gross Discount</div>
-                <div className="text-xs font-black text-right">{fmt(calc.auction_discount)}</div>
-                <div className="text-[9px] font-black uppercase opacity-40">Foreman Fee</div>
-                <div className="text-xs font-black text-right">{fmt(calc.commission_amt)}</div>
-                <div className="text-[9px] font-black uppercase opacity-40">Individual Share</div>
-                <div className="text-xs font-black text-right text-[var(--accent)]">{fmt(calc.per_member_div)}</div>
-              </div>
-            )}
-            {calcError && <div className="text-[10px] text-red-500 mt-1 font-bold">{calcError}</div>}
-          </Field>
-        </div>
-
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-white/5">
-          <Btn variant="secondary" onClick={() => setAucFormOpen(false)}>{t('cancel')}</Btn>
-          <Btn variant="primary" loading={saving} onClick={() => handleSaveAuction('confirmed')} disabled={!!calcError || checkingWinner}>{t('record_auction')}</Btn>
-        </div>
-      </Modal>
+      <AuctionForm
+        open={aucFormOpen}
+        onClose={() => setAucFormOpen(false)}
+        group={group as Group}
+        aucForm={aucForm}
+        setAucForm={setAucForm}
+        onBidChange={onBidChange}
+        calc={calc}
+        calcError={calcError}
+        eligibleList={eligibleList}
+        winnerBalance={winnerBalance}
+        winnerAging={winnerAging}
+        checkingWinner={checkingWinner}
+        acknowledge={acknowledge}
+        setAcknowledge={setAcknowledge}
+        saving={saving}
+        handleSaveAuction={handleSaveAuction}
+        checkWinnerBalance={checkWinnerBalance}
+        t={t}
+      />
     </div>
   )
 }

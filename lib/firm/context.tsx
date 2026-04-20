@@ -61,8 +61,6 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       ? switchedFirmId 
       : dbProfile?.firm_id
 
-    console.log('DEBUG: Calculated Active Firm ID:', activeFirmId)
-
     // Load firm if active ID exists
     if (activeFirmId) {
       const { data: f } = await supabase

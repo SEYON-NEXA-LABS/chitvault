@@ -18,7 +18,6 @@ DROP POLICY IF EXISTS "profiles_select_firm_members" ON public.profiles;
 CREATE POLICY "profiles_master_emergency" ON public.profiles 
 FOR SELECT USING (
   id = auth.uid() 
-  OR id = 'abc66c0a-dc75-4f1e-862e-70b118cfc911' -- Vijay profile
 );
 
 -- 4. Re-enable RLS
