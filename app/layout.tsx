@@ -28,6 +28,8 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
+import { Providers } from '@/components/Providers'
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -93,20 +95,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body>
-        <ThemeProvider>
-          <FirmProvider>
-            <BrandingProvider>
-              <I18nProvider>
-                <PinLockProvider>
-                  {children}
-                  <InviteAutoLinker />
-                  <UpdateNotification />
-                  <CookieConsent />
-                </PinLockProvider>
-              </I18nProvider>
-            </BrandingProvider>
-          </FirmProvider>
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider>
+            <FirmProvider>
+              <BrandingProvider>
+                <I18nProvider>
+                  <PinLockProvider>
+                    {children}
+                    <InviteAutoLinker />
+                    <UpdateNotification />
+                    <CookieConsent />
+                  </PinLockProvider>
+                </I18nProvider>
+              </BrandingProvider>
+            </FirmProvider>
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   )
