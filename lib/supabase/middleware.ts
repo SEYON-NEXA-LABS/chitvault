@@ -60,22 +60,19 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // 1. Get Profile (Try Cache First)
+  // 1. Get Profile (Try JWT Metadata first for speed and security)
   let profile: { id: string; firm_id: string; role: string; status: string } | null = null
-  const cachedProfile = request.cookies.get('cv_profile')?.value
-
-  if (cachedProfile) {
-    try {
-      const parsed = JSON.parse(atob(cachedProfile))
-      // ONLY use cache if it belongs to the CURRENT user
-      if (parsed.id === user.id) {
-        profile = parsed
-      }
-    } catch {
-      profile = null
+  
+  if (user.user_metadata?.role && user.user_metadata?.firm_id) {
+    profile = {
+      id: user.id,
+      firm_id: user.user_metadata.firm_id,
+      role: user.user_metadata.role,
+      status: user.user_metadata.status || 'active'
     }
   }
 
+  // 2. Fallback to Database if metadata is missing or forced refresh needed
   if (!profile) {
     const { data } = await supabase
       .from('profiles')
@@ -94,14 +91,6 @@ export async function updateSession(request: NextRequest) {
       if (retryData) profile = retryData as any
     } else {
       profile = data as any
-    }
-
-    if (profile) {
-      // Set Cache for 1 hour (User-specific)
-      supabaseResponse.cookies.set('cv_profile', btoa(JSON.stringify(profile)), {
-        maxAge: 3600,
-        path: '/'
-      })
     }
   }
 

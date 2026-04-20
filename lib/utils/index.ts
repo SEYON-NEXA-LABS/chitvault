@@ -7,13 +7,13 @@ export function cn(...inputs: ClassValue[]) {
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.10'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.11'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_SLOGAN = 'Professional Digital Ledger'
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and auction auditing. Record-keeping only; actual payments occur externally.'
 export const APP_DEVELOPER = 'Foundation Finance Systems'
-export const SUPPORT_EMAIL = 'support@example.local'
-export const SUPERADMIN_EMAIL = 'admin@example.local'
+export const SUPPORT_EMAIL = 'support@seyon.nexalabs.app'
+export const SUPERADMIN_EMAIL = 'admin@seyon.nexalabs.app'
 
 // Format Indian Rupees
 export function fmt(n: number | string | null | undefined): string {
@@ -111,4 +111,15 @@ export function amtToWords(n: number | string | null | undefined): string {
 export function getGroupDisplayName(g: { name: string, auction_scheme: string }, t: (key: string) => string) {
   const scheme = g.auction_scheme === 'ACCUMULATION' ? 'ACC' : 'DIV'
   return `${g.name} (${scheme})`
+}
+
+/**
+ * Generates a WhatsApp wa.me link for sending messages.
+ */
+export function getWhatsAppLink(phone: string | null | undefined, message: string): string {
+  if (!phone) return '#'
+  const cleanPhone = phone.replace(/\D/g, '')
+  // Add 91 prefix if missing (assuming India for small-town pitch)
+  const fullPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone
+  return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`
 }

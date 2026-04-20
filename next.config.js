@@ -20,12 +20,19 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // HTML pages — always revalidate with server
-        source: '/((?!_next/static|_next/image|icons|favicon.ico).*)',
+        // HTML pages — always revalidate with server, but allow local caching
+        source: '/((?!_next/static|_next/image|icons|favicon.ico|manifest.json).*)',
         headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Cache-Control', value: 'public, s-maxage=0, must-revalidate' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Expires', value: '0' },
+        ],
+      },
+      {
+        // Static assets — Long-lived cache
+        source: '/(icons|fonts|manifest.json|favicon.ico)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ]
