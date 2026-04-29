@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, fmtMonth, getToday, getGroupDisplayName } from '@/lib/utils'
 import { 
   Users, Layers, TrendingUp, DollarSign, Wallet, ShieldCheck, 
-  ArrowUpRight, Clock, Info, ShieldAlert, AlertTriangle, BarChart3
+  ArrowUpRight, Clock, Info, ShieldAlert, AlertTriangle, BarChart3,
+  Gavel, CheckCircle2, Settings2, BookOpen, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import { StatCard, Card, Loading, Badge, LineAnalytics, TableCard, Table, Th, Td, Tr, Btn } from '@/components/ui'
+import { haptics } from '@/lib/utils/haptics'
+import Link from 'next/link'
+import { StatCard, Card, Loading, Badge, LineAnalytics, TableCard, Table, Th, Td, Tr, Btn, Modal } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { useTerminology } from '@/lib/hooks/useTerminology'
@@ -21,6 +24,7 @@ export default function DashboardPage() {
   const { firm, role, switchedFirmId, profile } = useFirm()
   const { t } = useI18n()
   const term = useTerminology(firm)
+  const [showHelpModal, setShowHelpModal] = useState(false)
   
   const [groups,   setGroups]   = useState<Group[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -109,10 +113,13 @@ export default function DashboardPage() {
     const groupSeries = Array.from(groupSet)
 
     const onboardingSteps = [
-      { id: '1', title: t('onboarding_step1_title'), desc: t('onboarding_step1_desc'), link: '/settings', completed: !!firm },
-      { id: '2', title: t('onboarding_step2_title'), desc: t('onboarding_step2_desc'), link: '/groups', completed: groups.length > 0 },
-      { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/members', completed: stats.activeMembersCount >= 5 },
-      { id: '4', title: t('onboarding_step4_title'), desc: t('onboarding_step4_desc'), link: '/payments', completed: stats.collectedToday > 0 },
+      { id: '1', title: t('onboarding_step1_title'), desc: t('onboarding_step1_desc'), link: '/settings', completed: !!firm, icon: Settings2 },
+      { id: '2', title: t('onboarding_step2_title'), desc: t('onboarding_step2_desc'), link: '/members', completed: stats.totalMembersCount > 0, icon: Users },
+      { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/groups', completed: stats.totalGroupsCount > 0, icon: Layers },
+      { id: '4', title: t('onboarding_step4_title'), desc: t('onboarding_step4_desc'), link: '/groups', completed: auctions.length > 0, icon: Gavel },
+      { id: '5', title: t('onboarding_step5_title'), desc: t('onboarding_step5_desc'), link: '/collection', completed: payments.length > 0, icon: Wallet },
+      { id: '6', title: t('onboarding_step6_title'), desc: t('onboarding_step6_desc'), link: '/payments', completed: false, icon: DollarSign },
+      { id: '7', title: t('onboarding_step7_title'), desc: t('onboarding_step7_desc'), link: '/reports', completed: false, icon: BarChart3 },
     ]
 
     return { stats, chartData, groupSeries, onboardingSteps }
@@ -127,10 +134,10 @@ export default function DashboardPage() {
         {isSuper && <Badge variant="danger">{t('dash_super_view')}</Badge>}
       </div>
 
-      <div className="relative group overflow-hidden rounded-[3rem] p-8 bg-[var(--surface2)] border-2 shadow-xl" style={{ borderColor: 'var(--border)' }}>
+      <div className="relative group overflow-hidden rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-8 bg-[var(--surface2)] border-2 shadow-xl" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
           <div className="lg:col-span-3 flex flex-col justify-center">
-              <h2 className="text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>
+              <h2 className="text-2xl md:text-3xl font-black mb-2" style={{ color: 'var(--text)' }}>
                 {t('dash_welcome_back')}, {firm?.name || profile?.full_name || 'User'}!
               </h2>
               <p className="text-sm opacity-50 font-medium max-w-md mb-6">
@@ -141,6 +148,9 @@ export default function DashboardPage() {
               <div className="flex flex-wrap gap-4">
                  <Btn variant="primary" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
                  <Btn variant="secondary" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
+                 <Btn variant="ghost" icon={Info} onClick={() => setShowHelpModal(true)} className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+                   {t('onboarding_title')}
+                 </Btn>
               </div>
           </div>
           <div className="hidden lg:flex items-center justify-center">
@@ -149,17 +159,53 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t('report_today_title')} value={fmt(stats.collectedToday)} icon={DollarSign} sub="+12%" color="success" />
-        <StatCard label={t('market_debt_label')} value={fmt(stats.totalOutstanding)} icon={Wallet} sub="Action" color="danger" />
-        <StatCard label={t('nav_groups')} value={`${stats.activeGroupsCount} / ${stats.totalGroupsCount}`} icon={Layers} color="info" />
-        <StatCard label={t('nav_members')} value={`${stats.activeMembersCount} / ${stats.totalMembersCount}`} icon={Users} color="accent" />
+      {/* Quick Help Modal */}
+      <Modal 
+        open={showHelpModal} 
+        onClose={() => setShowHelpModal(false)}
+        title={t('onboarding_steps_guide')}
+      >
+        <div className="space-y-6 py-4">
+          <p className="text-sm opacity-60 px-2 font-medium">{t('onboarding_subtitle')}</p>
+          <div className="grid grid-cols-1 gap-4 max-h-[60vh] overflow-y-auto px-1 pr-2 custom-scrollbar">
+            {onboardingSteps.map((step) => {
+              const Icon = step.icon
+              return (
+                <Link 
+                  href={step.link} 
+                  key={step.id} 
+                  onClick={() => setShowHelpModal(false)}
+                  className={`flex items-center gap-4 p-5 rounded-3xl border transition-all ${step.completed ? 'bg-[var(--success-dim)] border-[var(--success)] opacity-70' : 'bg-[var(--surface2)] border-[var(--border)] hover:border-[var(--accent)] hover:shadow-lg'}`}
+                >
+                  <div className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center ${step.completed ? 'bg-[var(--success)] text-white' : 'bg-[var(--surface)] text-[var(--accent)]'}`}>
+                    {step.completed ? <CheckCircle2 size={20} /> : <Icon size={20} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`font-black text-sm mb-1 ${step.completed ? 'text-[var(--success)] line-through' : 'text-[var(--text)]'}`}>{step.title}</h4>
+                    <p className="text-[10px] opacity-50 line-clamp-1">{step.desc}</p>
+                  </div>
+                  <ArrowUpRight size={16} className="opacity-20" />
+                </Link>
+              )
+            })}
+          </div>
+          <Btn variant="primary" className="w-full" onClick={() => { setShowHelpModal(false); router.push('/help') }} icon={BookOpen}>
+            {t('onboarding_knowledge_base')}
+          </Btn>
+        </div>
+      </Modal>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label={t('report_today_title')} value={fmt(stats.collectedToday)} icon={DollarSign} sub={t('dash_today_collected')} color="success" />
+        <StatCard label={t('market_debt_label')} value={fmt(stats.totalOutstanding)} icon={Wallet} sub={t('dash_total_receivable')} color="danger" />
+        <StatCard label={t('nav_groups')} value={`${stats.activeGroupsCount} / ${stats.totalGroupsCount}`} icon={Layers} sub={t('dash_live_status')} color="info" />
+        <StatCard label={t('nav_members')} value={`${stats.activeMembersCount} / ${stats.totalMembersCount}`} icon={Users} sub={t('dash_live_status')} color="accent" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <LineAnalytics 
-            title="Collection Performance"
+            title={t('dash_collection_perf')}
             data={chartData} 
             series={groupSeries} 
             height={300} 

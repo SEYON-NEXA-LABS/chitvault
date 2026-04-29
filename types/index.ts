@@ -46,8 +46,11 @@ export interface Group {
   id: number; firm_id: string; name: string; chit_value: number
   num_members: number; duration: number; monthly_contribution: number
   start_date: string | null; status: GroupStatus; 
-  auction_scheme: 'DIVIDEND'|'ACCUMULATION';
+  auction_scheme: 'DIVIDEND_SHARE' | 'ACCUMULATION' | 'LOTTERY' | 'FIXED_ROTATION' | 'SEALED_TENDER' | 'BOUNDED_AUCTION' | 'HYBRID_SPLIT' | 'STEPPED_INSTALLMENT';
   accumulated_surplus: number;
+  dividend_split_pct?: number;
+  surplus_split_pct?: number;
+  step_amount?: number;
   min_bid_pct: number;
   max_bid_pct: number;
   discount_cap_pct: number;

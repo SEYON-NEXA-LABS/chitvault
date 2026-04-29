@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, cn, getToday } from '@/lib/utils'
+import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
   Modal, Field, Loading, Empty, Toast
@@ -218,6 +219,7 @@ export default function MembersPage() {
   async function handleBulkMoveToTrash() {
     if (selectedIds.size === 0 || !can('deleteMember')) return
     if (!confirm(`Move ${selectedIds.size} selected tickets to trash?`)) return
+    haptics.heavy()
     
     setSaving(true)
     const { error } = await supabase.from('members').update({ deleted_at: new Date() }).in('id', Array.from(selectedIds))
@@ -403,6 +405,7 @@ export default function MembersPage() {
   async function savePay() {
     if (!payMember || !payForm.month || !payForm.amount) { showToast('Missing details', 'error'); return }
     setSaving(true)
+    haptics.heavy()
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
     if (authErr || !user) { showToast('Authentication error!', 'error'); setSaving(false); return }
 
@@ -436,6 +439,7 @@ export default function MembersPage() {
   async function deletePerson(pId: number) {
     if (!can('deleteMember')) return
     if (!confirm('Are you sure? This will move the person and ALL their tickets to trash!')) return
+    haptics.heavy()
     const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
     if (pErr) { showToast(pErr.message, 'error'); return }
     await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)

@@ -3,9 +3,10 @@
 import { cn } from '@/lib/utils'
 import { X }  from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import { haptics } from '@/lib/utils/haptics'
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-type BadgeVariant = 'success' | 'danger' | 'accent' | 'info' | 'gray'
+type BadgeVariant = 'success' | 'danger' | 'accent' | 'info' | 'gray' | 'warning'
 
 export function Badge({ variant = 'gray', children, className }: {
   variant?: BadgeVariant; children: React.ReactNode; className?: string
@@ -16,6 +17,7 @@ export function Badge({ variant = 'gray', children, className }: {
     accent:  { background: 'var(--accent-dim)',   color: 'var(--accent)' },
     info:    { background: 'var(--info-dim)',     color: 'var(--info)'  },
     gray:    { background: 'var(--surface3)',     color: 'var(--text2)' },
+    warning: { background: 'var(--warning-dim)',  color: 'var(--warning)' },
   }
   return (
     <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider', className)}
@@ -41,8 +43,13 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
     success:     { background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid var(--success)' },
     ghost:     { background: 'transparent',      color: 'var(--text)', boxShadow: 'none' },
   }
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    haptics.light()
+    if (props.onClick) props.onClick(e)
+  }
+
   return (
-    <button className={cn(base, sizes[size], className)} style={styles[variant]} {...props}>
+    <button className={cn(base, sizes[size], className)} style={styles[variant]} {...props} onClick={handleClick}>
       {loading ? <span className="spinner" /> : (
         <>
           {Icon && <Icon size={size === 'sm' ? 14 : 16} />}
@@ -62,7 +69,7 @@ export function Card({ title, subtitle, headerAction, children, className, style
       onClick={onClick}
       style={{ background: glass ? undefined : 'var(--surface)', borderColor: 'var(--border)', cursor: onClick ? 'pointer' : 'default', ...style }}>
       {(title || subtitle || headerAction) && (
-        <div className="px-5 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 sm:px-6 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
           <div>
             {title && <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--text)' }}>{title}</h3>}
             {subtitle && <p className="text-xs opacity-60 mt-0.5" style={{ color: 'var(--text2)' }}>{subtitle}</p>}
@@ -93,12 +100,12 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon, onCl
   }
   
   return (
-    <Card className={cn("p-6 overflow-hidden relative group", onClick && "cursor-pointer active:scale-95")} glass onClick={onClick}>
+    <Card className={cn("p-4 sm:p-6 overflow-hidden relative group", onClick && "cursor-pointer active:scale-95")} glass onClick={onClick}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)] opacity-[0.03] rounded-full -mr-16 -mt-16 blur-3xl group-hover:opacity-10 transition-opacity" />
       <div className="flex items-start justify-between relative z-10">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-70" style={{ color: 'var(--text)' }}>{label}</div>
-          <div className="text-3xl font-black tracking-tighter" style={{ color: colors[color] }}>{value}</div>
+          <div className="text-2xl sm:text-3xl font-black tracking-tighter truncate" style={{ color: colors[color] }}>{value}</div>
           {sub && <div className="text-[10px] font-bold mt-1 opacity-60 uppercase tracking-widest" style={{ color: 'var(--text)' }}>{sub}</div>}
         </div>
         {Icon && (
@@ -194,7 +201,7 @@ export function TableCard({ title, subtitle, actions, children }: {
 }) {
   return (
     <Card className="overflow-hidden mb-5">
-      <div className="flex items-center justify-between px-5 py-4 border-b"
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b gap-3"
         style={{ borderColor: 'var(--border)' }}>
         <div>
           <div className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{title}</div>
@@ -225,10 +232,10 @@ export function Modal({ open, onClose, title, children, size = 'md', persist = f
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget && !persist) onClose() }}>
-      <div className={cn('w-full rounded-2xl border shadow-2xl max-h-[90vh] overflow-y-auto', sizes[size])}
+      <div className={cn('w-full rounded-t-3xl sm:rounded-2xl border shadow-2xl max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 sm:animate-none', sizes[size])}
         style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between px-6 py-5 border-b"
           style={{ borderColor: 'var(--border)' }}>
@@ -430,8 +437,6 @@ export * from './PinOverlay'
 export * from './CSVImportModal'
 export * from './CommandPalette'
 export * from './Charts'
-export * from './OnboardingWidget'
-export * from './Tour'
 export * from './NetworkStatus'
 export * from './BottomNav'
 export * from './UpdateNotification'
