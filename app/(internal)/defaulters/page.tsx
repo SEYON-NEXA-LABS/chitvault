@@ -28,7 +28,7 @@ export default function DefaultersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterGroup, setFilterGroup] = useState('')
-  const [activeTab, setActiveTab] = useState<'ACCUMULATION' | 'DIVIDEND'>('ACCUMULATION')
+  const [activeTab, setActiveTab] = useState<'ACCUMULATION' | 'DIVIDEND_SHARE'>('ACCUMULATION')
   const [groups, setGroups] = useState<Group[]>([])
 
   const load = useCallback(async () => {
@@ -62,7 +62,7 @@ export default function DefaultersPage() {
           person: mem.persons,
           group: grp,
           status,
-          scheme: grp.auction_scheme?.toUpperCase() || 'DIVIDEND'
+          scheme: grp.auction_scheme?.toUpperCase() || 'DIVIDEND_SHARE'
         })
       }
     })
@@ -119,7 +119,7 @@ export default function DefaultersPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard label={`${activeTab === 'DIVIDEND' ? 'Dividend' : 'Accum.'} Arrears`} value={fmt(stats.totalArrears)} color="danger" />
+        <StatCard label={`${activeTab === 'DIVIDEND_SHARE' ? 'Dividend' : 'Accum.'} Arrears`} value={fmt(stats.totalArrears)} color="danger" />
         <StatCard label="Critical Assets" value={stats.criticalCount} color="danger" />
         <StatCard label="Warning Assets" value={stats.warningCount} color="info" />
       </div>
@@ -136,10 +136,10 @@ export default function DefaultersPage() {
           <Layers size={14} /> Accumulation
         </button>
         <button
-          onClick={() => setActiveTab('DIVIDEND')}
+          onClick={() => setActiveTab('DIVIDEND_SHARE')}
           className={cn(
             "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
-            activeTab === 'DIVIDEND' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
+            activeTab === 'DIVIDEND_SHARE' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
           )}
         >
           <TrendingUp size={14} /> Dividend Scheme
@@ -147,7 +147,7 @@ export default function DefaultersPage() {
       </div>
 
       <TableCard
-        title={`${activeTab === 'DIVIDEND' ? 'Dividend' : 'Accumulation'} Risk Discovery`}
+        title={`${activeTab === 'DIVIDEND_SHARE' ? 'Dividend' : 'Accumulation'} Risk Discovery`}
         subtitle={`Automated aging analysis specifically for ${activeTab.toLowerCase()} models.`}
       >
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -160,14 +160,14 @@ export default function DefaultersPage() {
           <select className={inputClass} style={{ ...inputStyle, width: '220px' }}
             value={filterGroup} onChange={e => setFilterGroup(e.target.value)}>
             <option value="">Filter by Group</option>
-            {groups.filter(g => (g.auction_scheme?.toUpperCase() || 'DIVIDEND') === activeTab).map(g => (
+            {groups.filter(g => (g.auction_scheme?.toUpperCase() || 'DIVIDEND_SHARE') === activeTab).map(g => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
 
         {filtered.length === 0 ? (
-          <Empty icon={activeTab === 'DIVIDEND' ? '📉' : '🏦'} title="Clean Registry" subtitle={`No ${activeTab.toLowerCase()} defaults detected for current filters.`} />
+          <Empty icon={activeTab === 'DIVIDEND_SHARE' ? '📉' : '🏦'} title="Clean Registry" subtitle={`No ${activeTab.toLowerCase()} defaults detected for current filters.`} />
         ) : (
           <Table>
             <thead>

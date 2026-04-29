@@ -28,6 +28,13 @@ import { MemberDetailsModal } from './_components/MemberDetailsModal'
 // Utils
 import { printPayoutVoucher, printMemberList } from '@/lib/utils/print'
 import { downloadCSV } from '@/lib/utils/csv'
+import { 
+  calculatePot, 
+  calculateForemanCommission, 
+  calculateDistribution, 
+  calculateNetInstallment, 
+  calculateWinnerPayoutDirect 
+} from '@/lib/utils/chit-calculations'
 
 // Foundation Charts
 import { LineAnalytics } from '@/components/ui'
@@ -216,10 +223,62 @@ export default function GroupLedgerPage() {
 
   const onBidChange = async (bid: string) => {
     setAucForm(f => ({ ...f, auction_discount: bid }))
-    if (!bid || !group || isNaN(+bid)) { setCalc(null); return }
-    const { data, error } = await supabase.rpc('calculate_auction', { p_group_id: group.id, p_bid_amount: +bid })
-    if (error) setCalcError(error.message)
-    else { setCalc(data); setCalcError('') }
+    if (!bid || !group || isNaN(+bid)) { setCalc(null); setCalcError(''); return }
+    
+    try {
+      const bidAmt = +bid;
+      const scheme = group.auction_scheme as any;
+      
+      const pot = calculatePot(group.num_members, group.monthly_contribution);
+      
+      const minBid = pot * (group.min_bid_pct || 0);
+      const maxBid = pot * (group.max_bid_pct || 1);
+      
+      if (bidAmt < minBid) throw new Error(`Bid cannot be less than minimum ₹${fmt(minBid)}`);
+      if (bidAmt > maxBid) throw new Error(`Bid cannot exceed maximum ₹${fmt(maxBid)}`);
+      
+      const commType = group.commission_type === 'percent_of_chit' ? 'POT_PERCENTAGE' :
+                       group.commission_type === 'percent_of_discount' ? 'DISCOUNT_PERCENTAGE' :
+                       group.commission_type === 'percent_of_payout' ? 'PAYOUT_PERCENTAGE' : 'FIXED_AMOUNT';
+      
+      // if fixed amount, commissionRate is 0, else we convert percentage (e.g. 5 -> 0.05)
+      const commRate = commType === 'FIXED_AMOUNT' ? 0 : Number(group.commission_value) / 100;
+      const fixedAmount = commType === 'FIXED_AMOUNT' ? Number(group.commission_value) : 0;
+      
+      const commission = calculateForemanCommission(pot, bidAmt, commType, commRate, fixedAmount);
+      
+      const config = {
+        dividendSplitPct: group.dividend_split_pct ? Number(group.dividend_split_pct) : 0.5,
+        surplusSplitPct: group.surplus_split_pct ? Number(group.surplus_split_pct) : 0.5,
+        stepAmount: group.step_amount ? Number(group.step_amount) : 0
+      };
+      
+      const dist = calculateDistribution(scheme, group.num_members, bidAmt, commission, config);
+      const netInstallment = calculateNetInstallment(group.monthly_contribution, dist.dividendPerMember, scheme);
+      const netPayout = calculateWinnerPayoutDirect(pot, bidAmt, commission, true);
+      
+      setCalc({
+        chit_value: pot,
+        auction_discount: bidAmt,
+        min_bid: minBid,
+        max_bid: maxBid,
+        discount: bidAmt,
+        discount_cap: maxBid,
+        commission_type: group.commission_type,
+        commission_rate: commRate,
+        commission_amt: commission,
+        commission_recipient: group.commission_recipient,
+        net_dividend: dist.dividendPool,
+        num_members: group.num_members,
+        per_member_div: dist.dividendPerMember,
+        each_pays: netInstallment,
+        net_payout: netPayout
+      } as any);
+      setCalcError('');
+    } catch (err: any) {
+      setCalc(null);
+      setCalcError(err.message);
+    }
   }
 
   const handleSaveAuction = async (status: 'confirmed' | 'draft') => {

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { PinOverlay } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { usePathname, useRouter } from 'next/navigation'
@@ -18,13 +18,21 @@ interface PinLockContextType {
 
 const PinLockContext = createContext<PinLockContextType | null>(null)
 
+// Ideal security model: 5 minutes of total idle, or immediate lock when backgrounded
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000 
+
 export function PinLockProvider({ children }: { children: React.ReactNode }) {
   const [isLocked, setIsLocked] = useState(false)
   const [hasPin, setHasPin] = useState(false)
   const [isElectron, setIsElectron] = useState(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  
   const supabase = createClient()
   const router = useRouter()
+  const pathname = usePathname()
+  const isPublicPage = ['/login', '/register', '/reset-password', '/onboarding'].includes(pathname)
 
+  // 1. Initial State & PIN Check
   useEffect(() => {
     const electron = (window as any).electronAPI?.isElectron === true
     setIsElectron(electron)
@@ -36,8 +44,41 @@ export function PinLockProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const pathname = usePathname()
-  const isPublicPage = ['/login', '/register', '/reset-password', '/onboarding'].includes(pathname)
+  // 2. Inactivity Logic
+  useEffect(() => {
+    if (!hasPin || isLocked || isPublicPage) return
+
+    const resetTimer = () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setIsLocked(true)
+      }, INACTIVITY_TIMEOUT)
+    }
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
+    events.forEach(name => document.addEventListener(name, resetTimer))
+    resetTimer()
+
+    return () => {
+      events.forEach(name => document.removeEventListener(name, resetTimer))
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [hasPin, isLocked, isPublicPage])
+
+  // 3. Background/Visibility Logic (Mobile "App Switch" Lock)
+  useEffect(() => {
+    if (!hasPin || isPublicPage) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // We lock immediately when hidden to ensure security when app is minimized
+        setIsLocked(true)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [hasPin, isPublicPage])
 
   const lock = () => {
     if (hasPin) setIsLocked(true)

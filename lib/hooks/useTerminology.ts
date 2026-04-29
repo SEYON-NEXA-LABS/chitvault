@@ -6,9 +6,9 @@ export function useTerminology(firm: Firm | null | undefined) {
   const { t } = useI18n()
 
   return useMemo(() => {
-    const schemes = firm?.enabled_schemes || ['DIVIDEND', 'ACCUMULATION']
+    const schemes = firm?.enabled_schemes || ['DIVIDEND_SHARE', 'ACCUMULATION']
     const hasAcc = schemes.includes('ACCUMULATION')
-    const hasDiv = schemes.includes('DIVIDEND')
+    const hasDiv = schemes.includes('DIVIDEND_SHARE')
     const isHybrid = hasAcc && hasDiv
     const isAccOnly = hasAcc && !hasDiv
     const isDivOnly = hasDiv && !hasAcc

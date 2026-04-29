@@ -12,10 +12,10 @@ import {
   LayoutDashboard, Users, UsersRound, Gavel, Crown,
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
-  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive, Compass,
+  ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive,
   ShieldCheck, Scale
 } from 'lucide-react'
-import { CommandPalette, TourProvider, useTour, NetworkStatus, BottomNav } from '@/components/ui'
+import { CommandPalette, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
 import { usePinLock } from '@/lib/lock/context'
 import { IdleTimeout } from '@/components/features/IdleTimeout'
@@ -23,21 +23,6 @@ import type { Firm, Profile, UserRole } from '@/types'
 import { useTheme } from '@/lib/theme/context'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function TourTrigger() {
-  const { startCurrentPageTour, hasTourForPage, isActive } = useTour()
-  const { t } = useI18n()
-  if (!hasTourForPage || isActive) return null
-
-  return (
-    <button
-      onClick={startCurrentPageTour}
-      className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] hover:border-[var(--accent)] transition-all"
-    >
-      <Compass size={14} className="text-[var(--accent)] group-hover:rotate-45 transition-transform" />
-      <span className="text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">{t('explore_page')}</span>
-    </button>
-  )
-}
 
 interface NavItem {
   href?: string
@@ -59,8 +44,8 @@ const NAV: NavItem[] = [
     icon: LayoutDashboard,
     items: [
       { href: '/dashboard', label: 'nav_dashboard', icon: LayoutDashboard },
-      { href: '/groups', label: 'nav_groups', icon: UsersRound },
       { href: '/members', label: 'nav_members', icon: Users },
+      { href: '/groups', label: 'nav_groups', icon: UsersRound },
     ]
   },
   {
@@ -68,6 +53,7 @@ const NAV: NavItem[] = [
     icon: Gavel,
     items: [
       { href: '/auctions', label: 'nav_auctions', icon: Gavel },
+      { href: '/collection', label: 'nav_collection', icon: ClipboardList },
       { href: '/payments', label: 'nav_due_collection', icon: CreditCard },
       { href: '/settlement', label: 'nav_settlements', icon: Calculator },
     ]
@@ -76,10 +62,9 @@ const NAV: NavItem[] = [
     label: 'nav_reports_group',
     icon: BarChart3,
     items: [
-      { href: '/reports', label: 'nav_reports', icon: BarChart3 },
       { href: '/cashbook', label: 'nav_cashbook', icon: BookOpen },
-      { href: '/collection', label: 'nav_collection', icon: ClipboardList },
       { href: '/defaulters', label: 'nav_defaulters', icon: ShieldAlert },
+      { href: '/reports', label: 'nav_reports', icon: BarChart3 },
     ]
   },
   {
@@ -87,17 +72,17 @@ const NAV: NavItem[] = [
     icon: Settings,
     items: [
       { href: '/team', label: 'nav_team', icon: UserCog },
-      { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
-      { href: '/admin/branding', label: 'nav_branding', icon: Palette, ownerOnly: true },
       { href: '/settings', label: 'nav_settings', icon: Settings },
+      { href: '/admin/branding', label: 'nav_branding', icon: Palette, ownerOnly: true },
       { href: '/usage', label: 'nav_usage_hub', icon: BarChart3, ownerOnly: true },
+      { href: '/trash', label: 'nav_trash', icon: Archive, ownerOnly: true },
     ]
   },
   {
     label: 'nav_help',
     icon: HelpCircle,
     items: [
-      { href: '/walkthrough', label: 'nav_journey', icon: BookOpen },
+      { href: '/help', label: 'nav_journey', icon: BookOpen },
       { href: '/legal', label: 'nav_legal', icon: Scale },
       { href: '/schemes', label: 'nav_schemes', icon: HelpCircle },
     ]
@@ -177,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : null
 
   return (
-    <TourProvider>
+    <>
       <NetworkStatus />
       <IdleTimeout />
       <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -325,11 +310,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-bold transition-all hover:bg-orange-500 hover:text-white shadow-sm"
                   title="Secure Your Vault"
                 >
-                  <ShieldAlert size={14} />
+                  <Lock size={14} className="opacity-50" />
                   <span className="hidden sm:inline">Set Lock</span>
                 </Link>
               )}
-              <TourTrigger />
+
               {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
                 <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
                   style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
@@ -343,6 +328,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <CommandPalette />
         </div>
       </div>
-    </TourProvider>
+    </>
   )
 }

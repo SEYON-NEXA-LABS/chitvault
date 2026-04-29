@@ -11,6 +11,12 @@ import { Info, Settings2, Gavel, ArrowLeft, RefreshCcw, Database } from 'lucide-
 import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
 import { useFirm } from '@/lib/firm/context'
+import { 
+  calculatePot, 
+  calculateForemanCommission, 
+  calculateDistribution, 
+  calculateNetInstallment
+} from '@/lib/utils/chit-calculations'
 
 export default function GroupSettingsPage() {
   const params   = useParams()
@@ -75,21 +81,37 @@ export default function GroupSettingsPage() {
   const calculatePreview = useCallback(async (bid: number) => {
     if (!group) return
     
-    // Instead of local JS math, use the "What-If" RPC for perfect accuracy
-    const { data, error } = await supabase.rpc('calculate_auction', {
-      p_group_id:   groupId,
-      p_bid_amount: bid,
-      p_comm_type:  rules.commission_type,
-      p_comm_val:   rules.commission_value,
-      p_comm_recipient: rules.commission_recipient
-    })
-
-    if (error) {
-       console.error("Preview Error:", error.message)
-       return
+    try {
+      const pot = calculatePot(group.num_members, group.monthly_contribution);
+      
+      const commType = rules.commission_type === 'percent_of_chit' ? 'POT_PERCENTAGE' :
+                       rules.commission_type === 'percent_of_discount' ? 'DISCOUNT_PERCENTAGE' :
+                       rules.commission_type === 'percent_of_payout' ? 'PAYOUT_PERCENTAGE' : 'FIXED_AMOUNT';
+                       
+      const commRate = commType === 'FIXED_AMOUNT' ? 0 : Number(rules.commission_value) / 100;
+      const fixedAmount = commType === 'FIXED_AMOUNT' ? Number(rules.commission_value) : 0;
+      
+      const commission = calculateForemanCommission(pot, bid, commType, commRate, fixedAmount);
+      
+      const config = {
+        dividendSplitPct: group.dividend_split_pct ? Number(group.dividend_split_pct) : 0.5,
+        surplusSplitPct: group.surplus_split_pct ? Number(group.surplus_split_pct) : 0.5,
+        stepAmount: group.step_amount ? Number(group.step_amount) : 0
+      };
+      
+      const dist = calculateDistribution(group.auction_scheme as any, group.num_members, bid, commission, config);
+      const netInstallment = calculateNetInstallment(group.monthly_contribution, dist.dividendPerMember, group.auction_scheme as any);
+      
+      setPreview({
+        discount: bid,
+        commission_amt: commission,
+        net_dividend: dist.dividendPool,
+        each_pays: netInstallment
+      });
+    } catch (error: any) {
+      console.error("Preview Error:", error.message)
     }
-    setPreview(data)
-  }, [group, groupId, rules, supabase])
+  }, [group, rules])
 
   useEffect(() => {
      if (testBid && !isNaN(+testBid)) calculatePreview(+testBid)
@@ -289,7 +311,7 @@ export default function GroupSettingsPage() {
         <div className="p-5 space-y-5">
           <div>
             <label className="text-xs font-bold uppercase tracking-widest opacity-50 block mb-2">
-              Simulated {group?.auction_scheme === 'DIVIDEND' ? 'Winning Bid' : 'Discount Bid'} (₹)
+              Simulated {group?.auction_scheme === 'DIVIDEND_SHARE' ? 'Winning Bid' : 'Discount Bid'} (₹)
             </label>
             <input type="number" className="w-full px-4 py-3 rounded-2xl border text-xl font-black outline-none mb-3"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}

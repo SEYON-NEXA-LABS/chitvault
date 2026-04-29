@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, getGroupDisplayName, getToday } from '@/lib/utils'
+import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
   Modal, Field, Loading, Empty, Toast, ProgressBar, Card
@@ -41,7 +42,7 @@ export default function GroupsPage() {
   const [form, setForm] = useState({
     name: '', chit_value: '', num_members: '', duration: '',
     monthly_contribution: '', start_date: getToday(),
-    auction_scheme: 'ACCUMULATION' as 'DIVIDEND' | 'ACCUMULATION',
+    auction_scheme: 'ACCUMULATION' as any,
     min_bid_pct: '5', max_bid_pct: '40',
     commission_type: 'percent_of_chit', commission_value: '5'
   })
@@ -181,6 +182,7 @@ export default function GroupsPage() {
 
   async function archive(id: number) {
     if (!confirm('Archive this group? It will no longer show in active lists.')) return
+    haptics.heavy()
     const { error } = await supabase.from('groups').update({ status: 'archived' }).eq('id', id)
     if (error) showToast(error.message, 'error')
     else { showToast('Group archived'); load() }
@@ -188,6 +190,7 @@ export default function GroupsPage() {
 
   async function archiveAll() {
     if (!confirm(`Archive all ${completed.length} completed groups?`)) return
+    haptics.heavy()
     const ids = completed.map(g => g.id)
     const { error } = await supabase.from('groups').update({ status: 'archived' }).in('id', ids)
     if (error) showToast(error.message, 'error')
@@ -197,6 +200,7 @@ export default function GroupsPage() {
   async function del(id: number) {
     if (!can('deleteGroup')) return
     if (!confirm('Are you sure you want to move this group to trash? It will be retrievable for 90 days.')) return
+    haptics.heavy()
     const { error } = await supabase.from('groups').update({ deleted_at: new Date() }).eq('id', id)
     if (error) showToast(error.message, 'error')
     else {
@@ -344,12 +348,19 @@ export default function GroupsPage() {
           {(!firm?.enabled_schemes || firm.enabled_schemes.length > 1) && (
             <Field label={t('scheme')}>
               <select className={inputClass} style={inputStyle} value={form.auction_scheme} onChange={e => setForm(f => ({ ...f, auction_scheme: e.target.value as any }))}>
-                {(!firm?.enabled_schemes || firm.enabled_schemes.includes('ACCUMULATION')) && (
-                  <option value="ACCUMULATION">{t('scheme_surplus_name')}</option>
-                )}
-                {(!firm?.enabled_schemes || firm.enabled_schemes.includes('DIVIDEND')) && (
-                  <option value="DIVIDEND">{t('scheme_dividend_name')}</option>
-                )}
+                {[
+                  { id: 'ACCUMULATION', label: 'Surplus Model (Accumulation)' },
+                  { id: 'BOUNDED_AUCTION', label: 'Bounded Auction' },
+                  { id: 'DIVIDEND_SHARE', label: 'Dividend Model (Conventional)' },
+                  { id: 'FIXED_ROTATION', label: 'Fixed Rotation' },
+                  { id: 'HYBRID_SPLIT', label: 'Hybrid Split' },
+                  { id: 'LOTTERY', label: 'Lottery Model' },
+                  { id: 'SEALED_TENDER', label: 'Sealed Tender' },
+                  { id: 'STEPPED_INSTALLMENT', label: 'Stepped Installment' }
+                ].map(scheme => {
+                  if (firm?.enabled_schemes && !firm.enabled_schemes.includes(scheme.id)) return null;
+                  return <option key={scheme.id} value={scheme.id}>{scheme.label}</option>
+                })}
               </select>
             </Field>
           )}

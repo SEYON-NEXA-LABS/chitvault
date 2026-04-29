@@ -53,7 +53,7 @@ export default function SettingsPage() {
   const [font, setFont] = useState(firm?.font || 'Noto Sans')
   const [colorProfile, setColorProfile] = useState(firm?.color_profile || 'indigo')
   const [regToken, setRegToken] = useState(firm?.register_token || '')
-  const [enabledSchemes, setEnabledSchemes] = useState<string[]>(firm?.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
+  const [enabledSchemes, setEnabledSchemes] = useState<string[]>(firm?.enabled_schemes || ['ACCUMULATION'])
 
   const [stats, setStats] = useState({ groupCount: 0, memberCount: 0 })
 
@@ -80,7 +80,7 @@ export default function SettingsPage() {
       setFont(firm.font || 'Noto Sans')
       setColorProfile(firm.color_profile || 'indigo')
       setRegToken(firm.register_token || '')
-      setEnabledSchemes(firm.enabled_schemes || ['DIVIDEND', 'ACCUMULATION'])
+      setEnabledSchemes(firm.enabled_schemes?.map(s => s === 'DIVIDEND' ? 'DIVIDEND_SHARE' : s) || ['ACCUMULATION'])
     }
   }, [firm, supabase])
 
@@ -311,53 +311,43 @@ export default function SettingsPage() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Accumulation Model */}
-              <button
-                onClick={() => {
-                  const val = enabledSchemes.includes('ACCUMULATION')
-                    ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'ACCUMULATION') : enabledSchemes)
-                    : [...enabledSchemes, 'ACCUMULATION']
-                  setEnabledSchemes(val)
-                }}
-                className="p-4 rounded-2xl border text-left transition-all"
-                style={{
-                  borderColor: enabledSchemes.includes('ACCUMULATION') ? 'var(--info)' : 'var(--border)',
-                  background: enabledSchemes.includes('ACCUMULATION') ? 'var(--info-dim)' : 'transparent'
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--info)] text-white flex items-center justify-center font-black">S</div>
-                  {enabledSchemes.includes('ACCUMULATION') && <Badge variant="info">Active</Badge>}
-                </div>
-                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Surplus Model (Accumulation)</div>
-                <p className="text-[10px] mt-1 opacity-60">
-                  Member savings are collected in a pool. Fixed prize money is paid to the winner. Best for long-term saving groups.
-                </p>
-              </button>
-
-              {/* Dividend Model */}
-              <button
-                onClick={() => {
-                  const val = enabledSchemes.includes('DIVIDEND')
-                    ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== 'DIVIDEND') : enabledSchemes)
-                    : [...enabledSchemes, 'DIVIDEND']
-                  setEnabledSchemes(val)
-                }}
-                className="p-4 rounded-2xl border text-left transition-all"
-                style={{
-                  borderColor: enabledSchemes.includes('DIVIDEND') ? 'var(--accent)' : 'var(--border)',
-                  background: enabledSchemes.includes('DIVIDEND') ? 'var(--accent-dim)' : 'transparent'
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-black">D</div>
-                  {enabledSchemes.includes('DIVIDEND') && <Badge variant="accent">Active</Badge>}
-                </div>
-                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Dividend Model (Conventional)</div>
-                <p className="text-[10px] mt-1 opacity-60">
-                  Auction discounts are distributed back to members each month. Installments vary. Standard chit fund approach.
-                </p>
-              </button>
+              {[
+                { id: 'ACCUMULATION', label: 'Surplus Model (Accumulation)', initial: 'S', color: 'info', desc: 'Member savings are collected in a pool. Fixed prize money is paid to the winner.' },
+                { id: 'BOUNDED_AUCTION', label: 'Bounded Auction', initial: 'B', color: 'danger', desc: 'Bids must be within strict min and max boundaries.' },
+                { id: 'DIVIDEND_SHARE', label: 'Dividend Model (Conventional)', initial: 'D', color: 'accent', desc: 'Auction discounts are distributed back to members each month. Installments vary.' },
+                { id: 'FIXED_ROTATION', label: 'Fixed Rotation', initial: 'F', color: 'gray', desc: 'Members win in a predefined order. No bidding.' },
+                { id: 'HYBRID_SPLIT', label: 'Hybrid Split', initial: 'H', color: 'accent', desc: 'A portion of discount goes to dividend, another to surplus.' },
+                { id: 'LOTTERY', label: 'Lottery Model', initial: 'L', color: 'success', desc: 'Winner is chosen randomly. No bidding required.' },
+                { id: 'SEALED_TENDER', label: 'Sealed Tender', initial: 'T', color: 'warning', desc: 'Members submit secret bids. Highest bidder wins.' },
+                { id: 'STEPPED_INSTALLMENT', label: 'Stepped Installment', initial: 'I', color: 'info', desc: 'Installments increase predictably over time.' },
+              ].map(scheme => {
+                const isActive = enabledSchemes.includes(scheme.id)
+                return (
+                  <button
+                    key={scheme.id}
+                    onClick={() => {
+                      const val = isActive
+                        ? (enabledSchemes.length > 1 ? enabledSchemes.filter(s => s !== scheme.id) : enabledSchemes)
+                        : [...enabledSchemes, scheme.id]
+                      setEnabledSchemes(val)
+                    }}
+                    className="p-4 rounded-2xl border text-left transition-all"
+                    style={{
+                      borderColor: isActive ? `var(--${scheme.color})` : 'var(--border)',
+                      background: isActive ? `var(--${scheme.color}-dim, rgba(100,100,100,0.1))` : 'transparent'
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-8 h-8 rounded-lg text-white flex items-center justify-center font-black" style={{ background: `var(--${scheme.color})` }}>{scheme.initial}</div>
+                      {isActive && <Badge variant={scheme.color as any}>Active</Badge>}
+                    </div>
+                    <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>{scheme.label}</div>
+                    <p className="text-[10px] mt-1 opacity-60">
+                      {scheme.desc}
+                    </p>
+                  </button>
+                )
+              })}
             </div>
 
             <div className="flex justify-end pt-2 border-t" style={{ borderColor: 'var(--border)' }}>

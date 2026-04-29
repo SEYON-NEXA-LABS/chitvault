@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/context"
 import { useToast } from "@/lib/hooks/useToast"
 import { useTerminology } from "@/lib/hooks/useTerminology"
 import { logActivity } from "@/lib/utils/logger"
+import { haptics } from "@/lib/utils/haptics"
 import { withFirmScope } from "@/lib/supabase/firmQuery"
 import { inputClass, inputStyle } from "@/components/ui"
 import type { Member, Settlement, Person, Auction, Group } from "@/types"
@@ -143,6 +144,7 @@ function SettlementPage() {
     if (totalAmount <= 0) return show('Total amount must be greater than 0', 'error')
     
     setSaving(true)
+    haptics.heavy()
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const mId = selectedMemberId ? Number(selectedMemberId) : null
@@ -180,6 +182,7 @@ function SettlementPage() {
   async function deleteSettlement(id: number) {
      if (!firm || !can('deleteSettlement')) return
      if (!confirm(t('delete_confirm'))) return
+     haptics.heavy()
      
      const { error } = await supabase.from('settlements').delete().eq('id', id).eq('firm_id', firm.id)
      if (error) return show(error.message, 'error')

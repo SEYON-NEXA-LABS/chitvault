@@ -86,16 +86,46 @@ export const AuctionForm: React.FC<AuctionFormProps> = ({
           </div>
         )}
 
-        <Field label={group?.auction_scheme === 'DIVIDEND' ? 'Winning Bid (Amount Taken)' : 'Discount Bid (Amount Shared)'} className="col-span-2">
-          <input className={inputClass} type="number" value={aucForm.auction_discount} onChange={e => onBidChange(e.target.value)} placeholder={group?.auction_scheme === 'DIVIDEND' ? 'e.g. 80000' : 'e.g. 5000'} />
+        <Field label={group?.auction_scheme === 'DIVIDEND_SHARE' ? 'Winning Bid (Amount Taken)' : 'Discount Bid'} className="col-span-2">
+          <input 
+            className={inputClass} 
+            type="number" 
+            value={aucForm.auction_discount} 
+            onChange={e => onBidChange(e.target.value)} 
+            placeholder="e.g. 5000" 
+            disabled={['LOTTERY', 'FIXED_ROTATION'].includes(group?.auction_scheme)}
+          />
+          {['LOTTERY', 'FIXED_ROTATION'].includes(group?.auction_scheme) && (
+            <div className="text-[10px] opacity-60 mt-1 font-bold uppercase">No bidding required for this scheme. Enter 0.</div>
+          )}
           {calc && (
             <div className="mt-3 p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] grid grid-cols-2 gap-y-2">
               <div className="text-[9px] font-black uppercase opacity-40">Gross Discount</div>
               <div className="text-xs font-black text-right">{fmt(calc.auction_discount)}</div>
+              
               <div className="text-[9px] font-black uppercase opacity-40">Foreman Fee</div>
               <div className="text-xs font-black text-right">{fmt(calc.commission_amt)}</div>
-              <div className="text-[9px] font-black uppercase opacity-40">Individual Share</div>
-              <div className="text-xs font-black text-right text-[var(--accent)]">{fmt(calc.per_member_div)}</div>
+              
+              {group?.auction_scheme === 'ACCUMULATION' && (
+                <>
+                  <div className="text-[9px] font-black uppercase opacity-40">Surplus Added</div>
+                  <div className="text-xs font-black text-right text-[var(--accent)]">{fmt(calc.auction_discount - calc.commission_amt)}</div>
+                </>
+              )}
+              
+              {group?.auction_scheme === 'HYBRID_SPLIT' && (
+                <>
+                  <div className="text-[9px] font-black uppercase opacity-40">Surplus Added</div>
+                  <div className="text-xs font-black text-right text-orange-500">{fmt((calc.auction_discount - calc.commission_amt) * (group.surplus_split_pct || 0.5))}</div>
+                </>
+              )}
+              
+              {['DIVIDEND_SHARE', 'HYBRID_SPLIT', 'BOUNDED_AUCTION', 'SEALED_TENDER', 'STEPPED_INSTALLMENT'].includes(group?.auction_scheme) && (
+                <>
+                  <div className="text-[9px] font-black uppercase opacity-40">Individual Share</div>
+                  <div className="text-xs font-black text-right text-[var(--accent)]">{fmt(calc.per_member_div)}</div>
+                </>
+              )}
             </div>
           )}
           {calcError && <div className="text-[10px] text-red-500 mt-1 font-bold">{calcError}</div>}

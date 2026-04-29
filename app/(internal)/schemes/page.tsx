@@ -40,8 +40,8 @@ export default function SchemesGuidePage() {
 
         {/* Dividend Model */}
         <Card className="p-6 relative overflow-hidden group border-t-4 border-t-blue-500">
-          <Badge variant="info" className="mb-4">Option A</Badge>
-          <h2 className="text-xl font-bold mb-2">Standard (Dividend Share)</h2>
+          <Badge variant="accent" className="mb-4">Option A</Badge>
+          <h2 className="text-xl font-bold mb-2">Dividend Share (Conventional)</h2>
           <p className="text-sm opacity-70 leading-relaxed mb-6">
             In this model, the **Auction Discount** (the amount bid &quot;away&quot;) is divided equally among all members every month.
             Members pay less than their target installment, sharing the profit immediately.
@@ -60,9 +60,9 @@ export default function SchemesGuidePage() {
         </Card>
 
         {/* Accumulation Model */}
-        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--accent)]">
-          <Badge variant="accent" className="mb-4">Option B</Badge>
-          <h2 className="text-xl font-bold mb-2">Accumulation (Surplus Model)</h2>
+        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--info)]">
+          <Badge variant="info" className="mb-4">Option B</Badge>
+          <h2 className="text-xl font-bold mb-2">Surplus Model (Accumulation)</h2>
           <p className="text-sm opacity-70 leading-relaxed mb-6">
             Everyone pays the **Full Amount** every month. The **Auction Discount** is stored in a **Surplus Pool**.
             When the pool is large enough, it pays for the final months automatically!
@@ -80,6 +80,36 @@ export default function SchemesGuidePage() {
           </div>
         </Card>
       </div>
+
+      {/* Advanced Schemes */}
+      <Card title="🚀 Advanced Auction Schemes" subtitle="Additional models supported by the ChitVault calculation engine">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <Badge variant="success">Lottery Model</Badge>
+            <p className="text-xs opacity-70">Winner is chosen randomly. No bidding required. Fixed payout every month.</p>
+          </div>
+          <div className="space-y-2">
+            <Badge variant="gray">Fixed Rotation</Badge>
+            <p className="text-xs opacity-70">Members win in a predefined order. No bidding required. Fixed payout every month.</p>
+          </div>
+          <div className="space-y-2">
+            <Badge variant="warning">Sealed Tender</Badge>
+            <p className="text-xs opacity-70">Members submit secret bids. The highest valid bid wins when revealed.</p>
+          </div>
+          <div className="space-y-2">
+            <Badge variant="danger">Bounded Auction</Badge>
+            <p className="text-xs opacity-70">Bids must fall within strictly enforced minimum and maximum percentages of the pot.</p>
+          </div>
+          <div className="space-y-2">
+            <Badge variant="accent">Hybrid Split</Badge>
+            <p className="text-xs opacity-70">A configurable percentage of the discount is returned as dividend, and the rest goes to a surplus pool.</p>
+          </div>
+          <div className="space-y-2">
+            <Badge variant="info">Stepped Installment</Badge>
+            <p className="text-xs opacity-70">Installments increase predictably over time, helping members match contributions to inflation.</p>
+          </div>
+        </div>
+      </Card>
 
       {/* Detailed Math Explanation */}
       <Card title="🎓 Deep Dive: How Accumulation Logic Works" subtitle="Math example for a 15-month, 15-member group (₹4.5L pot)">

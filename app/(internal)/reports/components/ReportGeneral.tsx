@@ -26,7 +26,7 @@ export function ReportCashFlow({ payments, auctions }: { payments: Payment[], au
 // 2. Member Benefits
 export function ReportMemberBenefits({ groups, auctions, term }: { groups: Group[], auctions: Auction[], term: any }) {
   const accGroups = groups.filter(g => g.auction_scheme === 'ACCUMULATION')
-  const divGroups = groups.filter(g => g.auction_scheme === 'DIVIDEND')
+  const divGroups = groups.filter(g => g.auction_scheme === 'DIVIDEND_SHARE')
   const totalWealth = auctions.filter(a => a.status === 'confirmed').reduce((s, a) => s + Number(a.dividend || a.auction_discount || 0), 0)
 
   return (
