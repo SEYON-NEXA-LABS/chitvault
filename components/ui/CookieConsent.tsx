@@ -24,8 +24,8 @@ export function CookieConsent() {
   if (!show) return null
 
   return (
-    <div className="fixed bottom-6 left-6 z-[10000] animate-in slide-in-from-left-10 fade-in duration-700">
-      <div className="glass-card p-4 rounded-3xl border border-[var(--border)] shadow-xl flex items-center gap-4 max-w-sm">
+    <div className="fixed bottom-6 left-6 z-[10000] animate-in slide-in-from-bottom-5 fade-in duration-500">
+      <div className="cookie-banner">
         <div className="w-10 h-10 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent)] shrink-0">
           <Cookie size={20} />
         </div>
