@@ -12,7 +12,7 @@ import { StatCard, Card, Loading, Badge, Table, Th, Td, Tr, Btn } from '@/compon
 import { useI18n } from '@/lib/i18n/context'
 
 export default function UsageHubPage() {
-  const { firm } = useFirm()
+  const { firm, role } = useFirm()
   const { t } = useI18n()
   const { data, loading, lastUpdated, refresh } = useUsage(firm?.id)
 
@@ -110,7 +110,7 @@ export default function UsageHubPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <div className={role === 'superadmin' ? "lg:col-span-2 space-y-6" : "lg:col-span-3 space-y-6"}>
           <Card title="Egress Attribution Breakdown" subtitle="How your data is being served">
             <div className="p-6 space-y-6">
                <div className="space-y-4">
@@ -180,61 +180,63 @@ export default function UsageHubPage() {
           </Card>
         </div>
 
-        <div className="space-y-6">
-           <Card title="Plan Efficiency" subtitle="Usage vs Limits">
-              <div className="p-6 space-y-6">
-                 <div className="flex flex-col items-center justify-center p-8 rounded-full border-8 border-[var(--surface3)] relative" style={{ borderColor: 'var(--surface3)' }}>
-                    <div className="text-center">
-                       <p className="text-[10px] font-black uppercase opacity-40">Monthly Egress</p>
-                       <p className="text-3xl font-black">{((stats.total_estimate / (5 * 1024 * 1024 * 1024)) * 100).toFixed(1)}%</p>
-                       <p className="text-[10px] opacity-40 mt-1">of 5GB Allowance</p>
-                    </div>
-                    {/* Gauge placeholder - would ideally be a circular progress svg */}
-                 </div>
+        {role === 'superadmin' && (
+          <div className="space-y-6">
+             <Card title="Plan Efficiency" subtitle="Usage vs Limits">
+                <div className="p-6 space-y-6">
+                   <div className="flex flex-col items-center justify-center p-8 rounded-full border-8 border-[var(--surface3)] relative" style={{ borderColor: 'var(--surface3)' }}>
+                      <div className="text-center">
+                         <p className="text-[10px] font-black uppercase opacity-40">Monthly Egress</p>
+                         <p className="text-3xl font-black">{((stats.total_estimate / (5 * 1024 * 1024 * 1024)) * 100).toFixed(1)}%</p>
+                         <p className="text-[10px] opacity-40 mt-1">of 5GB Allowance</p>
+                      </div>
+                      {/* Gauge placeholder - would ideally be a circular progress svg */}
+                   </div>
 
-                 <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 rounded-2xl border bg-orange-500/5" style={{ borderColor: 'rgba(249, 115, 22, 0.2)' }}>
-                       <AlertCircle className="text-orange-500 shrink-0" size={18} />
-                       <div>
-                          <p className="text-xs font-bold text-orange-500">Approaching Free Limit?</p>
-                          <p className="text-[10px] opacity-70 mt-1">
-                             Your Supabase Free Tier has a 5GB monthly limit. Exceeding this may cause service interruptions.
-                          </p>
-                       </div>
-                    </div>
+                   <div className="space-y-4">
+                      <div className="flex items-start gap-4 p-4 rounded-2xl border bg-orange-500/5" style={{ borderColor: 'rgba(249, 115, 22, 0.2)' }}>
+                         <AlertCircle className="text-orange-500 shrink-0" size={18} />
+                         <div>
+                            <p className="text-xs font-bold text-orange-500">Approaching Free Limit?</p>
+                            <p className="text-[10px] opacity-70 mt-1">
+                               Your Supabase Free Tier has a 5GB monthly limit. Exceeding this may cause service interruptions.
+                            </p>
+                         </div>
+                      </div>
 
-                    <div className="p-4 rounded-2xl bg-green-500/5 border border-green-500/10 flex items-center justify-between">
-                       <div className="flex items-center gap-2">
-                          <ShieldCheck className="text-green-500" size={16} />
-                          <span className="text-xs font-bold">Auto-Logout Active</span>
-                       </div>
-                       <Badge variant="success">30m Idle</Badge>
-                    </div>
-                 </div>
+                      <div className="p-4 rounded-2xl bg-green-500/5 border border-green-500/10 flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                            <ShieldCheck className="text-green-500" size={16} />
+                            <span className="text-xs font-bold">Auto-Logout Active</span>
+                         </div>
+                         <Badge variant="success">30m Idle</Badge>
+                      </div>
+                   </div>
 
-                 <Btn variant="primary" className="w-full" onClick={() => window.open('https://supabase.com/dashboard', '_blank')}>
-                    Manage Supabase Quota
-                 </Btn>
-              </div>
-           </Card>
-
-           <Card title="Real-time Status" subtitle="System operational health">
-              <div className="p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                   <span className="text-xs opacity-60">System Clock</span>
-                   <span className="text-xs font-mono">{new Date().toLocaleTimeString()}</span>
+                   <Btn variant="primary" className="w-full" onClick={() => window.open('https://supabase.com/dashboard', '_blank')}>
+                      Manage Supabase Quota
+                   </Btn>
                 </div>
-                <div className="flex items-center justify-between">
-                   <span className="text-xs opacity-60">Attribution Engine</span>
-                   <Badge variant="success">Operational</Badge>
+             </Card>
+
+             <Card title="Real-time Status" subtitle="System operational health">
+                <div className="p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                     <span className="text-xs opacity-60">System Clock</span>
+                     <span className="text-xs font-mono">{new Date().toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                     <span className="text-xs opacity-60">Attribution Engine</span>
+                     <Badge variant="success">Operational</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                     <span className="text-xs opacity-60">Cache Precision</span>
+                     <span className="text-xs">± 15 Minutes</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                   <span className="text-xs opacity-60">Cache Precision</span>
-                   <span className="text-xs">± 15 Minutes</span>
-                </div>
-              </div>
-           </Card>
-        </div>
+             </Card>
+          </div>
+        )}
       </div>
     </div>
   )
