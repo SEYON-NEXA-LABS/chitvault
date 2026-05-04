@@ -53,8 +53,8 @@ export default function GroupLedgerPage() {
   const { toast, show: showToast, hide: hideToast } = useToast()
 
   // --- Data Fetching (TanStack Query) ---
-  const { data, isLoading, refresh } = useGroupLedgerData(groupId, firm?.id, role ?? undefined)
-  const { group, members, auctionHistory, commissions, payments, allPersons } = data
+  const { data, isLoading, isError, error, refresh } = useGroupLedgerData(groupId, firm?.id, role ?? undefined)
+  const { group, members = [], auctionHistory = [], commissions = [], payments = [], allPersons = [] } = data || {}
 
   // --- UI States ---
   const [addOpen, setAddOpen] = useState(false)
@@ -81,11 +81,13 @@ export default function GroupLedgerPage() {
 
   // --- Derived Data ---
   const auditedAuctions = useMemo(() => {
-    return auctionHistory.map(a => {
-      const comm = commissions.find(c => c.auction_id === a.id)
+    const memberCount = group?.num_members || 1
+    return auctionHistory.map((a: Auction) => {
+      const comm = commissions.find((c: ForemanCommission) => c.auction_id === a.id)
       const commissionAmt = comm ? Number(comm.commission_amt) : 0
-      const pool = Number(a.auction_discount) - commissionAmt
-      const perMemberShare = pool / (group?.num_members || 1)
+      const discount = Number(a.auction_discount || 0)
+      const pool = Math.max(0, discount - commissionAmt)
+      const perMemberShare = pool / memberCount
       return { ...a, dividend: perMemberShare }
     })
   }, [auctionHistory, commissions, group])
@@ -93,8 +95,8 @@ export default function GroupLedgerPage() {
   const yieldData = useMemo(() => {
     let runningTotal = 0
     return auditedAuctions
-      .filter(a => a.status === 'confirmed')
-      .map(a => {
+      .filter((a: any) => a.status === 'confirmed')
+      .map((a: any) => {
         runningTotal += (a.dividend || 0)
         return {
           name: `M${a.month}`,
@@ -126,7 +128,7 @@ export default function GroupLedgerPage() {
 
       const insertPayload = []
       let currentTicket = Number(payload.ticket_no)
-      const usedTickets = new Set(members.map(m => m.ticket_no))
+      const usedTickets = new Set(members.map((m: Member) => m.ticket_no))
       
       for (let i = 0; i < Number(payload.tickets); i++) {
         while (usedTickets.has(currentTicket)) currentTicket++
@@ -193,7 +195,7 @@ export default function GroupLedgerPage() {
     if (!winnerId || !group) return
     setCheckingWinner(true)
     try {
-      const mem = members.find(m => m.id === +winnerId)
+      const mem = members.find((m: Member) => m.id === +winnerId)
       if (!mem) return
 
       const [gAucs, mPays] = await Promise.all([
@@ -301,10 +303,27 @@ export default function GroupLedgerPage() {
     }
   }
 
-  if (isLoading || !group) return <Loading />
+  if (isLoading) return <Loading />
+  
+  if (isError || !group) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
+        <div className="p-4 bg-red-500/10 rounded-full">
+          <AlertTriangle className="text-red-500 w-12 h-12" />
+        </div>
+        <div>
+          <h1 className="text-xl font-black">{t('error')}</h1>
+          <p className="text-sm opacity-60">{(error as any)?.message || 'Group not found or access denied'}</p>
+        </div>
+        <Btn variant="secondary" onClick={() => refresh()} icon={RefreshCw}>
+          {t('retry')}
+        </Btn>
+      </div>
+    )
+  }
 
-  const confirmedAucs = auditedAuctions.filter(a => a.status === 'confirmed')
-  const draftAucs = auditedAuctions.filter(a => a.status === 'draft')
+  const confirmedAucs = auditedAuctions.filter((a: any) => a.status === 'confirmed')
+  const draftAucs = auditedAuctions.filter((a: any) => a.status === 'draft')
   
   return (
     <div className="space-y-6">
@@ -341,7 +360,7 @@ export default function GroupLedgerPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={t('current_month')} value={`${confirmedAucs.length}/${group.duration}`} color="info" />
         <StatCard label={t('enrollment_label')} value={`${members.length}/${group.num_members}`} color="accent" />
-        <StatCard label={term.benefitLabel} value={fmt(confirmedAucs.reduce((s, a) => s + (a.dividend || 0), 0))} color="success" />
+        <StatCard label={term.benefitLabel} value={fmt(confirmedAucs.reduce((s: number, a: any) => s + (a.dividend || 0), 0))} color="success" />
         <StatCard label={t('chit_value')} value={fmt(group.chit_value)} color="danger" />
       </div>
 
@@ -373,17 +392,17 @@ export default function GroupLedgerPage() {
       <PayoutSettlementModal 
         open={!!settling} onClose={() => setSettling(null)} settling={settling} members={members} group={group}
         settleForm={settleForm} setSettleForm={setSettleForm} onSettle={handleSettlePayout} 
-        onPrintVoucher={(auc) => printPayoutVoucher(group, auc, members.find(m => m.id === auc.winner_id)!, settleForm.date, firm?.name || '')}
+        onPrintVoucher={(auc: Auction) => printPayoutVoucher(group, auc, members.find((m: Member) => m.id === auc.winner_id)!, settleForm.date, firm?.name || '')}
         saving={saving}
       />
 
       <AuditModal open={!!mathModal} onClose={() => setMathModal(null)} group={group} mathModal={mathModal} />
 
-      <MemberDetailsModal open={!!selectedMemberId} onClose={() => setSelectedMemberId(null)} member={members.find(m => m.id === selectedMemberId) || null} />
+      <MemberDetailsModal open={!!selectedMemberId} onClose={() => setSelectedMemberId(null)} member={members.find((m: Member) => m.id === selectedMemberId) || null} />
 
       <AuctionForm 
         open={aucFormOpen} onClose={() => setAucFormOpen(false)} group={group} aucForm={aucForm} setAucForm={setAucForm}
-        onBidChange={onBidChange} calc={calc} calcError={calcError} eligibleList={members.filter(m => !auctionHistory.some(a => a.winner_id === m.id))}
+        onBidChange={onBidChange} calc={calc} calcError={calcError} eligibleList={members.filter((m: Member) => !auctionHistory.some((a: Auction) => a.winner_id === m.id))}
         winnerBalance={winnerBalance} winnerAging={winnerAging} checkingWinner={checkingWinner}
         acknowledge={acknowledge} setAcknowledge={setAcknowledge} saving={saving}
         handleSaveAuction={handleSaveAuction} checkWinnerBalance={checkWinnerBalance} t={t}

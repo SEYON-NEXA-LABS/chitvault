@@ -12,6 +12,7 @@ set search_path = public
 as $$
 declare
     v_total_people int;
+    v_active_people int;
     v_active_tickets int;
 begin
     -- 1. Total Persons (not trashed)
@@ -19,7 +20,14 @@ begin
     from persons 
     where firm_id = p_firm_id and deleted_at is null;
 
-    -- 2. Active Tickets (in non-archived groups, not trashed)
+    -- 2. Active People (distinct individuals with active tickets)
+    select count(distinct person_id) into v_active_people
+    from members
+    where firm_id = p_firm_id 
+      and status in ('active', 'foreman', 'defaulter')
+      and deleted_at is null;
+
+    -- 3. Active Tickets (in non-archived groups, not trashed)
     select count(m.id) into v_active_tickets 
     from members m
     join groups g on m.group_id = g.id
@@ -28,6 +36,7 @@ begin
       and g.status != 'archived';
 
     return json_build_object(
+        'activePeople', v_active_people,
         'totalPeople', v_total_people,
         'activeTickets', v_active_tickets
     );

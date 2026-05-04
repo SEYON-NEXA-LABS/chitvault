@@ -8,7 +8,7 @@ import { fmt, fmtDate, cn, getToday } from '@/lib/utils'
 import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast
+  Modal, Field, Loading, Empty, Toast, Pagination
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -86,10 +86,14 @@ export default function MembersPage() {
       ])
       
       if (sData.data) {
+        const d = Array.isArray(sData.data) ? sData.data[0] : sData.data;
         setSummaryStats({
-          ...sData.data,
-          totalPeople: totalPCount.count || 0,
-          totalTickets: totalTCount.count || 0
+          activePeople: d.activePeople || d.active_people || 0,
+          activeTickets: d.activeTickets || d.active_tickets || 0,
+          totalOutstanding: d.totalOutstanding || d.total_outstanding || 0,
+          totalPaid: d.totalPaid || d.total_paid || 0,
+          totalPeople: totalPCount.count || d.totalPeople || d.total_people || 0,
+          totalTickets: totalTCount.count || d.totalTickets || d.total_tickets || 0
         })
       }
 
@@ -307,61 +311,60 @@ export default function MembersPage() {
 
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
-    if (addTab === 'new' && (!form.name || !form.phone)) { showToast('Name and Phone are required', 'error'); return }
-    if (addTab === 'existing' && !form.existing_id) { showToast('Please select a person', 'error'); return }
-    if (!form.group_id) { showToast('Please select a group', 'error'); return }
+    if (!form.name) { showToast('Name is required', 'error'); return }
 
     setSaving(true)
     const { data: authData, error: authErr } = await supabase.auth.getUser()
     if (authErr || !authData.user) { showToast('Authentication error!', 'error'); setSaving(false); return }
     
-    let personId = Number(form.existing_id);
+    let personId;
 
-    if (addTab === 'new') {
-      const { data: pData, error: pErr } = await supabase.from('persons')
-        .insert({
-          name: form.name,
-          nickname: form.nickname,
-          phone: form.phone,
-          address: form.address,
-          firm_id: firm.id,
-          created_by: authData.user?.id
-        })
-        .select('id')
-        .single()
-        
-      if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }
-      personId = pData.id;
-      showToast('Person registered!');
-    }
+    const { data: pData, error: pErr } = await supabase.from('persons')
+      .insert({
+        name: form.name,
+        nickname: form.nickname,
+        phone: form.phone || null,
+        address: form.address,
+        firm_id: firm.id,
+        created_by: authData.user?.id
+      })
+      .select('id')
+      .single()
+      
+    if (pErr) { showToast(pErr.message, 'error'); setSaving(false); return }
+    personId = pData.id;
+    showToast('Person registered!');
 
     // Now Enroll in Group
-    const groupId = Number(form.group_id);
-    const numTickets = Number(form.num_tickets);
-    
-    const { data: existingMems } = await supabase.from('members').select('ticket_no').eq('group_id', groupId);
-    const maxTicket = existingMems?.reduce((max: number, m: { ticket_no: number }) => Math.max(max, m.ticket_no), 0) || 0;
+    if (form.group_id) {
+      const groupId = Number(form.group_id);
+      const numTickets = Number(form.num_tickets) || 1;
+      
+      const { data: existingMems } = await supabase.from('members').select('ticket_no').eq('group_id', groupId);
+      const maxTicket = existingMems?.reduce((max: number, m: { ticket_no: number }) => Math.max(max, m.ticket_no), 0) || 0;
 
-    const newMembers = Array.from({ length: numTickets }, (_, i) => ({
-      firm_id: firm.id,
-      group_id: groupId,
-      person_id: personId,
-      ticket_no: maxTicket + i + 1,
-      status: 'active',
-      created_by: authData.user?.id
-    }))
+      const newMembers = Array.from({ length: numTickets }, (_, i) => ({
+        firm_id: firm.id,
+        group_id: groupId,
+        person_id: personId,
+        ticket_no: maxTicket + i + 1,
+        status: 'active',
+        created_by: authData.user?.id
+      }))
 
-    const { error: mErr } = await supabase.from('members').insert(newMembers);
-    
-    if (mErr) {
-      showToast(mErr.message, 'error');
-    } else {
-      showToast(`Enrolled in group with ${numTickets} ticket(s)!`, 'success');
-      await logActivity(firm.id, 'MEMBER_CREATED', 'person', personId, { group_id: groupId, tickets: numTickets });
-      setAddOpen(false)
-      setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
-      load()
+      const { error: mErr } = await supabase.from('members').insert(newMembers);
+      
+      if (mErr) {
+        showToast(mErr.message, 'error');
+      } else {
+        showToast(`Enrolled in group with ${numTickets} ticket(s)!`, 'success');
+        await logActivity(firm.id, 'MEMBER_CREATED', 'person', personId, { group_id: groupId, tickets: numTickets });
+      }
     }
+
+    setAddOpen(false)
+    setForm({ name:'',nickname:'',phone:'',address:'',group_id:'',num_tickets:'1',existing_id:'' })
+    load()
     setSaving(false)
   }
 
@@ -568,27 +571,6 @@ export default function MembersPage() {
         </label>
       </div>
 
-      {view === 'people' && (
-         <div className="flex items-center justify-between text-xs font-bold opacity-60 uppercase tracking-widest px-2">
-            <span>{t('showing')} {(page-1)*PAGE_SIZE + 1} {t('to')} {Math.min(page*PAGE_SIZE, totalCount)} {t('of')} {totalCount} {t('people')}</span>
-            <div className="flex gap-2">
-               <button 
-                disabled={page === 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
-               >
-                 {t('previous')}
-               </button>
-               <button 
-                disabled={page * PAGE_SIZE >= totalCount}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 rounded-lg bg-[var(--surface)] border disabled:opacity-20 hover:border-[var(--accent)] transition-all"
-               >
-                 {t('next')}
-               </button>
-            </div>
-         </div>
-      )}
 
       {view === 'people' ? (
         <TableCard title={`${t('total_registry_label')} (${summaryStats.activePeople} / ${summaryStats.totalPeople})`} subtitle={t('members_page_desc')}>
@@ -657,6 +639,14 @@ export default function MembersPage() {
               )}
             </tbody>
           </Table>
+          {view === 'people' && (
+            <Pagination 
+              current={page} 
+              total={totalCount} 
+              pageSize={PAGE_SIZE} 
+              onPageChange={setPage} 
+            />
+          )}
         </TableCard>
       ) : (
         <div className="space-y-6">
@@ -720,56 +710,19 @@ export default function MembersPage() {
       )}
 
       {/* Enrollment Modal */}
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Enroll Member" size="lg">
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('register_person')} size="lg">
         <div className="space-y-6">
-           <div className="flex p-1 bg-[var(--surface2)] rounded-xl border w-fit" style={{ borderColor: 'var(--border)' }}>
-              <button 
-                onClick={() => setAddTab('new')}
-                className={cn(
-                  "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                  addTab === 'new' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
-                )}
-                style={addTab === 'new' ? { borderColor: 'var(--border)' } : {}}
-              >
-                {t('new_person')}
-              </button>
-              <button 
-                onClick={() => setAddTab('existing')}
-                className={cn(
-                  "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                  addTab === 'existing' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
-                )}
-                style={addTab === 'existing' ? { borderColor: 'var(--border)' } : {}}
-              >
-                {t('existing_person')}
-              </button>
-           </div>
-
-          {addTab === 'existing' ? (
-            <Field label={t('select_person')}>
-              <select className={inputClass} style={inputStyle} value={form.existing_id} onChange={e => {
-                const p = persons.find(x => x.id === Number(e.target.value));
-                setForm(f => ({ ...f, existing_id: e.target.value, name: p?.name || '', phone: p?.phone || '' }));
-              }}>
-                <option value="">{t('choose_from_registry')}</option>
-                {persons.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.phone || 'No phone'})</option>
-                ))}
-              </select>
-            </Field>
-          ) : (
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('register_person')}><input className={inputClass} style={inputStyle} value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></Field>
               <Field label={t('nickname')}><input className={inputClass} style={inputStyle} value={form.nickname} onChange={e => setForm(f => ({...f, nickname: e.target.value}))} placeholder="JD" /></Field>
-              <Field label={t('phone')}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
+              <Field label={`${t('phone')} (Optional)`}><input className={inputClass} style={inputStyle} value={form.phone} type="tel" maxLength={10} onChange={e => setForm(f => ({...f, phone: e.target.value.replace(/\D/g,'')}))} placeholder="Mobile" /></Field>
               <Field label={t('address')}><input className={inputClass} style={inputStyle} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="City/Town" /></Field>
             </div>
-          )}
 
           <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
             <div className="text-xs font-bold uppercase opacity-40 mb-4 tracking-widest">{t('enrollment_details')}</div>
             <div className="grid grid-cols-2 gap-4">
-              <Field label={t('target_group')}>
+              <Field label={`${t('target_group')} (Optional)`}>
                 <select className={inputClass} style={inputStyle} value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>
                    <option value="">-- {t('select_group')} --</option>
                    {allGroups.filter(g => g.status === 'active').map(g => (
@@ -777,8 +730,8 @@ export default function MembersPage() {
                    ))}
                 </select>
               </Field>
-              <Field label={t('tickets_to_add')}>
-                <input className={inputClass} style={inputStyle} type="number" min="1" max="10" value={form.num_tickets} onChange={e => setForm(f => ({ ...f, num_tickets: e.target.value }))} />
+              <Field label={`${t('tickets_to_add')} (Optional)`}>
+                <input className={inputClass} style={inputStyle} type="number" min="1" max="10" value={form.num_tickets} onChange={e => setForm(f => ({ ...f, num_tickets: e.target.value }))} disabled={!form.group_id} />
               </Field>
             </div>
           </div>

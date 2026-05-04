@@ -7,7 +7,7 @@ import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtDate, cn, getToday, getGroupDisplayName, fmtMonth } from '@/lib/utils'
 import { 
   Card, TableCard, Loading, Badge, StatCard, Btn, 
-  Modal, Field, Toast, Empty, Table, Th, Td, Tr 
+  Modal, Field, Toast, Empty, Table, Th, Td, Tr, Pagination
 } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useI18n } from '@/lib/i18n/context'
@@ -380,6 +380,12 @@ function PaymentsContent() {
               </tbody>
             </Table>
           )}
+          <Pagination 
+            current={page} 
+            total={totalCount} 
+            pageSize={PAGE_SIZE} 
+            onPageChange={setPage} 
+          />
         </TableCard>
       </div>
 

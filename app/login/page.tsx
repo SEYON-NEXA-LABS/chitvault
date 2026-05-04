@@ -1,372 +1,432 @@
 'use client'
-
-import { useState, useEffect, useCallback, Suspense } from 'react'
-import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { applyBranding } from '@/lib/branding/context'
-import { usePinLock } from '@/lib/lock/context'
-import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import Image from 'next/image'
-
-interface FirmBranding {
-  name: string; color_profile: string;
-  font: string
-}
-
-type Tab = 'signin' | 'forgot'
-
-function LoginForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const supabase = createClient()
-  const firmSlug = searchParams.get('firm')
-  const { hasPin } = usePinLock()
-
-  const [tab, setTab] = useState<Tab>('signin')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [branding, setBranding] = useState<FirmBranding>({
-    name: APP_NAME,
-    color_profile: 'indigo',
-    font: 'Noto Sans'
-  })
-
-  // Form states
-  const [siEmail, setSiEmail] = useState('')
-  const [siPass, setSiPass] = useState('')
-  const [saveCreds, setSaveCreds] = useState(true)
-  const [fpEmail, setFpEmail] = useState('')
-
-  useEffect(() => {
-    async function loadBranding() {
-      if (!firmSlug) return
-      try {
-        const { data } = await supabase
-          .rpc('get_firm_branding', { p_slug: firmSlug }) as any
-        if (data) {
-          setBranding({
-            name: data.name, color_profile: data.color_profile || 'indigo',
-            font: data.font || 'Noto Sans'
-          })
-          applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
-        }
-      } catch (err) { }
-    }
-    loadBranding()
-    document.documentElement.classList.add('dark')
-  }, [firmSlug, supabase])
-
-  const handleRedirect = useCallback(async (user: { id: string }) => {
-    try {
-      // 1. Refresh router to ensure middleware and server components see the new session
-      router.refresh()
-      
-      // 2. Resolve target profile
-      let { data: profile } = await supabase
-        .from('profiles')
-        .select('firm_id, role')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      // Retry once if profile is missing (handles sync delay between Auth and DB)
-      if (!profile) {
-        await new Promise(resolve => setTimeout(resolve, 800))
-        const { data: retryProfile } = await supabase
-          .from('profiles')
-          .select('firm_id, role')
-          .eq('id', user.id)
-          .maybeSingle()
-        profile = retryProfile
-      }
-
-      const nextPath = searchParams.get('next')
-
-      if (!profile) {
-        window.location.replace('/access-denied')
-        return
-      }
-
-      if (profile.role === 'superadmin') {
-        window.location.replace(nextPath || '/superadmin/dashboard')
-      } else {
-        window.location.replace(nextPath || '/dashboard')
-      }
-    } catch (err) {
-      // Fallback to hard redirect if anything fails
-      window.location.replace(searchParams.get('next') || '/dashboard')
-    }
-  }, [supabase, router, searchParams])
-
-  useEffect(() => {
-    async function checkUser() {
-      const { data } = await supabase.auth.getUser()
-      if (data?.user) await handleRedirect(data.user)
-    }
-    checkUser()
-  }, [supabase.auth, handleRedirect])
-
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault(); setError(''); setLoading(true)
-    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
-    if (error || !user) { setError('Incorrect email or password.'); setLoading(false); return }
-    setSuccess('Signed in successfully! Redirecting...')
-    await handleRedirect(user)
-  }
-
-  async function handleForgotPassword(e: React.FormEvent) {
-    e.preventDefault(); setError(''); setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(fpEmail, {
-      redirectTo: `${window.location.origin}/reset-password`
-    })
-    setLoading(false)
-    if (error) { setError(error.message); return }
-    setSuccess('Reset link dispatched! Please check your inbox.')
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center mesh-gradient p-4 sm:p-8 overflow-hidden selection:bg-[var(--accent)] selection:text-white">
-
-      {/* Abstract Background Orbs for Depth */}
-      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--accent)]/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
-
-      {/* ── Main Container Card ────────────────────────────────────────────────── */}
-      <div className="w-full max-w-[1050px] h-auto lg:h-[750px] flex flex-col lg:flex-row glass-card border border-white/20 rounded-[48px] overflow-hidden shadow-[0_80px_150px_-20px_rgba(0,0,0,0.7)] relative z-10">
-
-        {/* ── Desktop Visual Sidebar (Left) ─────────────────────────────────────── */}
-        <div className="hidden lg:flex flex-[1.2] flex-col justify-between p-12 relative overflow-hidden bg-black/30 border-r border-white/10">
-          <div className="relative z-10">
-            <div className="flex items-center gap-4 mb-10 translate-x-[-8px]">
-              <Image src="/icons/icon-512.png" alt="Logo" width={96} height={96} className="object-contain transition-transform hover:scale-105 duration-700" />
-              <span className="text-6xl font-black text-white uppercase tracking-tighter font-brand">ChitVault</span>
-            </div>
-
-            <div className="max-w-md">
-              <h1 className="text-4xl font-black text-white leading-tight mb-6">
-                Welcome to <br /> <span className="text-[var(--accent)]">{branding.name}.</span>
-              </h1>
-              <p className="text-lg text-white font-medium leading-relaxed opacity-60">
-                A professional digital ledger for secure financial auditing. 
-                Manage your firm&apos;s auction cycles with absolute transparency.
-                <br />
-                <span className="text-xs italic opacity-80">* This platform is for record-keeping; actual payments occur externally.</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-auto pt-8 border-t border-white/10 flex items-center justify-between text-[var(--text2)] font-bold uppercase tracking-widest text-[9px] opacity-30">
-            <div className="flex flex-col gap-1">
-              <span className="font-brand">{APP_DEVELOPER} &copy; 2026</span>
-              <span className="text-[var(--accent)] font-medium">V{APP_VERSION} &bull; {APP_COMMIT_ID}</span>
-            </div>
-            <div className="flex gap-6">
-              <span className="text-white/50">SECURE AUDIT ACTIVE</span>
-            </div>
-          </div>
-
-          {/* Depth Glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--accent)]/10 rounded-full blur-[100px] pointer-events-none" />
-        </div>
-
-        {/* ── Auth Form Side (Right) ───────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col justify-center p-8 sm:p-14 relative z-20 bg-white/[0.03]">
-
-          {/* Auth Content */}
-
-          <div className="max-w-sm w-full mx-auto">
-            <div className="text-center mb-8">
-              <Image src="/icons/icon-512.png" alt="Logo" width={96} height={96} className="mx-auto mb-8 transition-transform hover:scale-105 duration-700 object-contain" />
-              <h2 className="text-3xl font-black tracking-tight text-white mb-2">{tab === 'signin' ? 'Sign In' : 'Reset Password'}</h2>
-              <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em] mb-4 opacity-40">
-                {tab === 'signin' ? `Authorization for ${branding.name}` : 'Security check initiated'}
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              {/* Status Messages */}
-              {error && (
-                <div className="p-4 rounded-xl bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider">
-                  &times; {error}
+ 
+ import { useState, useEffect, useCallback, Suspense } from 'react'
+ import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
+ import { useRouter, useSearchParams } from 'next/navigation'
+ import Link from 'next/link'
+ import { createClient } from '@/lib/supabase/client'
+ import { applyBranding } from '@/lib/branding/context'
+ import { usePinLock } from '@/lib/lock/context'
+ import { useI18n } from '@/lib/i18n/context'
+ import { Download, Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, CheckCircle2, Building2, Languages, BookOpen, Globe, AlertCircle } from 'lucide-react'
+ import { cn } from '@/lib/utils'
+ import Image from 'next/image'
+ 
+ interface FirmBranding {
+   name: string; color_profile: string;
+   font: string
+ }
+ 
+ type Tab = 'signin' | 'forgot'
+ 
+ function LoginForm() {
+   const router = useRouter()
+   const searchParams = useSearchParams()
+   const supabase = createClient()
+   const { t, lang, setLang } = useI18n()
+   const firmSlug = searchParams.get('firm')
+   const { hasPin } = usePinLock()
+ 
+   const [tab, setTab] = useState<Tab>('signin')
+   const [loading, setLoading] = useState(false)
+   const [error, setError] = useState('')
+   const [success, setSuccess] = useState('')
+   const [showPassword, setShowPassword] = useState(false)
+   const [branding, setBranding] = useState<FirmBranding>({
+     name: APP_NAME,
+     color_profile: 'indigo',
+     font: 'Noto Sans'
+   })
+ 
+   // Form states
+   const [siEmail, setSiEmail] = useState('')
+   const [siPass, setSiPass] = useState('')
+   const [saveCreds, setSaveCreds] = useState(true)
+   const [agreed, setAgreed] = useState(false)
+   const [fpEmail, setFpEmail] = useState('')
+   const [shake, setShake] = useState(false)
+ 
+   useEffect(() => {
+     async function loadBranding() {
+       if (!firmSlug) return
+       try {
+         const { data } = await supabase
+           .rpc('get_firm_branding', { p_slug: firmSlug }) as any
+         if (data) {
+           setBranding({
+             name: data.name, color_profile: data.color_profile || 'indigo',
+             font: data.font || 'Noto Sans'
+           })
+           applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
+         }
+       } catch (err) { }
+     }
+     loadBranding()
+   }, [firmSlug, supabase])
+ 
+   const handleRedirect = useCallback(async (user: { id: string }) => {
+     try {
+       router.refresh()
+       let { data: profile } = await supabase
+         .from('profiles')
+         .select('firm_id, role')
+         .eq('id', user.id)
+         .maybeSingle()
+ 
+       if (!profile) {
+         await new Promise(resolve => setTimeout(resolve, 800))
+         const { data: retryProfile } = await supabase
+           .from('profiles')
+           .select('firm_id, role')
+           .eq('id', user.id)
+           .maybeSingle()
+         profile = retryProfile
+       }
+ 
+       const nextPath = searchParams.get('next')
+       if (!profile) { window.location.replace('/access-denied'); return }
+ 
+       if (profile.role === 'superadmin') {
+         window.location.replace(nextPath || '/superadmin/dashboard')
+       } else {
+         window.location.replace(nextPath || '/dashboard')
+       }
+     } catch (err) {
+       window.location.replace(searchParams.get('next') || '/dashboard')
+     }
+   }, [supabase, router, searchParams])
+ 
+   useEffect(() => {
+     async function checkUser() {
+       const { data } = await supabase.auth.getUser()
+       if (data?.user) await handleRedirect(data.user)
+     }
+     checkUser()
+   }, [supabase.auth, handleRedirect])
+ 
+   async function handleSignIn(e: React.FormEvent) {
+     e.preventDefault(); setError(''); 
+     
+     if (!agreed) {
+       setError(t('login_err_terms') || 'Please accept the Terms and Privacy Policy to continue.')
+       setShake(true)
+       setTimeout(() => setShake(false), 500)
+       return
+     }
+ 
+     setLoading(true)
+     const { data: { user }, error } = await supabase.auth.signInWithPassword({ email: siEmail, password: siPass })
+     if (error || !user) { setError(t('login_err_creds')); setLoading(false); return }
+     setSuccess(t('login_success'))
+     await handleRedirect(user)
+   }
+ 
+   async function handleForgotPassword(e: React.FormEvent) {
+     e.preventDefault(); setError(''); setLoading(true)
+     const { error } = await supabase.auth.resetPasswordForEmail(fpEmail, {
+       redirectTo: `${window.location.origin}/reset-password`
+     })
+     setLoading(false)
+     if (error) { setError(error.message); return }
+     setSuccess(t('login_recovery_sent'))
+   }
+ 
+   return (
+     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-0 sm:p-8 overflow-x-hidden selection:bg-[var(--accent)] selection:text-white font-sans text-[#0f172a]">
+ 
+       <div className="w-full max-w-[1100px] h-full sm:h-auto lg:min-h-[750px] flex flex-col lg:flex-row bg-white border-0 sm:border border-slate-200 rounded-none sm:rounded-[40px] overflow-hidden shadow-none sm:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] relative z-10">
+ 
+         <div className="hidden lg:flex flex-[1] flex-col justify-between p-16 relative overflow-hidden bg-slate-50 border-r border-slate-100">
+           <div className="absolute top-0 left-0 w-2 h-full bg-[var(--accent)]" />
+           
+           <div className="relative z-10">
+             <div className="flex items-center gap-4 mb-16">
+               <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+                 <Image src="/icons/icon-512.png" alt="Logo" width={40} height={40} className="object-contain" />
+               </div>
+               <span className="text-3xl font-black text-[#0f172a] uppercase tracking-tighter font-brand">{APP_NAME}</span>
+             </div>
+ 
+             <div className="max-w-xs">
+               <h1 className="text-4xl font-black text-[#0f172a] leading-[1.1] mb-8">
+                 {t('login_welcome')} <br /> 
+                 <span className="text-[var(--accent)]">{branding.name}</span>.
+               </h1>
+               <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6">
+                 {t('login_professional')}
+               </p>
+               <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest italic">
+                 <ShieldCheck size={14} /> {t('login_external_notice')}
+               </div>
+             </div>
+           </div>
+ 
+           <div className="relative z-10 mt-auto pt-10 border-t border-slate-200/60 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">{APP_DEVELOPER} &copy; 2026</span>
+                  <span className="text-xs font-bold text-[var(--accent)] mt-0.5">Build {APP_COMMIT_ID}</span>
                 </div>
-              )}
-              {success && (
-                <div className="p-4 rounded-xl bg-emerald-600/90 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
-                  <CheckCircle2 size={12} /> {success}
-                </div>
-              )}
-
-              {tab === 'signin' ? (
-                <form onSubmit={handleSignIn} className="space-y-6 relative">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 ml-1">Email Address</label>
-                    <div className="relative group">
-                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white transition-colors" />
-                      <input
-                        type="email"
-                        name="email"
-                        autoComplete="username email"
-                        value={siEmail}
-                        onChange={e => setSiEmail(e.target.value)}
-                        placeholder="user@chitvault.in"
-                        required
-                        className="w-full pl-12 pr-4 py-4 rounded-2xl bg-black/40 border border-white/10 text-white placeholder:text-white/10 text-sm outline-none focus:border-[var(--accent)] transition-all font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between ml-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">Password</label>
-                    </div>
-                    <div className="relative group">
-                      <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white transition-colors" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        autoComplete="current-password"
-                        value={siPass}
-                        onChange={e => setSiPass(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                        className="w-full pl-12 pr-12 py-4 rounded-2xl bg-black/40 border border-white/10 text-white placeholder:text-white/10 text-sm outline-none focus:border-[var(--accent)] transition-all font-mono tracking-widest"
-                        onKeyDown={e => { if (e.key === 'Enter') handleSignIn(e as any) }}
-                      />
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Save Credentials Checkbox */}
-                  <div className="flex items-center gap-3 ml-1 mb-4">
-                    <label className="relative flex items-center gap-3 cursor-pointer group">
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          checked={saveCreds}
-                          onChange={e => setSaveCreds(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-5 h-5 rounded-lg border-2 border-white/20 bg-black/40 transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)] group-hover:border-white/40" />
-                        <CheckCircle2 size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white scale-0 peer-checked:scale-110 transition-transform" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">
-                        Save Credentials & Stay Logged In
-                      </span>
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full group py-5 rounded-2xl bg-[var(--accent)] text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Enter The Vault
-                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTab('forgot')}
-                    className="absolute top-[86px] right-0 text-[10px] font-black uppercase tracking-widest text-blue-300/60 hover:text-white transition-all underline decoration-blue-300/10"
-                  >
-                    Recovery?
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleForgotPassword} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50 ml-1">Recovery Email</label>
-                    <div className="relative group">
-                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white transition-colors" />
-                      <input
-                        type="email"
-                        value={fpEmail}
-                        onChange={e => setFpEmail(e.target.value)}
-                        placeholder="recovery@chitvault.com"
-                        required
-                        className="w-full pl-12 pr-4 py-4 rounded-2xl bg-black/40 border border-white/10 text-white placeholder:text-white/10 text-sm outline-none focus:border-[var(--accent)] transition-all font-medium"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {loading ? 'Sending Request...' : 'Send Recovery Link'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setTab('signin'); setError(''); setSuccess('') }}
-                    className="w-full text-center text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors mt-4"
-                  >
-                    &larr; Back to Entry
-                  </button>
-                </form>
-              )}
-            </div>
-
-            <div className="mt-10 text-center space-y-6">
-              <div className="flex items-center justify-center gap-6 opacity-30">
-                <Link href="/legal/terms" className="text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors">Terms of Service</Link>
-                <div className="w-1 h-1 rounded-full bg-white/20" />
-                <Link href="/legal/privacy" className="text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors">Privacy Policy</Link>
+                <Badge variant="gray" className="bg-slate-200/50 text-slate-500 border-0">{t('login_audited')}</Badge>
               </div>
-
-              {!hasPin && (
-                <button
-                  onClick={() => router.push('/settings#lock-config')}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/30 text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
-                >
-                  <ShieldCheck size={12} />
-                  Security Setup
-                </button>
-              )}
-              <p className="text-[9px] font-bold uppercase tracking-[0.5em] text-white/10">
-                AUDITED FINANCIAL PLATFORM
-              </p>
-            </div>
-          </div>
-
-          <div className="lg:hidden mt-auto pt-10 text-center text-white/30 text-[9px] font-black uppercase tracking-widest">
-            <span className="font-brand">{APP_DEVELOPER}</span> &copy; 2026 &bull; V{APP_VERSION} ({APP_COMMIT_ID})
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center mesh-gradient text-white font-black tracking-widest uppercase text-xs">
-        Preparing The Vault...
-      </div>
-    }>
-      <LoginForm />
-    </Suspense>
-  )
-}
+           </div>
+         </div>
+ 
+         <div className={cn("flex-1 flex flex-col justify-center p-6 sm:p-12 relative z-20 transition-transform", shake && "animate-shake")}>
+           
+           <div className="absolute top-6 right-6 flex items-center gap-1 bg-slate-50/80 p-1 rounded-xl border border-slate-100 shadow-sm">
+             <button
+               onClick={() => setLang('en')}
+               className={cn(
+                 "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
+                 lang === 'en' ? "bg-white text-[var(--accent)] shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
+               )}
+             >
+               EN
+             </button>
+             <button
+               onClick={() => setLang('ta')}
+               className={cn(
+                 "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all",
+                 lang === 'ta' ? "bg-white text-[var(--accent)] shadow-sm border border-slate-100" : "text-slate-400 hover:text-slate-600"
+               )}
+             >
+               தமிழ்
+             </button>
+           </div>
+ 
+           <div className="max-w-sm w-full mx-auto">
+             <div className="text-center mb-8 lg:hidden">
+                <div className="inline-block p-3 bg-slate-50 rounded-[1.5rem] border border-slate-100 mb-2">
+                  <Image src="/icons/icon-512.png" alt="Logo" width={40} height={40} className="mx-auto object-contain" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight font-brand">{APP_NAME}</h2>
+             </div>
+ 
+             <div className="mb-8 text-center lg:text-left">
+               <h2 className="text-3xl font-black tracking-tight text-slate-900 mb-2">
+                 {tab === 'signin' ? t('login_signin') : t('login_reset_password')}
+               </h2>
+               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest opacity-80">
+                 {tab === 'signin' ? `${t('login_auth_for')} ${branding.name}` : t('login_security_check')}
+               </p>
+             </div>
+ 
+             <div className="space-y-4 mb-8">
+               {error && (
+                 <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-bold flex items-center gap-3">
+                   <AlertCircle size={16} /> {error}
+                 </div>
+               )}
+               {success && (
+                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm font-bold flex items-center gap-3">
+                   <CheckCircle2 size={16} /> {success}
+                 </div>
+               )}
+             </div>
+ 
+             <div className="space-y-8">
+               {tab === 'signin' ? (
+                 <form onSubmit={handleSignIn} method="POST" className="space-y-8">
+                   <div className="space-y-5">
+                      <div className="space-y-1 group">
+                        <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 group-focus-within:text-[var(--accent)] transition-colors">{t('login_email')}</label>
+                        <div className="relative">
+                          <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[var(--accent)] transition-colors" />
+                          <input
+                            type="email"
+                            name="email"
+                            value={siEmail}
+                            onChange={e => setSiEmail(e.target.value)}
+                            placeholder="name@company.com"
+                            required
+                            className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-transparent text-slate-900 placeholder:text-slate-300 text-sm outline-none focus:border-[var(--accent)] focus:bg-white transition-all font-medium"
+                          />
+                        </div>
+                      </div>
+    
+                      <div className="space-y-1 group">
+                        <div className="flex items-center justify-between ml-1">
+                          <label className="text-xs font-bold uppercase tracking-widest text-slate-400 group-focus-within:text-[var(--accent)] transition-colors">{t('login_password')}</label>
+                          <button
+                            type="button"
+                            onClick={() => setTab('forgot')}
+                            className="text-xs font-bold uppercase tracking-widest text-[var(--accent)] hover:opacity-70 transition-all"
+                          >
+                            {t('login_recovery')}
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[var(--accent)] transition-colors" />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            value={siPass}
+                            onChange={e => setSiPass(e.target.value)}
+                            placeholder="••••••••"
+                            required
+                            className="w-full pl-11 pr-12 py-4 rounded-2xl bg-slate-50 border-2 border-transparent text-slate-900 placeholder:text-slate-300 text-sm outline-none focus:border-[var(--accent)] focus:bg-white transition-all font-mono tracking-widest"
+                            onKeyDown={e => { if (e.key === 'Enter') handleSignIn(e as any) }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-900 transition-colors"
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+ 
+                   <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                     <label className="relative flex items-center gap-3 cursor-pointer group">
+                       <div className="relative">
+                         <input
+                           type="checkbox"
+                           checked={saveCreds}
+                           onChange={e => setSaveCreds(e.target.checked)}
+                           className="peer sr-only"
+                         />
+                         <div className="w-5 h-5 rounded-lg border-2 border-slate-200 bg-white transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)]" />
+                         <CheckCircle2 size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white scale-0 peer-checked:scale-100 transition-transform" />
+                       </div>
+                       <span className="text-xs font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-900 transition-colors">
+                         {t('login_save_creds')}
+                       </span>
+                     </label>
+ 
+                     <label className="relative flex items-start gap-3 cursor-pointer group">
+                       <div className="relative mt-0.5">
+                         <input
+                           type="checkbox"
+                           checked={agreed}
+                           onChange={e => setAgreed(e.target.checked)}
+                           className="peer sr-only"
+                         />
+                         <div className={cn(
+                           "w-5 h-5 rounded-lg border-2 bg-white transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)]",
+                           !agreed && shake ? "border-red-500" : "border-slate-200"
+                         )} />
+                         <CheckCircle2 size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white scale-0 peer-checked:scale-100 transition-transform" />
+                       </div>
+                       <span className={cn(
+                         "text-xs font-bold uppercase tracking-widest transition-colors leading-tight",
+                         !agreed && shake ? "text-red-500" : "text-slate-500"
+                       )}>
+                         {t('login_agree_to')} {' '}
+                         <Link href="/legal/terms" className="text-[var(--accent)] hover:underline">{t('login_terms')}</Link> {' '}
+                         {t('and')} {' '}
+                         <Link href="/legal/privacy" className="text-[var(--accent)] hover:underline">{t('login_privacy')}</Link>
+                       </span>
+                     </label>
+                   </div>
+ 
+                   <button
+                     type="submit"
+                     disabled={loading}
+                     className="w-full group py-5 rounded-[2rem] bg-[#0038b8] text-white font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-blue-900/10 hover:bg-[#002da0]"
+                   >
+                     {loading ? (
+                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                     ) : (
+                       <>
+                         {t('login_enter')}
+                         <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                       </>
+                     )}
+                   </button>
+                 </form>
+               ) : (
+                 <form onSubmit={handleForgotPassword} method="POST" className="space-y-8">
+                   <div className="space-y-2 group">
+                     <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">{t('login_recovery_email')}</label>
+                     <div className="relative">
+                       <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[var(--accent)] transition-colors" />
+                       <input
+                         type="email"
+                         value={fpEmail}
+                         onChange={e => setFpEmail(e.target.value)}
+                         placeholder="your@email.com"
+                         required
+                         className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-transparent text-slate-900 placeholder:text-slate-300 text-sm outline-none focus:border-[var(--accent)] focus:bg-white transition-all font-medium"
+                       />
+                     </div>
+                   </div>
+ 
+                   <button
+                     type="submit"
+                     disabled={loading}
+                     className="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                   >
+                     {loading ? 'Sending...' : t('login_send_recovery')}
+                   </button>
+ 
+                   <button
+                     type="button"
+                     onClick={() => { setTab('signin'); setError(''); setSuccess('') }}
+                     className="w-full text-center text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+                   >
+                     &larr; {t('login_back')}
+                   </button>
+                 </form>
+               )}
+ 
+               <div className="pt-8 border-t border-slate-100 flex flex-col items-center gap-6">
+                 <Link 
+                   href="/schemes" 
+                   className="group w-full py-4 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all flex items-center justify-center gap-3"
+                 >
+                   <BookOpen size={18} className="text-[var(--accent)] group-hover:text-white" />
+                   <span className="text-xs font-bold uppercase tracking-widest text-slate-600 group-hover:text-white">
+                     {t('login_schemes_guide')}
+                   </span>
+                 </Link>
+ 
+                 <Link href="/legal" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">
+                   {t('login_legal_hub')}
+                 </Link>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+ 
+       <style jsx global>{`
+         @keyframes shake-animation {
+           0%, 100% { transform: translateX(0); }
+           20%, 60% { transform: translateX(-10px); }
+           40%, 80% { transform: translateX(10px); }
+         }
+         .animate-shake {
+           animation: shake-animation 0.4s ease-in-out;
+         }
+       `}</style>
+     </div>
+   )
+ }
+ 
+ function Badge({ children, variant, className }: { children: React.ReactNode, variant?: string, className?: string }) {
+    return (
+      <span className={cn(
+        "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border",
+        variant === 'gray' ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-blue-50 border-blue-100 text-blue-600",
+        className
+      )}>
+        {children}
+      </span>
+    )
+ }
+ 
+ export default function LoginPage() {
+   const { t } = useI18n()
+   return (
+     <Suspense fallback={
+       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 font-black tracking-widest uppercase text-sm">
+         {t('login_preparing')}
+       </div>
+     }>
+       <LoginForm />
+     </Suspense>
+   )
+ }

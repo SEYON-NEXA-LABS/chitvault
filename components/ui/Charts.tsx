@@ -4,7 +4,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Card } from './index'
 import { fmt, cn } from '@/lib/utils'
 
-const COLORS = ['#3ecf8e', '#3b82f6', '#f43f5e', '#eab308', '#a855f7', '#64748b']
+const COLORS = [
+  'var(--success)', 
+  'var(--accent)', 
+  'var(--danger)', 
+  'var(--warning)', 
+  'var(--info)', 
+  'var(--text3)'
+]
 
 function useIsMounted() {
   const [mounted, setMounted] = useState(false)
@@ -17,7 +24,8 @@ function useIsMounted() {
  * Generates a smooth cubic bezier path from points
  */
 function getBezierPath(points: { x: number; y: number }[]) {
-  if (points.length < 2) return ''
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x},${points[0].y}`
   
   let d = `M ${points[0].x},${points[0].y}`
   
@@ -118,7 +126,10 @@ export function LineAnalytics({
     if (!data.length || !mounted) return { paths: [], grid: [], labels: [] }
     
     const visibleSeries = activeSeries.filter(s => !hidden.has(s))
-    const allValues = data.flatMap(d => visibleSeries.map(s => Number(d[s] || 0)))
+    const allValues = data.flatMap(d => visibleSeries.map(s => {
+      const v = Number(d[s])
+      return isNaN(v) ? 0 : v
+    }))
     const maxVal = Math.max(...allValues, 100) * 1.1 // 10% padding
     
     const padding = { top: 20, right: 10, bottom: 30, left: 40 }
@@ -126,8 +137,15 @@ export function LineAnalytics({
     const h = 400 // Virtual height
     
     // X, Y scaling functions
-    const scaleX = (i: number) => (i / (data.length - 1)) * (w - padding.left - padding.right) + padding.left
-    const scaleY = (v: number) => h - padding.bottom - (v / maxVal) * (h - padding.top - padding.bottom)
+    const scaleX = (i: number) => {
+      if (data.length <= 1) return padding.left + (w - padding.left - padding.right) / 2
+      return (i / (data.length - 1)) * (w - padding.left - padding.right) + padding.left
+    }
+    const scaleY = (v: number) => {
+      const val = isNaN(v) ? 0 : v
+      const safeMax = isNaN(maxVal) || maxVal <= 0 ? 1 : maxVal
+      return h - padding.bottom - (val / safeMax) * (h - padding.top - padding.bottom)
+    }
 
     const resultPaths = visibleSeries.map(s => {
       const points = data.map((d, i) => ({ x: scaleX(i), y: scaleY(Number(d[s] || 0)) }))
@@ -162,7 +180,7 @@ export function LineAnalytics({
     const entry = data[Math.max(0, Math.min(idx, data.length - 1))]
     
     if (entry) {
-      const xPos = (idx / (data.length - 1)) * rect.width
+      const xPos = data.length <= 1 ? rect.width / 2 : (idx / (data.length - 1)) * rect.width
       const yPos = e.clientY - rect.top
       
       setHover({
@@ -182,7 +200,7 @@ export function LineAnalytics({
   }
 
   return (
-    <Card className="p-6 relative overflow-hidden group/chart" style={{ minWidth: 0 }}>
+    <Card className="p-6 relative overflow-hidden group/chart hidden lg:block" style={{ minWidth: 0 }}>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-40">{title}</h3>
       </div>
@@ -206,12 +224,21 @@ export function LineAnalytics({
           ))}
 
           {/* Paths */}
-          {paths.map(p => (
-            <g key={p.key}>
-              <path d={p.area} fill={p.color} fillOpacity="0.05" />
-              <path d={p.line} fill="none" stroke={p.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-          ))}
+          {paths.map(p => {
+            // If only 1 point, line path starts with 'M x,y' and has no 'C' or 'L'
+            const isSingle = data.length === 1
+            const point = isSingle ? { x: 400, y: Number(p.line.split(',')[1]) } : null
+            
+            return (
+              <g key={p.key}>
+                <path d={p.area} fill={p.color} fillOpacity="0.05" />
+                <path d={p.line} fill="none" stroke={p.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                {isSingle && point && (
+                  <circle cx={point.x} cy={point.y} r="6" fill={p.color} className="animate-pulse" />
+                )}
+              </g>
+            )
+          })}
 
           {/* X Labels */}
           {labels.map((l, i) => (
@@ -223,9 +250,9 @@ export function LineAnalytics({
           {/* Scanner Line */}
           {hover && (
             <line 
-              x1={(hover.idx / (data.length - 1)) * 800} 
+              x1={data.length <= 1 ? 400 : (hover.idx / (data.length - 1)) * 800} 
               y1="20" 
-              x2={(hover.idx / (data.length - 1)) * 800} 
+              x2={data.length <= 1 ? 400 : (hover.idx / (data.length - 1)) * 800} 
               y2="370" 
               stroke="var(--accent)" 
               strokeWidth="1" 
@@ -269,7 +296,7 @@ export function PieDistribution({ title, description, data, dataKey, nameKey, he
   let currentOffset = 0
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 hidden lg:block">
       <div className="mb-6">
         <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-40">{title}</h3>
         {description && <p className="text-[10px] font-medium opacity-30 mt-1">{description}</p>}
@@ -279,7 +306,7 @@ export function PieDistribution({ title, description, data, dataKey, nameKey, he
           <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
             {data.map((entry, i) => {
               const val = Number(entry[dataKey])
-              const pct = (val / total) * 100
+              const pct = total > 0 ? (val / total) * 100 : 0
               const strokeVal = (pct * circumference) / 100
               const offset = (currentOffset * circumference) / 100
               currentOffset += pct
@@ -327,7 +354,7 @@ export function BarAnalytics({ title, data, dataKey, xKey, height = 300 }: {
   title: string; data: any[]; dataKey: string; xKey: string; height?: number
 }) {
   return (
-    <Card className="p-6">
+    <Card className="p-6 hidden lg:block">
        <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 opacity-40">{title}</h3>
        <div className="flex items-end justify-between gap-2 px-2" style={{ height: height - 60 }}>
           {data.map((d, i) => {

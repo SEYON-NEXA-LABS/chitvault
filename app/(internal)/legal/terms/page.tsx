@@ -1,87 +1,118 @@
 'use client'
-
-import { Card, Badge } from '@/components/ui'
-import { ArrowLeft, Scale, Cloud, CreditCard, UserCheck, ShieldClose, Lock } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useI18n } from '@/lib/i18n/context'
-
-export default function TermsPage() {
-  const router = useRouter()
-  const { t } = useI18n()
-
-  const sections = [
-    { title: '1. Acceptance', icon: UserCheck, text: 'By registering a Firm on ChitVault, you agree to be bound by these Terms of Service. If you are registering on behalf of a business, you warrent authority to bind that business.' },
-    { title: '2. Service Model', icon: Cloud, text: 'ChitVault provides a multi-tenant cloud platform for chit fund administration. The service is provided on an "As-Is" and "As-Available" basis.' },
-    { title: '3. Subscription', icon: CreditCard, text: 'Access to premium features is granted upon verification of annual payments. We reserve the right to suspend non-paying accounts.' },
-    { title: '4. Obligations', icon: ShieldClose, text: 'Clients are responsible for data accuracy and physical fund management.' },
-    { title: '5. Prof. Disclaimer', icon: Scale, text: 'ChitVault provides tools, not financial/legal advice. Firms must verify all reports.' },
-    { title: '6. Zero-Access', icon: Lock, text: 'Our staff never accesses your financial data unless explicitly requested for support.' }
-  ]
-
-  return (
-    <div className="max-w-4xl space-y-8 pb-20">
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="p-2.5 rounded-xl border hover:bg-[var(--surface2)] transition-colors">
-          <ArrowLeft size={18} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold">{t('legal_terms')}</h1>
-          <Badge variant="accent">Standard SaaS Agreement</Badge>
-        </div>
-      </div>
-
-      <Card className="overflow-hidden">
-        <div className="p-8 md:p-12 space-y-12">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {sections.map((s, i) => {
-              const SIcon = s.icon
-              return (
-                <div key={i} className="space-y-4">
-                  <div className="flex items-center gap-3 text-[var(--accent)]">
-                    <SIcon size={20} />
-                    <h2 className="text-lg font-black uppercase tracking-tight">{s.title}</h2>
-                  </div>
-                  <p className="text-sm text-[var(--text2)] leading-relaxed">
-                    {s.text}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-
-          <section className="p-6 rounded-3xl bg-[var(--surface2)] border border-[var(--border)] space-y-4">
-            <h3 className="font-bold text-sm">Termination & Data Portability</h3>
-            <p className="text-xs opacity-60 leading-relaxed">
-              Upon cancellation, clients may request a data export of their records. We typically retain data for 30 days post-cancellation before permanent deletion to allow for safe data migration.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h3 className="font-bold text-sm">Prohibited Activities</h3>
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                'Illegal financial activities',
-                'Reverse engineering',
-                'Bulk scraping/Bot access',
-                'Multi-tenant breach attempts'
-              ].map(item => (
-                <li key={item} className="flex items-center gap-3 text-[10px] uppercase font-bold opacity-40">
-                  <Scale size={14} className="text-[var(--accent)]" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <div className="footer-doc pt-12 border-t border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 opacity-40">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-widest">Document Ref: CV-POL-TOS</p>
-              <p className="text-[10px]">© 2026 Foundation Finance Systems. All Rights Reserved.</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  )
-}
+ 
+ import { ArrowLeft, Shield, Globe, Scale, BookOpen } from 'lucide-react'
+ import { useRouter } from 'next/navigation'
+ import { useFirm } from '@/lib/firm/context'
+ import { useI18n } from '@/lib/i18n/context'
+ import { Badge, Btn, Card } from '@/components/ui'
+ import { APP_NAME } from '@/lib/utils'
+ 
+ export default function TermsPage() {
+   const router = useRouter()
+   const { profile, loading } = useFirm()
+   const { t } = useI18n()
+ 
+   const handleBack = () => {
+     if (!loading && profile) {
+       router.back()
+     } else {
+       router.push('/login')
+     }
+   }
+ 
+   return (
+     <div className="max-w-4xl mx-auto space-y-12 py-12 px-6">
+       {/* Header Section */}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-10">
+         <div className="flex items-center gap-5">
+           <button 
+             onClick={handleBack}
+             className="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm group"
+           >
+             <ArrowLeft size={22} className="group-active:-translate-x-1 transition-transform" />
+           </button>
+           <div>
+             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Terms & Conditions</h1>
+             <div className="flex items-center gap-2">
+               <Badge variant="gray" className="text-xs font-bold uppercase tracking-widest px-2">Compliance v4.2</Badge>
+               <span className="text-xs text-slate-400 font-bold uppercase tracking-widest opacity-60">Effective Apr 2024</span>
+             </div>
+           </div>
+         </div>
+         <Btn variant="secondary" onClick={() => window.print()} className="text-xs font-bold uppercase tracking-widest px-6 h-11 rounded-2xl">Download PDF</Btn>
+       </div>
+ 
+       {/* Content Cards */}
+       <div className="grid gap-10">
+         <section className="space-y-6">
+           <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+             <Scale size={24} className="text-[var(--accent)]" />
+             <h2>1. Introduction</h2>
+           </div>
+           <Card className="p-8 bg-slate-50/50 border-slate-100 shadow-none">
+             <p className="text-sm text-slate-600 leading-relaxed font-medium">
+               Welcome to {APP_NAME}. By accessing or using our platform, you agree to be bound by these Terms and Conditions and our Privacy Policy. If you do not agree to these terms, please do not use our services. These terms apply to all visitors, users, and others who access or use the Service.
+             </p>
+           </Card>
+         </section>
+ 
+         <section className="space-y-6">
+           <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+             <Shield size={24} className="text-[var(--accent)]" />
+             <h2>2. Usage Policy</h2>
+           </div>
+           <div className="grid sm:grid-cols-2 gap-6">
+             <Card className="p-8 bg-white border-slate-100 hover:border-[var(--accent)] transition-colors group">
+               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 group-hover:text-[var(--accent)]">Compliance</h3>
+               <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                 Users must comply with all local financial regulations and chit fund laws applicable in their jurisdiction.
+               </p>
+             </Card>
+             <Card className="p-8 bg-white border-slate-100 hover:border-[var(--accent)] transition-colors group">
+               <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 group-hover:text-[var(--accent)]">Security</h3>
+               <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                 You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password.
+               </p>
+             </Card>
+           </div>
+         </section>
+ 
+         <section className="space-y-6">
+           <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+             <Globe size={24} className="text-[var(--accent)]" />
+             <h2>3. Data Privacy</h2>
+           </div>
+           <Card className="p-8 bg-slate-900 text-white shadow-2xl rounded-[2.5rem] relative overflow-hidden">
+             <div className="relative z-10 space-y-4">
+               <p className="text-sm text-slate-300 leading-relaxed font-medium opacity-90">
+                 Your privacy is important to us. It is our policy to respect your privacy regarding any information we may collect from you across our website and other sites we own and operate.
+               </p>
+               <div className="pt-4 flex gap-4">
+                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40">
+                   <Shield size={14} /> Encrypted
+                 </div>
+                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40">
+                   <BookOpen size={14} /> GDPR Ready
+                 </div>
+               </div>
+             </div>
+             <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)] blur-[100px] opacity-20" />
+           </Card>
+         </section>
+       </div>
+ 
+       {/* Footer Footer */}
+       <div className="pt-12 border-t text-center space-y-4">
+         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+           {t('login_back_to_login_msg') || "Need to go back?"}
+         </p>
+         <button 
+           onClick={handleBack}
+           className="px-8 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+         >
+           {loading || profile ? "Back to Dashboard" : "Back to Login"}
+         </button>
+       </div>
+     </div>
+   )
+ }
