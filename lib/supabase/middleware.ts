@@ -60,15 +60,16 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // 1. Get Profile (Try JWT Metadata first for speed and security)
+  // 1. Get Profile (Prioritize Secure App Metadata)
   let profile: { id: string; firm_id: string; role: string; status: string } | null = null
+  const meta = { ...user.user_metadata, ...user.app_metadata }
   
-  if (user.user_metadata?.role && user.user_metadata?.firm_id) {
+  if (meta.role && meta.firm_id) {
     profile = {
       id: user.id,
-      firm_id: user.user_metadata.firm_id,
-      role: user.user_metadata.role,
-      status: user.user_metadata.status || 'active'
+      firm_id: meta.firm_id,
+      role: meta.role,
+      status: meta.status || 'active'
     }
   }
 
