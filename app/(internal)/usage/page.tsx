@@ -57,7 +57,7 @@ export default function UsageHubPage() {
         </div>
       </div>
 
-      <div className="relative group overflow-hidden rounded-[3rem] p-8 bg-[var(--surface2)] border-2 shadow-xl" style={{ borderColor: 'var(--border)' }}>
+      <div className="relative group overflow-hidden rounded-3xl p-8 bg-[var(--surface2)] border-2 shadow-xl" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
           <div className="lg:col-span-3 flex flex-col justify-center">
               <h2 className="text-3xl font-black mb-2 flex items-center gap-2">

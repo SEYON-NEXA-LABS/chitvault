@@ -54,7 +54,6 @@ const NAV: NavItem[] = [
     items: [
       { href: '/auctions', label: 'nav_auctions', icon: Gavel },
       { href: '/collection', label: 'nav_collection', icon: ClipboardList },
-      { href: '/payments', label: 'nav_due_collection', icon: CreditCard },
       { href: '/settlement', label: 'nav_settlements', icon: Calculator },
     ]
   },
@@ -214,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={j}
                           href={effectiveHref}
                           className={cn(
-                            'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all',
+                            'flex items-center gap-3 px-3 py-2 rounded-xl text-base transition-all',
                             active
                               ? 'bg-[var(--accent)] text-white shadow-lg'
                               : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
@@ -234,12 +233,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="p-5 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between px-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-colors"
+                  title="Toggle Theme"
+                >
+                  {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+
+                <div className="h-4 w-[1px] bg-[var(--border)] mx-1" />
+
+                <button
+                  onClick={() => adjustFont(-1)}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors border border-transparent hover:border-[var(--border)]"
+                  title="Decrease Font"
+                >
+                  A-
+                </button>
+                <button
+                  onClick={() => adjustFont(1)}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-50 text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors border border-transparent hover:border-[var(--border)]"
+                  title="Increase Font"
+                >
+                  A+
+                </button>
+              </div>
               
               <button
                 onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}

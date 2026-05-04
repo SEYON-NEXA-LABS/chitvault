@@ -102,6 +102,7 @@ BEGIN
         'member', (SELECT row_to_json(m) FROM members m WHERE m.id = dd.member_id),
         'group', (SELECT row_to_json(g) FROM groups g WHERE g.id = dd.group_id),
         'totalBalance', COALESCE((SELECT SUM(amount_due - amount_paid) FROM jsonb_to_recordset(dd.pending_months) as x(month int, amount_due numeric, amount_paid numeric)), 0),
+        'latestMonth', dd.latest_month,
         'dues', dd.pending_months
       )) as membership_data
     FROM detailed_dues dd
