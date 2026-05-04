@@ -19,6 +19,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('lang') as Lang
     if (saved && (saved === 'en' || saved === 'ta')) {
       setLangState(saved)
+      document.documentElement.lang = saved
     }
     setMounted(true)
   }, [])

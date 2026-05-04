@@ -1,244 +1,151 @@
 'use client'
-
-import { Card, Badge, StatCard, Btn } from '@/components/ui'
-import { Gavel, TrendingDown, Target, HelpCircle, ArrowLeft, ArrowRight, ShieldCheck, Calculator, Save, UserCheck } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { fmt } from '@/lib/utils'
-
-export default function SchemesGuidePage() {
-  const router = useRouter()
-
-  const ExampleRow = ({ label, dividend, accumulation, color }: any) => (
-    <div className="grid grid-cols-2 gap-4 py-3 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">{label}</span>
-        <span className="text-sm font-semibold" style={{ color: color }}>{dividend}</span>
-      </div>
-      <div className="flex flex-col text-right">
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-40">{label}</span>
-        <span className="text-sm font-semibold" style={{ color: color }}>{accumulation}</span>
-      </div>
-    </div>
-  )
-
-  return (
-    <div className="max-w-4xl space-y-8 pb-20">
-
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="p-2.5 rounded-xl border hover:bg-[var(--surface2)] transition-colors">
-          <ArrowLeft size={18} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold">Auction Schemes Guide</h1>
-          <p className="text-sm opacity-60">Understanding Dividend-Share vs. Surplus-Accumulation models</p>
-        </div>
-      </div>
-
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Dividend Model */}
-        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-blue-500">
-          <Badge variant="accent" className="mb-4">Option A</Badge>
-          <h2 className="text-xl font-bold mb-2">Dividend Share (Conventional)</h2>
-          <p className="text-sm opacity-70 leading-relaxed mb-6">
-            In this model, the **Auction Discount** (the amount bid &quot;away&quot;) is divided equally among all members every month.
-            Members pay less than their target installment, sharing the profit immediately.
-          </p>
-
-          <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
-            <ExampleRow label="Monthly Installment" dividend="₹30,000" accumulation="—" color="var(--text)" />
-            <ExampleRow label="Auction Discount" dividend="₹70,000" accumulation="—" color="var(--danger)" />
-            <ExampleRow label="Dividend (15 members)" dividend="₹4,666" accumulation="—" color="var(--success)" />
-            <ExampleRow label="Member Pays This Month" dividend="₹25,334" accumulation="—" color="var(--info)" fontWeight="bold" />
-          </div>
-
-          <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-info-500">
-            <ShieldCheck size={14} /> Immediate savings for all members.
-          </div>
-        </Card>
-
-        {/* Accumulation Model */}
-        <Card className="p-6 relative overflow-hidden group border-t-4 border-t-[var(--info)]">
-          <Badge variant="info" className="mb-4">Option B</Badge>
-          <h2 className="text-xl font-bold mb-2">Surplus Model (Accumulation)</h2>
-          <p className="text-sm opacity-70 leading-relaxed mb-6">
-            Everyone pays the **Full Amount** every month. The **Auction Discount** is stored in a **Surplus Pool**.
-            When the pool is large enough, it pays for the final months automatically!
-          </p>
-
-          <div className="bg-[var(--surface2)] p-4 rounded-xl space-y-1">
-            <ExampleRow label="Monthly Installment" dividend="—" accumulation="₹30,000" color="var(--text)" />
-            <ExampleRow label="To Surplus Pool" dividend="—" accumulation="+ ₹70,000" color="var(--accent)" />
-            <ExampleRow label="Winner Payout" dividend="—" accumulation="₹380,000" color="var(--success)" />
-            <ExampleRow label="Member Pays This Month" dividend="—" accumulation="₹30,000" color="var(--info)" fontWeight="bold" />
-          </div>
-
-          <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-[var(--accent)]">
-            <Target size={14} /> Group closes 3-5 months early.
-          </div>
-        </Card>
-      </div>
-
-      {/* Advanced Schemes */}
-      <Card title="🚀 Advanced Auction Schemes" subtitle="Additional models supported by the ChitVault calculation engine">
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <Badge variant="success">Lottery Model</Badge>
-            <p className="text-xs opacity-70">Winner is chosen randomly. No bidding required. Fixed payout every month.</p>
-          </div>
-          <div className="space-y-2">
-            <Badge variant="gray">Fixed Rotation</Badge>
-            <p className="text-xs opacity-70">Members win in a predefined order. No bidding required. Fixed payout every month.</p>
-          </div>
-          <div className="space-y-2">
-            <Badge variant="warning">Sealed Tender</Badge>
-            <p className="text-xs opacity-70">Members submit secret bids. The highest valid bid wins when revealed.</p>
-          </div>
-          <div className="space-y-2">
-            <Badge variant="danger">Bounded Auction</Badge>
-            <p className="text-xs opacity-70">Bids must fall within strictly enforced minimum and maximum percentages of the pot.</p>
-          </div>
-          <div className="space-y-2">
-            <Badge variant="accent">Hybrid Split</Badge>
-            <p className="text-xs opacity-70">A configurable percentage of the discount is returned as dividend, and the rest goes to a surplus pool.</p>
-          </div>
-          <div className="space-y-2">
-            <Badge variant="info">Stepped Installment</Badge>
-            <p className="text-xs opacity-70">Installments increase predictably over time, helping members match contributions to inflation.</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Detailed Math Explanation */}
-      <Card title="🎓 Deep Dive: How Accumulation Logic Works" subtitle="Math example for a 15-month, 15-member group (₹4.5L pot)">
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <div className="text-[10px] font-bold uppercase tracking-widest opacity-40">Phase 1: Collection</div>
-              <p className="text-xs leading-relaxed opacity-70">
-                15 members pay ₹30,000 each = **₹450,000** collected by the firm.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="text-[10px] font-bold uppercase tracking-widest opacity-40">Phase 2: Auction</div>
-              <p className="text-xs leading-relaxed opacity-70">
-                Someone bids **₹70,000**. The firm pays the winner **₹380,000** (₹450k - ₹70k).
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="text-[10px] font-bold uppercase tracking-widest opacity-40">Phase 3: The Reserve</div>
-              <p className="text-xs leading-relaxed opacity-70">
-                The ₹70,000 left over stays in your bank. It is the **Surplus**.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl border border-dashed flex items-start gap-4" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
-            <div className="p-2 rounded-lg bg-info-400/10 text-info-500"><TrendingDown size={20} /></div>
-            <div>
-              <h4 className="text-sm font-bold mb-1 underline decoration-blue-500/30">The Mathematical Definition</h4>
-              <ul className="text-xs opacity-70 space-y-2">
-                <li>• **Installment**: Always fixed (e.g., ₹30,000)</li>
-                <li>• **Surplus Pool**: Σ(Auction Discounts - Firm Commissions)</li>
-                <li>• **Group Closure**: Pool Amount ≥ (Monthly Collection × Remaining Duration)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Settlement Process */}
-      <Card title="🏆 Settlement & Payout Process" subtitle="How to finalize a winner's payout and record it">
-        <div className="p-6 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-info-500/10 text-info-500 flex items-center justify-center">
-                <UserCheck size={24} />
-              </div>
-              <h4 className="font-bold text-sm">1. Select Group or Member</h4>
-              <p className="text-xs opacity-60">Bind to a specific member to auto-fill their won auctions, or use **Manual Calculation** for general-purpose &quot;What-if&quot; scenarios.</p>
-            </div>
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center">
-                <Calculator size={24} />
-              </div>
-              <h4 className="font-bold text-sm">2. Average Payoff Rule</h4>
-              <p className="text-xs opacity-60">Payout = (Total Bids / Duration) × (Duration - 1). This ensures a fair return based on group performance.</p>
-            </div>
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-12 h-12 rounded-full bg-success-500/10 text-success-500 flex items-center justify-center">
-                <Save size={24} />
-              </div>
-              <h4 className="font-bold text-sm">3. Audit Record</h4>
-              <p className="text-xs opacity-60">Save to the database to create a permanent audit trail and legally valid proof of payoff.</p>
-            </div>
-          </div>
-
-          <div className="p-5 rounded-2xl border bg-[var(--surface2)]" style={{ borderColor: 'var(--border)' }}>
-            <h4 className="text-sm font-bold mb-3 underline decoration-[var(--accent)]/30">Why is this important?</h4>
-            <ul className="space-y-3">
-              <li className="text-xs opacity-80 flex gap-2">
-                <span className="text-[var(--accent)]">•</span>
-                <span>**Transparency**: You can show the member exactly how their payout was derived using the handwritten chit rules.</span>
-              </li>
-              <li className="text-xs opacity-80 flex gap-2">
-                <span className="text-[var(--accent)]">•</span>
-                <span>**Accuracy**: Auto-fill prevents typing errors by pulling directly from verified auction outcomes.</span>
-              </li>
-              <li className="text-xs opacity-80 flex gap-2">
-                <span className="text-[var(--accent)]">•</span>
-                <span>**Compliance**: Persistent records ensure that if a member disputes a payout months later, you have the digital receipt.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </Card>
-
-      {/* Commission Rules */}
-      <Card title="💼 Firm Commission Types" subtitle="The different ways the foreman earns revenue">
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-bold flex items-center gap-2 mb-2">
-                <span className="p-1 rounded bg-info-500/10 text-info-500 font-mono text-[10px]">NEW</span>
-                % of Payout (Deducted)
-              </h4>
-              <p className="text-xs opacity-60 leading-relaxed">
-                Ideal for Accumulation. If the winner gets ₹380,000, you deduct 1-5% (e.g. ₹3,800) as your fee before handing over the cheque.
-                Simple and profitable.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-bold mb-2">% of Chit Value</h4>
-              <p className="text-xs opacity-60 leading-relaxed">
-                Standard 5%. You take ₹22,500 every month from the pot before distributing anything.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-bold mb-2">% of Discount</h4>
-              <p className="text-xs opacity-60 leading-relaxed">
-                You take a cut of the bid amount. If someone bids ₹70,000 and your rate is 10%, you earn ₹7,000.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-sm font-bold mb-2">Fixed Amount</h4>
-              <p className="text-xs opacity-60 leading-relaxed">
-                A flat fee (e.g. ₹500) per member or per auction. predictable and easy to explain.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className="flex justify-center pt-5">
-        <Btn variant="primary" icon={ArrowRight} onClick={() => router.push('/groups')}>Go to Groups</Btn>
-      </div>
-
-    </div>
-  )
-}
+ 
+ import { ArrowLeft, BookOpen, Calculator, Gavel, Scale, ShieldCheck, Zap } from 'lucide-react'
+ import { useRouter } from 'next/navigation'
+ import { useFirm } from '@/lib/firm/context'
+ import { useI18n } from '@/lib/i18n/context'
+ import { Badge, Btn, Card } from '@/components/ui'
+ import { APP_NAME } from '@/lib/utils'
+ 
+ export default function SchemesGuidePage() {
+   const router = useRouter()
+   const { profile, loading } = useFirm()
+   const { t } = useI18n()
+ 
+   const handleBack = () => {
+     if (!loading && profile) {
+       router.back()
+     } else {
+       router.push('/login')
+     }
+   }
+ 
+   return (
+     <div className="max-w-4xl mx-auto space-y-12 py-12 px-6">
+       {/* Header Section */}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-10">
+         <div className="flex items-center gap-5">
+           <button 
+             onClick={handleBack}
+             className="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm group"
+           >
+             <ArrowLeft size={22} className="group-active:-translate-x-1 transition-transform" />
+           </button>
+           <div>
+             <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none mb-2">Auction Schemes Guide</h1>
+             <div className="flex items-center gap-2">
+               <Badge variant="accent" className="text-xs font-bold uppercase tracking-widest px-2">Educational</Badge>
+               <span className="text-xs text-slate-400 font-bold uppercase tracking-widest opacity-60">System Documentation</span>
+             </div>
+           </div>
+         </div>
+         <Btn variant="secondary" onClick={() => window.print()} className="text-xs font-bold uppercase tracking-widest px-6 h-11 rounded-2xl">Print Guide</Btn>
+       </div>
+ 
+       {/* Introduction */}
+       <section className="space-y-6">
+         <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+           <BookOpen size={24} className="text-[var(--accent)]" />
+           <h2>Overview</h2>
+         </div>
+         <Card className="p-8 bg-slate-50/50 border-slate-100 shadow-none">
+           <p className="text-sm text-slate-600 leading-relaxed font-medium">
+             {APP_NAME} supports various auction methodologies to accommodate different chit fund operational models. Understanding these schemes is crucial for accurate financial auditing and member satisfaction.
+           </p>
+         </Card>
+       </section>
+ 
+       {/* Schemes Comparison */}
+       <div className="grid md:grid-cols-2 gap-8">
+         {/* ACCUMULATION SCHEME */}
+         <section className="space-y-6">
+           <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+             <Calculator size={24} className="text-emerald-600" />
+             <h2>Accumulation</h2>
+           </div>
+           <Card className="p-8 bg-white border-slate-200 hover:border-emerald-500 transition-all group h-full">
+             <div className="flex flex-col h-full justify-between">
+               <div className="space-y-4">
+                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                   Members pay a fixed monthly installment. The auction discount is accumulated in a pool rather than distributed immediately.
+                 </p>
+                 <ul className="space-y-3">
+                   <li className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                     <Zap size={14} className="text-emerald-500" /> Fixed Installments
+                   </li>
+                   <li className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                     <Zap size={14} className="text-emerald-500" /> Deferred Benefit
+                   </li>
+                 </ul>
+               </div>
+               <Badge variant="success" className="mt-8 self-start text-xs font-bold uppercase tracking-widest">Low Complexity</Badge>
+             </div>
+           </Card>
+         </section>
+ 
+         {/* DIVIDEND DISTRIBUTION */}
+         <section className="space-y-6">
+           <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+             <Gavel size={24} className="text-blue-600" />
+             <h2>Dividend</h2>
+           </div>
+           <Card className="p-8 bg-white border-slate-200 hover:border-blue-500 transition-all group h-full">
+             <div className="flex flex-col h-full justify-between">
+               <div className="space-y-4">
+                 <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                   The auction discount is distributed among all members as a "dividend" reducing their next installment amount.
+                 </p>
+                 <ul className="space-y-3">
+                   <li className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                     <Zap size={14} className="text-blue-500" /> Variable Installments
+                   </li>
+                   <li className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                     <Zap size={14} className="text-blue-500" /> Immediate Benefit
+                   </li>
+                 </ul>
+               </div>
+               <Badge variant="accent" className="mt-8 self-start text-xs font-bold uppercase tracking-widest">Common Model</Badge>
+             </div>
+           </Card>
+         </section>
+       </div>
+ 
+       {/* Legal Hub Integration */}
+       <section className="space-y-6 pt-12">
+         <div className="flex items-center gap-3 text-xl font-black text-slate-900 uppercase tracking-tight">
+           <ShieldCheck size={24} className="text-orange-500" />
+           <h2>Audit Transparency</h2>
+         </div>
+         <Card className="p-8 bg-slate-900 text-white shadow-2xl rounded-[2.5rem] relative overflow-hidden">
+           <div className="relative z-10 space-y-4">
+             <p className="text-sm text-slate-300 leading-relaxed font-medium opacity-90">
+               All auction calculations are performed in accordance with statutory guidelines. Our system maintains an immutable audit trail for every dividend distribution and payout settlement.
+             </p>
+             <div className="pt-4 flex gap-4">
+               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40">
+                 <Scale size={14} /> Legally Audited
+               </div>
+               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40">
+                 <BookOpen size={14} /> Full Traceability
+               </div>
+             </div>
+           </div>
+           <div className="absolute bottom-0 left-0 w-32 h-32 bg-orange-500 blur-[100px] opacity-20" />
+         </Card>
+       </section>
+ 
+       {/* Footer */}
+       <div className="pt-12 border-t text-center space-y-4">
+         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+           {t('login_back_to_login_msg') || "Need to go back?"}
+         </p>
+         <button 
+           onClick={handleBack}
+           className="px-8 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+         >
+           {loading || profile ? "Back to Dashboard" : "Back to Login"}
+         </button>
+       </div>
+     </div>
+   )
+ }

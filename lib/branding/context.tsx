@@ -77,15 +77,10 @@ export const AVAILABLE_FONTS = [
 ]
 
 export const COLOR_PROFILES = [
-  { id: 'indigo',       name: 'ChitVault Premium', color: '#0038b8' },
-  { id: 'royal',        name: 'Royal Heritage',   color: '#003830' },
+  { id: 'indigo',       name: 'Trust Blue',       color: '#0038b8' },
   { id: 'emerald',      name: 'Emerald Growth',   color: '#10b981' },
-  { id: 'amber',        name: 'Amber Gold',       color: '#f59e0b' },
-  { id: 'rose',         name: 'Rose Energy',      color: '#e11d48' },
-  { id: 'slate',        name: 'Onyx Stealth',     color: '#475569' },
-  { id: 'midnight',     name: 'Midnight Sun',     color: '#0b3c5d' },
-  { id: 'mountain',     name: 'Mountain Fresh',   color: '#015249' },
-  { id: 'sunset',       name: 'Sunset Earth',     color: '#07889b' },
+  { id: 'slate',        name: 'Onyx Slate',       color: '#475569' },
+  { id: 'rose',         name: 'Rose Alert',       color: '#e11d48' },
 ]
 
 // For backward compatibility with picker UI

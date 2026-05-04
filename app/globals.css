@@ -12,6 +12,15 @@
   --font-base: 'Outfit', 'Hind Madurai', sans-serif;
   --font-brand: 'Audiowide', cursive;
   font-size: var(--font-size-base, 16px);
+  
+  /* Strict Typographic Scale */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
 }
 
 :root:lang(ta) {
@@ -115,16 +124,7 @@
   --accent-border: rgba(16, 185, 129, 0.2);
 }
 
-/* ── Amber Gold ── */
-[data-color-profile="amber"] {
-  --accent: #f59e0b;
-  --accent-rgb: 245, 158, 11;
-  --accent-light: #fbbf24;
-  --accent-dim: rgba(245, 158, 11, 0.1);
-  --accent-border: rgba(245, 158, 11, 0.2);
-}
-
-/* ── Rose Energy ── */
+/* ── Rose Alert ── */
 [data-color-profile="rose"] {
   --accent: #e11d48;
   --accent-rgb: 225, 29, 72;
@@ -133,139 +133,13 @@
   --accent-border: rgba(225, 29, 72, 0.2);
 }
 
-/* ── Onyx Stealth ── */
+/* ── Onyx Slate ── */
 [data-color-profile="slate"] {
   --accent: #475569;
   --accent-rgb: 71, 85, 105;
   --accent-light: #64748b;
   --accent-dim: rgba(71, 85, 105, 0.1);
   --accent-border: rgba(71, 85, 105, 0.2);
-}
-
-/* ── Royal Heritage (Jewellery) ── */
-[data-color-profile="royal"] {
-  --accent: #D4AF37;
-  --accent-rgb: 212, 175, 55;
-  --accent-light: #FFD700;
-  --accent-dim: rgba(212, 175, 55, 0.15);
-  --accent-border: rgba(212, 175, 55, 0.3);
-}
-
-/* ── Midnight Sun ── */
-[data-color-profile="midnight"] {
-  --accent: #d9b310;
-  --accent-rgb: 217, 179, 16;
-  --accent-light: #f4d03f;
-  --accent-dim: rgba(217, 179, 16, 0.1);
-  --accent-border: rgba(217, 179, 16, 0.2);
-}
-
-[data-color-profile="midnight"][data-theme="light"] {
-  --bg: #f8f9fa;
-  --surface: #0b3c5d;
-  --surface-rgb: 11, 60, 93;
-  --surface2: #124d77;
-  --surface3: #1a5e91;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.8);
-  --text3: rgba(255, 255, 255, 0.5);
-}
-
-[data-color-profile="midnight"][data-theme="dark"] {
-  --bg: #051a29;
-  --surface: #0b3c5d;
-  --surface-rgb: 11, 60, 93;
-  --surface2: #0f4a74;
-  --surface3: #14598b;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.75);
-  --text3: rgba(255, 255, 255, 0.45);
-}
-
-/* ── Mountain Fresh ── */
-[data-color-profile="mountain"] {
-  --accent: #77c9d4;
-  --accent-rgb: 119, 201, 212;
-  --accent-light: #a5eaf2;
-  --accent-dim: rgba(119, 201, 212, 0.1);
-  --accent-border: rgba(119, 201, 212, 0.2);
-}
-
-[data-color-profile="mountain"][data-theme="light"] {
-  --bg: #f5f9f8;
-  --surface: #015249;
-  --surface-rgb: 1, 82, 73;
-  --surface2: #016a5f;
-  --surface3: #028275;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.85);
-  --text3: rgba(255, 255, 255, 0.55);
-}
-
-[data-color-profile="mountain"][data-theme="dark"] {
-  --bg: #002621;
-  --surface: #015249;
-  --surface-rgb: 1, 82, 73;
-  --surface2: #016258;
-  --surface3: #017267;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.75);
-  --text3: rgba(255, 255, 255, 0.45);
-}
-
-/* ── Sunset Earth ── */
-[data-color-profile="sunset"] {
-  --accent: #efaa7b;
-  --accent-rgb: 239, 170, 123;
-  --accent-light: #ffcead;
-  --accent-dim: rgba(239, 170, 123, 0.1);
-  --accent-border: rgba(239, 170, 123, 0.2);
-}
-
-[data-color-profile="sunset"][data-theme="light"] {
-  --bg: #fdfaf8;
-  --surface: #07889b;
-  --surface-rgb: 7, 136, 155;
-  --surface2: #09a1b8;
-  --surface3: #0ab9d4;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.9);
-  --text3: rgba(255, 255, 255, 0.6);
-}
-
-[data-color-profile="sunset"][data-theme="dark"] {
-  --bg: #033a42;
-  --surface: #07889b;
-  --surface-rgb: 7, 136, 155;
-  --surface2: #097585;
-  --surface3: #0a8a9c;
-  --text: #ffffff;
-  --text2: rgba(255, 255, 255, 0.8);
-  --text3: rgba(255, 255, 255, 0.5);
-}
-
-[data-color-profile="royal"][data-theme="light"] {
-  --bg: #FAF9F6;
-  --surface: #003830;
-  --surface-rgb: 0, 56, 48;
-  --surface2: #00453b;
-  --surface3: #005246;
-  --border: rgba(212, 175, 55, 0.2);
-  --text: #FAF9F6;
-  --text2: rgba(250, 249, 246, 0.7);
-  --text3: rgba(250, 249, 246, 0.4);
-}
-
-[data-color-profile="royal"][data-theme="dark"] {
-  --bg: #001a16;
-  --surface: #002620;
-  --surface-rgb: 0, 38, 32;
-  --surface2: #003830;
-  --surface3: #00453b;
-  --border: rgba(212, 175, 55, 0.15);
-  --text: #FAF9F6;
-  --text2: rgba(250, 249, 246, 0.6);
-  --text3: rgba(250, 249, 246, 0.3);
 }
 
 [data-theme="dark"] {
@@ -279,24 +153,15 @@
    =============================== */
 
 
-/* ── Premium Aesthetics ─────────────────────────────────────────────────────── */
+/* ── Solid Aesthetics (Shadcn-Style) ────────────────────────────────────────── */
 .mesh-gradient {
-  background: 
-    radial-gradient(at 0% 0%, hsla(253,16%,12%,1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225,39%,25%,1) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(339,49%,25%,1) 0, transparent 50%), 
-    radial-gradient(at 0% 100%, hsla(321,0%,0%,1) 0, transparent 50%), 
-    radial-gradient(at 50% 100%, hsla(220,100%,20%,1) 0, transparent 50%), 
-    radial-gradient(at 100% 100%, hsla(0,0%,0%,1) 0, transparent 50%);
-  background-size: 100% 100%;
+  background: var(--bg);
 }
 
 .glass-card {
-  background: rgba(var(--surface-rgb), 0.6);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(var(--surface-rgb), 0.3);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .neumo-out {
@@ -586,13 +451,11 @@ a {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(8px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(180%) !important;
+  background: var(--surface) !important;
 }
 
 .dark .glass {
-  background: rgba(20, 24, 36, 0.7) !important;
+  background: var(--surface) !important;
 }
 
 @media (max-width: 768px) {

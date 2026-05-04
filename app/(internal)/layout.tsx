@@ -99,15 +99,11 @@ const NAV: NavItem[] = [
   }
 ]
 
-const planColor: Record<string, string> = {
-  trial: '#5b8af5', basic: '#2563eb', pro: '#3ecf8e'
-}
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const { role, firm, profile } = useFirm()
+  const { role, firm, profile, loading } = useFirm()
   const isOwner = role === 'owner' || role === 'superadmin'
   const { lang, setLang, t } = useI18n()
   const { isLocked, lock, hasPin, isElectron } = usePinLock()
@@ -139,17 +135,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Suspended check
   if (firm?.plan_status === 'suspended') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'var(--bg)' }}>
-        <div style={{ maxWidth: 420, textAlign: 'center' }}>
-          <div style={{ fontSize: 52, marginBottom: 12 }}>⏸️</div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginBottom: 10 }}>Account Suspended</h2>
-          <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 20 }}>
+      <div className="min-h-screen flex items-center justify-center p-5 bg-[var(--bg)]">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-5xl">⏸️</div>
+          <h2 className="text-xl font-black text-red-600 uppercase">Account Suspended</h2>
+          <p className="text-sm text-slate-500 leading-relaxed">
             {firm.name}&apos;s account has been suspended. Contact us to renew.
           </p>
-          <a href="mailto:seyonnexalabs@gmail.com" style={{ color: 'var(--accent)', fontSize: 14 }}>seyonnexalabs@gmail.com</a>
+          <a href="mailto:seyonnexalabs@gmail.com" className="text-sm text-[var(--accent)] font-bold">seyonnexalabs@gmail.com</a>
           <br />
           <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-            style={{ marginTop: 16, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontSize: 13 }}>
+            className="mt-4 px-6 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold">
             Sign Out
           </button>
         </div>
@@ -161,6 +157,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? Math.max(0, Math.ceil((new Date(firm.trial_ends).getTime() - Date.now()) / 86400000))
     : null
 
+  // Public access check: If not logged in and on a public-allowed page, render without sidebar
+  const isPublicRoute = pathname.startsWith('/legal') || pathname.startsWith('/schemes')
+  if (!loading && !profile && isPublicRoute) {
+    return <main className="flex-1 p-8 sm:p-20 bg-white min-h-screen text-sm">{children}</main>
+  }
+
   return (
     <>
       <NetworkStatus />
@@ -169,17 +171,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={cn(
-          'fixed top-0 left-0 bottom-0 z-50 w-60 flex flex-col transition-transform duration-300 border-r no-print',
+          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print bg-white',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )} style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+        )} style={{ borderColor: 'var(--border)' }}>
+          <div className="p-8 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <Image src="/icons/icon-512.png" alt={APP_NAME} width={42} height={42} className="w-[42px] h-[42px] object-contain transition-transform group-hover:scale-110 duration-500" />
-              <span className="font-bold tracking-tight uppercase font-brand" style={{ color: 'var(--text)' }}>{APP_NAME}</span>
+              <Image src="/icons/icon-512.png" alt={APP_NAME} width={32} height={32} className="w-8 h-8 object-contain transition-transform group-hover:scale-110 duration-500" />
+              <span className="font-black text-2xl tracking-tighter uppercase text-slate-900 font-brand">{APP_NAME}</span>
             </Link>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4">
+          <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-6">
             {NAV.map((group, i) => {
               if (group.superAdminOnly && role !== 'superadmin') return null
               if (group.ownerOnly && !isOwner) return null
@@ -191,13 +193,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div key={i} className="space-y-1">
                   <button
                     onClick={() => setExpanded(e => ({ ...e, [group.label]: !e[group.label] }))}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity"
+                    className="w-full flex items-center justify-between px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
                   >
                     <div className="flex items-center gap-2">
-                      {Icon && <Icon size={14} className="opacity-50" />}
+                      {Icon && <Icon size={14} className="opacity-40" />}
                       {t(group.label)}
                     </div>
-                    <ChevronDown size={14} className={cn("transition-transform duration-300", !isExp && "-rotate-90")} />
+                    <ChevronDown size={14} className={cn("transition-transform duration-300 opacity-40", !isExp && "-rotate-90")} />
                   </button>
 
                   <div className={cn("space-y-1 overflow-hidden transition-all duration-300", isExp ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0")}>
@@ -212,15 +214,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={j}
                           href={effectiveHref}
                           className={cn(
-                            'flex items-center gap-3 px-3 py-2 rounded-xl text-[12px] font-medium transition-all ml-2',
+                            'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all',
                             active
-                              ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent-dim)]'
-                              : 'text-[var(--text2)] hover:bg-[var(--surface2)]'
+                              ? 'bg-[var(--accent)] text-white shadow-lg'
+                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                           )}
                           onClick={() => setSidebarOpen(false)}
                         >
                           {SIcon && <SIcon size={16} />}
-                          {t(item.label)}
+                          <span className={active ? "font-bold" : "font-medium"}>{t(item.label)}</span>
                         </Link>
                       )
                     })}
@@ -230,51 +232,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          <div className="p-4 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="p-5 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between px-2">
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-[var(--surface2)] text-[var(--text2)]"
-                title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+                className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-colors"
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
-              <div className="flex items-center gap-1">
-                <button onClick={() => adjustFont(-1)} className="p-1 text-xs opacity-50 hover:opacity-100" title="Decrease Font">A-</button>
-                <button onClick={() => adjustFont(1)} className="p-1 text-base opacity-50 hover:opacity-100" title="Increase Font">A+</button>
-              </div>
               
               <button
                 onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-[var(--border)] bg-[var(--surface2)] text-[10px] font-black uppercase tracking-tighter hover:border-[var(--accent)] transition-all"
-                title={lang === 'en' ? 'Switch to Tamil' : 'Switch to English'}
+                className="px-3 py-1 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-600"
               >
-                <Languages size={10} className="text-[var(--accent)]" />
-                <span>{lang === 'en' ? 'EN' : 'தமிழ்'}</span>
+                {lang === 'en' ? 'EN' : 'தமிழ்'}
               </button>
             </div>
 
-            <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-[var(--surface3)] text-[var(--text2)]">
-                  <UserCog size={16} />
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                  <UserCog size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black truncate uppercase font-brand" style={{ color: 'var(--text)' }}>
-                    {profile?.full_name || 'Personal Account'}
-                  </p>
-                  <p className="text-[9px] opacity-40 font-mono truncate">
-                    {firm?.name || 'GLOBAL'}
-                  </p>
-                  <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/5">
-                    <p className="text-[9px] opacity-60 uppercase font-black">{role}</p>
-                    <p className="text-[9px] opacity-30 font-mono" suppressHydrationWarning>v{APP_VERSION}</p>
-                  </div>
+                  {loading ? (
+                    <div className="space-y-2">
+                      <div className="h-3 w-20 bg-slate-200 rounded animate-pulse" />
+                      <div className="h-2 w-24 bg-slate-100 rounded animate-pulse" />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {profile?.full_name || userEmail.split('@')[0] || 'Account'}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate uppercase tracking-widest">
+                        {firm?.name || (role === 'superadmin' ? 'Control Plane' : 'Global')}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
               <button
                 onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-                className="w-full py-2 rounded-xl bg-[var(--danger-dim)] text-[var(--danger)] text-xs font-bold hover:opacity-80 transition-opacity"
+                className="w-full py-2 rounded-xl bg-white border border-slate-200 text-red-600 text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors"
               >
                 {t('sign_out')}
               </button>
@@ -282,48 +282,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col lg:ml-60">
-          <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3.5 border-b no-print"
-            style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-            <div className="flex items-center gap-3">
-              <button className="lg:hidden" onClick={() => setSidebarOpen(true)}
-                style={{ color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer' }}>
+        <div className="flex-1 flex flex-col lg:ml-64">
+          <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 border-b no-print bg-white"
+            style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-4">
+              <button className="lg:hidden p-2 -ml-2 text-slate-400" onClick={() => setSidebarOpen(true)}>
                 <Menu size={20} />
               </button>
-              <h1 className="text-sm font-bold tracking-tight text-[var(--text2)] uppercase">
+              <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                 {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
               </h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {hasPin ? (
-                <button
-                  onClick={lock}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface2)] text-[var(--text2)] border border-[var(--border)] text-xs font-bold transition-all hover:bg-[var(--accent)] hover:text-white"
-                  title="Lock Vault"
-                >
-                  <Lock size={14} />
-                  <span className="hidden sm:inline">Lock</span>
+                <button onClick={lock} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Lock size={14} /> Lock
                 </button>
               ) : (
-                <Link
-                  href="/settings#lock-config"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-bold transition-all hover:bg-orange-500 hover:text-white shadow-sm"
-                  title="Secure Your Vault"
-                >
-                  <Lock size={14} className="opacity-50" />
-                  <span className="hidden sm:inline">Set Lock</span>
+                <Link href="/settings#lock-config" className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Lock size={14} /> Security
                 </Link>
-              )}
-
-              {firm?.plan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 10 && (
-                <div className="hidden sm:block text-xs px-3 py-1 rounded-full font-medium"
-                  style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
-                  ⚠ Trial: {trialDaysLeft}d left
-                </div>
               )}
             </div>
           </header>
-          <main className="flex-1 p-5 overflow-auto pb-24 lg:pb-5">{children}</main>
+          <main className="flex-1 p-8 overflow-auto pb-24 lg:pb-8 text-sm">{children}</main>
           <BottomNav onMenuClick={() => setSidebarOpen(true)} />
           <CommandPalette />
         </div>

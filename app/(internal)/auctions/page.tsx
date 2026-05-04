@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtMonth, fmtDate, getGroupDisplayName } from '@/lib/utils'
-import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast } from '@/components/ui'
+import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import Link from 'next/link'
 import { FileSpreadsheet, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
@@ -159,11 +159,12 @@ export default function AuctionsPage() {
           </tbody>
         </Table>
         
-        <div className="flex justify-center items-center gap-2 mt-6 p-4 border-t border-white/5">
-          <Btn variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} icon={ChevronLeft} />
-          <span className="text-xs font-bold opacity-40 uppercase tracking-widest px-4">{t('page')} {page} {t('of')} {totalPages}</span>
-          <Btn variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} icon={ChevronRight} />
-        </div>
+        <Pagination 
+          current={page} 
+          total={totalCount} 
+          pageSize={PAGE_SIZE} 
+          onPageChange={setPage} 
+        />
       </TableCard>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}
