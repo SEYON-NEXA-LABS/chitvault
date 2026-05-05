@@ -1,5 +1,5 @@
--- Migration: add_group_filter_to_workspace
--- Adds group filtering to the collection workspace RPC
+-- Drop the old 4-param overload to prevent function resolution ambiguity
+DROP FUNCTION IF EXISTS public.get_collection_workspace(uuid, text, integer, integer);
 
 CREATE OR REPLACE FUNCTION public.get_collection_workspace(
   p_firm_id uuid,

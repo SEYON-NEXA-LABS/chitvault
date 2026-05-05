@@ -63,6 +63,7 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
       const { data: rpcData, error } = await supabase.rpc('get_collection_workspace', {
         p_firm_id: targetId,
         p_search: pInfo?.phone || pInfo?.name || '',
+        p_group_id: null,
         p_limit: 10,
         p_offset: 0
       })
