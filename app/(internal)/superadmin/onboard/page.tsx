@@ -77,12 +77,20 @@ export default function SuperadminOnboardPage() {
               </div>
            </div>
 
-           <button 
-             onClick={() => window.location.reload()}
-             className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10"
-           >
-             Onboard Another Firm
-           </button>
+           <div className="grid grid-cols-1 gap-3">
+              <button 
+                onClick={() => router.push('/superadmin/dashboard')}
+                className="w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-lg shadow-indigo-600/10"
+              >
+                Go to Dashboard
+              </button>
+              <button 
+                onClick={() => window.location.reload()}
+                className="w-full py-2 rounded-xl text-[var(--text)] opacity-40 hover:opacity-100 font-bold transition-all"
+              >
+                Onboard Another Firm
+              </button>
+           </div>
         </div>
       </div>
     )

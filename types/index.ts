@@ -1,7 +1,8 @@
 // ── SaaS Types ────────────────────────────────────────────────
 
-export type Plan = 'trial' | 'basic' | 'pro'
+export type Plan = 'trial' | 'basic' | 'pro' | 'perpetual'
 export type PlanStatus = 'active' | 'suspended' | 'cancelled'
+export type SubscriptionStatus = 'active' | 'overdue' | 'restricted' | 'locked'
 export type UserRole = 'owner' | 'staff' | 'superadmin'
 
 export interface Firm {
@@ -108,9 +109,10 @@ export interface Auction {
 
 
 export const PLAN_LIMITS: Record<Plan, { groups: number; members: number; label: string; setupFee: string; amc: string }> = {
-  trial: { groups: 2,    members: 20,   label: 'Trial (30 days)', setupFee: 'Free',   amc: 'Free'      },
-  basic: { groups: 10,   members: 200,  label: 'Basic',           setupFee: '₹2,000', amc: '₹1,000/yr' },
-  pro:   { groups: 9999, members: 9999, label: 'Pro',             setupFee: '₹5,000', amc: '₹2,500/yr' },
+  trial:     { groups: 2,    members: 20,   label: 'Trial (30 days)', setupFee: 'Free',    amc: 'Free'      },
+  basic:     { groups: 10,   members: 200,  label: 'Basic',           setupFee: '₹2,000',  amc: '₹1,000/yr' },
+  pro:       { groups: 9999, members: 9999, label: 'Pro',             setupFee: '₹5,000',  amc: '₹2,500/yr' },
+  perpetual: { groups: 9999, members: 9999, label: 'Perpetual',       setupFee: '₹29,999', amc: '₹10,000/yr' },
 }
 
 export interface Payment {

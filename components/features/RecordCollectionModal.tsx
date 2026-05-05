@@ -6,16 +6,16 @@ import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, getToday, cn, getGroupDisplayName } from '@/lib/utils'
 import {
-  Loading, Badge, Btn, Modal, Field, Toast
+  Loading, Badge, Btn, Modal, Field, Toast, Empty
 } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, CheckCircle2 } from 'lucide-react'
 
 interface CollectionItem {
   person_id: number;
   person_name: string;
   person_phone: string;
-  person_address: string;
+  person_address?: string;
   total_balance: number;
   overdue_count: number;
   is_overdue: boolean;
@@ -48,6 +48,8 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
     note: '' 
   })
 
+  const [selectedDues, setSelectedDues] = useState<string[]>([]); // Array of "memberId-month"
+
   const isSuper = role === 'superadmin'
 
   const loadPersonDues = useCallback(async () => {
@@ -56,8 +58,6 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
 
     setLoading(true)
     try {
-      // We search by person_id by using the RPC and filtering
-      // To be efficient, we first get the person details to get the name/phone
       const { data: pInfo } = await supabase.from('persons').select('name, phone').eq('id', personId).single()
       
       const { data: rpcData, error } = await supabase.rpc('get_collection_workspace', {
@@ -72,7 +72,6 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
       const match = (rpcData as CollectionItem[] || []).find(x => Number(x.person_id) === Number(personId))
       if (match) {
         setPersonData(match)
-        setPayForm(f => ({ ...f, amount: String(match.total_balance) }))
       } else {
         show('Could not load dues for this person.', 'error')
         onClose()
@@ -88,86 +87,81 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
     if (!initialData) loadPersonDues()
   }, [loadPersonDues, initialData])
 
+  const allDues = useMemo(() => {
+    if (!personData) return [];
+    return personData.memberships.flatMap((m: any) => 
+      (m.dues || []).map((d: any) => ({ 
+        ...d, 
+        memberId: m.member.id, 
+        groupId: m.group.id, 
+        groupName: getGroupDisplayName(m.group, t),
+        key: `${m.member.id}-${d.month}`
+      }))
+    ).sort((a: any, b: any) => a.month - b.month);
+  }, [personData, t]);
+
+  useEffect(() => {
+    if (allDues.length > 0 && selectedDues.length === 0) {
+      setSelectedDues(allDues.map(d => d.key));
+    }
+  }, [allDues]);
+
+  useEffect(() => {
+    const total = allDues
+      .filter(d => selectedDues.includes(d.key))
+      .reduce((sum, d) => sum + (d.amount_due - d.amount_paid), 0);
+    setPayForm(f => ({ ...f, amount: String(total) }));
+  }, [selectedDues, allDues]);
+
+  const toggleAll = () => {
+    if (selectedDues.length === allDues.length) setSelectedDues([]);
+    else setSelectedDues(allDues.map(d => d.key));
+  };
+
+  const toggleOne = (key: string) => {
+    setSelectedDues(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   async function handlePay() {
     if (!personData || !firm) return;
-    const amount = Number(payForm.amount);
-    if (amount <= 0) { show('Enter a valid amount', 'error'); return; }
+    const totalAmount = Number(payForm.amount);
+    if (totalAmount <= 0 && selectedDues.length === 0) { show('Select at least one payment', 'error'); return; }
 
     setSaving(true);
     const targetId = isSuper ? switchedFirmId : firm.id
-    let remaining = amount;
     const finalPayments = [];
 
-    // Flatten all dues across all memberships
-    const allDues = personData.memberships.flatMap((m: any) => 
-      (m.dues || []).map((d: any) => ({ ...d, memberId: m.member.id, groupId: m.group.id }))
-    ).sort((a: any, b: any) => a.month - b.month);
+    const targetDues = allDues.filter(d => selectedDues.includes(d.key));
 
-    for (const due of allDues) {
-      if (remaining <= 0) break;
+    for (const due of targetDues) {
       const bal = due.amount_due - due.amount_paid;
       if (bal <= 0.01) continue;
-
-      const toPay = Math.min(remaining, bal);
-      remaining -= toPay;
 
       finalPayments.push({
         firm_id: targetId,
         member_id: due.memberId,
         group_id: due.groupId,
-        person_id: personData.person_id,
         month: due.month,
-        amount: toPay,
-        status: (due.amount_paid + toPay) >= (due.amount_due - 0.01) ? 'paid' : 'partial',
+        amount: bal,
+        status: 'paid',
         amount_due: due.amount_due,
-        balance_due: Math.max(0, due.amount_due - due.amount_paid - toPay),
+        balance_due: 0,
         payment_date: payForm.date,
         mode: payForm.mode,
-        payment_type: (due.amount_paid + toPay) >= (due.amount_due - 0.01) ? 'full' : 'partial',
+        payment_type: 'full',
         collected_by: profile?.id || null,
         note: payForm.note
       });
     }
 
-    // Handle Advance / Surplus if remaining > 0
-    if (remaining > 0.01 && personData.memberships.length > 0) {
-      const firstM = personData.memberships[0];
-      const currentLatest = firstM.latestMonth || 0;
-      const duration = firstM.group?.duration || 0;
-      
-      let targetMonth = currentLatest + 1;
-      let isSettlement = false;
-
-      if (targetMonth > duration && duration > 0) {
-        targetMonth = 0; 
-        isSettlement = true;
-      }
-      
-      finalPayments.push({
-        firm_id: targetId,
-        member_id: firstM.member.id,
-        group_id: firstM.group.id,
-        person_id: personData.person_id,
-        month: targetMonth,
-        amount: remaining,
-        status: 'paid',
-        amount_due: 0,
-        balance_due: 0,
-        payment_date: payForm.date,
-        mode: payForm.mode,
-        payment_type: isSettlement ? 'settlement' : 'advance',
-        collected_by: profile?.id || null,
-        note: (isSettlement ? `SURPLUS: ${payForm.note}` : `ADVANCE: ${payForm.note}`).trim()
-      });
-      remaining = 0;
-    }
-
-    if (finalPayments.length === 0) { show('No allocations made', 'error'); setSaving(false); return; }
+    if (finalPayments.length === 0) { show('No payments to record', 'error'); setSaving(false); return; }
 
     const { error } = await supabase.from('payments').insert(finalPayments);
     if (error) { show(error.message, 'error'); }
     else {
-      show(`Collected ₹${amount}! Receipt recorded.`, 'success');
+      show(`Collected ₹${totalAmount}! ${finalPayments.length} installments cleared.`, 'success');
       if (onSuccess) onSuccess();
       onClose();
     }
@@ -175,82 +169,110 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Record Collection" size="md">
+    <Modal open={true} onClose={onClose} title={`Collect - ${personData?.person_name || '...'}`} size="lg">
       {loading ? <div className="py-20"><Loading /></div> : personData && (
-        <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
-            <div className="font-bold text-lg">{personData.person_name}</div>
-            <div className={cn("text-xl font-black mt-2", personData.is_overdue ? "text-[var(--danger)]" : "text-[#0ea5e9]")}>
-              {fmt(personData.total_balance)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Left Side: Installment Tree */}
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="flex items-center justify-between sticky top-0 bg-[var(--surface)] py-2 z-10">
+              <h4 className="text-xs font-black uppercase tracking-widest opacity-40">Pending Installments</h4>
+              <button onClick={toggleAll} className="text-[10px] font-bold text-[var(--accent)] uppercase hover:underline">
+                {selectedDues.length === allDues.length ? 'Deselect All' : 'Select All'}
+              </button>
             </div>
-            
-            {payForm.amount && !isNaN(Number(payForm.amount)) && (
-              <div className="mt-3 pt-3 border-t border-dashed border-[var(--border)]">
-                {(() => {
-                  const diff = personData.total_balance - Number(payForm.amount);
-                  if (Math.abs(diff) < 0.01) return <Badge variant="success" className="text-xs">Full Settlement</Badge>;
-                  if (diff > 0) return (
-                    <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="text-[var(--text3)] uppercase tracking-widest">Remaining</span>
-                      <span className="text-[var(--danger)]">{fmt(diff)}</span>
+
+            <div className="space-y-2">
+              {allDues.map((due) => (
+                <div 
+                  key={due.key}
+                  onClick={() => toggleOne(due.key)}
+                  className={cn(
+                    "p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group",
+                    selectedDues.includes(due.key) 
+                    ? "border-[var(--accent)] bg-[var(--accent-dim)]" 
+                    : "border-[var(--border)] bg-[var(--surface2)] hover:border-[var(--accent-border)]"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+                      selectedDues.includes(due.key) ? "bg-[var(--accent)] border-[var(--accent)]" : "border-[var(--border)] group-hover:border-[var(--accent-border)]"
+                    )}>
+                      {selectedDues.includes(due.key) && <CheckCircle2 size={14} className="text-white" />}
                     </div>
-                  );
-                  return (
-                    <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="text-[var(--text3)] uppercase tracking-widest">Advance / Surplus</span>
-                      <span className="text-emerald-500">{fmt(Math.abs(diff))}</span>
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-tighter">{due.groupName}</div>
+                      <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Month {due.month}</div>
                     </div>
-                  );
-                })()}
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-sm tracking-tight">{fmt(due.amount_due - due.amount_paid)}</div>
+                    {due.amount_paid > 0 && <div className="text-[9px] text-emerald-500 font-bold uppercase mt-1">Partial Paid</div>}
+                  </div>
+                </div>
+              ))}
+              {allDues.length === 0 && <Empty text="No pending dues found" />}
+            </div>
+          </div>
+
+          {/* Right Side: Payment Details */}
+          <div className="space-y-6">
+            <div className="p-7 rounded-[2rem] bg-[var(--surface2)] border border-[var(--border)] relative overflow-hidden shadow-inner">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <CreditCard size={100} />
               </div>
-            )}
-          </div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text3)] mb-1">Collecting Total</div>
+              <div className={cn("text-5xl font-black tracking-tighter", selectedDues.length > 0 ? "text-[var(--accent)]" : "text-[var(--text3)]")}>
+                {fmt(Number(payForm.amount))}
+              </div>
+              <div className="mt-6 flex items-center gap-2">
+                 <Badge variant={selectedDues.length > 0 ? 'accent' : 'gray'} className="px-3 py-1 text-[10px] uppercase font-black">
+                    {selectedDues.length} Items Selected
+                 </Badge>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            <Field label="Amount Collected">
-              <input 
-                className={cn(inputClass, "text-2xl font-black")} 
-                type="number" 
-                autoFocus
-                value={payForm.amount} 
-                onChange={e => setPayForm(f => ({ ... f, amount: e.target.value }))} 
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Date">
-                <input className={inputClass} type="date" value={payForm.date} onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))} />
-              </Field>
-              <Field label="Mode">
-                <select className={inputClass} value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
-                  <option>Cash</option>
-                  <option>UPI</option>
-                  <option>Bank Transfer</option>
-                </select>
+            <div className="grid grid-cols-1 gap-5">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Collection Date">
+                  <input className={inputClass} type="date" value={payForm.date} onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))} />
+                </Field>
+                <Field label="Payment Mode">
+                  <select className={inputClass} value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}>
+                    <option>Cash</option>
+                    <option>UPI</option>
+                    <option>Bank Transfer</option>
+                    <option>Cheque</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Reference / Note">
+                <textarea 
+                  className={inputClass} 
+                  style={{ height: 70 }} 
+                  placeholder="Optional notes or transaction ID..."
+                  value={payForm.note} 
+                  onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} 
+                />
               </Field>
             </div>
-            <Field label="Note">
-              <textarea 
-                className={inputClass} 
-                style={{ height: 60 }} 
-                placeholder="Optional payment notes..."
-                value={payForm.note} 
-                onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} 
-              />
-            </Field>
+
+            <div className="flex gap-4 pt-4">
+              <Btn variant="secondary" className="flex-1 py-4" onClick={onClose}>Cancel</Btn>
+              <Btn 
+                variant="primary" 
+                className="flex-[2] py-4 shadow-xl shadow-[var(--accent-dim)]" 
+                disabled={selectedDues.length === 0}
+                loading={saving} 
+                icon={CreditCard}
+                onClick={handlePay}
+              >
+                Confirm Collection
+              </Btn>
+            </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <Btn variant="secondary" className="flex-1" onClick={onClose}>Cancel</Btn>
-            <Btn 
-              variant="primary" 
-              className="flex-[2]" 
-              loading={saving} 
-              icon={CreditCard}
-              onClick={handlePay}
-            >
-              Confirm Collection
-            </Btn>
-          </div>
         </div>
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}

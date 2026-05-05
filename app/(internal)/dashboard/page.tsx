@@ -102,7 +102,7 @@
      const groupSet = new Set<string>()
  
      ;(trends || []).forEach((t: any) => {
-       const m = t.month.substring(5)
+       const m = t.month
        if (!trendMap.has(m)) trendMap.set(m, { month: m })
        const entry = trendMap.get(m)
        entry[t.group_name] = Number(t.actual)
@@ -219,9 +219,10 @@
                <tbody>
                  {payments.map(p => (
                    <Tr key={p.id}>
-                     <Td>
-                       <span className="text-xs font-bold text-slate-400 font-mono">{fmtDate(p.payment_date)}</span>
-                     </Td>
+                     <Td className="whitespace-nowrap font-medium text-[var(--text2)] text-[10px] leading-tight">
+                        <div>{fmtDate(p.payment_date)}</div>
+                        <div className="text-[var(--text3)] mt-0.5">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                      </Td>
                      <Td>
                         <div className="font-bold text-sm text-slate-900">{(p.members as any)?.persons?.name}</div>
                         <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('receipt_received')}</div>

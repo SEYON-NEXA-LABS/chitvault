@@ -7,12 +7,25 @@ export function CookieConsent() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    // Check if user has already consented
-    const consent = localStorage.getItem('chitvault-cookie-consent')
-    if (!consent) {
-      // Show after a short delay for subtle effect
-      const timer = setTimeout(() => setShow(true), 2000)
-      return () => clearTimeout(timer)
+    const checkConsent = () => {
+      const consent = localStorage.getItem('chitvault-cookie-consent')
+      if (consent === 'true') setShow(false)
+      else if (!consent) {
+        // Show after a short delay for subtle effect
+        const timer = setTimeout(() => setShow(true), 2000)
+        return () => clearTimeout(timer)
+      }
+    }
+
+    checkConsent()
+
+    // Listen for storage changes from login page or other tabs
+    window.addEventListener('storage', checkConsent)
+    window.addEventListener('cookie-consent-updated', checkConsent)
+
+    return () => {
+      window.removeEventListener('storage', checkConsent)
+      window.removeEventListener('cookie-consent-updated', checkConsent)
     }
   }, [])
 

@@ -42,7 +42,7 @@
    const [siEmail, setSiEmail] = useState('')
    const [siPass, setSiPass] = useState('')
    const [saveCreds, setSaveCreds] = useState(true)
-   const [agreed, setAgreed] = useState(false)
+   const [agreed, setAgreed] = useState(true)
    const [fpEmail, setFpEmail] = useState('')
    const [shake, setShake] = useState(false)
  
@@ -165,9 +165,9 @@
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">{APP_DEVELOPER} &copy; 2026</span>
-                  <span className="text-xs font-bold text-[var(--accent)] mt-0.5">Build {APP_COMMIT_ID}</span>
+                  <span className="text-xs font-bold text-[var(--accent)] mt-0.5">Build V{APP_VERSION} - {APP_COMMIT_ID}</span>
                 </div>
-                <Badge variant="gray" className="bg-slate-200/50 text-slate-500 border-0">{t('login_audited')}</Badge>
+                {/* <Badge variant="gray" className="bg-slate-200/50 text-slate-500 border-0">{t('login_audited')}</Badge> */}
               </div>
            </div>
          </div>
@@ -301,7 +301,7 @@
                          <input
                            type="checkbox"
                            checked={agreed}
-                           onChange={e => setAgreed(e.target.checked)}
+                           onChange={e => { setAgreed(e.target.checked); if (e.target.checked) { localStorage.setItem('chitvault-cookie-consent', 'true'); window.dispatchEvent(new Event('cookie-consent-updated')); } }}
                            className="peer sr-only"
                          />
                          <div className={cn(
@@ -315,9 +315,9 @@
                          !agreed && shake ? "text-red-500" : "text-slate-500"
                        )}>
                          {t('login_agree_to')} {' '}
-                         <Link href="/legal/terms" className="text-[var(--accent)] hover:underline">{t('login_terms')}</Link> {' '}
-                         {t('and')} {' '}
-                         <Link href="/legal/privacy" className="text-[var(--accent)] hover:underline">{t('login_privacy')}</Link>
+                         <Link href='/legal/cookie-policy' className='text-[var(--accent)] hover:underline'>Cookies</Link> , {' '}
+                         <Link href="/legal/terms" className="text-[var(--accent)] hover:underline">{t('login_terms')}</Link> , {' and '}
+                         <Link href="/legal/privacy" className="text-[var(--accent)] hover:underline">{t('login_privacy')} </Link>
                        </span>
                      </label>
                    </div>

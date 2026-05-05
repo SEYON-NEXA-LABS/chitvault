@@ -95,8 +95,15 @@ function ReportContent() {
 
         // 4. Payments: Always Paginated
         if (['today_collection', 'cashflow', 'upcoming_pay', 'group_ledger', 'member_history', 'reconciliation', 'auction_insights'].includes(id)) {
-          queries.push(withFirmScope(supabase.from('payments').select('id, member_id, group_id, amount, mode, payment_date, created_at', { count: 'exact' }), targetId)
-            .order('payment_date', { ascending: false })
+          let selectStr = 'id, member_id, group_id, amount, mode, payment_date, created_at';
+          
+          // For collection reports, we need the member names
+          if (['today_collection', 'reconciliation'].includes(id)) {
+            selectStr += ', members:member_id(person_id, persons:person_id(name))';
+          }
+
+          queries.push(withFirmScope(supabase.from('payments').select(selectStr, { count: 'exact' }), targetId)
+            .order('created_at', { ascending: false })
             .range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
 

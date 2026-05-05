@@ -23,10 +23,9 @@ export async function onboardFirmAction(formData: {
   }
 
   try {
-    // 2. Clear any existing user with this email to prevent conflicts (Optional safety)
-    // Actually, auth.admin.createUser will throw if exists.
+    console.log('1. Starting Onboarding for:', formData.name);
 
-    // 3. Create Auth User
+    // 2. Create Auth User
     const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
       email: formData.ownerEmail,
       password: formData.initialPassword || 'ChitVault2024!',
@@ -36,10 +35,15 @@ export async function onboardFirmAction(formData: {
       }
     })
 
-    if (authError) throw authError
-    if (!authUser.user) throw new Error('Failed to create auth user')
+    if (authError) {
+      console.error('AUTH_ERROR:', authError);
+      throw authError;
+    }
+    
+    if (!authUser.user) throw new Error('Failed to create auth user');
+    console.log('2. Auth User Created:', authUser.user.id);
 
-    // 4. Create Firm record
+    // 3. Create Firm record
     const { data: firm, error: firmError } = await adminClient
       .from('firms')
       .insert({
@@ -55,12 +59,13 @@ export async function onboardFirmAction(formData: {
       .single()
 
     if (firmError) {
-      // Rollback auth user if firm creation fails
-      await adminClient.auth.admin.deleteUser(authUser.user.id)
-      throw firmError
+      console.error('FIRM_ERROR:', firmError);
+      await adminClient.auth.admin.deleteUser(authUser.user.id);
+      throw firmError;
     }
+    console.log('3. Firm Record Created:', firm.id);
 
-    // 5. Create Profile record linking user to firm as 'owner'
+    // 4. Create Profile record
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
@@ -72,16 +77,17 @@ export async function onboardFirmAction(formData: {
       })
 
     if (profileError) {
-      // Rollback firm and user
-      await adminClient.from('firms').delete().eq('id', firm.id)
-      await adminClient.auth.admin.deleteUser(authUser.user.id)
-      throw profileError
+      console.error('PROFILE_ERROR:', profileError);
+      await adminClient.from('firms').delete().eq('id', firm.id);
+      await adminClient.auth.admin.deleteUser(authUser.user.id);
+      throw profileError;
     }
+    console.log('4. Profile Linked Successfully');
 
-    revalidatePath('/superadmin/firms')
-    return { success: true, firmId: firm.id, userId: authUser.user.id }
+    revalidatePath('/superadmin/dashboard');
+    return { success: true, firmId: firm.id, userId: authUser.user.id };
   } catch (error: any) {
-    console.error('ONBOARDING_ERROR:', error)
-    return { success: false, error: error.message }
+    console.error('ONBOARDING_CRASH:', error);
+    return { success: false, error: error.message || 'Unknown internal error' };
   }
 }

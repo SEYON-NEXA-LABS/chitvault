@@ -90,8 +90,8 @@ export function Card({ title, subtitle, headerAction, children, className, style
       {(title || subtitle || headerAction) && (
         <div className="px-6 py-4 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
           <div>
-            {title && <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h3>}
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            {title && <h3 className="uppercase tracking-wider">{title}</h3>}
+            {subtitle && <p className="text-sub mt-0.5">{subtitle}</p>}
           </div>
           {headerAction && <div className="flex shrink-0 items-center gap-2">{headerAction}</div>}
         </div>
@@ -120,9 +120,9 @@ export function StatCard({ label, value, sub, color = 'accent', icon: Icon, onCl
     <Card className={cn("p-6 overflow-hidden relative group bg-white", onClick && "cursor-pointer active:scale-95")} onClick={onClick}>
       <div className="flex items-start justify-between relative z-10">
         <div>
-          <div className="text-xs font-bold uppercase tracking-widest mb-2 text-slate-400">{label}</div>
+          <div className="text-xs font-bold uppercase tracking-widest mb-2 text-[var(--text3)]">{label}</div>
           <div className="text-2xl sm:text-3xl font-black tracking-tighter truncate" style={{ color: colors[color] }}>{value}</div>
-          {sub && <div className="text-xs font-medium mt-1 text-slate-400 uppercase tracking-widest">{sub}</div>}
+          {sub && <div className="text-xs font-medium mt-1 text-[var(--text3)] uppercase tracking-widest">{sub}</div>}
         </div>
         {Icon && (
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 shadow-sm border" 
@@ -177,7 +177,7 @@ export function Table({ children, className, responsive, ...props }: {
 
 export function Th({ children, right, className, ...props }: { children?: React.ReactNode; right?: boolean } & React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn('px-6 py-4 text-xs font-bold uppercase tracking-widest text-left whitespace-nowrap bg-slate-50 text-slate-400',
+    <th className={cn('px-6 py-4 text-xs font-bold uppercase tracking-widest text-left whitespace-nowrap bg-[var(--surface2)] text-[var(--text3)]',
       right && 'text-right', className)}
       style={{ borderBottom: '1px solid var(--border)' }}
       {...props}>
@@ -192,7 +192,7 @@ export function Td({ children, right, label, className, style, colSpan, onClick,
   return (
     <td 
       colSpan={colSpan} 
-      className={cn('px-6 py-4 text-sm font-medium text-slate-700', right && 'text-right font-bold text-slate-900', className)}
+      className={cn('px-6 py-4 text-sm font-medium text-[var(--text2)]', right && 'text-right font-bold text-[var(--text)]', className)}
       data-label={label}
       onClick={onClick}
       style={{ borderBottom: '1px solid var(--border)', cursor: onClick ? 'pointer' : 'default', ...style }}
@@ -221,8 +221,8 @@ export function TableCard({ title, subtitle, actions, children }: {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b gap-3"
         style={{ borderColor: 'var(--border)' }}>
         <div>
-          <div className="font-black text-sm uppercase tracking-tight text-slate-900">{title}</div>
-          {subtitle && <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>}
+          <h2 className="uppercase tracking-tight">{title}</h2>
+          {subtitle && <div className="text-sub mt-0.5">{subtitle}</div>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
@@ -260,7 +260,7 @@ export function Modal({ open, onClose, title, children, size = 'md', persist = f
         style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center justify-between px-6 py-5 border-b"
           style={{ borderColor: 'var(--border)' }}>
-          <h2 className="font-black text-lg uppercase tracking-tight text-slate-900">{title}</h2>
+          <h2 className="uppercase tracking-tight">{title}</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-50 transition-colors text-slate-400">
             <X size={20} />
           </button>
@@ -316,7 +316,7 @@ export function Empty({ icon: Icon = '📭', title, text, subtitle, action }: {
   const mainTitle = title || text;
   return (
     <div className="flex flex-col items-center justify-center text-center gap-2 py-16 px-6 select-none">
-      <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-200 mb-4 border border-slate-100">
+      <div className="w-20 h-20 rounded-3xl bg-[var(--surface2)] flex items-center justify-center text-[var(--text3)] mb-4 border border-[var(--border)]">
         {typeof Icon === 'string' ? (
            <span className="text-4xl">{Icon}</span>
         ) : (
@@ -324,11 +324,11 @@ export function Empty({ icon: Icon = '📭', title, text, subtitle, action }: {
         )}
       </div>
       <div className="max-w-xs space-y-1">
-        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+        <h3 className="uppercase tracking-tight">
            {mainTitle || 'No Records'}
         </h3>
         {subtitle && (
-          <p className="text-sm font-medium text-slate-400 leading-relaxed px-4">
+          <p className="text-sub px-4">
             {subtitle}
           </p>
         )}

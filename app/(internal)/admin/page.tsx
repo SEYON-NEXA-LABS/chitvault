@@ -331,6 +331,7 @@ function AdminDashboard() {
                               <option value="trial">Trial</option>
                               <option value="basic">Standard</option>
                               <option value="pro">Enterprise</option>
+                              <option value="perpetual">Perpetual</option>
                             </select>
                           </td>
                           <td style={{ padding: '12px 14px' }}>
@@ -342,7 +343,15 @@ function AdminDashboard() {
                           <td style={{ padding: '12px 14px' }}>
                             <input style={{ ...sty.input, padding: '4px 8px', fontSize: 11 }} defaultValue={f.invoice_ref || ''} onBlur={e => updateInvoice(f.id, e.target.value)} placeholder="Ref #" />
                           </td>
-                          <td style={{ padding: '12px 14px', color: 'var(--text2)', fontSize: 12 }}>{f.trial_ends ? fmtDate(f.trial_ends) : '—'}</td>
+                          <td style={{ padding: '12px 14px', color: f.plan === 'perpetual' ? 'var(--accent)' : 'var(--text2)', fontSize: 12, fontWeight: f.plan === 'perpetual' ? 800 : 400 }}>
+                            {f.plan === 'perpetual' 
+                              ? <div>
+                                  <div>Perpetual ∞</div>
+                                  <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 700 }}>AMC: {f.trial_ends ? fmtDate(f.trial_ends) : '—'}</div>
+                                </div> 
+                              : (f.trial_ends ? fmtDate(f.trial_ends) : '—')
+                            }
+                          </td>
                           <td style={{ padding: '12px 14px', color: 'var(--text3)', fontSize: 11 }}>{fmtDate(f.created_at)}</td>
                         </tr>
                       ))

@@ -149,7 +149,7 @@ export default function MembersPage() {
       }
 
       const relevantGroupIds = Array.from(new Set(mData.map(m => m.group_id)))
-      const relevantPersonIds = Array.from(new Set(mData.map(m => m.person_id)))
+      const relevantMemberIds = mData.map(m => m.id)
 
       // 3. Fetch Collateral Data
       const [g, a, pay] = await Promise.all([
@@ -160,8 +160,8 @@ export default function MembersPage() {
           .in('group_id', relevantGroupIds)
           .is('deleted_at', null)
           .order('month'),
-        withFirmScope(supabase.from('payments').select('id, member_id, group_id, person_id, amount, month, payment_date, created_at'), targetId)
-          .in('person_id', relevantPersonIds)
+        withFirmScope(supabase.from('payments').select('id, member_id, group_id, amount, month, payment_date, created_at'), targetId)
+          .in('member_id', relevantMemberIds)
           .is('deleted_at', null)
       ])
 
@@ -456,12 +456,8 @@ export default function MembersPage() {
       {/* Redesigned Header Section */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-[var(--text)] tracking-tight">
-            {t('member_directory')}
-          </h1>
-          <p className="text-xs font-medium opacity-40 mt-1 uppercase tracking-widest leading-loose">
-            {t('members_page_desc')}
-          </p>
+          <h1>{t('member_directory')}</h1>
+          <p className="text-sub mt-1">{t('members_page_desc')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex p-1 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
@@ -509,9 +505,9 @@ export default function MembersPage() {
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">
-              {summaryStats.activePeople} <span className="text-sm opacity-30">/ {summaryStats.totalPeople}</span>
+              {summaryStats.activePeople} <span className="text-sub font-normal">/ {summaryStats.totalPeople}</span>
             </div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('registry_members')}</div>
+            <div className="text-sub mt-0.5">{t('registry_members')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
@@ -521,9 +517,9 @@ export default function MembersPage() {
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">
-              {summaryStats.activeTickets} <span className="text-sm opacity-30">/ {summaryStats.totalTickets}</span>
+              {summaryStats.activeTickets} <span className="text-sub font-normal">/ {summaryStats.totalTickets}</span>
             </div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('active_tickets_label')}</div>
+            <div className="text-sub mt-0.5">{t('active_tickets_label')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
@@ -533,7 +529,7 @@ export default function MembersPage() {
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalOutstanding)}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('total_outstanding')}</div>
+            <div className="text-sub mt-0.5">{t('total_outstanding')}</div>
           </div>
         </div>
         <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
@@ -543,7 +539,7 @@ export default function MembersPage() {
           </div>
           <div>
             <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalPaid)}</div>
-            <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">{t('paid_label')}</div>
+            <div className="text-sub mt-0.5">{t('paid_label')}</div>
           </div>
         </div>
       </div>
@@ -600,13 +596,13 @@ export default function MembersPage() {
                         </div>
                         <div>
                           <div className="font-bold text-[var(--text)] tracking-tight leading-tight">
-                            {c.name} {c.nickname && <span className="text-[var(--accent)] font-medium text-xs ml-1 opacity-70">({c.nickname})</span>}
+                            {c.name} {c.nickname && <span className="text-[var(--accent)] font-medium text-xs ml-1">({c.nickname})</span>}
                           </div>
-                          <div className="text-[10px] opacity-40 flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || t('no_address')}</div>
+                          <div className="text-sub flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || t('no_address')}</div>
                         </div>
                       </div>
                     </Td>
-                    <Td label="Phone" className="hidden md:table-cell font-mono text-xs opacity-60 tracking-tighter">{c.phone || '—'}</Td>
+                    <Td label="Phone" className="hidden md:table-cell font-mono text-xs text-[var(--text3)] tracking-tighter">{c.phone || '—'}</Td>
                     <Td label="Tickets" className="hidden sm:table-cell">
                       {c.activeCount > 0 ? (
                         <div className="flex items-center gap-1.5">
@@ -623,7 +619,7 @@ export default function MembersPage() {
                        <div className={cn("font-bold font-mono text-base tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                           {fmt(c.totalBalance)}
                        </div>
-                       {c.totalPaid > 0 && <div className="text-[10px] font-bold opacity-30 mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
+                       {c.totalPaid > 0 && <div className="text-sub mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
                     </Td>
                     <Td label="Action" right>
                       <div className="flex gap-2 justify-end">
@@ -720,7 +716,7 @@ export default function MembersPage() {
             </div>
 
           <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-xs font-bold uppercase opacity-40 mb-4 tracking-widest">{t('enrollment_details')}</div>
+            <div className="text-sub mb-4">{t('enrollment_details')}</div>
             <div className="grid grid-cols-2 gap-4">
               <Field label={`${t('target_group')} (Optional)`}>
                 <select className={inputClass} style={inputStyle} value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>

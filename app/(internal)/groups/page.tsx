@@ -290,8 +290,8 @@ export default function GroupsPage() {
       {/* Active */}
       <TableCard title={
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-black text-[var(--text)]">
-            {t('active_groups')} <span className="text-sm opacity-30 ml-2">({active.length} / {totalGroupCount})</span>
+          <h1>
+            {t('active_groups')} <span className="text-sub font-normal ml-2">({active.length} / {totalGroupCount})</span>
           </h1>
           <div className="flex gap-2">
             {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
@@ -370,7 +370,7 @@ export default function GroupsPage() {
           <Field label={t('start_date')}><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required /></Field>
 
           <div className="col-span-1 md:col-span-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="text-xs font-black uppercase tracking-widest opacity-40 mb-3 flex items-center gap-2">
+            <h3 className="uppercase tracking-widest text-[var(--text3)] mb-3 flex items-center gap-2">
               <Gavel size={14} /> {t('rules_comm_header')}
             </h3>
             <div className="grid grid-cols-2 gap-4">

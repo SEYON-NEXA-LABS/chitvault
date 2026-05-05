@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import Link from 'next/link'
-import { fmt, fmtDate, cn } from '@/lib/utils'
+import { fmt, fmtDate, cn, fmtDateTime } from '@/lib/utils'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
   Loading, Empty, Toast, Chip, StatCard
@@ -22,7 +22,7 @@ export default function TrashPage() {
   const { toast, show, hide } = useToast()
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'groups' | 'members' | 'payments' | 'auctions' | 'settlements' | 'staff'>('groups')
+  const [activeTab, setActiveTab] = useState<'groups' | 'members' | 'persons' | 'payments' | 'auctions' | 'settlements' | 'commissions' | 'denominations' | 'staff'>('groups')
   
   // Data States
   const [data, setData] = useState<any[]>([])
@@ -37,7 +37,7 @@ export default function TrashPage() {
     const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
 
     // Fetch all for counts
-    const tables = ['groups', 'members', 'persons', 'auctions', 'payments', 'settlements', 'staff']
+    const tables = ['groups', 'members', 'persons', 'auctions', 'payments', 'settlements', 'foreman_commissions', 'denominations', 'staff']
     const queries = tables.map(tab => {
         const table = tab === 'staff' ? 'profiles' : tab
         return withFirmScope(supabase.from(table).select('id', { count: 'exact' }), targetId).not('deleted_at', 'is', null)
@@ -51,16 +51,19 @@ export default function TrashPage() {
     setCounts(newCounts)
 
     // Fetch active tab data
-    const currentTable = activeTab === 'staff' ? 'profiles' : activeTab
     let exportCols = 'id, deleted_at'
     
     if (activeTab === 'groups') exportCols = 'id, name, chit_value, duration, deleted_at'
     if (activeTab === 'members') exportCols = 'id, ticket_no, group_id, person_id, deleted_at, persons(id, name), groups(id, name)'
+    if (activeTab === 'persons') exportCols = 'id, name, phone, address, deleted_at'
     if (activeTab === 'payments') exportCols = 'id, amount, month, member_id, group_id, deleted_at, members(id, ticket_no, persons(name)), groups(id, name)'
     if (activeTab === 'auctions') exportCols = 'id, month, group_id, winner_id, deleted_at, groups(id, name), members(id, persons(name))'
     if (activeTab === 'settlements') exportCols = 'id, total_amount, member_id, deleted_at, members(id, persons(name))'
+    if (activeTab === 'commissions') exportCols = 'id, month, group_id, commission_amt, deleted_at, groups(id, name)'
+    if (activeTab === 'denominations') exportCols = 'id, amount, entry_date, deleted_at'
     if (activeTab === 'staff') exportCols = 'id, full_name, role, status, deleted_at'
 
+    const currentTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
     let query = withFirmScope(supabase.from(currentTable).select(exportCols), targetId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
 
     const { data: list } = await query
@@ -75,7 +78,16 @@ export default function TrashPage() {
     if (!isAdmin) return
     if (!confirm('Are you sure you want to restore this record?')) return
     
-    const targetTable = table === 'staff' ? 'profiles' : table
+    const targetTable = table === 'staff' ? 'profiles' : (table === 'commissions' ? 'foreman_commissions' : table)
+    
+    // If restoring a member, we MUST also restore the person if they were deleted
+    if (table === 'members') {
+      const member = data.find(m => m.id === id)
+      if (member && member.person_id) {
+        await supabase.from('persons').update({ deleted_at: null }).eq('id', member.person_id)
+      }
+    }
+
     const { error } = await supabase.from(targetTable).update({ deleted_at: null }).eq('id', id)
     
     if (error) { show(error.message, 'error'); return }
@@ -91,7 +103,16 @@ export default function TrashPage() {
     if (selectedIds.size === 0 || !isAdmin) return
     if (!confirm(`Restore ${selectedIds.size} selected records?`)) return
     
-    const targetTable = activeTab === 'staff' ? 'profiles' : activeTab
+    const targetTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
+
+    // If restoring members, also restore their persons
+    if (activeTab === 'members') {
+      const pIds = data.filter(item => selectedIds.has(item.id)).map(i => i.person_id).filter(Boolean)
+      if (pIds.length > 0) {
+        await supabase.from('persons').update({ deleted_at: null }).in('id', Array.from(new Set(pIds)))
+      }
+    }
+
     const { error } = await supabase.from(targetTable).update({ deleted_at: null }).in('id', Array.from(selectedIds))
     
     if (error) { show(error.message, 'error'); return }
@@ -104,7 +125,7 @@ export default function TrashPage() {
      if (!isAdmin) return
      if (!confirm('EXTREME DANGER: This will permanently purge this record from the database. This action CANNOT be undone. Proceed?')) return
      
-     const targetTable = table === 'staff' ? 'profiles' : table
+     const targetTable = table === 'staff' ? 'profiles' : (table === 'commissions' ? 'foreman_commissions' : table)
      const { error } = await supabase.from(targetTable).delete().eq('id', id)
      
      if (error) { show(error.message, 'error'); return }
@@ -117,7 +138,7 @@ export default function TrashPage() {
     if (selectedIds.size === 0 || !isAdmin) return
     if (!confirm(`EXTREMEM DANGER: Permanently purge ${selectedIds.size} selected records? THIS CANNOT BE UNDONE.`)) return
     
-    const targetTable = activeTab === 'staff' ? 'profiles' : activeTab
+    const targetTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
     const { error } = await supabase.from(targetTable).delete().in('id', Array.from(selectedIds))
     
     if (error) { show(error.message, 'error'); return }
@@ -161,10 +182,10 @@ export default function TrashPage() {
           <h1 className="text-2xl font-black text-[var(--text)]">Trash & Recover</h1>
           <p className="text-xs opacity-50 mt-1 flex items-center gap-1.5"><Clock size={12}/> 90-day retention policy</p>
         </div>
-        <div className="flex bg-[var(--surface2)] p-1 rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-           {(['groups', 'members', 'payments', 'auctions', 'settlements', 'staff'] as const).map(tab => (
+        <div className="flex bg-[var(--surface2)] p-1 rounded-xl border flex-wrap gap-1" style={{ borderColor: 'var(--border)' }}>
+           {(['groups', 'members', 'persons', 'payments', 'auctions', 'settlements', 'commissions', 'denominations', 'staff'] as const).map(tab => (
              <Chip key={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)}>
-               <span className="capitalize">{tab}</span> ({counts[tab === 'staff' ? 'profiles' : tab] || 0})
+               <span className="capitalize">{tab === 'commissions' ? 'Comm' : (tab === 'denominations' ? 'Cash' : tab)}</span> ({counts[tab === 'staff' ? 'profiles' : (tab === 'commissions' ? 'foreman_commissions' : tab)] || 0})
              </Chip>
            ))}
         </div>
@@ -214,6 +235,12 @@ export default function TrashPage() {
                           <div className="text-[10px] opacity-40">{item.groups?.name || 'No Group'} · Ticket #{item.ticket_no}</div>
                         </div>
                       )}
+                      {activeTab === 'persons' && (
+                        <div>
+                          <div className="font-bold">{item.name}</div>
+                          <div className="text-[10px] opacity-40">{item.phone || 'No Phone'} · {item.address || 'No Address'}</div>
+                        </div>
+                      )}
                       {activeTab === 'payments' && (
                         <div>
                           <div className="font-bold text-[var(--success)]">{fmt(item.amount)}</div>
@@ -232,6 +259,18 @@ export default function TrashPage() {
                           <div className="text-[10px] opacity-40">Paid to: {item.members?.persons?.name}</div>
                         </div>
                       )}
+                      {activeTab === 'commissions' && (
+                        <div>
+                          <div className="font-bold text-amber-500">{fmt(item.commission_amt)}</div>
+                          <div className="text-[10px] opacity-40">{item.groups?.name} · Month {item.month}</div>
+                        </div>
+                      )}
+                      {activeTab === 'denominations' && (
+                        <div>
+                          <div className="font-bold">{fmt(item.amount)}</div>
+                          <div className="text-[10px] opacity-40">Entry Date: {fmtDate(item.entry_date)}</div>
+                        </div>
+                      )}
                       {activeTab === 'staff' && (
                         <div>
                           <div className="font-bold">{item.full_name}</div>
@@ -240,7 +279,7 @@ export default function TrashPage() {
                       )}
                     </Td>
                     <Td>
-                      <div className="text-sm font-medium">{fmtDate(item.deleted_at)}</div>
+                      <div className="text-sm font-medium text-[var(--text)]">{fmtDateTime(item.deleted_at)}</div>
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">

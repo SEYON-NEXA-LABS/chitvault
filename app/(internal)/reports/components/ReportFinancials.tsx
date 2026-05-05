@@ -78,15 +78,22 @@ export function ReportTodayCollection({ payments, members, groups, stats }: { pa
           <thead><tr><Th>Time</Th><Th>Member</Th><Th>Group</Th><Th right>Amount</Th></tr></thead>
           <tbody>
             {todayPayments.map(p => {
-              const m = members.find(x => x.id === p.member_id)
               const g = groups.find(x => x.id === p.group_id)
+              // Use the joined data if available
+              const memberName = (p as any).members?.persons?.name || 'Unknown'
+              const personId = (p as any).members?.person_id
+              
               return (
                 <Tr key={p.id}>
                   <Td className="text-xs opacity-50">{new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Td>
                   <Td>
-                    <Link href={`/members/${m?.id}`} className="font-semibold hover:text-[var(--accent)] hover:underline transition-colors">
-                      {m?.persons?.name || 'Unknown'}
-                    </Link>
+                    {personId ? (
+                      <Link href={`/members/${personId}`} className="font-semibold hover:text-[var(--accent)] hover:underline transition-colors">
+                        {memberName}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold opacity-50">{memberName}</span>
+                    )}
                   </Td>
                   <Td>
                     <Link href={`/groups/${g?.id}`} className="text-xs hover:text-[var(--accent)] hover:underline transition-colors">

@@ -118,7 +118,7 @@ export default function MemberProfilePage() {
     <div className="space-y-6 pb-24 max-w-7xl mx-auto">
       <div className="flex items-center gap-4 mb-2">
         <Btn variant="ghost" icon={ArrowLeft} onClick={() => router.back()} className="rounded-full w-10 h-10 p-0" />
-        <h1 className="text-3xl font-black text-[var(--text)]">Member Profile</h1>
+        <h1>Member Profile</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -132,22 +132,22 @@ export default function MemberProfilePage() {
               <div className="w-24 h-24 rounded-[2rem] bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center mb-4 border-2 border-[var(--accent)] shadow-lg">
                 <User size={48} strokeWidth={2.5} />
               </div>
-              <h2 className="text-2xl font-black truncate max-w-full">{person.name}</h2>
-              <p className="text-xs font-bold opacity-40 uppercase tracking-widest mt-1">{person.nickname || 'Individual Member'}</p>
+              <h2>{person.name}</h2>
+              <p className="text-sub mt-1">{person.nickname || 'Individual Member'}</p>
             </div>
 
             <div className="space-y-4 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-4">
                 <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)]"><Phone size={16} /></div>
                 <div>
-                  <div className="text-[10px] opacity-40 uppercase font-black">Phone Number</div>
+                  <div className="text-sub uppercase font-black">Phone Number</div>
                   <div className="text-sm font-bold">{person.phone || '—'}</div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)]"><MapPin size={16} /></div>
                 <div>
-                  <div className="text-[10px] opacity-40 uppercase font-black">Address</div>
+                  <div className="text-sub uppercase font-black">Address</div>
                   <div className="text-sm font-bold truncate max-w-[180px]">{person.address || 'No address provided'}</div>
                 </div>
               </div>
@@ -175,7 +175,7 @@ export default function MemberProfilePage() {
                       <div className="font-bold text-sm text-[var(--accent)] cursor-pointer" onClick={() => router.push(`/groups/${m.group.id}`)}>
                         {getGroupDisplayName(m.group, t)}
                       </div>
-                      <div className="text-[10px] opacity-40 font-mono">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
+                      <div className="text-sub font-mono">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
                     </Td>
                     <Td>
                       <div className="font-black text-sm">#{m.ticket_no}</div>
@@ -202,8 +202,8 @@ export default function MemberProfilePage() {
       <div className="pt-6">
         <div className="flex items-center justify-between mb-4">
            <div>
-              <h2 className="text-xl font-black text-[var(--text)]">Financial Ledger</h2>
-              <p className="text-xs opacity-40 font-medium">Unified transaction history across all enrolled group tickets.</p>
+              <h2>Financial Ledger</h2>
+              <p className="text-sub">Unified transaction history across all enrolled group tickets.</p>
            </div>
            <Btn size="sm" variant="secondary" icon={Receipt} onClick={() => router.push('/payments')}>Record New Receipt</Btn>
         </div>

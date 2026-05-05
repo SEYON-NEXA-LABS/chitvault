@@ -19,7 +19,7 @@ export function ReportDefaulters({ members, groups, auctions }: { members: Membe
             return (
               <Tr key={m.id}>
                 <Td className="font-semibold" style={{ color: 'var(--danger)' }}>
-                  <Link href={`/members/${m.id}`} className="hover:underline transition-colors">
+                  <Link href={`/members/${m.person_id}`} className="hover:underline transition-colors">
                     {m.persons?.name || 'Member'} 
                   </Link>
                   {auctions.some(a => a.winner_id === m.id) && <Badge variant="accent" className="ml-2">Winner</Badge>}

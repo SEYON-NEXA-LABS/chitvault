@@ -544,8 +544,11 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     pagination_records: 'RECORDS',
     login_preparing: 'Preparing The Vault...',
     login_err_creds: 'Incorrect email or password.',
+    login_err_terms: 'Please accept the Terms and Privacy Policy to continue.',
     login_success: 'Signed in successfully! Redirecting...',
     login_recovery_sent: 'Reset link dispatched! Please check your inbox.',
+    login_agree_to: 'I agree to the',
+    and: 'and',
   },
   ta: {
     // Sidebar
@@ -1096,7 +1099,10 @@ export const dictionary: Record<Lang, Record<string, string>> = {
     pagination_records: 'பதிவுகள்',
     login_preparing: 'தயாராகிறது...',
     login_err_creds: 'மின்னஞ்சல் அல்லது கடவுச்சொல் தவறானது.',
+    login_err_terms: 'தொடர விதிமுறைகள் மற்றும் தனியுரிமைக் கொள்கையை ஏற்றுக்கொள்ளவும்.',
     login_success: 'வெற்றிகரமாக உள்நுழைந்துவிட்டது! வழிநடத்துகிறது...',
     login_recovery_sent: 'மீட்பு இணைப்பு அனுப்பப்பட்டது! உங்கள் மின்னஞ்சலைச் சரிபார்க்கவும்.',
+    login_agree_to: 'நான் ஒப்புக்கொள்கிறேன்',
+    and: 'மற்றும்',
   }
 };
