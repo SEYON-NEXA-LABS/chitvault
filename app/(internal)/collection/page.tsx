@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
-import { MemberLedger } from '@/components/features/MemberLedger'
+
 import { RecordCollectionModal } from '@/components/features/RecordCollectionModal'
 
 const ITEMS_PER_PAGE = 20
@@ -218,11 +218,7 @@ function CollectionContent() {
           onClose={() => setPayModal(null)} onSuccess={load} />
       )}
       {historyModal && (
-        <Modal open={!!historyModal} onClose={() => setHistoryModal(null)}
-          title={`Ledger — ${historyModal.person_name}`} size="lg">
-          <MemberLedger personId={historyModal.person_id}
-            firmId={isSuper ? (switchedFirmId || '') : (firm?.id || '')} />
-        </Modal>
+        <DuesSnapshotModal person={historyModal} onClose={() => setHistoryModal(null)} t={t} />
       )}
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}
     </div>
@@ -385,6 +381,86 @@ function GroupPanel({ membership: m, t }: { membership: any, t: any }) {
         })}
       </div>
     </div>
+  )
+}
+
+// ── Dues Snapshot Modal ───────────────────────────────────────────────────────
+// Lightweight alternative to full MemberLedger — reads from already-loaded data
+
+function DuesSnapshotModal({ person, onClose, t }: { person: CollectionItem; onClose: () => void; t: any }) {
+  const allDues = person.memberships.flatMap((m: any) =>
+    (m.dues || []).map((d: any) => ({
+      ...d,
+      groupName: m.group?.name || '—',
+      groupSlug: m.group?.slug || '',
+    }))
+  )
+  const totalDue = allDues.reduce((s: number, d: any) => s + (d.amount_due - d.amount_paid), 0)
+  const paidCount = allDues.filter((d: any) => (d.amount_due - d.amount_paid) <= 0.1).length
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Dues — ${person.person_name}`} size="md">
+      <div className="space-y-5">
+        {/* Summary strip */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Outstanding', value: fmt(person.total_balance), color: 'text-rose-600' },
+            { label: 'Pending', value: `${allDues.length - paidCount} months`, color: 'text-amber-600' },
+            { label: 'Groups', value: person.memberships.length, color: 'text-blue-600' },
+          ].map(s => (
+            <div key={s.label} className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
+              <p className={cn('text-xl font-black tracking-tighter mt-1', s.color)}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Per-group breakdown */}
+        <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+          {person.memberships.map((m: any) => {
+            const dues: any[] = m.dues || []
+            const groupBal = dues.reduce((s: number, d: any) => s + (d.amount_due - d.amount_paid), 0)
+            const pendingDues = dues.filter((d: any) => (d.amount_due - d.amount_paid) > 0.1)
+
+            return (
+              <div key={m.member?.id} className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{m.group?.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{m.group?.slug}</p>
+                  </div>
+                  <p className={cn('text-base font-black tracking-tighter', groupBal > 0 ? 'text-rose-600' : 'text-emerald-600')}>
+                    {groupBal > 0 ? fmt(groupBal) : '✓ Clear'}
+                  </p>
+                </div>
+
+                {pendingDues.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {pendingDues.map((d: any) => {
+                      const bal = d.amount_due - d.amount_paid
+                      const isPartial = d.amount_paid > 0
+                      return (
+                        <div key={d.month}
+                          className={cn(
+                            'flex flex-col items-center px-2.5 py-1.5 rounded-xl border text-center min-w-[52px]',
+                            isPartial ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'
+                          )}>
+                          <span className="text-[9px] font-black uppercase tracking-wider">M{d.month}</span>
+                          <span className="text-xs font-black mt-0.5">{fmt(bal)}</span>
+                          {isPartial && <span className="text-[7px] font-black uppercase opacity-60">Partial</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">All months settled ✓</p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </Modal>
   )
 }
 

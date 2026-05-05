@@ -80,12 +80,16 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
 
   const activeM = memberships.find(m => m.id === selectedMid)
   const group = activeM?.groups as unknown as Group
+  // All ticket IDs this person holds in the selected group (handles multi-ticket members)
+  const personMemberIds = new Set(
+    memberships.filter(m => m.group_id === activeM?.group_id).map(m => m.id)
+  )
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
       {/* Ticket Sidebar */}
       <div className="w-full lg:w-64 space-y-2 border-r pr-4" style={{ borderColor: 'var(--border)' }}>
-        <div className="text-[10px] font-bold uppercase opacity-40 tracking-widest mb-4">Tickets History ({memberships.length})</div>
+        <div className="text-xs font-bold uppercase opacity-40 tracking-widest mb-4">Tickets History ({memberships.length})</div>
         {memberships.map(m => (
           <div 
             key={m.id}
@@ -98,7 +102,7 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
             <div className="font-bold text-sm truncate hover:text-[var(--accent)] transition-colors" onClick={(e) => { e.stopPropagation(); router.push(`/groups/${m.group_id}`); }}>{m.groups.name}</div>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xs font-mono opacity-60">Ticket #{m.ticket_no}</span>
-              <Badge variant={m.groups.status === 'active' ? 'success' : 'gray'} className="text-[9px] uppercase px-1 py-0">{m.groups.status}</Badge>
+              <Badge variant={m.groups.status === 'active' ? 'success' : 'gray'} className="text-xs uppercase px-1 py-0">{m.groups.status}</Badge>
             </div>
           </div>
         ))}
@@ -139,14 +143,14 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
                            {auc ? (
                              <div className="flex items-center gap-1">
                                <CheckCircle size={12} className="text-[var(--success)]" />
-                               <span className="text-[10px] font-medium">Winner: {auc.winner_id === activeM.id ? 'YOU 👑' : 'Other'}</span>
+                               <span className="text-xs font-medium">Winner: {personMemberIds.has(auc.winner_id) ? 'YOU 👑' : 'Other'}</span>
                              </div>
-                           ) : <span className="text-[10px] opacity-20 uppercase font-black">Upcoming</span>}
+                           ) : <span className="text-xs opacity-20 uppercase font-black">Upcoming</span>}
                         </Td>
                         <Td right className="font-mono text-xs opacity-60 font-bold">{fmt(due)}</Td>
                         <Td right className={cn("font-bold font-mono", totalPaid >= (due - 0.01) ? "text-[var(--success)]" : "text-[var(--warning)]")}>
                           {fmt(totalPaid)}
-                          {pays.length > 1 && <div className="text-[9px] font-medium opacity-40">({pays.length} parts)</div>}
+                          {pays.length > 1 && <div className="text-xs font-medium opacity-40">({pays.length} parts)</div>}
                         </Td>
                         <Td right className={cn("font-black font-mono", bal > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)] opacity-20")}>
                           {bal > 0.01 ? fmt(bal) : 'SETTLED ✓'}
