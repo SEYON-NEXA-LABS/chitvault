@@ -45,13 +45,12 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
   const handleAdd = async () => {
     const count = Math.max(1, +form.tickets || 1)
-    const usedTickets = new Set(members.map(m => m.ticket_no))
-    const insertPayload = []
-    let currentTicket = +form.ticket_no
     
-    // Note: The person creation logic will be handled by the parent's onSave 
-    // or we can pass the form data up.
-    // For simplicity, we pass the form up.
+    if (members.length + count > group.num_members) {
+      alert(`Cannot add ${count} ticket(s). Only ${group.num_members - members.length} spot(s) remaining in this ${group.num_members}-member group.`)
+      return
+    }
+
     await onSave({ ...form, tickets: count })
   }
 

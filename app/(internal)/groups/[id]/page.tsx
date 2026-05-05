@@ -8,12 +8,13 @@ import { useI18n } from '@/lib/i18n/context'
 import { useTerminology } from '@/lib/hooks/useTerminology'
 import { useToast } from '@/lib/hooks/useToast'
 import { useGroupLedgerData } from '@/lib/hooks/useGroupLedgerData'
-import { fmt, getToday, getGroupDisplayName } from '@/lib/utils'
+import { fmt, getToday, cn, fmtDate, getGroupDisplayName } from '@/lib/utils'
 import { 
-  Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal 
+  Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal,
+  TableCard, Table, Tr, Th, Td
 } from '@/components/ui'
 import { 
-  Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon 
+  Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2
 } from 'lucide-react'
 
 // Extracted Sub-components
@@ -24,8 +25,10 @@ import { AddMemberModal } from './_components/AddMemberModal'
 import { PayoutSettlementModal } from './_components/PayoutSettlementModal'
 import { AuditModal } from './_components/AuditModal'
 import { MemberDetailsModal } from './_components/MemberDetailsModal'
+import { RecordCollectionModal } from '@/components/features/RecordCollectionModal'
 
 // Utils
+import { haptics } from '@/lib/utils/haptics'
 import { printPayoutVoucher, printMemberList } from '@/lib/utils/print'
 import { downloadCSV } from '@/lib/utils/csv'
 import { 
@@ -63,7 +66,9 @@ export default function GroupLedgerPage() {
   const [settleForm, setSettleForm] = useState({ date: getToday(), note: '', amount: '', mode: 'Cash' })
   const [mathModal, setMathModal] = useState<{ auction: Auction; commission: ForemanCommission } | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
+  const [collectPersonId, setCollectPersonId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [view, setView] = useState<'members' | 'auctions' | 'payments'>('members')
 
   // --- Auction Logic States ---
   const [aucFormOpen, setAucFormOpen] = useState(false)
@@ -110,6 +115,11 @@ export default function GroupLedgerPage() {
   // --- Handlers ---
   const handleAddMember = async (payload: any) => {
     if (!firm || !group) return
+    const requested = Number(payload.tickets || 1)
+    if (members.length + requested > group.num_members) {
+      showToast(`Group full! Only ${group.num_members - members.length} spots remaining.`, 'error')
+      return
+    }
     setSaving(true)
     try {
       const { data: userData } = await supabase.auth.getUser()
@@ -150,6 +160,20 @@ export default function GroupLedgerPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function revertPayment(id: number) {
+    if (!confirm('Revert this payment? This will update the member\'s outstanding balance.')) return
+    // @ts-ignore
+    haptics.heavy()
+    setSaving(true)
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+    if (error) showToast(error.message, 'error')
+    else {
+      showToast('Payment reverted successfully!', 'success')
+      refresh()
+    }
+    setSaving(false)
   }
 
   const handleSettlePayout = async () => {
@@ -338,6 +362,11 @@ export default function GroupLedgerPage() {
             <Badge variant={group.status === 'active' ? 'success' : 'gray'}>{group.status}</Badge>
           </div>
         </div>
+        <div className="flex gap-1 p-1 bg-[var(--surface2)] rounded-xl border border-[var(--border)]">
+          <button onClick={() => setView('members')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'members' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Member Directory</button>
+          <button onClick={() => setView('auctions')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'auctions' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Auction History</button>
+          <button onClick={() => setView('payments')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'payments' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Payment History</button>
+        </div>
         <div className="flex gap-2">
           {members.length < group.num_members && <Btn variant="primary" onClick={() => setAddOpen(true)} icon={Plus}>{t('add_member')}</Btn>}
           <Btn variant="secondary" onClick={() => { refresh(); showToast('Synced!') }} icon={RefreshCw}>Sync</Btn>
@@ -367,21 +396,76 @@ export default function GroupLedgerPage() {
       <LineAnalytics title={t('yield_trend')} series={[t('auction_discount'), t('yield_per_member_gain')]} data={yieldData} height={280} xKey="name" />
 
       {/* Main Content Blocks */}
-      <div id="ledger">
-        <AuctionLedger 
-          group={group} auctionHistory={auditedAuctions} commissions={commissions} members={members} t={t}
-          setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
-        />
-      </div>
+      {view === 'auctions' && (
+        <div id="ledger">
+          <AuctionLedger 
+            group={group} auctionHistory={auditedAuctions} commissions={commissions} members={members} t={t}
+            setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
+          />
+        </div>
+      )}
 
-      <MemberDirectory 
-        group={group} members={members} auctionHistory={auctionHistory} payments={payments} isOwner={isOwner} can={can as any} t={t}
-        handlePrintMemberList={() => printMemberList(group, members, firm?.name || '')}
-        handleExport={() => downloadCSV(members, `${group.name}_members`)}
-        setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
-        deleteMember={async (id) => { if(confirm('Delete?')) { await supabase.from('members').delete().eq('id', id); refresh() }}}
-        setSelectedMember={setSelectedMemberId}
-      />
+      {view === 'members' && (
+        <MemberDirectory 
+          group={group} members={members} auctionHistory={auctionHistory} payments={payments} isOwner={isOwner} can={can as any} t={t}
+          handlePrintMemberList={() => printMemberList(group, members, firm?.name || '')}
+          handleExport={() => downloadCSV(members, `${group.name}_members`)}
+          setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
+          deleteMember={async (id) => { if(confirm('Delete?')) { await supabase.from('members').delete().eq('id', id); refresh() }}}
+          setSelectedMember={setSelectedMemberId}
+          setCollectPersonId={setCollectPersonId}
+        />
+      )}
+
+      {view === 'payments' && (
+        <TableCard title="Payment History" subtitle="Recent collections and transactions for this group">
+          <Table>
+            <thead>
+              <Tr>
+                <Th>Date</Th>
+                <Th>Member</Th>
+                <Th>Month</Th>
+                <Th right>Amount</Th>
+                <Th>Mode</Th>
+                <Th>Type</Th>
+                <Th right>Action</Th>
+              </Tr>
+            </thead>
+            <tbody>
+              {payments.map((p: any) => (
+                <Tr key={p.id}>
+                  <Td className="whitespace-nowrap font-medium opacity-80 text-[10px] leading-tight">
+                    <div>{fmtDate(p.payment_date)}</div>
+                    <div className="opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                  </Td>
+                  <Td>
+                    <div className="font-bold text-sm">{p.members?.persons?.name || 'Unknown'}</div>
+                    <div className="text-[10px] opacity-40 font-mono">Ticket #{p.members?.ticket_no}</div>
+                  </Td>
+                  <Td className="font-bold text-xs">M{p.month}</Td>
+                  <Td right className="font-black text-sm text-[var(--success)]">{fmt(p.amount)}</Td>
+                  <Td><Badge variant="gray" className="text-[10px]">{p.mode}</Badge></Td>
+                  <Td>
+                    <Badge variant={p.payment_type === 'advance' ? 'info' : p.payment_type === 'full' ? 'success' : 'warning'} className="text-[9px] uppercase">
+                      {p.payment_type}
+                    </Badge>
+                  </Td>
+                  <Td right>
+                    {isOwner && (
+                      <Btn size="sm" variant="ghost" icon={Trash2} color="danger" onClick={() => revertPayment(p.id)} />
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+              {payments.length === 0 && (
+                <Tr>
+                  <Td colSpan={6} className="text-center py-20 opacity-30 italic">No payments recorded yet.</Td>
+                </Tr>
+              )}
+            </tbody>
+          </Table>
+        </TableCard>
+      )}
 
       {/* Modals extracted to sub-components */}
       <AddMemberModal 
@@ -398,7 +482,20 @@ export default function GroupLedgerPage() {
 
       <AuditModal open={!!mathModal} onClose={() => setMathModal(null)} group={group} mathModal={mathModal} />
 
-      <MemberDetailsModal open={!!selectedMemberId} onClose={() => setSelectedMemberId(null)} member={members.find((m: Member) => m.id === selectedMemberId) || null} />
+      <MemberDetailsModal 
+        open={!!selectedMemberId} 
+        onClose={() => setSelectedMemberId(null)} 
+        member={members.find((m: Member) => m.id === selectedMemberId) || null} 
+        firmId={firm?.id || ''}
+      />
+
+      {collectPersonId && (
+        <RecordCollectionModal 
+          personId={collectPersonId} 
+          onClose={() => setCollectPersonId(null)} 
+          onSuccess={() => { refresh(); showToast('Payment Recorded!', 'success'); }} 
+        />
+      )}
 
       <AuctionForm 
         open={aucFormOpen} onClose={() => setAucFormOpen(false)} group={group} aucForm={aucForm} setAucForm={setAucForm}

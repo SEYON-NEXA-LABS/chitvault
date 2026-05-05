@@ -31,7 +31,7 @@ export default function MemberProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '', nickname: '' })
+  const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', nickname: '' })
 
   const isSuper = role === 'superadmin'
 
@@ -39,22 +39,27 @@ export default function MemberProfilePage() {
     async function load() {
       setLoading(true)
       const targetId = isSuper ? switchedFirmId : firm?.id
-      if (!targetId || !personId) return
+      if (!personId) return
+      // If we're a superadmin without a switched firm, we can't scope by firm_id yet.
+      // withFirmScope handles this by ignoring the filter if targetId is null/all.
 
       try {
-        const { data: pData } = await withFirmScope(supabase.from('persons').select('id, name, phone, email, address, nickname').eq('id', personId), targetId).single()
+        const { data: pData } = await withFirmScope(supabase.from('persons').select('id, name, phone, address, nickname').eq('id', personId), targetId).single()
         if (pData) {
           setPerson(pData)
           setEditForm({ 
             name: pData.name || '', 
             phone: pData.phone || '', 
-            email: pData.email || '', 
             address: pData.address || '',
             nickname: pData.nickname || ''
           })
         }
 
-        const { data: mData } = await withFirmScope(supabase.from('members').select('id, ticket_no, group_id, person_id, status, groups(id, name, duration, monthly_contribution, status, auction_scheme)').eq('person_id', personId), targetId).is('deleted_at', null)
+        const { data: mData } = await withFirmScope(
+          supabase.from('members').select('id, ticket_no, group_id, person_id, status, groups:group_id(id, name, duration, monthly_contribution, status, auction_scheme)'),
+          targetId
+        ).eq('person_id', personId).is('deleted_at', null)
+
         if (mData) {
           setMemberships(mData.map((m: any) => ({ ...m, group: m.groups })) || [])
         }

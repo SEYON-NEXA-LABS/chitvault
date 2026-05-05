@@ -3,18 +3,21 @@
 import React from 'react'
 import { Modal, Btn } from '@/components/ui'
 import { fmtDate } from '@/lib/utils'
+import { MemberLedger } from '@/components/features/MemberLedger'
 import type { Member } from '@/types'
 
 interface MemberDetailsModalProps {
   open: boolean
   onClose: () => void
   member: Member | null
+  firmId?: string
 }
 
 export const MemberDetailsModal: React.FC<MemberDetailsModalProps> = ({
   open,
   onClose,
-  member
+  member,
+  firmId
 }) => {
   if (!member) return null
 
@@ -39,6 +42,10 @@ export const MemberDetailsModal: React.FC<MemberDetailsModalProps> = ({
           </div>
         </div>
         <p className="text-[10px] opacity-40 px-1 italic">Address: {member.persons?.address || 'Not provided'}</p>
+        
+        <div className="pt-4 border-t mt-4" style={{ borderColor: 'var(--border)' }}>
+          <MemberLedger personId={Number(member.person_id)} firmId={firmId || ''} />
+        </div>
       </div>
       <div className="flex justify-end mt-6">
         <Btn variant="secondary" onClick={onClose}>Close</Btn>

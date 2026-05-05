@@ -23,6 +23,7 @@ interface MemberDirectoryProps {
   router: any
   deleteMember: (id: number) => void
   setSelectedMember: (id: number | null) => void
+  setCollectPersonId?: (id: number | null) => void
 }
 
 export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
@@ -40,7 +41,8 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   setAddOpen,
   router,
   deleteMember,
-  setSelectedMember
+  setSelectedMember,
+  setCollectPersonId
 }) => {
   return (
     <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
@@ -133,11 +135,18 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
                   <span className="text-xs text-slate-400 font-bold">{financial ? fmt(financial.totalPaid) : '—'}</span>
                 </Td>
                 <Td right>
-                  {financial && (
-                    <span className={cn("text-sm font-bold", financial.missedCount > 0 ? "text-red-600" : financial.balance > 0 ? "text-blue-600" : "text-emerald-600")}>
-                      {financial.balance > 0.01 ? fmt(financial.balance) : 'Paid'}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {financial && (
+                      <span className={cn("text-sm font-bold", financial.missedCount > 0 ? "text-red-600" : financial.balance > 0 ? "text-blue-600" : "text-emerald-600")}>
+                        {financial.balance > 0.01 ? fmt(financial.balance) : 'Paid'}
+                      </span>
+                    )}
+                    {financial && financial.balance > 0.01 && (
+                      <Btn size="sm" variant="primary" className="py-0.5 px-2 h-auto text-[10px] font-bold uppercase tracking-wider" onClick={() => setCollectPersonId?.(m.person_id)}>
+                        Collect
+                      </Btn>
+                    )}
+                  </div>
                 </Td>
                 <Td right className="no-print">
                   <div className="flex justify-end gap-1">

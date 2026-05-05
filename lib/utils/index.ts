@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.12'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.13'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_SLOGAN = 'Professional Digital Ledger'
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and auction auditing. Record-keeping only; actual payments occur externally.'
@@ -29,6 +29,16 @@ export function fmtDate(d: string | null | undefined): string {
   if (isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric'
+  })
+}
+
+export function fmtDateTime(d: string | null | undefined): string {
+  if (!d) return '—'
+  const date = new Date(d)
+  if (isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
   })
 }
 

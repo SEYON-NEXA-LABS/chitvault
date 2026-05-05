@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { fmt, fmtMonth, cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ interface MemberLedgerProps {
  */
 export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
   const supabase = createClient()
+  const router = useRouter()
   const [memberships, setMemberships] = useState<any[]>([])
   const [selectedMid, setSelectedMid] = useState<number | null>(null)
   const [details, setDetails] = useState<{ auctions: Auction[], payments: Payment[] }>({ auctions: [], payments: [] })
@@ -33,7 +35,7 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
       const { data, error } = await withFirmScope(
         supabase.from('members').select(`
           id, ticket_no, status, group_id,
-          groups(id, name, chit_value, duration, monthly_contribution, status, start_date, auction_scheme)
+          groups:group_id(id, name, chit_value, duration, monthly_contribution, status, start_date, auction_scheme)
         `), 
         firmId
       ).eq('person_id', personId).is('deleted_at', null)
@@ -93,7 +95,7 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
               selectedMid === m.id ? "border-[var(--accent)] bg-[var(--accent-dim)]" : "border-transparent bg-[var(--surface2)] hover:border-[var(--border)]"
             )}
           >
-            <div className="font-bold text-sm truncate">{m.groups.name}</div>
+            <div className="font-bold text-sm truncate hover:text-[var(--accent)] transition-colors" onClick={(e) => { e.stopPropagation(); router.push(`/groups/${m.group_id}`); }}>{m.groups.name}</div>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xs font-mono opacity-60">Ticket #{m.ticket_no}</span>
               <Badge variant={m.groups.status === 'active' ? 'success' : 'gray'} className="text-[9px] uppercase px-1 py-0">{m.groups.status}</Badge>

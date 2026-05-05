@@ -4,17 +4,17 @@ import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, getToday, cn, getGroupDisplayName } from '@/lib/utils'
+import { fmt, getToday, cn, getGroupDisplayName, fmtDate, fmtDateTime } from '@/lib/utils'
 import {
   TableCard, Table, Th, Td, Tr,
   Loading, Empty, Badge, Btn, Modal, Field, Toast, Pagination
 } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Printer, Phone, MapPin, Search, MessageSquare, CreditCard, ChevronLeft, ChevronRight, History, LayoutGrid, ListChecks, Eye } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Printer, Phone, MapPin, Search, MessageSquare, CreditCard, ChevronLeft, ChevronRight, History, LayoutGrid, ListChecks, Eye, Trash2 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { MemberLedger } from '@/components/features/MemberLedger'
-import { fmtDate } from '@/lib/utils'
+import { RecordCollectionModal } from '@/components/features/RecordCollectionModal'
 
 const ITEMS_PER_PAGE = 20
 const inputClass = "w-full bg-[var(--surface2)] text-[var(--text)] px-4 py-2.5 rounded-xl border border-[var(--border)] focus:border-[var(--accent)] outline-none transition-all placeholder:opacity-30"
@@ -44,6 +44,8 @@ function CollectionContent() {
   const supabase = useMemo(() => createClient(), [])
   const { firm, role, switchedFirmId, profile } = useFirm()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const personIdParam = searchParams.get('person_id')
   const { t } = useI18n()
   const { toast, show, hide } = useToast()
 
@@ -51,27 +53,20 @@ function CollectionContent() {
   const [totalCount, setTotalCount] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState(searchParams.get('search') || '')
 
   const isSuper = role === 'superadmin'
+  const isOwner = role === 'owner' || isSuper
   const [viewMode, setViewMode] = useState<'workspace' | 'audit'>('workspace')
   const [showAll, setShowAll] = useState(false)
   const [auditData, setAuditData] = useState<any[]>([])
+  const [recentPayments, setRecentPayments] = useState<any[]>([])
   const [historyModal, setHistoryModal] = useState<CollectionItem | null>(null)
   
   const [payModal, setPayModal] = useState<CollectionItem | null>(null)
-  const [payForm, setPayForm] = useState({ amount: '', date: getToday(), mode: 'Cash', note: '' })
 
   const load = useCallback(async (p_search = search, p_page = page) => {
     const targetId = isSuper ? switchedFirmId : firm?.id
-    if (!targetId) {
-      // Safety: If firm isn't loaded yet, try again after a brief wait
-      // but don't hang the UI forever.
-      setTimeout(() => setLoading(false), 3000)
-      return
-    }
-    
     setLoading(true)
     try {
       if (viewMode === 'workspace') {
@@ -97,16 +92,10 @@ function CollectionContent() {
 
       if (viewMode === 'audit') {
         let q = withFirmScope(supabase.from('payments').select(`
-          id, amount, payment_date, created_at, mode, month,
-          groups(name),
-          persons:person_id(name)
+          id, amount, payment_date, created_at, mode, month, group_id,
+          groups:group_id(id, name),
+          members:member_id(persons:person_id(name))
         `, { count: 'exact' }), targetId).is('deleted_at', null)
-
-        if (p_search) {
-          // Search in person name via join is tricky in simple select, 
-          // usually payments table has person_id
-          // For now, simple limit for audit log
-        }
 
         const { data: lData, count } = await q
           .order('created_at', { ascending: false })
@@ -115,6 +104,17 @@ function CollectionContent() {
         setAuditData(lData || [])
         setTotalCount(count || 0)
       }
+
+      // Always fetch a few recent payments for the "Recent Activity" footer
+      const { data: rData } = await withFirmScope(
+        supabase.from('payments').select(`
+          id, amount, payment_date, created_at, mode, month, group_id,
+          groups:group_id(id, name), 
+          members:member_id(persons:person_id(name))
+        `),
+        targetId
+      ).is('deleted_at', null).limit(5).order('created_at', { ascending: false })
+      setRecentPayments(rData || [])
     } catch (err: any) {
       console.error('Fetch error:', err)
       show('Failed to connect to the database engine. Ensure the migration is applied.', 'error')
@@ -128,6 +128,25 @@ function CollectionContent() {
     return () => clearTimeout(timer)
   }, [search, page, load, viewMode, showAll])
 
+  useEffect(() => {
+    if (personIdParam && data.length > 0 && !payModal) {
+      const person = data.find(p => p.person_id === Number(personIdParam))
+      if (person) {
+        setPayModal(person);
+      }
+    }
+  }, [personIdParam, data, payModal])
+
+  async function revertPayment(id: number) {
+    if (!confirm('Revert this payment? This will restore the balance.')) return
+    const { error } = await supabase.from('payments').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+    if (error) show(error.message, 'error')
+    else {
+      show('Payment reverted!', 'success')
+      load()
+    }
+  }
+
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
 
   const stats = useMemo(() => {
@@ -136,87 +155,7 @@ function CollectionContent() {
     return { totalOut, critical };
   }, [data]);
 
-  async function handlePay() {
-    if (!payModal || !firm) return;
-    const amount = Number(payForm.amount);
-    if (amount <= 0) { show('Enter a valid amount', 'error'); return; }
 
-    setSaving(true);
-    const targetId = isSuper ? switchedFirmId : firm.id
-    let remaining = amount;
-    const finalPayments = [];
-
-    const allDues = payModal.memberships.flatMap((m: any) => (m.dues || []).map((d: any) => ({ ...d, memberId: m.member.id, groupId: m.group.id })))
-      .sort((a: any, b: any) => a.month - b.month);
-
-    for (const due of allDues) {
-      if (remaining <= 0) break;
-      const bal = due.amount_due - due.amount_paid;
-      if (bal <= 0.01) continue;
-
-      const toPay = Math.min(remaining, bal);
-      remaining -= toPay;
-
-      finalPayments.push({
-        firm_id: targetId,
-        member_id: due.memberId,
-        group_id: due.groupId,
-        month: due.month,
-        amount: toPay,
-        status: (due.amount_paid + toPay) >= (due.amount_due - 0.01) ? 'paid' : 'partial',
-        amount_due: due.amount_due,
-        balance_due: Math.max(0, due.amount_due - due.amount_paid - toPay),
-        payment_date: payForm.date,
-        mode: payForm.mode,
-        payment_type: (due.amount_paid + toPay) >= (due.amount_due - 0.01) ? 'full' : 'partial',
-        collected_by: profile?.id || null,
-        note: payForm.note
-      });
-    }
-
-    // Handle Advance / Surplus if remaining > 0
-    if (remaining > 0.01 && payModal.memberships.length > 0) {
-      const firstM = payModal.memberships[0];
-      const currentLatest = firstM.latestMonth || 0;
-      const duration = firstM.group?.duration || 0;
-      
-      let targetMonth = currentLatest + 1;
-      let isSettlement = false;
-
-      if (targetMonth > duration && duration > 0) {
-        targetMonth = 0; // Use month 0 or last month for post-closure surplus
-        isSettlement = true;
-      }
-      
-      finalPayments.push({
-        firm_id: targetId,
-        member_id: firstM.member.id,
-        group_id: firstM.group.id,
-        month: targetMonth,
-        amount: remaining,
-        status: 'paid',
-        amount_due: 0,
-        balance_due: 0,
-        payment_date: payForm.date,
-        mode: payForm.mode,
-        payment_type: isSettlement ? 'settlement' : 'advance',
-        collected_by: profile?.id || null,
-        note: (isSettlement ? `SURPLUS: ${payForm.note}` : `ADVANCE: ${payForm.note}`).trim()
-      });
-      remaining = 0;
-    }
-
-    if (finalPayments.length === 0) { show('No allocations made', 'error'); setSaving(false); return; }
-
-    const { error } = await supabase.from('payments').insert(finalPayments);
-    if (error) { show(error.message, 'error'); }
-    else {
-      show(`Collected ₹${amount}! Receipt recorded.`);
-      setPayModal(null);
-      load();
-    }
-    setSaving(false);
-  }
 
   const handleWhatsAppReminder = (p: CollectionItem) => {
     const phone = p.person_phone ? p.person_phone.replace(/[^\d]/g, '') : ''
@@ -298,18 +237,29 @@ function CollectionContent() {
                 <Th>Member / Group</Th>
                 <Th right>Amount</Th>
                 <Th>Mode</Th>
+                <Th right>Action</Th>
               </Tr>
             </thead>
             <tbody>
-              {auditData.length === 0 ? <Tr><Td colSpan={4}><Empty text="No recent activity." /></Td></Tr> : auditData.map(p => (
+              {auditData.length === 0 ? <Tr><Td colSpan={5}><Empty text="No recent activity." /></Td></Tr> : auditData.map(p => (
                 <Tr key={p.id}>
-                  <Td className="whitespace-nowrap font-medium opacity-50 text-xs">{fmtDate(p.payment_date || p.created_at)}</Td>
-                  <Td>
-                    <div className="font-black text-[var(--text)]">{p.persons?.name}</div>
-                    <div className="text-xs uppercase tracking-widest font-bold text-indigo-500/60 mt-0.5">{p.groups?.name} <span className="opacity-20 mx-1">/</span> M{p.month}</div>
+                  <Td className="whitespace-nowrap font-medium opacity-80 text-[10px] leading-tight">
+                    <div>{fmtDate(p.payment_date)}</div>
+                    <div className="opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                  </Td>
+                   <Td>
+                    <div className="font-black text-[var(--text)]">{p.persons?.name || p.members?.persons?.name || 'Unknown'}</div>
+                    <div className="text-xs uppercase tracking-widest font-bold text-indigo-500/60 mt-0.5 cursor-pointer hover:text-[var(--accent)]" onClick={() => router.push(`/groups/${p.group_id}`)}>
+                      {p.groups?.name} <span className="opacity-20 mx-1">/</span> M{p.month}
+                    </div>
                   </Td>
                   <Td right className="text-xl font-black text-emerald-500 tracking-tighter">+{fmt(p.amount)}</Td>
                   <Td><Badge variant="gray" className="text-xs">{p.mode}</Badge></Td>
+                  <Td right>
+                    {isOwner && (
+                      <Btn size="sm" variant="ghost" icon={Trash2} color="danger" onClick={() => revertPayment(p.id)} />
+                    )}
+                  </Td>
                 </Tr>
               ))}
             </tbody>
@@ -360,10 +310,7 @@ function CollectionContent() {
                           <Btn size="sm" variant="ghost" icon={History} onClick={() => setHistoryModal(x)} className="text-indigo-500" />
                           <Btn size="sm" variant="ghost" icon={MessageSquare} onClick={() => handleWhatsAppReminder(x)} className="text-[#25D366]" />
                           {x.total_balance > 0.1 && (
-                            <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => {
-                                setPayForm({ amount: String(x.total_balance), date: getToday(), mode: 'Cash', note: '' });
-                                setPayModal(x);
-                            }}>Collect</Btn>
+                            <Btn size="sm" variant="primary" icon={CreditCard} onClick={() => setPayModal(x)}>Collect</Btn>
                           )}
                         </div>
                       </Td>
@@ -372,16 +319,7 @@ function CollectionContent() {
                 </tbody>
               </Table>
             </TableCard>
-            <div className="mt-4">
-              <Pagination 
-                current={page} 
-                total={totalCount} 
-                pageSize={ITEMS_PER_PAGE} 
-                onPageChange={setPage} 
-              />
             </div>
-          </div>
-
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:hidden">
             {data.length === 0 ? (
@@ -419,7 +357,7 @@ function CollectionContent() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => { setPayForm({ amount: String(x.total_balance), date: getToday(), mode: 'Cash', note: '' }); setPayModal(x); }} className="w-full py-4 bg-[var(--accent)] text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                <button onClick={() => setPayModal(x)} className="w-full py-4 bg-[var(--accent)] text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2">
                   <CreditCard size={18} /> Record Payment
                 </button>
               </div>
@@ -434,49 +372,52 @@ function CollectionContent() {
               onPageChange={setPage} 
             />
           </div>
+
+          {recentPayments.length > 0 && (
+            <div className="mt-12 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase tracking-widest opacity-40">Recent Activity</h3>
+                <Btn variant="ghost" size="sm" onClick={() => setViewMode('audit')}>View Full Audit Log</Btn>
+              </div>
+              <div className="bg-[var(--surface)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-sm">
+                <Table>
+                  <tbody>
+                    {recentPayments.map(p => (
+                      <Tr key={p.id}>
+                        <Td className="whitespace-nowrap text-[10px] font-bold opacity-80 uppercase leading-tight">
+                          <div>{fmtDate(p.payment_date)}</div>
+                          <div className="text-[9px] opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                        </Td>
+                        <Td>
+                          <div className="font-bold text-sm">{p.persons?.name || p.members?.persons?.name || 'Unknown'}</div>
+                          <div className="text-[10px] opacity-40 uppercase tracking-tighter cursor-pointer hover:text-[var(--accent)]" onClick={() => router.push(`/groups/${p.group_id}`)}>
+                            {p.groups?.name} · M{p.month}
+                          </div>
+                        </Td>
+                        <Td right className="font-black text-[var(--success)]">+{fmt(p.amount)}</Td>
+                        <Td right className="flex items-center justify-end gap-2">
+                          <Badge variant="gray" className="text-[9px] uppercase">{p.mode}</Badge>
+                          {isOwner && (
+                            <Btn size="sm" variant="ghost" icon={Trash2} color="danger" onClick={() => revertPayment(p.id)} />
+                          )}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            </div>
+          )}
         </>
       )}
 
       {payModal && (
-        <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record Collection" size="md">
-          <div className="space-y-6">
-            <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)]">
-              <div className="font-bold text-lg">{payModal.person_name}</div>
-              <div className={cn("text-xl font-black mt-2", payModal.is_overdue ? "text-[var(--danger)]" : "text-[#0ea5e9]")}>{fmt(payModal.total_balance)}</div>
-              
-              {/* Live Calculation Summary */}
-              {payForm.amount && !isNaN(Number(payForm.amount)) && (
-                <div className="mt-3 pt-3 border-t border-dashed border-[var(--border)]">
-                  {(() => {
-                    const diff = payModal.total_balance - Number(payForm.amount);
-                    if (Math.abs(diff) < 0.01) return <Badge variant="success" className="text-xs">Full Settlement</Badge>;
-                    if (diff > 0) return (
-                      <div className="flex justify-between items-center text-xs font-bold">
-                        <span className="text-[var(--text3)] uppercase tracking-widest">Remaining</span>
-                        <span className="text-[var(--danger)]">{fmt(diff)}</span>
-                      </div>
-                    );
-                    return (
-                      <div className="flex justify-between items-center text-xs font-bold">
-                        <span className="text-[var(--text3)] uppercase tracking-widest">Advance / Surplus</span>
-                        <span className="text-emerald-500">{fmt(Math.abs(diff))}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              <Field label="Amount Collected"><input className={cn(inputClass, "text-2xl")} type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} /></Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Date"><input className={inputClass} type="date" value={payForm.date} onChange={e => setPayForm(f => ({ ...f, date: e.target.value }))} /></Field>
-                <Field label="Mode"><select className={inputClass} value={payForm.mode} onChange={e => setPayForm(f => ({ ...f, mode: e.target.value }))}><option>Cash</option><option>UPI</option></select></Field>
-              </div>
-              <Field label="Note"><textarea className={inputClass} style={{ height: 60 }} value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} /></Field>
-            </div>
-            <div className="flex gap-3 pt-4"><Btn variant="secondary" className="flex-1" onClick={() => setPayModal(null)}>Cancel</Btn><Btn variant="primary" className="flex-[2]" loading={saving} onClick={handlePay}>Confirm Collection</Btn></div>
-          </div>
-        </Modal>
+        <RecordCollectionModal 
+          personId={payModal.person_id} 
+          initialData={payModal}
+          onClose={() => setPayModal(null)}
+          onSuccess={() => load()}
+        />
       )}
 
       {historyModal && (
