@@ -58,12 +58,6 @@ function CollectionContent() {
   const isSuper = role === 'superadmin'
   const isOwner = role === 'owner' || isSuper
 
-  useEffect(() => {
-    const targetId = isSuper ? switchedFirmId : firm?.id
-    if (!targetId) return
-    supabase.from('groups').select('id, name, slug').eq('firm_id', targetId).order('name')
-      .then(({ data }: any) => setGroups(data || []))
-  }, [supabase, firm, isSuper, switchedFirmId])
 
   const load = useCallback(async () => {
     const targetId = isSuper ? switchedFirmId : firm?.id
@@ -82,6 +76,20 @@ function CollectionContent() {
         if (!showAll) finalData = finalData.filter((x: any) => x.total_balance > 0.1)
         setData(finalData)
         setTotalCount(rpcData?.[0]?.total_count || 0)
+        // Accumulate unique groups from memberships — no separate DB query needed
+        setGroups(prev => {
+          const seen = new Set(prev.map((g: any) => g.id))
+          const merged = [...prev]
+          finalData.forEach((person: any) => {
+            ;(person.memberships || []).forEach((m: any) => {
+              if (m.group?.id && !seen.has(m.group.id)) {
+                seen.add(m.group.id)
+                merged.push({ id: m.group.id, name: m.group.name, slug: m.group.slug })
+              }
+            })
+          })
+          return merged.sort((a: any, b: any) => a.name.localeCompare(b.name))
+        })
       } else {
         let q = withFirmScope(supabase.from('payments').select(`
           id, amount, payment_date, created_at, mode, month, group_id,
@@ -481,7 +489,10 @@ function AuditTable({ data, isOwner, onRevert }: { data: any[], isOwner: boolean
         <tbody className="divide-y divide-slate-50">
           {data.map(p => (
             <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-              <td className="px-6 py-4 text-[11px] font-bold text-slate-500 whitespace-nowrap">{fmtDate(p.payment_date)}</td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-xs font-bold text-slate-500">{fmtDate(p.payment_date)}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+              </td>
               <td className="px-6 py-4 font-black text-slate-900 uppercase italic tracking-tight text-sm">
                 {p.members?.persons?.name || 'Unknown'}
               </td>
