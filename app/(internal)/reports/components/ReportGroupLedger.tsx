@@ -31,7 +31,7 @@ export function ReportGroupLedger({ groups, groupId, members, auctions, payments
                 <Td><Badge variant="gray">{fmtMonth(auc.month, groups.find(gx=>gx.id===groupId)?.start_date)}</Badge></Td>
                 <Td>
                   {w ? (
-                    <Link href={`/members/${w.id}`} className="hover:text-[var(--accent)] hover:underline transition-colors">
+                    <Link href={`/members/${w.person_id}`} className="hover:text-[var(--accent)] hover:underline transition-colors">
                       👑 {w.persons?.name || 'Member'}
                     </Link>
                   ) : (

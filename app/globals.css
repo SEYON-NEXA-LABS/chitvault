@@ -20,7 +20,7 @@
   --text-lg: 1.125rem; /* 18px */
   --text-xl: 1.25rem; /* 20px */
   --text-2xl: 1.5rem; /* 24px */
-  --text-3xl: 1.875rem; /* 30px */
+  --text-3xl: 2rem; /* 32px */
 }
 
 :root:lang(ta) {
@@ -38,9 +38,9 @@
   --surface2: #f4f4f5;
   --surface3: #e4e4e7;
   --border: #e4e4e7;
-  --text: #09090b;
-  --text2: #52525b;
-  --text3: #a1a1aa;
+  --text: #09090b;   /* Zinc 950 - High Contrast */
+  --text2: #3f3f46;  /* Zinc 700 - Sub-header Contrast */
+  --text3: #52525b;  /* Zinc 600 - Minimum accessible contrast for body text */
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
@@ -53,8 +53,8 @@
   --surface3: #27272a;
   --border: #27272a;
   --text: #fafafa;
-  --text2: #a1a1aa;
-  --text3: #52525b;
+  --text2: #d4d4d8;  /* Zinc 300 */
+  --text3: #a1a1aa;  /* Zinc 400 */
   --shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
@@ -213,6 +213,56 @@ body {
   font-family: var(--font-base);
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+@media (min-width: 768px) {
+  h1 { font-size: var(--text-3xl); }
+}
+
+h2 {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+@media (min-width: 768px) {
+  h2 { font-size: var(--text-xl); }
+}
+
+h3 {
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  h3 { font-size: var(--text-lg); }
+}
+
+p, .text-body {
+  font-size: var(--text-sm);
+  color: var(--text2);
+  line-height: 1.6;
+}
+
+.text-sub {
+  font-size: var(--text-xs);
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+.text-muted {
+  color: var(--text3);
 }
 
 .font-brand {

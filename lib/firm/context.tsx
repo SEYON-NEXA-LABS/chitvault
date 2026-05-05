@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { createClient } from '@/lib/supabase/client'
 import { can } from '@/lib/firm/permissions'
 import { applyBranding } from '@/lib/branding/context'
-import type { Firm, Profile, UserRole } from '@/types'
+import type { Firm, Profile, UserRole, SubscriptionStatus } from '@/types'
 import type { Permission } from '@/lib/firm/permissions'
 
 interface FirmContext {
@@ -14,12 +14,13 @@ interface FirmContext {
   loading: boolean
   can:     (action: Permission) => boolean
   refresh: () => Promise<void>
+  status:  SubscriptionStatus
   switchedFirmId: string | 'all'
   setSwitchedFirmId: (id: string | 'all') => void
 }
 
 const Ctx = createContext<FirmContext>({
-  firm: null, profile: null, role: null, loading: true,
+  firm: null, profile: null, role: null, loading: true, status: 'active',
   can: () => false, refresh: async () => {},
   switchedFirmId: 'all', setSwitchedFirmId: () => {}
 })
@@ -109,13 +110,45 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
 
   const role = profile?.role as UserRole | null ?? null
 
+  const status = useMemo((): SubscriptionStatus => {
+    const calculatedStatus = ((): SubscriptionStatus => {
+      if (!firm) return 'active'
+      if (firm.plan_status === 'suspended') return 'locked'
+      
+      if (!firm.trial_ends) return 'active'
+      const expiry = new Date(firm.trial_ends)
+      const today = new Date()
+      const diff = today.getTime() - expiry.getTime()
+      const daysOverdue = Math.ceil(diff / (1000 * 60 * 60 * 24))
+
+      if (daysOverdue <= 0) return 'active'
+      
+      // Perpetual clients never get locked out, they remain active for data entry even if AMC expires
+      if (firm.plan === 'perpetual') return 'active'
+      
+      // Standard/Enterprise get 7 days grace then lockout
+      if (daysOverdue > 7) return 'locked'
+      
+      return 'restricted'
+    })()
+
+    return calculatedStatus
+  }, [firm])
+
   const value = useMemo(() => ({
-    firm, profile, role, loading,
-    can: (action: Permission) => can(role, action),
+    firm, profile, role, loading, status,
+    can: (action: Permission) => {
+      // Global restriction: if status is restricted, block data-entry permissions
+      if (status === 'restricted') {
+        const dataEntryActions: Permission[] = ['addMember', 'createGroup', 'recordAuction', 'recordPayment', 'inviteStaff']
+        if (dataEntryActions.includes(action)) return false
+      }
+      return can(role, action)
+    },
     refresh: load,
     switchedFirmId,
     setSwitchedFirmId: handleSwitch
-  }), [firm, profile, role, loading, load, switchedFirmId, handleSwitch])
+  }), [firm, profile, role, loading, status, load, switchedFirmId, handleSwitch])
 
   return (
     <Ctx.Provider value={value}>

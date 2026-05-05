@@ -110,6 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [firms, setFirms] = useState<Firm[]>([])
 
   const { theme, toggleTheme, adjustFont } = useTheme()
+  const { status } = useFirm()
 
   const [userEmail, setUserEmail] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -131,22 +132,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [firm?.id, supabase, role, switchedFirmId])
 
-  // Suspended check
-  if (firm?.plan_status === 'suspended') {
+  // Hard Lockout check
+  if (status === 'locked' && role !== 'superadmin') {
     return (
       <div className="min-h-screen flex items-center justify-center p-5 bg-[var(--bg)]">
-        <div className="max-w-md text-center space-y-4">
-          <div className="text-5xl">⏸️</div>
-          <h2 className="text-xl font-black text-red-600 uppercase">Account Suspended</h2>
-          <p className="text-sm text-slate-500 leading-relaxed">
-            {firm.name}&apos;s account has been suspended. Contact us to renew.
-          </p>
-          <a href="mailto:seyonnexalabs@gmail.com" className="text-sm text-[var(--accent)] font-bold">seyonnexalabs@gmail.com</a>
-          <br />
-          <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-            className="mt-4 px-6 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold">
-            Sign Out
-          </button>
+        <div className="max-w-md w-full bg-white border border-red-100 rounded-[2.5rem] p-12 text-center space-y-6 shadow-2xl shadow-red-500/5">
+          <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto text-4xl">
+            🔒
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Access Locked</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Subscription for <strong>{firm?.name}</strong> has expired. To maintain your instance and access your data, please renew your plan.
+            </p>
+          </div>
+          <div className="pt-4 flex flex-col gap-3">
+             <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${firm?.name}`} target="_blank" className="w-full py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition-all">
+                Renew via WhatsApp
+             </a>
+             <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
+               className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
+               Sign Out
+             </button>
+          </div>
         </div>
       </div>
     )
@@ -324,6 +332,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
           </header>
+
+          {status === 'restricted' && role !== 'superadmin' && (
+            <div className="bg-red-50 border-b border-red-100 px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+               <div className="flex items-center gap-3 text-red-600">
+                  <AlertTriangle size={18} className="shrink-0" />
+                  <div className="text-xs font-bold uppercase tracking-widest leading-tight">
+                    <div>View-Only Mode Active</div>
+                    <div className="opacity-60 text-[9px] mt-0.5">Please renew your AMC to enable data entry</div>
+                  </div>
+               </div>
+               <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${firm?.name}`} target="_blank" className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-lg shadow-red-500/20 hover:scale-105 active:scale-95 transition-all">
+                  Renew via WhatsApp
+               </a>
+            </div>
+          )}
+
           <main className="flex-1 p-8 overflow-auto pb-24 lg:pb-8 text-sm">{children}</main>
           <BottomNav onMenuClick={() => setSidebarOpen(true)} />
           <CommandPalette />

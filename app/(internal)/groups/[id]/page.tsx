@@ -358,19 +358,23 @@ export default function GroupLedgerPage() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-xl md:text-3xl font-black">{getGroupDisplayName(group, t)}</h1>
+            <h1>{getGroupDisplayName(group, t)}</h1>
             <Badge variant={group.status === 'active' ? 'success' : 'gray'}>{group.status}</Badge>
           </div>
         </div>
         <div className="flex gap-1 p-1 bg-[var(--surface2)] rounded-xl border border-[var(--border)]">
-          <button onClick={() => setView('members')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'members' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Member Directory</button>
-          <button onClick={() => setView('auctions')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'auctions' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Auction History</button>
-          <button onClick={() => setView('payments')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'payments' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)]")}>Payment History</button>
+          <button onClick={() => setView('members')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'members' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)] hover:text-[var(--text)]")}>Member Directory</button>
+          <button onClick={() => setView('auctions')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'auctions' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)] hover:text-[var(--text)]")}>Auction History</button>
+          <button onClick={() => setView('payments')} className={cn("px-4 py-2 text-xs font-bold rounded-lg transition-all", view === 'payments' ? "bg-white text-[var(--text)] shadow-sm" : "text-[var(--text3)] hover:text-[var(--text)]")}>Payment History</button>
         </div>
         <div className="flex gap-2">
           {members.length < group.num_members && <Btn variant="primary" onClick={() => setAddOpen(true)} icon={Plus}>{t('add_member')}</Btn>}
           <Btn variant="secondary" onClick={() => { refresh(); showToast('Synced!') }} icon={RefreshCw}>Sync</Btn>
-          <Btn variant="primary" onClick={() => setAucFormOpen(true)} icon={Plus}>{t('record_auction')}</Btn>
+          <Btn variant="primary" onClick={() => {
+            const nextMonth = confirmedAucs.length + 1
+            setAucForm(f => ({ ...f, month: String(nextMonth) }))
+            setAucFormOpen(true)
+          }} icon={Plus}>{t('record_auction')}</Btn>
           <Btn variant="secondary" onClick={() => router.push(`/groups/${groupId}/settings`)} icon={Settings2}>Settings</Btn>
         </div>
       </div>
@@ -434,13 +438,13 @@ export default function GroupLedgerPage() {
             <tbody>
               {payments.map((p: any) => (
                 <Tr key={p.id}>
-                  <Td className="whitespace-nowrap font-medium opacity-80 text-[10px] leading-tight">
+                  <Td className="whitespace-nowrap font-medium text-sub leading-tight">
                     <div>{fmtDate(p.payment_date)}</div>
-                    <div className="opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                    <div className="text-muted">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
                   </Td>
                   <Td>
                     <div className="font-bold text-sm">{p.members?.persons?.name || 'Unknown'}</div>
-                    <div className="text-[10px] opacity-40 font-mono">Ticket #{p.members?.ticket_no}</div>
+                    <div className="text-sub font-mono">Ticket #{p.members?.ticket_no}</div>
                   </Td>
                   <Td className="font-bold text-xs">M{p.month}</Td>
                   <Td right className="font-black text-sm text-[var(--success)]">{fmt(p.amount)}</Td>

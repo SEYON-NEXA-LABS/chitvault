@@ -82,11 +82,8 @@ export default function AuctionsPage() {
     <div className="space-y-6 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-[var(--text)]">{t('auction_ledger')}</h1>
-          <p className="text-xs opacity-60 mt-1 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-            {t('auctions_history_log')}
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">{t('auction_ledger')}</h1>
+          <p className="text-sub mt-1">{t('auctions_history_log')}</p>
         </div>
         <div className="flex gap-2">
            <Btn variant="secondary" size="sm" onClick={() => downloadCSV(auctions, 'auctions')} icon={FileSpreadsheet}>CSV</Btn>
@@ -95,12 +92,12 @@ export default function AuctionsPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 no-print">
         <div className="bg-[var(--surface)] p-4 rounded-3xl neumo-out">
-          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">{t('page_yield')}</div>
-          <div className="text-xl font-black italic text-[var(--accent)]">{fmt(pageYield)}</div>
+          <div className="text-sub mb-1 text-sm font-medium">{t('page_yield')}</div>
+          <div className="text-2xl font-black text-[var(--accent)]">{fmt(pageYield)}</div>
         </div>
         <div className="bg-[var(--surface)] p-4 rounded-3xl neumo-out">
-          <div className="text-[10px] font-black opacity-30 uppercase tracking-widest mb-1">{t('total_payouts')}</div>
-          <div className="text-xl font-black italic text-[var(--success)]">{fmt(pagePayouts)}</div>
+          <div className="text-sub mb-1 text-sm font-medium">{t('total_payouts')}</div>
+          <div className="text-2xl font-black text-[var(--success)]">{fmt(pagePayouts)}</div>
         </div>
       </div>
 
@@ -121,34 +118,34 @@ export default function AuctionsPage() {
                 <Tr key={a.id}>
                   <Td label="Group">
                     <Link href={`/groups/${a.group_id}`} className="flex flex-col min-h-[48px] justify-center hover:opacity-70 transition-opacity">
-                      <span className="text-[13px] font-extrabold text-[var(--accent)]">{g ? getGroupDisplayName(g, t) : '—'}</span>
-                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest flex items-center gap-1">
+                      <span className="text-sm font-semibold text-[var(--accent)]">{g ? getGroupDisplayName(g, t) : '—'}</span>
+                      <span className="text-xs text-sub flex items-center gap-1">
                         {t('group')} <ExternalLink size={8} />
                       </span>
                     </Link>
                   </Td>
                   <Td label="Month">
                     <div className="flex flex-col min-h-[48px] justify-center">
-                      <span className="text-[13px] font-black font-mono text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
-                      <span className="text-[8px] font-black uppercase tracking-tighter opacity-40">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
+                      <span className="text-sm font-bold text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
+                      <span className="text-xs text-sub">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
                     </div>
                   </Td>
                   <Td label="Winner">
                     <div className="flex flex-col min-h-[48px] justify-center">
-                      <span className="text-[13px] font-extrabold text-[var(--text)] truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</span>
-                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">{w ? `Ticket #${w.ticket_no}` : 'N/A'}</span>
+                      <span className="text-sm font-semibold text-[var(--text)] truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</span>
+                      <span className="text-xs text-sub">{w ? `Ticket #${w.ticket_no}` : 'N/A'}</span>
                     </div>
                   </Td>
                   <Td label="Bid" right>
                     <div className="flex flex-col min-h-[48px] justify-center items-end">
-                      <span className="text-[13px] font-black font-mono text-[var(--danger)]">{fmt(a.auction_discount)}</span>
-                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">{t('winning_bid_label')}</span>
+                      <span className="text-sm font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</span>
+                      <span className="text-xs text-sub">{t('winning_bid_label')}</span>
                     </div>
                   </Td>
                   <Td label="Payout" right>
                     <div className="flex flex-col min-h-[48px] justify-center items-end">
-                      <span className="text-[13px] font-black font-mono text-[var(--success)]">{fmt(a.net_payout)}</span>
-                      <span className="text-[9px] font-black opacity-40 uppercase tracking-widest">
+                      <span className="text-sm font-bold text-[var(--success)]">{fmt(a.net_payout)}</span>
+                      <span className="text-xs text-sub">
                         {a.is_payout_settled ? `${t('payout_amt')}: ${fmtDate(a.payout_date || '')}` : t('unsettled')}
                       </span>
                     </div>

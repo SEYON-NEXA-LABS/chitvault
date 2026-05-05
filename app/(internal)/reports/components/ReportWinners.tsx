@@ -29,7 +29,7 @@ export function ReportWinners({ auctions, groups, members, filter, onFilterChang
                 <Tr key={a.id}>
                   <Td>{fmtDate(a.created_at)}</Td>
                   <Td>
-                    <Link href={`/members/${m?.id}`} className="font-semibold hover:text-[var(--accent)] hover:underline transition-colors">
+                    <Link href={`/members/${m?.person_id}`} className="font-semibold hover:text-[var(--accent)] hover:underline transition-colors">
                       👑 {m?.persons?.name || 'Unknown'}
                     </Link>
                   </Td>
@@ -84,7 +84,7 @@ export function ReportWinnerIntelligence({ auctions, groups, members, payments }
             {insights.slice(0, 15).map(pData => (
               <Tr key={pData.person.id}>
                 <Td>
-                  <Link href={`/members/${insights.find(idx => idx.person.id === pData.person.id)?.wins[0]?.auction.winner_id}`} className="font-bold hover:text-[var(--accent)] hover:underline transition-colors">
+                  <Link href={`/members/${pData.person.id}`} className="font-bold hover:text-[var(--accent)] hover:underline transition-colors">
                     {pData.person.name}
                   </Link>
                 </Td>

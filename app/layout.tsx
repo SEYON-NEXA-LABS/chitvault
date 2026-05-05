@@ -4,7 +4,7 @@ import { BrandingProvider } from '@/lib/branding/context'
 import { I18nProvider } from '@/lib/i18n/context'
 import { PinLockProvider } from '@/lib/lock/context'
 import { InviteAutoLinker } from '@/components/auth/InviteAutoLinker'
-import { APP_NAME, APP_DESCRIPTION, APP_SLOGAN, APP_VERSION } from '@/lib/utils/index'
+import { APP_NAME, APP_DESCRIPTION, APP_SLOGAN, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
 import { ThemeProvider } from '@/lib/theme/context'
 import { UpdateNotification } from '@/components/ui'
 import { CookieConsent } from '@/components/ui/CookieConsent'
@@ -102,9 +102,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             // Register PWA Service Worker with cache invalidation
             if ('serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                // Using APP_VERSION from the environment or a fallback
-                var appVersion = '${APP_VERSION}';
-                navigator.serviceWorker.register('/sw.js?v=' + appVersion).catch(function(err) {
+                var appVersion = '${APP_COMMIT_ID !== 'N/A' ? APP_COMMIT_ID : APP_VERSION}';
+                var swPath = '/sw.js?v=' + appVersion;
+
+                navigator.serviceWorker.register(swPath).then(function(reg) {
+                  // 1. Detect updates from standard SW lifecycle
+                  reg.addEventListener('updatefound', function() {
+                    var newWorker = reg.installing;
+                    if (newWorker) {
+                      newWorker.addEventListener('statechange', function() {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                          window.dispatchEvent(new CustomEvent('app-update-available'));
+                        }
+                      });
+                    }
+                  });
+
+                  // 2. FORCE PROBE: Check for update on every page load (Bypass Hostinger cache)
+                  // We fetch sw.js with a timestamp to see if the server has a newer one
+                  if (navigator.onLine) {
+                    reg.update().catch(function(e) { console.debug('Probe failed', e); });
+                  }
+                }).catch(function(err) {
                   console.warn('SW registration failed: ', err);
                 });
               });

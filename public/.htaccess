@@ -1,0 +1,21 @@
+# ChitVault Cache Invalidation Rules
+# Optimized for Hostinger (Litespeed/Apache)
+
+# 1. NEVER cache Service Worker and Manifest
+<FilesMatch "(sw\.js|manifest\.json)$">
+    Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+# 2. NEVER cache the main entry point (prevents stuck versions)
+<FilesMatch "^(index\.html|)$">
+    Header set Cache-Control "max-age=0, no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+# 3. Cache static assets (fonts, icons) for 1 year
+<FilesMatch "\.(woff2|png|jpg|jpeg|svg|ico)$">
+    Header set Cache-Control "max-age=31536000, public"
+</FilesMatch>

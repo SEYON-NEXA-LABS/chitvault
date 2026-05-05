@@ -19,13 +19,13 @@ export default function ReportsHubPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-bold">{t('reports_hub')}</h1>
+        <h1>{t('reports_hub')}</h1>
       </div>
 
       <div className="space-y-10">
         {categories.map(category => (
           <div key={category}>
-            <h2 className="text-xs font-bold uppercase tracking-widest mb-4 px-1 opacity-50">
+            <h2 className="uppercase tracking-widest mb-4 px-1 text-[var(--text3)]">
               {category}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

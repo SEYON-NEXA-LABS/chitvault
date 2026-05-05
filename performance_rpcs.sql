@@ -145,11 +145,13 @@ begin
     return (
         select json_agg(t) from (
             with top_groups as (
-                select group_id, sum(amount) as vol
-                from payments
-                where firm_id = p_firm_id 
-                  and deleted_at is null 
-                  and payment_date >= (current_date - interval '6 months')
+                select p.group_id, sum(p.amount) as vol
+                from payments p
+                join groups g on g.id = p.group_id
+                where p.firm_id = p_firm_id 
+                  and p.deleted_at is null 
+                  and g.status = 'active'
+                  and p.payment_date >= (current_date - interval '6 months')
                 group by 1
                 order by 2 desc
                 limit 10
