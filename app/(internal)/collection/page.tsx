@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
@@ -8,9 +8,8 @@ import { fmt, cn, getGroupDisplayName, fmtDate } from '@/lib/utils'
 import { Loading, Empty, Badge, Btn, Modal, Toast, Pagination } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import {
-  Printer, Search, History, LayoutGrid, Trash2,
-  ChevronDown, CreditCard, MessageSquare, AlertCircle,
-  TrendingUp, UsersRound, Phone
+  Search, UsersRound, TrendingUp, AlertCircle, Printer, MessageCircle, Wallet, History, ChevronDown, LayoutGrid,
+  Phone, MessageSquare, CreditCard, Trash2
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
@@ -128,7 +127,7 @@ function CollectionContent() {
   return (
     <div className="space-y-8 pb-24">
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-3 gap-5 no-print">
         {[
           { label: 'Total Outstanding', value: fmt(stats.totalOut), icon: TrendingUp, bg: 'bg-blue-600' },
           { label: 'Registry Size', value: totalCount, icon: UsersRound, bg: 'bg-violet-600' },
@@ -193,31 +192,103 @@ function CollectionContent() {
 
       {/* Content */}
       {loading ? <Loading /> : viewMode === 'audit' ? (
-        <AuditTable data={auditData} isOwner={isOwner} onRevert={revertPayment} />
+        <div className="no-print">
+          <AuditTable data={auditData} isOwner={isOwner} onRevert={revertPayment} />
+        </div>
       ) : (
-        <div className="space-y-3">
-          {data.length === 0
-            ? <Empty text="No pending dues found." />
-            : data.map(person => (
-                <MemberAccordion
-                  key={person.person_id}
-                  person={person}
-                  t={t}
-                  onCollect={() => setPayModal(person)}
-                  onHistory={() => setHistoryModal(person)}
-                  onWhatsApp={() => {
-                    const phone = person.person_phone?.replace(/[^\d]/g, '')
-                    if (!phone) return show('No phone recorded.', 'error')
-                    const msg = `Hi ${person.person_name}, you have ₹${person.total_balance.toLocaleString('en-IN')} outstanding with ${firm?.name}.`
-                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
-                  }}
-                />
-              ))
-          }
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b bg-slate-50 no-print">
+                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Subscriber / Phone</th>
+                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Group / Membership</th>
+                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Pending Months</th>
+                <th className="px-6 py-4 text-right text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Balance</th>
+                <th className="px-6 py-4 text-right text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Actions</th>
+              </tr>
+              {/* Print Only Header */}
+              <tr className="hidden print:table-row border-b-2 border-slate-900">
+                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Subscriber / Phone</th>
+                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Group / Membership</th>
+                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Pending Months</th>
+                <th className="py-2 text-right text-[var(--text-xs)] font-black uppercase tracking-widest">Outstanding</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr><td colSpan={5} className="py-20 text-center"><Empty text="No pending dues found." /></td></tr>
+              ) : data.map(person => (
+                <React.Fragment key={person.person_id}>
+                  {/* Person Header Row */}
+                  <tr className="bg-slate-50/50 border-t border-slate-200 group">
+                    <td className="px-6 py-4 print:px-3 print:py-2">
+                      <div className="font-black text-[var(--text-sm)] uppercase tracking-tight text-slate-900">{person.person_name}</div>
+                      <div className="text-[var(--text-xs)] font-mono text-slate-400 mt-0.5">{person.person_phone}</div>
+                    </td>
+                    <td className="px-6 py-4 print:hidden" colSpan={2}></td>
+                    <td className="px-6 py-4 text-right print:px-3 print:py-2">
+                      <div className="text-[var(--text-sm)] font-black text-slate-900">{fmt(person.total_balance)}</div>
+                      <div className="text-[var(--text-xs)] font-bold uppercase tracking-widest text-slate-400 mt-1 no-print">Total</div>
+                    </td>
+                    <td className="px-6 py-4 text-right no-print">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => {
+                          const phone = person.person_phone?.replace(/[^\d]/g, '')
+                          if (!phone) return show('No phone recorded.', 'error')
+                          const msg = `Hi ${person.person_name}, you have ₹${person.total_balance.toLocaleString('en-IN')} outstanding with ${firm?.name}.`
+                          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+                        }} className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100">
+                          <MessageCircle size={14} />
+                        </button>
+                        <button onClick={() => setHistoryModal(person)} className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-slate-200">
+                          <History size={14} />
+                        </button>
+                        <button onClick={() => setPayModal(person)} className="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[var(--text-xs)] uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
+                          <Wallet size={12} /> Collect
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {/* Membership Detail Rows */}
+                  {person.memberships.map((m: any) => {
+                    const pendingDues = (m.dues || []).filter((d: any) => (d.amount_due - d.amount_paid) > 0.1);
+                    const groupBal = pendingDues.reduce((s: number, d: any) => s + (d.amount_due - d.amount_paid), 0);
+                    return (
+                      <tr key={m.member.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors">
+                        <td className="px-6 py-3 print:px-3 print:py-1"></td>
+                        <td className="px-6 py-3 print:px-3 print:py-1">
+                          <div className="text-[var(--text-xs)] font-bold text-slate-600 uppercase tracking-tight">
+                            {m.group?.name} <span className="opacity-30 ml-1 font-mono">#{m.member.ticket_no}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 print:px-3 print:py-1">
+                          <div className="flex flex-wrap gap-1">
+                            {pendingDues.map((d: any) => (
+                              <span key={d.month} className="px-2 py-0.5 bg-slate-100 rounded-md text-[var(--text-xs)] font-black text-slate-500 font-mono">
+                                M{d.month}
+                              </span>
+                            ))}
+                            {pendingDues.length === 0 && <span className="text-[var(--text-xs)] text-slate-300 italic">No dues</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 text-right print:px-3 print:py-1">
+                          <div className="text-[var(--text-xs)] font-bold text-slate-700">
+                            {groupBal > 0.01 ? fmt(groupBal) : '—'}
+                          </div>
+                        </td>
+                        <td className="no-print"></td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <div className="flex justify-center">
+
+      <div className="flex justify-center no-print">
         <Pagination current={page} total={totalCount} pageSize={ITEMS_PER_PAGE} onPageChange={setPage} />
       </div>
 

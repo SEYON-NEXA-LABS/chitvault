@@ -1,13 +1,23 @@
 'use client'
 
 import { Card, Badge, Btn } from '@/components/ui'
-import { ShieldCheck, FileText, Scale, BookOpen, ArrowRight, Gavel, ShieldAlert } from 'lucide-react'
+import { ShieldCheck, FileText, Scale, BookOpen, ArrowRight, Gavel, ShieldAlert, Cookie, ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { useFirm } from '@/lib/firm/context'
 
 export default function LegalHubPage() {
   const router = useRouter()
   const { t } = useI18n()
+  const { profile, loading } = useFirm()
+
+  const handleBack = () => {
+    if (!loading && profile) {
+      router.push('/dashboard')
+    } else {
+      router.push('/login')
+    }
+  }
 
   const policies = [
     {
@@ -38,6 +48,15 @@ export default function LegalHubPage() {
       href: '/legal/audit'
     },
     {
+      id: 'cookies',
+      title: 'legal_cookies',
+      desc: 'Information about how we use cookies for sessions and security.',
+      icon: Cookie,
+      color: '#eab308',
+      bg: '#fefce8',
+      href: '/legal/cookie-policy'
+    },
+    {
       id: 'terms',
       title: 'legal_terms',
       desc: 'General terms and conditions for using the ChitVault SaaS platform.',
@@ -51,9 +70,14 @@ export default function LegalHubPage() {
   return (
     <div className="max-w-5xl space-y-8 pb-20">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-black tracking-tight">{t('legal_title')}</h1>
-        <p className="text-sm opacity-60 mt-1">{t('legal_desc')}</p>
+      <div className="flex items-center gap-4">
+        <button onClick={handleBack} className="p-2.5 rounded-xl border hover:bg-[var(--surface2)] transition-colors">
+          <ArrowLeft size={18} />
+        </button>
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">{t('legal_title')}</h1>
+          <p className="text-sm opacity-60 mt-1">{t('legal_desc')}</p>
+        </div>
       </div>
 
       {/* Policy Grid */}

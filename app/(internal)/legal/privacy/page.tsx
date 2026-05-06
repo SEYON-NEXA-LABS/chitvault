@@ -4,6 +4,7 @@ import { Card, Badge } from '@/components/ui'
 import { ArrowLeft, ShieldCheck, Lock, EyeOff, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
+import { APP_DEVELOPER } from '@/lib/utils'
 
 export default function PrivacyPage() {
   const router = useRouter()
@@ -48,7 +49,7 @@ export default function PrivacyPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-2xl bg-[var(--surface3)] space-y-1">
                   <h4 className="text-[10px] font-black uppercase opacity-40">Data Processor Role</h4>
-                  <p className="text-xs">Foundation Finance Systems only processes data on the Firm&apos;s behalf.</p>
+                  <p className="text-xs">{APP_DEVELOPER} only processes data on the Firm&apos;s behalf.</p>
                 </div>
                 <div className="p-4 rounded-2xl bg-[var(--surface3)] space-y-1 border border-red-500/20">
                   <h4 className="text-[10px] font-black uppercase text-red-500">KYC Policy</h4>
@@ -72,7 +73,7 @@ export default function PrivacyPage() {
           <div className="footer-doc pt-12 border-t border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 opacity-40">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-widest">Document Ref: CV-POL-PRIVACY</p>
-              <p className="text-[10px]">© 2026 Foundation Finance Systems. All Rights Reserved.</p>
+              <p className="text-[10px]">© 2026 {APP_DEVELOPER}. All Rights Reserved.</p>
             </div>
           </div>
         </div>

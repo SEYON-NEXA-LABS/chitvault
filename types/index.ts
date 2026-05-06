@@ -151,6 +151,8 @@ export interface Denomination {
   coin_1:       number
   total:        number
   notes:        string | null
+  is_verified:  boolean
+  deleted_at:   string | null
   created_at:   string
 }
 

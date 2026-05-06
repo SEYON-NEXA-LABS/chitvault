@@ -13,12 +13,13 @@ import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { downloadCSV } from '@/lib/utils/csv'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet, Info, AlertTriangle } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Group, Auction, Payment, Firm } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
+import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
 
 export default function GroupsPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -48,6 +49,8 @@ export default function GroupsPage() {
   })
   const [saving, setSaving] = useState(false)
   const [totalGroupCount, setTotalGroupCount] = useState(0)
+
+  const [delModal, setDelModal] = useState<{ open: boolean, id: number | null, name: string }>({ open: false, id: null, name: '' })
 
   const [groupSummaries, setGroupSummaries] = useState<any[]>([])
 
@@ -199,8 +202,14 @@ export default function GroupsPage() {
 
   async function del(id: number) {
     if (!can('deleteGroup')) return
-    if (!confirm('Are you sure you want to move this group to trash? It will be retrievable for 90 days.')) return
-    haptics.heavy()
+    const g = groups.find(x => x.id === id) || archived.find(x => x.id === id)
+    setDelModal({ open: true, id, name: g?.name || 'this group' })
+  }
+
+  async function confirmDelete() {
+    const id = delModal.id
+    if (!id) return
+    setSaving(true)
     const { error } = await supabase.from('groups').update({ deleted_at: new Date() }).eq('id', id)
     if (error) showToast(error.message, 'error')
     else {
@@ -209,7 +218,9 @@ export default function GroupsPage() {
         await logActivity(firm.id, 'GROUP_ARCHIVED', 'group', id, { id });
       }
       load()
+      setDelModal({ open: false, id: null, name: '' })
     }
+    setSaving(false)
   }
 
   const GroupTable = ({ list, showArchBtn }: { list: Group[], showArchBtn: boolean }) => (
@@ -415,6 +426,16 @@ export default function GroupsPage() {
       </Modal>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
+
+      <CascadeDeleteModal 
+        open={delModal.open}
+        onClose={() => setDelModal({ open: false, id: null, name: '' })}
+        onConfirm={confirmDelete}
+        title={`Move "${delModal.name}" to Trash?`}
+        targetId={delModal.id || ''}
+        targetType="group"
+        loading={saving}
+      />
     </div>
   )
 }

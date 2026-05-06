@@ -37,4 +37,4 @@ The providers of ChitVault shall not be held liable for:
 By using this platform, you acknowledge that you are using a bookkeeping tool and maintain full legal responsibility for your firm's actual financial transactions.
 
 ---
-© 2026 **Foundation Finance Systems**
+© 2026 **NVision Systems (Finance & Tech)**

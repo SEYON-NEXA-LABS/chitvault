@@ -11,10 +11,12 @@ import { useGroupLedgerData } from '@/lib/hooks/useGroupLedgerData'
 import { fmt, getToday, cn, fmtDate, getGroupDisplayName } from '@/lib/utils'
 import { 
   Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal,
-  TableCard, Table, Tr, Th, Td
+  TableCard, Table, Tr, Th, Td,
+  Modal
 } from '@/components/ui'
 import { 
-  Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2
+  Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2,
+  CheckCircle2
 } from 'lucide-react'
 
 // Extracted Sub-components
@@ -69,6 +71,27 @@ export default function GroupLedgerPage() {
   const [collectPersonId, setCollectPersonId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [view, setView] = useState<'members' | 'auctions' | 'payments'>('members')
+  const [settlingAuctionId, setSettlingAuctionId] = useState<number | null>(null)
+
+  const handleQuickSettle = async (id: number) => {
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('auctions')
+        .update({ 
+          is_payout_settled: true, 
+          payout_date: getToday() 
+        })
+        .eq('id', id)
+      if (error) throw error
+      showToast('Payout Settled!', 'success')
+      setSettlingAuctionId(null)
+      refresh()
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   // --- Auction Logic States ---
   const [aucFormOpen, setAucFormOpen] = useState(false)
@@ -405,6 +428,7 @@ export default function GroupLedgerPage() {
           <AuctionLedger 
             group={group} auctionHistory={auditedAuctions} commissions={commissions} members={members} t={t}
             setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
+            setSettlingAuctionId={setSettlingAuctionId}
           />
         </div>
       )}
@@ -415,7 +439,7 @@ export default function GroupLedgerPage() {
           handlePrintMemberList={() => printMemberList(group, members, firm?.name || '')}
           handleExport={() => downloadCSV(members, `${group.name}_members`)}
           setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
-          deleteMember={async (id) => { if(confirm('Delete?')) { await supabase.from('members').delete().eq('id', id); refresh() }}}
+          deleteMember={async (id) => { await supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', id); refresh() }}
           setSelectedMember={setSelectedMemberId}
           setCollectPersonId={setCollectPersonId}
         />
@@ -485,6 +509,50 @@ export default function GroupLedgerPage() {
       />
 
       <AuditModal open={!!mathModal} onClose={() => setMathModal(null)} group={group} mathModal={mathModal} />
+
+      <Modal
+        open={!!settlingAuctionId}
+        onClose={() => setSettlingAuctionId(null)}
+        title={t('confirm_payout_title') || 'Confirm Payout'}
+      >
+        {(() => {
+          const a = auditedAuctions.find((x: any) => x.id === settlingAuctionId)
+          const w = members.find((x: any) => x.id === a?.winner_id)
+          if (!a) return null
+
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-[var(--success-dim)] text-[var(--success)] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight">{t('confirm_payout_q') || 'Proceed with Payout?'}</h3>
+                <p className="text-sm text-slate-500">{t('confirm_payout_desc') || 'This will mark the auction as paid and record today as the payout date.'}</p>
+              </div>
+
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">{t('winner')}</span>
+                  <span className="text-sm font-black">{w?.persons?.name || '—'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">{t('payout_amt')}</span>
+                  <span className="text-lg font-black text-[var(--success)]">{fmt(a.net_payout || a.auction_discount)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Btn variant="secondary" onClick={() => setSettlingAuctionId(null)}>
+                  {t('cancel')}
+                </Btn>
+                <Btn variant="primary" onClick={() => handleQuickSettle(a.id)}>
+                  {t('confirm_mark_settled')}
+                </Btn>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
 
       <MemberDetailsModal 
         open={!!selectedMemberId} 

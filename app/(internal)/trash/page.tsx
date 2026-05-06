@@ -54,19 +54,23 @@ export default function TrashPage() {
     let exportCols = 'id, deleted_at'
     
     if (activeTab === 'groups') exportCols = 'id, name, chit_value, duration, deleted_at'
-    if (activeTab === 'members') exportCols = 'id, ticket_no, group_id, person_id, deleted_at, persons(id, name), groups(id, name)'
+    if (activeTab === 'members') exportCols = 'id, ticket_no, group_id, person_id, deleted_at, persons:person_id(id, name), groups:group_id(id, name)'
     if (activeTab === 'persons') exportCols = 'id, name, phone, address, deleted_at'
-    if (activeTab === 'payments') exportCols = 'id, amount, month, member_id, group_id, deleted_at, members(id, ticket_no, persons(name)), groups(id, name)'
-    if (activeTab === 'auctions') exportCols = 'id, month, group_id, winner_id, deleted_at, groups(id, name), members(id, persons(name))'
-    if (activeTab === 'settlements') exportCols = 'id, total_amount, member_id, deleted_at, members(id, persons(name))'
-    if (activeTab === 'commissions') exportCols = 'id, month, group_id, commission_amt, deleted_at, groups(id, name)'
+    if (activeTab === 'payments') exportCols = 'id, amount, month, member_id, group_id, deleted_at, members:member_id(id, ticket_no, persons:person_id(name)), groups:group_id(id, name)'
+    if (activeTab === 'auctions') exportCols = 'id, month, group_id, winner_id, deleted_at, groups:group_id(id, name), members:winner_id(id, persons:person_id(name))'
+    if (activeTab === 'settlements') exportCols = 'id, total_amount, member_id, deleted_at, members:member_id(id, persons:person_id(name))'
+    if (activeTab === 'commissions') exportCols = 'id, month, group_id, commission_amt, deleted_at, groups:group_id(id, name)'
     if (activeTab === 'denominations') exportCols = 'id, amount, entry_date, deleted_at'
     if (activeTab === 'staff') exportCols = 'id, full_name, role, status, deleted_at'
 
     const currentTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
     let query = withFirmScope(supabase.from(currentTable).select(exportCols), targetId).not('deleted_at', 'is', null).order('deleted_at', { ascending: false })
 
-    const { data: list } = await query
+    const { data: list, error: listError } = await query
+    if (listError) {
+      console.error(`Trash load error [${activeTab}]:`, listError)
+      show(listError.message, 'error')
+    }
     setData(list || [])
     setLoading(false)
     setSelectedIds(new Set())
