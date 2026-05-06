@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, cn, getToday } from '@/lib/utils'
+import { fmt, fmtDate, cn, getToday, amountDue } from '@/lib/utils'
 import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, Pagination
+  Modal, Field, Loading, Empty, Toast, Pagination, CSVImportModal
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -17,9 +17,9 @@ import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
 import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet } from 'lucide-react'
-import { CSVImportModal } from '@/components/ui'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
 
 interface Contact extends Person {
   tickets: Member[];
@@ -62,6 +62,8 @@ export default function MembersPage() {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const PAGE_SIZE = 20
+
+  const [delModal, setDelModal] = useState<{ open: boolean, id: number | string | null, name: string, isBulk: boolean }>({ open: false, id: null, name: '', isBulk: false })
 
   const [summaryStats, setSummaryStats] = useState({ 
     activePeople: 0, 
@@ -246,14 +248,20 @@ export default function MembersPage() {
 
       const allMonths = Array.from({ length: group.duration }, (_, i) => i + 1)
       const payableMonths = allMonths.filter(month => {
+        const auc = auctions.find(a => a.group_id === group.id && a.month === month && a.status === 'confirmed')
+        const div = auc?.dividend || 0
+        const due = amountDue(group.monthly_contribution, div, group.auction_scheme)
         const paidForMonth = mPayments.filter(pay => pay.month === month).reduce((sum, pay) => sum + Number(pay.amount), 0)
-        return paidForMonth < group.monthly_contribution
+        return paidForMonth < (due - 0.01)
       })
 
       const defaultMonth = payableMonths.length > 0 ? payableMonths[0] : null
       if (defaultMonth) {
+        const auc = auctions.find(a => a.group_id === group.id && a.month === defaultMonth && a.status === 'confirmed')
+        const div = auc?.dividend || 0
+        const targetDue = amountDue(group.monthly_contribution, div, group.auction_scheme)
         const paid = mPayments.filter(pay => pay.month === defaultMonth).reduce((sum, pay) => sum + Number(pay.amount), 0)
-        const balance = Math.max(0, group.monthly_contribution - paid)
+        const balance = Math.max(0, targetDue - paid)
         setPayForm({
           month: String(defaultMonth),
           amount: String(balance),
@@ -413,15 +421,17 @@ export default function MembersPage() {
     if (authErr || !user) { showToast('Authentication error!', 'error'); setSaving(false); return }
 
     const group = allGroups.find(g => g.id === payMember.group_id)
-    const amountDue = group?.monthly_contribution || 0
+    const auc = auctions.find(a => a.group_id === payMember.group_id && a.month === +payForm.month && a.status === 'confirmed')
+    const div = auc?.dividend || 0
+    const targetDue = amountDue(group?.monthly_contribution || 0, div, group?.auction_scheme)
     const alreadyPaid = payments.filter(p => p.member_id === payMember.id && p.group_id === payMember.group_id && p.month === +payForm.month).reduce((s, p) => s + Number(p.amount), 0)
-    const balanceDue = Math.max(0, amountDue - alreadyPaid - (+payForm.amount || 0))
-    const isPartial = balanceDue > 0
+    const balanceDue = Math.max(0, targetDue - alreadyPaid - (+payForm.amount || 0))
+    const isPartial = balanceDue > 0.01
 
     const payload: Omit<Payment, 'id'|'created_at'> = {
       firm_id: payMember.firm_id, member_id: payMember.id, group_id: payMember.group_id,
       month: +payForm.month, amount: +payForm.amount, payment_date: payForm.payment_date, mode: payForm.mode as any,
-      status: 'paid', amount_due: amountDue, balance_due: balanceDue, payment_type: isPartial ? 'partial' : 'full',
+      status: 'paid', amount_due: targetDue, balance_due: balanceDue, payment_type: isPartial ? 'partial' : 'full',
       collected_by: profile?.id || null,
     }
     const { error } = await supabase.from('payments').insert(payload)
@@ -441,12 +451,35 @@ export default function MembersPage() {
 
   async function deletePerson(pId: number) {
     if (!can('deleteMember')) return
-    if (!confirm('Are you sure? This will move the person and ALL their tickets to trash!')) return
+    const p = persons.find(x => x.id === pId)
+    setDelModal({ open: true, id: pId, name: p?.name || 'this person', isBulk: false })
+  }
+
+  async function confirmDeletePerson() {
+    if (!delModal.id) return
+    setSaving(true)
     haptics.heavy()
-    const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
-    if (pErr) { showToast(pErr.message, 'error'); return }
-    await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)
-    showToast('Person and tickets moved to trash!'); load()
+    
+    try {
+      if (delModal.isBulk) {
+        const ids = Array.from(selectedIds)
+        await supabase.from('persons').update({ deleted_at: new Date() }).in('id', ids)
+        await supabase.from('members').update({ deleted_at: new Date() }).in('person_id', ids)
+        showToast(`${ids.length} people moved to trash!`, 'success')
+      } else {
+        const pId = delModal.id
+        const { error: pErr } = await supabase.from('persons').update({ deleted_at: new Date() }).eq('id', pId)
+        if (pErr) throw pErr
+        await supabase.from('members').update({ deleted_at: new Date() }).eq('person_id', pId)
+        showToast('Person and tickets moved to trash!', 'success')
+      }
+      load()
+      setDelModal({ open: false, id: null, name: '', isBulk: false })
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) return <Loading />
@@ -785,6 +818,16 @@ export default function MembersPage() {
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
       
+      <CascadeDeleteModal 
+        open={delModal.open}
+        onClose={() => setDelModal({ open: false, id: null, name: '', isBulk: false })}
+        onConfirm={confirmDeletePerson}
+        title={delModal.isBulk ? `Move ${selectedIds.size} people to Trash?` : `Move "${delModal.name}" to Trash?`}
+        targetId={delModal.isBulk ? Array.from(selectedIds).join(',') : (delModal.id || '')}
+        targetType="person"
+        loading={saving}
+      />
+      
       {/* Floating ActionBar */}
       {selectedIds.size > 0 && (
          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
@@ -800,9 +843,7 @@ export default function MembersPage() {
                   {view === 'people' ? (
                      can('deleteMember') && (
                         <Btn variant="danger" size="sm" icon={Trash2} onClick={() => {
-                           if(confirm(`Move ${selectedIds.size} people and ALL their tickets to trash?`)) {
-                              showToast('Bulk person delete coming soon', 'success')
-                           }
+                           setDelModal({ open: true, id: 'bulk', name: `${selectedIds.size} people`, isBulk: true })
                         }}>Trash All</Btn>
                      )
                   ) : (

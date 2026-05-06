@@ -5,6 +5,7 @@ import { Printer, FileSpreadsheet, Upload, UserPlus, History, Info, Trash2 } fro
 import { Table, TableCard, Th, Tr, Td, Btn, Badge } from '@/components/ui'
 import { fmt, fmtDate, fmtMonth, cn, getWhatsAppLink } from '@/lib/utils'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
 import type { Group, Member, Auction, Payment } from '@/types'
 
 interface MemberDirectoryProps {
@@ -44,6 +45,11 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   setSelectedMember,
   setCollectPersonId
 }) => {
+  const [delModal, setDelModal] = React.useState<{ open: boolean, id: number | null, name: string }>({ open: false, id: null, name: '' })
+
+  const handleDeleteClick = (m: Member) => {
+    setDelModal({ open: true, id: m.id, name: `${m.persons?.name} (Ticket #${m.ticket_no})` })
+  }
   return (
     <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
       actions={
@@ -163,7 +169,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
                       Info
                     </Btn>
                     {can('deleteMember') && (
-                      <Btn size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 font-bold" onClick={() => deleteMember(m.id)} title={t('delete_member') || 'Delete'}>
+                      <Btn size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 font-bold" onClick={() => handleDeleteClick(m)} title={t('delete_member') || 'Delete'}>
                         Delete
                       </Btn>
                     )}
@@ -174,6 +180,18 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
           })}
         </tbody>
       </Table>
+      
+      <CascadeDeleteModal 
+        open={delModal.open}
+        onClose={() => setDelModal({ open: false, id: null, name: '' })}
+        onConfirm={() => {
+          if (delModal.id) deleteMember(delModal.id)
+          setDelModal({ open: false, id: null, name: '' })
+        }}
+        title="Remove Member from Group?"
+        targetId={delModal.id || ''}
+        targetType="member"
+      />
     </TableCard>
   )
 }

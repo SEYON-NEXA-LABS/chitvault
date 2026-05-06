@@ -39,45 +39,49 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) { 
-      setProfile(null)
-      setFirm(null)
-      setLoading(false)
-      return 
-    }
-    
-    // Load profile
-    const { data: dbProfile, error: profErr } = await supabase
-      .from('profiles').select('id, firm_id, role, status, full_name').eq('id', user.id).maybeSingle()
-    
-    if (profErr) console.error('Profile fetch error:', profErr)
-    setProfile(dbProfile)
-    
-    // Determine active firm ID: use switchedFirmId if superadmin
-    const dbRole = dbProfile?.role as UserRole | null
-    const activeFirmId = (dbRole === 'superadmin' && switchedFirmId !== 'all') 
-      ? switchedFirmId 
-      : dbProfile?.firm_id
+    try {
+      if (!silent) setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) { 
+        setProfile(null)
+        setFirm(null)
+        setLoading(false)
+        return 
+      }
+      
+      // Load profile
+      const { data: dbProfile, error: profErr } = await supabase
+        .from('profiles').select('id, firm_id, role, status, full_name').eq('id', user.id).maybeSingle()
+      
+      if (profErr) console.error('Profile fetch error:', profErr)
+      setProfile(dbProfile)
+      
+      // Determine active firm ID: use switchedFirmId if superadmin
+      const dbRole = dbProfile?.role as UserRole | null
+      const activeFirmId = (dbRole === 'superadmin' && switchedFirmId !== 'all') 
+        ? switchedFirmId 
+        : dbProfile?.firm_id
 
-    // Load firm if active ID exists
-    if (activeFirmId) {
-      const { data: f } = await supabase
-        .from('firms')
-        .select('id, name, slug, font, color_profile, plan, plan_status, trial_ends, address, phone, register_token, enabled_schemes')
-        .eq('id', activeFirmId)
-        .maybeSingle()
-      setFirm(f)
-      if (f) applyBranding(f.font || 'Noto Sans', f.color_profile || 'indigo')
-    } else {
-      setFirm(null)
-      // Reset branding to default if global
-      applyBranding('Noto Sans', 'indigo')
+      // Load firm if active ID exists
+      if (activeFirmId) {
+        const { data: f } = await supabase
+          .from('firms')
+          .select('id, name, slug, font, color_profile, plan, plan_status, trial_ends, address, phone, register_token, enabled_schemes')
+          .eq('id', activeFirmId)
+          .maybeSingle()
+        setFirm(f)
+        if (f) applyBranding(f.font || 'Noto Sans', f.color_profile || 'indigo')
+      } else {
+        setFirm(null)
+        // Reset branding to default if global
+        applyBranding('Noto Sans', 'indigo')
+      }
+    } catch (err) {
+      console.warn('FirmProvider Initialization Failed (Offline?):', err)
+    } finally {
+      setLoading(false)
     }
-    
-    setLoading(false)
   }, [supabase, switchedFirmId])
 
   const handleSwitch = useCallback((id: string | 'all') => {

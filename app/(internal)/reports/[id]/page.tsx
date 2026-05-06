@@ -59,6 +59,7 @@ function ReportContent() {
   // Selection state for specific reports
   const [selectedGroupId, setSelectedGroupId] = useState(searchParams.get('group_id') || '')
   const [selectedMemberId, setSelectedMemberId] = useState(searchParams.get('member_id') || '')
+  const [selectedDate, setSelectedDate] = useState(getToday())
   const [winnerFilter, setWinnerFilter] = useState<'all'|'pending'|'settled'>('all')
 
   const reports = useMemo(() => GET_REPORTS(t, term), [t, term])
@@ -95,14 +96,20 @@ function ReportContent() {
 
         // 4. Payments: Always Paginated
         if (['today_collection', 'cashflow', 'upcoming_pay', 'group_ledger', 'member_history', 'reconciliation', 'auction_insights'].includes(id)) {
-          let selectStr = 'id, member_id, group_id, amount, mode, payment_date, created_at';
+          let selectStr = 'id, member_id, group_id, month, amount, mode, payment_date, created_at';
           
           // For collection reports, we need the member names
           if (['today_collection', 'reconciliation'].includes(id)) {
             selectStr += ', members:member_id(person_id, persons:person_id(name))';
           }
 
-          queries.push(withFirmScope(supabase.from('payments').select(selectStr, { count: 'exact' }), targetId)
+          let payQ = withFirmScope(supabase.from('payments').select(selectStr, { count: 'exact' }), targetId)
+          
+          if (id === 'today_collection') {
+            payQ = payQ.eq('payment_date', selectedDate)
+          }
+
+          queries.push(payQ
             .order('created_at', { ascending: false })
             .range(range[0], range[1]))
         } else { queries.push(Promise.resolve({ data: [] })) }
@@ -157,11 +164,18 @@ function ReportContent() {
     }
 
     fetchReportData()
-  }, [id, targetId, supabase, page, pageSize, searchParams])
+  }, [id, targetId, supabase, page, pageSize, searchParams, selectedDate])
 
   const renderReport = () => {
     switch (id) {
-      case 'today_collection': return <ReportTodayCollection payments={data.payments} members={data.members} groups={data.groups} stats={data.stats} />
+      case 'today_collection': return (
+        <div className="space-y-4">
+          <Field label="Select Date" className="max-w-sm no-print">
+            <input type="date" className={inputClass} style={inputStyle} value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setPage(1) }} />
+          </Field>
+          <ReportTodayCollection payments={data.payments} members={data.members} groups={data.groups} stats={data.stats} selectedDate={selectedDate} />
+        </div>
+      )
       case 'pnl': return <ReportPNL groups={data.groups} commissions={data.commissions} stats={data.stats} t={t} term={term} />
       case 'cashflow': return <ReportCashFlow payments={data.payments} auctions={data.auctions} />
       case 'dividend': return <ReportMemberBenefits groups={data.groups} auctions={data.auctions} term={term} />
@@ -239,7 +253,7 @@ function ReportContent() {
                     } else if (id === 'pnl') {
                       table = 'foreman_commissions'; exportCols = 'id, group_id, month, commission_amt, status, created_at'
                     } else if (['today_collection', 'cashflow'].includes(id)) {
-                      table = 'payments'; exportCols = 'id, member_id, group_id, amount, mode, payment_date, created_at'
+                      table = 'payments'; exportCols = 'id, member_id, group_id, month, amount, mode, payment_date, created_at'
                     } else {
                       table = 'auctions'; exportCols = 'id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status, created_at'
                     }

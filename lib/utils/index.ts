@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.14'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.0.15'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_SLOGAN = 'Professional Digital Ledger'
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and auction auditing. Record-keeping only; actual payments occur externally.'
@@ -54,15 +54,23 @@ export function remainingMonths(startDate: string, duration: number, done: numbe
   return duration - done
 }
 
-// Compute amount due for a member in a given month
-export function amountDue(monthlyContribution: number, dividend: number): number {
+/**
+ * Compute amount due for a member in a given month.
+ * In 'ACCUMULATION' scheme, members pay full contribution.
+ * In 'DIVIDEND' scheme, dividend is subtracted.
+ */
+export function amountDue(monthlyContribution: number, dividend: number, scheme?: string): number {
+  const isAcc = scheme?.toUpperCase() === 'ACCUMULATION'
+  if (isAcc) return monthlyContribution
   return monthlyContribution - dividend
 }
 
 // Format month index to include MMM-YY
 export function fmtMonth(m: number, start?: string | null): string {
+  if (m === undefined || m === null || isNaN(m)) return '—'
   if (!start) return `M${m}`
   const d = new Date(start)
+  if (isNaN(d.getTime())) return `M${m}`
   d.setMonth(d.getMonth() + m - 1)
   const mon = d.toLocaleString('en-IN', { month: 'short' })
   const yr = d.getFullYear().toString().slice(-2)

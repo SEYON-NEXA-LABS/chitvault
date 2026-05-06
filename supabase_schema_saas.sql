@@ -1347,12 +1347,15 @@ BEGIN
           SELECT 
             gs.m as month,
             -- FIX: amount_due for month M is (Contribution - Dividend of Month M-1)
-            mf.monthly_contribution - COALESCE(
-              (SELECT a.per_member_div 
-               FROM foreman_commissions a 
-               WHERE a.group_id = mf.group_id AND a.month = gs.m - 1 AND a.status = 'confirmed'
-              ), 0
-            ) as amount_due,
+            CASE 
+              WHEN mf.auction_scheme = 'ACCUMULATION' THEN mf.monthly_contribution
+              ELSE mf.monthly_contribution - COALESCE(
+                (SELECT a.per_member_div 
+                 FROM foreman_commissions a 
+                 WHERE a.group_id = mf.group_id AND a.month = gs.m - 1 AND a.status = 'confirmed'
+                ), 0
+              )
+            END as amount_due,
             (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE member_id = mf.member_id AND month = gs.m AND deleted_at IS NULL) as amount_paid,
             (SELECT status FROM auctions WHERE group_id = mf.group_id AND month = gs.m) as auction_status
           FROM generate_series(1, mf.latest_month + 1) gs(m)

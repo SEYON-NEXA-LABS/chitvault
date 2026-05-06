@@ -29,6 +29,7 @@ export const PERMISSIONS = {
   // Cashbook & Denominations
   viewCashbook:     ['owner', 'staff'] as UserRole[],
   recordCashEntry:  ['owner', 'staff'] as UserRole[],
+  editCashEntry:    ['owner'] as UserRole[],
   deleteCashEntry:  ['owner'] as UserRole[],
 
   // Settlement

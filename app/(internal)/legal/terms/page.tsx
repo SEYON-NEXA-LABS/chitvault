@@ -100,19 +100,6 @@
            </Card>
          </section>
        </div>
- 
-       {/* Footer Footer */}
-       <div className="pt-12 border-t text-center space-y-4">
-         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-           {t('login_back_to_login_msg') || "Need to go back?"}
-         </p>
-         <button 
-           onClick={handleBack}
-           className="px-8 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
-         >
-           {loading || profile ? "Back to Dashboard" : "Back to Login"}
-         </button>
-       </div>
      </div>
    )
  }

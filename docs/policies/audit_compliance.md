@@ -32,4 +32,4 @@ If a mathematical error is detected:
 - Periodically change PIN locks for added local security.
 
 ---
-© 2026 **Foundation Finance Systems**
+© 2026 **NVision Systems (Finance & Tech)**

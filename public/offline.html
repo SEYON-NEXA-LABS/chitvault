@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline | ChitVault</title>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f8fafc;
+            color: #1e293b;
+            text-align: center;
+        }
+        .container {
+            max-width: 400px;
+            padding: 40px;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.025em;
+            margin: 0 0 12px;
+        }
+        p {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.6;
+            margin: 0 0 32px;
+        }
+        button {
+            background: #0038b8;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>No Connection</h1>
+        <p>You are currently offline. Please check your internet connection and try again.</p>
+        <button onclick="window.location.reload()">Retry Connection</button>
+    </div>
+</body>
+</html>

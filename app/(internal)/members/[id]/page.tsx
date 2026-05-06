@@ -15,6 +15,7 @@ import { useToast } from '@/lib/hooks/useToast'
 import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { MemberLedger } from '@/components/features/MemberLedger'
+import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
 import type { Person, Member, Group, Payment, Auction } from '@/types'
 
 export default function MemberProfilePage() {
@@ -22,7 +23,7 @@ export default function MemberProfilePage() {
   const router = useRouter()
   const personId = params.id as string
   const supabase = useMemo(() => createClient(), [])
-  const { firm, role, switchedFirmId } = useFirm()
+  const { firm, role, can, switchedFirmId } = useFirm()
   const { t } = useI18n()
   const { toast, show: showToast, hide: hideToast } = useToast()
 
@@ -32,6 +33,7 @@ export default function MemberProfilePage() {
   const [saving, setSaving] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', phone: '', address: '', nickname: '' })
+  const [delModal, setDelModal] = useState<{ open: boolean, id: string | null, name: string }>({ open: false, id: null, name: '' })
 
   const isSuper = role === 'superadmin'
 
@@ -89,15 +91,25 @@ export default function MemberProfilePage() {
   }
 
   const handleDeleteMember = async (mid: string) => {
-    if (!confirm('Are you sure you want to remove this membership? Data will be archived.')) return
+    if (!can('deleteMember')) return
+    const m = memberships.find(x => String(x.id) === String(mid))
+    setDelModal({ open: true, id: mid, name: `Ticket #${m?.ticket_no} in ${m?.group?.name || 'Group'}` })
+  }
+
+  const confirmDeleteMember = async () => {
+    if (!delModal.id || !firm) return
+    setSaving(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
     try {
-      const { error } = await withFirmScope(supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', mid), targetId!)
+      const { error } = await withFirmScope(supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', delModal.id), targetId!)
       if (error) throw error
-      setMemberships(prev => prev.filter(m => String(m.id) !== String(mid)))
+      setMemberships(prev => prev.filter(m => String(m.id) !== String(delModal.id)))
       showToast('Membership removed', 'success')
+      setDelModal({ open: false, id: null, name: '' })
     } catch (err: any) {
       showToast(err.message, 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -229,6 +241,16 @@ export default function MemberProfilePage() {
       </Modal>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
+
+      <CascadeDeleteModal 
+        open={delModal.open}
+        onClose={() => setDelModal({ open: false, id: null, name: '' })}
+        onConfirm={confirmDeleteMember}
+        title={`Remove Membership?`}
+        targetId={delModal.id || ''}
+        targetType="member"
+        loading={saving}
+      />
     </div>
   )
 }

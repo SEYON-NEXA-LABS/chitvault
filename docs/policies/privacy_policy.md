@@ -12,7 +12,7 @@ ChitVault is built on a multi-tenant architecture designed to ensure that each F
 
 ## 3. Data Processing Roles
 - **Data Controller**: The Finance Firm (The Client) is the "Data Controller" and owns all data entered into the platform.
-- **Data Processor**: Foundation Finance Systems acts as the "Data Processor," providing the infrastructure and tools to manage the Client's data securely.
+- **Data Processor**: NVision Systems (Finance & Tech) acts as the "Data Processor," providing the infrastructure and tools to manage the Client's data securely.
 
 ## 4. No Member KYC Collection
 ChitVault is a digital bookkeeping tool and does not require or collect official Know Your Customer (KYC) documentation for individual members.
@@ -43,4 +43,4 @@ The platform enforces strict Role-Based Access Control:
 Data is stored in industry-standard encrypted databases provided by Supabase (PostgreSQL). Communications between your browser and our servers are encrypted via HTTPS (SSL/TLS).
 
 ---
-© 2026 **Foundation Finance Systems**
+© 2026 **NVision Systems (Finance & Tech)**

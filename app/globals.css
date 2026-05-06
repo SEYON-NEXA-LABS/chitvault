@@ -386,6 +386,10 @@ a {
   color: var(--text3);
 }
 
+.only-print {
+  display: none !important;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -413,6 +417,13 @@ a {
     color: black !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  html {
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   /* Remove all transparency/opacity for clarity on paper */
@@ -469,16 +480,12 @@ a {
     position: relative !important;
   }
 
-  /* Specific table optimizations */
   table {
     page-break-inside: auto;
     border: 1px solid #e2e8f0 !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    width: auto !important;
-    /* Allow centering if not full width */
-    min-width: 80% !important;
-    /* Maintain a professional minimum width */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
     max-width: 100% !important;
   }
 
@@ -510,13 +517,29 @@ a {
   }
 
   .only-print {
-    display: table-cell !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    z-index: 9999 !important;
+    background: white !important;
+  }
+
+  /* Hide everything else aggressively */
+  header, nav, aside, footer, .no-print, [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Reset main container for full-page print */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
   }
 }
 
-.only-print {
-  display: none !important;
-}
 
 /* ── Accessibility ───────────────────────────────────────── */
 *:focus-visible {

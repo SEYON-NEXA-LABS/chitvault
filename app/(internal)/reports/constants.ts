@@ -5,7 +5,7 @@ export const GET_REPORTS = (t: any, term: any) => [
     id: 'today_collection', 
     category: t('cat_financial'), 
     title: t('report_today_title'), 
-    desc: 'Detailed log of all collections received today across all groups, including payment mode and time-stamps.', 
+    desc: 'Detailed log of all collections received on a specific date, including payment mode and time-stamps.', 
     icon: History 
   },
   { 

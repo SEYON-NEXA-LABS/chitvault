@@ -137,4 +137,4 @@ The platform includes a **Trash System** that protects against accidental data l
 
 ---
 
-© 2026 **Foundation Finance Systems**. All Rights Reserved.
+© 2026 **NVision Systems (Finance & Tech)**. All Rights Reserved.
