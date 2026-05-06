@@ -60,7 +60,7 @@ export default function TrashPage() {
     if (activeTab === 'auctions') exportCols = 'id, month, group_id, winner_id, deleted_at, groups:group_id(id, name), members:winner_id(id, persons:person_id(name))'
     if (activeTab === 'settlements') exportCols = 'id, total_amount, member_id, deleted_at, members:member_id(id, persons:person_id(name))'
     if (activeTab === 'commissions') exportCols = 'id, month, group_id, commission_amt, deleted_at, groups:group_id(id, name)'
-    if (activeTab === 'denominations') exportCols = 'id, amount, entry_date, deleted_at'
+    if (activeTab === 'denominations') exportCols = 'id, total, entry_date, deleted_at'
     if (activeTab === 'staff') exportCols = 'id, full_name, role, status, deleted_at'
 
     const currentTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
@@ -189,7 +189,7 @@ export default function TrashPage() {
         <div className="flex bg-[var(--surface2)] p-1 rounded-xl border flex-wrap gap-1" style={{ borderColor: 'var(--border)' }}>
            {(['groups', 'members', 'persons', 'payments', 'auctions', 'settlements', 'commissions', 'denominations', 'staff'] as const).map(tab => (
              <Chip key={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)}>
-               <span className="capitalize">{tab === 'commissions' ? 'Comm' : (tab === 'denominations' ? 'Cash' : tab)}</span> ({counts[tab === 'staff' ? 'profiles' : (tab === 'commissions' ? 'foreman_commissions' : tab)] || 0})
+               <span className="capitalize">{tab === 'commissions' ? 'Comm' : (tab === 'denominations' ? 'Cash' : tab)}</span> ({counts[tab] || 0})
              </Chip>
            ))}
         </div>
@@ -271,7 +271,7 @@ export default function TrashPage() {
                       )}
                       {activeTab === 'denominations' && (
                         <div>
-                          <div className="font-bold">{fmt(item.amount)}</div>
+                          <div className="font-bold">{fmt(item.total)}</div>
                           <div className="text-[10px] opacity-40">Entry Date: {fmtDate(item.entry_date)}</div>
                         </div>
                       )}

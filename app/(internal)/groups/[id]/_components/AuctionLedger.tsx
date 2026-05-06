@@ -1,22 +1,25 @@
 'use client'
  
 import React from 'react'
-import { CheckCircle2, Calculator } from 'lucide-react'
+import { CheckCircle2, Calculator, Info, Printer } from 'lucide-react'
 import { Table, TableCard, Th, Tr, Td, Btn } from '@/components/ui'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
-import type { Group, Auction, Member, ForemanCommission } from '@/types'
+import { printPayoutVoucher } from '@/lib/utils/print'
+import type { Group, Auction, Member, ForemanCommission, Firm } from '@/types'
  
 interface AuctionLedgerProps {
   group: Group
   auctionHistory: Auction[]
   commissions: ForemanCommission[]
   members: Member[]
+  firm: Firm | null
   t: (key: string) => string
   setSettling: (a: Auction) => void
   setSettleForm: React.Dispatch<React.SetStateAction<any>>
   handleConfirmDraft: (id: number) => void
   setMathModal: (data: { auction: Auction; commission: ForemanCommission } | null) => void
   setSettlingAuctionId?: (id: number | null) => void
+  onViewBreakdown?: (id: number) => void
 }
  
 export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
@@ -24,12 +27,14 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
   auctionHistory,
   commissions,
   members,
+  firm,
   t,
   setSettling,
   setSettleForm,
   handleConfirmDraft,
   setMathModal,
-  setSettlingAuctionId
+  setSettlingAuctionId,
+  onViewBreakdown
 }) => {
   const confirmedAucs = auctionHistory.filter(a => a.status === 'confirmed')
   const draftAucs = auctionHistory.filter(a => a.status === 'draft')
@@ -151,37 +156,56 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
                     </div>
                   </Td>
                   <Td right>
-                    <div className="flex flex-col py-2 justify-center items-end">
-                      {a.is_payout_settled ? (
-                        <>
+                    <div className="flex flex-col py-2 justify-center items-end gap-2">
+                      {a.is_payout_settled && (
+                        <div className="flex flex-col items-end">
                           <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
                             <CheckCircle2 size={12} /> {t('settled')}
                           </div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase">{fmtDate(a.payout_date)}</span>
-                        </>
-                      ) : (
-                        <div className="no-print flex items-center gap-2">
-                          {a.status === 'confirmed' && winner ? (
-                            <>
-                              <button 
-                                onClick={() => setSettlingAuctionId?.(a.id)}
-                                className="p-2 rounded-xl bg-[var(--success-dim)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white transition-all"
-                                title={t('mark_as_settled')}
-                              >
-                                <CheckCircle2 size={16} />
-                              </button>
-                              <Btn size="sm" variant="primary" className="text-xs font-bold uppercase tracking-wider" onClick={() => {
-                                setSettling(a)
-                                setSettleForm((s: any) => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
-                              }}>{t('settle')}</Btn>
-                            </>
-                          ) : a.status === 'draft' ? (
-                             <Btn size="sm" variant="primary" className="text-xs font-bold uppercase tracking-wider" onClick={() => handleConfirmDraft(a.id)}>{t('confirm_updates')}</Btn>
-                          ) : (
-                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{t('pending_status')}</span>
-                          )}
                         </div>
                       )}
+
+                      <div className="no-print flex items-center gap-2">
+                        <button 
+                          onClick={() => onViewBreakdown?.(a.id)}
+                          className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                          title={t('view_payout_breakdown')}
+                        >
+                          <Info size={16} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const winner = members.find(m => m.id === a.winner_id)
+                            const comm = commissions.find(c => c.auction_id === a.id)
+                            if (winner) {
+                               printPayoutVoucher(group, a, winner, comm, firm, t)
+                            }
+                          }}
+                          className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                          title={t('settle_print_doc')}
+                        >
+                          <Printer size={16} />
+                        </button>
+                        {!a.is_payout_settled && a.status === 'confirmed' && winner && (
+                          <>
+                            <button 
+                              onClick={() => setSettlingAuctionId?.(a.id)}
+                              className="p-2 rounded-xl bg-[var(--success-dim)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white transition-all"
+                              title={t('mark_as_settled')}
+                            >
+                              <CheckCircle2 size={16} />
+                            </button>
+                            <Btn size="sm" variant="primary" className="text-xs font-bold uppercase tracking-wider" onClick={() => {
+                              setSettling(a)
+                              setSettleForm((s: any) => ({ ...s, amount: String(a.net_payout || a.auction_discount) }))
+                            }}>{t('settle')}</Btn>
+                          </>
+                        )}
+                        {a.status === 'draft' && (
+                           <Btn size="sm" variant="primary" className="text-xs font-bold uppercase tracking-wider" onClick={() => handleConfirmDraft(a.id)}>{t('confirm_updates')}</Btn>
+                        )}
+                      </div>
                     </div>
                   </Td>
                   <Td className="only-print">

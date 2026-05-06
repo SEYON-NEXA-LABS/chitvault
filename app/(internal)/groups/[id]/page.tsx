@@ -12,12 +12,13 @@ import { fmt, getToday, cn, fmtDate, getGroupDisplayName } from '@/lib/utils'
 import { 
   Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal,
   TableCard, Table, Tr, Th, Td,
-  Modal
+  Modal, Pagination
 } from '@/components/ui'
 import { 
   Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2,
-  CheckCircle2
+  CheckCircle2, Printer
 } from 'lucide-react'
+import { PayoutVoucherModal } from '@/components/features/PayoutVoucherModal'
 
 // Extracted Sub-components
 import { AuctionLedger } from './_components/AuctionLedger'
@@ -72,6 +73,9 @@ export default function GroupLedgerPage() {
   const [saving, setSaving] = useState(false)
   const [view, setView] = useState<'members' | 'auctions' | 'payments'>('members')
   const [settlingAuctionId, setSettlingAuctionId] = useState<number | null>(null)
+  const [selectedAuctionForPrint, setSelectedAuctionForPrint] = useState<number | null>(null)
+  const [paymentPage, setPaymentPage] = useState(1)
+  const PAYMENT_PAGE_SIZE = 15
 
   const handleQuickSettle = async (id: number) => {
     setSaving(true)
@@ -119,6 +123,10 @@ export default function GroupLedgerPage() {
       return { ...a, dividend: perMemberShare }
     })
   }, [auctionHistory, commissions, group])
+ 
+  const paginatedPayments = useMemo(() => {
+    return payments.slice((paymentPage - 1) * PAYMENT_PAGE_SIZE, paymentPage * PAYMENT_PAGE_SIZE)
+  }, [payments, paymentPage])
 
   const yieldData = useMemo(() => {
     let runningTotal = 0
@@ -425,18 +433,21 @@ export default function GroupLedgerPage() {
       {/* Main Content Blocks */}
       {view === 'auctions' && (
         <div id="ledger">
-          <AuctionLedger 
-            group={group} auctionHistory={auditedAuctions} commissions={commissions} members={members} t={t}
-            setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
-            setSettlingAuctionId={setSettlingAuctionId}
-          />
+          <div className="no-print">
+            <AuctionLedger 
+              group={group} auctionHistory={auditedAuctions} commissions={commissions} members={members} firm={firm} t={t}
+              setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
+              setSettlingAuctionId={setSettlingAuctionId}
+              onViewBreakdown={setSelectedAuctionForPrint}
+            />
+          </div>
         </div>
       )}
 
       {view === 'members' && (
         <MemberDirectory 
           group={group} members={members} auctionHistory={auctionHistory} payments={payments} isOwner={isOwner} can={can as any} t={t}
-          handlePrintMemberList={() => printMemberList(group, members, firm?.name || '')}
+          handlePrintMemberList={() => printMemberList(group, members, auctionHistory, payments, firm, t)}
           handleExport={() => downloadCSV(members, `${group.name}_members`)}
           setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
           deleteMember={async (id) => { await supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', id); refresh() }}
@@ -460,7 +471,7 @@ export default function GroupLedgerPage() {
               </Tr>
             </thead>
             <tbody>
-              {payments.map((p: any) => (
+              {paginatedPayments.map((p: any) => (
                 <Tr key={p.id}>
                   <Td className="whitespace-nowrap font-medium text-sub leading-tight">
                     <div>{fmtDate(p.payment_date)}</div>
@@ -492,6 +503,16 @@ export default function GroupLedgerPage() {
               )}
             </tbody>
           </Table>
+          {payments.length > PAYMENT_PAGE_SIZE && (
+            <div className="p-4 border-t border-slate-100">
+              <Pagination 
+                current={paymentPage} 
+                total={payments.length} 
+                pageSize={PAYMENT_PAGE_SIZE} 
+                onPageChange={setPaymentPage} 
+              />
+            </div>
+          )}
         </TableCard>
       )}
 
@@ -504,7 +525,13 @@ export default function GroupLedgerPage() {
       <PayoutSettlementModal 
         open={!!settling} onClose={() => setSettling(null)} settling={settling} members={members} group={group}
         settleForm={settleForm} setSettleForm={setSettleForm} onSettle={handleSettlePayout} 
-        onPrintVoucher={(auc: Auction) => printPayoutVoucher(group, auc, members.find((m: Member) => m.id === auc.winner_id)!, settleForm.date, firm?.name || '')}
+        onPrintVoucher={(auc: Auction) => {
+          const winner = members.find((m: Member) => m.id === auc.winner_id);
+          const comm = commissions.find(c => c.auction_id === auc.id);
+          if (winner) {
+            printPayoutVoucher(group, auc, winner, comm, firm, t);
+          }
+        }}
         saving={saving}
       />
 
@@ -575,6 +602,16 @@ export default function GroupLedgerPage() {
         winnerBalance={winnerBalance} winnerAging={winnerAging} checkingWinner={checkingWinner}
         acknowledge={acknowledge} setAcknowledge={setAcknowledge} saving={saving}
         handleSaveAuction={handleSaveAuction} checkWinnerBalance={checkWinnerBalance} t={t}
+      />
+
+      <PayoutVoucherModal
+        open={!!selectedAuctionForPrint}
+        onClose={() => setSelectedAuctionForPrint(null)}
+        auction={auditedAuctions.find((x: any) => x.id === selectedAuctionForPrint) || null}
+        group={group}
+        member={members.find((m: Member) => m.id === auditedAuctions.find((x: any) => x.id === selectedAuctionForPrint)?.winner_id) || null}
+        commission={commissions.find((x: any) => x.auction_id === selectedAuctionForPrint) || null}
+        firm={firm}
       />
 
       <CSVImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={async () => {}} title="Import Members" requiredFields={['Name']} />

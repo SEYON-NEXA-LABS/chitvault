@@ -180,7 +180,7 @@ export default function CashbookPage() {
   const coins_section = DENOMINATIONS.filter(d => d.type === 'coin')
  
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 printable">
       {/* Header with Firm Filter */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>

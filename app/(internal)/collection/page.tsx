@@ -15,6 +15,7 @@ import { useSearchParams } from 'next/navigation'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 
 import { RecordCollectionModal } from '@/components/features/RecordCollectionModal'
+import { printPaymentReceipt, printCollectionsReport } from '@/lib/utils/print'
 
 const ITEMS_PER_PAGE = 20
 
@@ -124,8 +125,10 @@ function CollectionContent() {
     critical: data.filter(x => x.overdue_count >= 3).length,
   }), [data])
 
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-8 pb-24 printable">
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-5 no-print">
         {[
@@ -187,105 +190,79 @@ function CollectionContent() {
           </div>
         )}
 
-        <Btn variant="secondary" icon={Printer} onClick={() => window.print()} className="rounded-2xl hidden sm:flex">Print</Btn>
+        <Btn variant="secondary" icon={Printer} onClick={() => printCollectionsReport(firm, data, t)} className="rounded-2xl hidden sm:flex">Print</Btn>
       </div>
 
       {/* Content */}
       {loading ? <Loading /> : viewMode === 'audit' ? (
         <div className="no-print">
-          <AuditTable data={auditData} isOwner={isOwner} onRevert={revertPayment} />
+          <AuditTable data={auditData} isOwner={isOwner} onRevert={revertPayment} firm={firm} t={t} />
         </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      ) : <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden no-print">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b bg-slate-50 no-print">
-                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Subscriber / Phone</th>
-                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Group / Membership</th>
-                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Pending Months</th>
+              <tr className="border-b bg-slate-50">
+                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Subscriber</th>
+                <th className="px-6 py-4 text-left text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Groups / Pending Months</th>
                 <th className="px-6 py-4 text-right text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Balance</th>
                 <th className="px-6 py-4 text-right text-[var(--text-xs)] font-black uppercase tracking-widest text-slate-400">Actions</th>
-              </tr>
-              {/* Print Only Header */}
-              <tr className="hidden print:table-row border-b-2 border-slate-900">
-                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Subscriber / Phone</th>
-                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Group / Membership</th>
-                <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Pending Months</th>
-                <th className="py-2 text-right text-[var(--text-xs)] font-black uppercase tracking-widest">Outstanding</th>
               </tr>
             </thead>
             <tbody>
               {data.length === 0 ? (
-                <tr><td colSpan={5} className="py-20 text-center"><Empty text="No pending dues found." /></td></tr>
+                <tr><td colSpan={4} className="py-20 text-center"><Empty text="No pending dues found." /></td></tr>
               ) : data.map(person => (
-                <React.Fragment key={person.person_id}>
-                  {/* Person Header Row */}
-                  <tr className="bg-slate-50/50 border-t border-slate-200 group">
-                    <td className="px-6 py-4 print:px-3 print:py-2">
-                      <div className="font-black text-[var(--text-sm)] uppercase tracking-tight text-slate-900">{person.person_name}</div>
-                      <div className="text-[var(--text-xs)] font-mono text-slate-400 mt-0.5">{person.person_phone}</div>
-                    </td>
-                    <td className="px-6 py-4 print:hidden" colSpan={2}></td>
-                    <td className="px-6 py-4 text-right print:px-3 print:py-2">
-                      <div className="text-[var(--text-sm)] font-black text-slate-900">{fmt(person.total_balance)}</div>
-                      <div className="text-[var(--text-xs)] font-bold uppercase tracking-widest text-slate-400 mt-1 no-print">Total</div>
-                    </td>
-                    <td className="px-6 py-4 text-right no-print">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => {
-                          const phone = person.person_phone?.replace(/[^\d]/g, '')
-                          if (!phone) return show('No phone recorded.', 'error')
-                          const msg = `Hi ${person.person_name}, you have ₹${person.total_balance.toLocaleString('en-IN')} outstanding with ${firm?.name}.`
-                          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
-                        }} className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100">
-                          <MessageCircle size={14} />
-                        </button>
-                        <button onClick={() => setHistoryModal(person)} className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-slate-200">
-                          <History size={14} />
-                        </button>
-                        <button onClick={() => setPayModal(person)} className="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-black text-[var(--text-xs)] uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
-                          <Wallet size={12} /> Collect
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {/* Membership Detail Rows */}
-                  {person.memberships.map((m: any) => {
-                    const pendingDues = (m.dues || []).filter((d: any) => (d.amount_due - d.amount_paid) > 0.1);
-                    const groupBal = pendingDues.reduce((s: number, d: any) => s + (d.amount_due - d.amount_paid), 0);
-                    return (
-                      <tr key={m.member.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors">
-                        <td className="px-6 py-3 print:px-3 print:py-1"></td>
-                        <td className="px-6 py-3 print:px-3 print:py-1">
-                          <div className="text-[var(--text-xs)] font-bold text-slate-600 uppercase tracking-tight">
-                            {m.group?.name} <span className="opacity-30 ml-1 font-mono">#{m.member.ticket_no}</span>
+                <tr key={person.person_id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                  <td className="px-6 py-4 align-top">
+                    <div className="font-black text-[var(--text-sm)] uppercase tracking-tight text-slate-900">{person.person_name}</div>
+                    <div className="text-[var(--text-xs)] font-bold text-slate-400 mt-0.5">{person.person_phone}</div>
+                  </td>
+                  <td className="px-6 py-4 align-top">
+                    <div className="space-y-1.5">
+                      {person.memberships.map((m: any) => {
+                        const pendingDues = (m.dues || []).filter((d: any) => (d.amount_due - d.amount_paid) > 0.1);
+                        const groupBal = pendingDues.reduce((s: number, d: any) => s + (d.amount_due - d.amount_paid), 0);
+                        const months = pendingDues.map((d: any) => `M${d.month}`).join(', ');
+                        
+                        return (
+                          <div key={m.member.id} className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[var(--text-xs)] font-black text-slate-500 uppercase tracking-tight">{m.group?.name}</span>
+                              <span className="text-[var(--text-xs)] font-bold text-slate-300">[{months}]</span>
+                            </div>
+                            <span className="text-[var(--text-xs)] font-black text-slate-400">{fmt(groupBal)}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-3 print:px-3 print:py-1">
-                          <div className="flex flex-wrap gap-1">
-                            {pendingDues.map((d: any) => (
-                              <span key={d.month} className="px-2 py-0.5 bg-slate-100 rounded-md text-[var(--text-xs)] font-black text-slate-500 font-mono">
-                                M{d.month}
-                              </span>
-                            ))}
-                            {pendingDues.length === 0 && <span className="text-[var(--text-xs)] text-slate-300 italic">No dues</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-3 text-right print:px-3 print:py-1">
-                          <div className="text-[var(--text-xs)] font-bold text-slate-700">
-                            {groupBal > 0.01 ? fmt(groupBal) : '—'}
-                          </div>
-                        </td>
-                        <td className="no-print"></td>
-                      </tr>
-                    );
-                  })}
-                </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right align-top">
+                    <div className="text-[var(--text-sm)] font-black text-slate-900">{fmt(person.total_balance)}</div>
+                  </td>
+                  <td className="px-6 py-4 text-right align-top">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => {
+                        const phone = person.person_phone?.replace(/[^\d]/g, '')
+                        if (!phone) return show('No phone recorded.', 'error')
+                        const msg = `Hi ${person.person_name}, you have ₹${person.total_balance.toLocaleString('en-IN')} outstanding with ${firm?.name}.`
+                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+                      }} className="p-2 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-emerald-100">
+                        <MessageCircle size={14} />
+                      </button>
+                      <button onClick={() => setHistoryModal(person)} className="p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-slate-200">
+                        <History size={14} />
+                      </button>
+                      <button onClick={() => setPayModal(person)} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-black text-[var(--text-xs)] uppercase tracking-widest hover:bg-blue-700 shadow-lg transition-all flex items-center gap-2">
+                        <Wallet size={12} /> Collect
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      }
 
 
       <div className="flex justify-center no-print">
@@ -545,7 +522,7 @@ function DuesSnapshotModal({ person, onClose, t }: { person: CollectionItem; onC
 
 // ── Audit Table ──────────────────────────────────────────────────────────────
 
-function AuditTable({ data, isOwner, onRevert }: { data: any[], isOwner: boolean, onRevert: (id: number) => void }) {
+function AuditTable({ data, isOwner, onRevert, firm, t }: { data: any[], isOwner: boolean, onRevert: (id: number) => void, firm: any, t: any }) {
   if (data.length === 0) return <Empty text="No payments in this period." />
   return (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -573,12 +550,27 @@ function AuditTable({ data, isOwner, onRevert }: { data: any[], isOwner: boolean
                 <span className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase px-2 py-1 rounded-lg">{p.mode}</span>
               </td>
               <td className="px-6 py-4 text-right">
-                {isOwner && (
-                  <button onClick={() => onRevert(p.id)}
-                    className="w-8 h-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-300 flex items-center justify-center transition-all ml-auto">
-                    <Trash2 size={14} />
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => {
+                    printPaymentReceipt(
+                      firm,
+                      p.members?.persons?.name || '...',
+                      [p],
+                      p.amount,
+                      p.payment_date,
+                      p.mode,
+                      t
+                    )
+                  }} className="w-8 h-8 rounded-lg hover:bg-slate-100 hover:text-slate-900 text-slate-300 flex items-center justify-center transition-all">
+                    <Printer size={14} />
                   </button>
-                )}
+                  {isOwner && (
+                    <button onClick={() => onRevert(p.id)}
+                      className="w-8 h-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-300 flex items-center justify-center transition-all">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

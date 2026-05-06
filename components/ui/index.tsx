@@ -253,7 +253,7 @@ export function Modal({ open, onClose, title, children, size = 'md', persist = f
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 no-print"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget && !persist) onClose() }}>
       <div className={cn('w-full rounded-t-3xl sm:rounded-2xl border shadow-2xl max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 sm:animate-none bg-white', sizes[size])}

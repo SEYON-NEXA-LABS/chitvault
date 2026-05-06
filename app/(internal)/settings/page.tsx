@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const { profile, role, firm, can, refresh } = useFirm()
   const { theme, setTheme } = useTheme()
   const { toast, show, hide } = useToast()
-  const { isElectron, hasPin, setPin, lock } = usePinLock()
+  const { isElectron, hasPin, setPin, lock, lockTimeout, updateLockTimeout } = usePinLock()
 
   const isSuperAdmin = role === 'superadmin'
   const isOwner = role === 'owner' || isSuperAdmin
@@ -533,6 +533,35 @@ export default function SettingsPage() {
               </form>
             )}
             <hr style={{ borderColor: 'var(--border)' }} />
+            
+            {/* Auto-Lock Timeout */}
+            <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-50">
+                <Monitor size={12} /> Auto-Lock Timer
+              </div>
+              <div className="flex flex-col gap-3 p-4 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold">Inactivity Timeout</div>
+                  <div className="text-xs font-bold text-[var(--accent)] bg-[var(--accent-dim)] px-2 py-1 rounded-md">
+                    {Math.round(lockTimeout / 60000)} Minutes
+                  </div>
+                </div>
+                <input 
+                  type="range" 
+                  min={60000} 
+                  max={3600000} 
+                  step={60000} 
+                  value={lockTimeout} 
+                  onChange={(e) => updateLockTimeout(parseInt(e.target.value))}
+                  className="w-full accent-[var(--accent)] h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] uppercase font-bold opacity-40">
+                  <span>1 Min</span>
+                  <span>30 Mins</span>
+                  <span>1 Hour</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Session controls */}

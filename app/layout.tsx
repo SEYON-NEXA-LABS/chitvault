@@ -11,8 +11,8 @@ import { CookieConsent } from '@/components/ui/CookieConsent'
 import './globals.css'
 export const metadata: Metadata = {
   title: {
-    default: `${APP_NAME} | ${APP_SLOGAN}`,
-    template: `%s | ${APP_NAME}`
+    default: APP_SLOGAN ? `${APP_NAME} | ${APP_SLOGAN}` : APP_NAME,
+    template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
   icons: {
