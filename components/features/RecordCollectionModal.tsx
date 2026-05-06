@@ -9,7 +9,8 @@ import {
   Loading, Badge, Btn, Modal, Field, Toast, Empty
 } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { CreditCard, CheckCircle2 } from 'lucide-react'
+import { CreditCard, CheckCircle2, Printer, X } from 'lucide-react'
+import { printPaymentReceipt } from '@/lib/utils/print'
 
 interface CollectionItem {
   person_id: number;
@@ -40,6 +41,7 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
   
   const [loading, setLoading] = useState(!initialData)
   const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [personData, setPersonData] = useState<CollectionItem | null>(initialData || null)
   const [payForm, setPayForm] = useState({ 
     amount: initialData ? String(initialData.total_balance) : '', 
@@ -162,11 +164,48 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
     const { error } = await supabase.from('payments').insert(finalPayments);
     if (error) { show(error.message, 'error'); }
     else {
-      show(`Collected ₹${totalAmount}! ${finalPayments.length} installments cleared.`, 'success');
+      setSuccess(true);
       if (onSuccess) onSuccess();
-      onClose();
     }
     setSaving(false);
+  }
+
+  if (success) {
+    return (
+      <Modal open={true} onClose={onClose} title="Collection Successful" size="sm">
+        <div className="py-10 text-center space-y-6">
+          <div className="w-20 h-20 bg-emerald-500 text-white rounded-[2rem] flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20 scale-up-center">
+            <CheckCircle2 size={40} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Payment Recorded!</h3>
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-2">₹{Number(payForm.amount).toLocaleString('en-IN')} Received</p>
+          </div>
+          <div className="flex flex-col gap-3 pt-4">
+            <Btn 
+              variant="primary" 
+              className="py-4 rounded-2xl bg-slate-900 shadow-xl shadow-slate-900/20" 
+              icon={Printer}
+              onClick={() => {
+                const targetDues = allDues.filter(d => selectedDues.includes(d.key));
+                printPaymentReceipt(
+                  firm, 
+                  personData?.person_name || '...', 
+                  targetDues, 
+                  Number(payForm.amount), 
+                  payForm.date, 
+                  payForm.mode, 
+                  t
+                );
+              }}
+            >
+              Print Receipt
+            </Btn>
+            <Btn variant="secondary" className="py-4 rounded-2xl" onClick={onClose} icon={X}>Close</Btn>
+          </div>
+        </div>
+      </Modal>
+    )
   }
 
   return (

@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
+import { usePinLock } from '@/lib/lock/context'
 import { usePathname, useRouter } from 'next/navigation'
 
 const IDLE_TIMEOUT = 30 * 60 * 1000 // 30 minutes
@@ -12,13 +13,18 @@ export function IdleTimeout() {
   const router = useRouter()
   const pathname = usePathname()
   const { profile } = useFirm()
+  const { isLocked } = usePinLock()
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const logout = useCallback(async () => {
+    if (isLocked) {
+      console.log('App is locked by PIN. Skipping auto-logout to maintain local lock state.')
+      return
+    }
     console.log('Idle timeout reached. Logging out...')
     await supabase.auth.signOut()
     router.push(`/login?reason=idle&next=${encodeURIComponent(pathname)}`)
-  }, [supabase.auth, router, pathname])
+  }, [supabase.auth, router, pathname, isLocked])
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)

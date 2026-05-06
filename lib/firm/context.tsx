@@ -10,6 +10,7 @@ import type { Permission } from '@/lib/firm/permissions'
 interface FirmContext {
   firm:    Firm | null
   profile: Profile | null
+  email:   string | null
   role:    UserRole | null
   loading: boolean
   can:     (action: Permission) => boolean
@@ -20,7 +21,7 @@ interface FirmContext {
 }
 
 const Ctx = createContext<FirmContext>({
-  firm: null, profile: null, role: null, loading: true, status: 'active',
+  firm: null, profile: null, email: null, role: null, loading: true, status: 'active',
   can: () => false, refresh: async () => {},
   switchedFirmId: 'all', setSwitchedFirmId: () => {}
 })
@@ -29,6 +30,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), [])
   const [firm,    setFirm]    = useState<Firm | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [email,   setEmail]   = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [switchedFirmId, setSwitchedFirmId] = useState<string | 'all'>('all')
 
@@ -46,9 +48,12 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       if (!user) { 
         setProfile(null)
         setFirm(null)
+        setEmail(null)
         setLoading(false)
         return 
       }
+      
+      setEmail(user.email || null)
       
       // Load profile
       const { data: dbProfile, error: profErr } = await supabase
@@ -103,6 +108,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
          setProfile(null)
          setFirm(null)
+         setEmail(null)
          setLoading(false)
       }
     })
@@ -140,7 +146,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   }, [firm])
 
   const value = useMemo(() => ({
-    firm, profile, role, loading, status,
+    firm, profile, email, role, loading, status,
     can: (action: Permission) => {
       // Global restriction: if status is restricted, block data-entry permissions
       if (status === 'restricted') {
