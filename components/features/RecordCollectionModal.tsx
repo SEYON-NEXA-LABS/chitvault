@@ -51,6 +51,7 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
   })
 
   const [selectedDues, setSelectedDues] = useState<string[]>([]); // Array of "memberId-month"
+  const [amounts, setAmounts] = useState<Record<string, string>>({}); // Custom amounts per key
 
   const isSuper = role === 'superadmin'
 
@@ -110,11 +111,28 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
   }, [allDues]);
 
   useEffect(() => {
-    const total = allDues
-      .filter(d => selectedDues.includes(d.key))
-      .reduce((sum, d) => sum + (d.amount_due - d.amount_paid), 0);
-    setPayForm(f => ({ ...f, amount: String(total) }));
+    // Sync amounts when selectedDues or allDues change
+    setAmounts(prev => {
+      const next = { ...prev };
+      // Add missing keys with full balance
+      selectedDues.forEach(key => {
+        if (!next[key]) {
+          const due = allDues.find(d => d.key === key);
+          if (due) next[key] = String(due.amount_due - due.amount_paid);
+        }
+      });
+      // Remove unselected keys (optional, but keeps state clean)
+      Object.keys(next).forEach(key => {
+        if (!selectedDues.includes(key)) delete next[key];
+      });
+      return next;
+    });
   }, [selectedDues, allDues]);
+
+  useEffect(() => {
+    const total = Object.values(amounts).reduce((sum, val) => sum + (Number(val) || 0), 0);
+    setPayForm(f => ({ ...f, amount: String(total) }));
+  }, [amounts]);
 
   const toggleAll = () => {
     if (selectedDues.length === allDues.length) setSelectedDues([]);
@@ -139,21 +157,31 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
     const targetDues = allDues.filter(d => selectedDues.includes(d.key));
 
     for (const due of targetDues) {
-      const bal = due.amount_due - due.amount_paid;
-      if (bal <= 0.01) continue;
+      const balDue = due.amount_due - due.amount_paid;
+      const amount = Number(amounts[due.key]) || 0;
+      if (amount <= 0) continue;
+      
+      if (amount > balDue + 0.01) {
+        show(`Amount for ${due.groupName} Month ${due.month} exceeds balance due (₹${balDue}).`, 'error');
+        setSaving(false);
+        return;
+      }
+
+      const balanceDue = Math.max(0, balDue - amount);
+      const isPartial = balanceDue > 0.01;
 
       finalPayments.push({
         firm_id: targetId,
         member_id: due.memberId,
         group_id: due.groupId,
         month: due.month,
-        amount: bal,
+        amount: amount,
         status: 'paid',
         amount_due: due.amount_due,
-        balance_due: 0,
+        balance_due: balanceDue,
         payment_date: payForm.date,
         mode: payForm.mode,
-        payment_type: 'full',
+        payment_type: isPartial ? 'partial' : 'full',
         collected_by: profile?.id || null,
         note: payForm.note
       });
@@ -246,9 +274,31 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
                       <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">Month {due.month}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-black text-sm tracking-tight">{fmt(due.amount_due - due.amount_paid)}</div>
-                    {due.amount_paid > 0 && <div className="text-[9px] text-emerald-500 font-bold uppercase mt-1">Partial Paid</div>}
+                  <div className="text-right" onClick={e => e.stopPropagation()}>
+                    {selectedDues.includes(due.key) ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <input 
+                          type="number"
+                          value={amounts[due.key] || ''}
+                          onChange={e => setAmounts(prev => ({ ...prev, [due.key]: e.target.value }))}
+                          className="w-24 bg-[var(--surface)] text-right font-black text-sm px-2 py-1 rounded-lg border border-[var(--accent)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                        />
+                        <div className="text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                           {(() => {
+                             const bal = due.amount_due - due.amount_paid;
+                             const amt = Number(amounts[due.key]) || 0;
+                             if (amt > bal + 0.01) return <span className="text-rose-500 animate-bounce">⚠️ Excess Amount</span>;
+                             if (amt < bal - 0.01) return <span className="text-amber-500 animate-pulse">Partial Payment</span>;
+                             return <span className="opacity-30">Full Payment</span>;
+                           })()}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="font-black text-sm tracking-tight">{fmt(due.amount_due - due.amount_paid)}</div>
+                        {due.amount_paid > 0 && <div className="text-[9px] text-emerald-500 font-bold uppercase mt-1">Partial Paid</div>}
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
