@@ -208,11 +208,11 @@ export default function MembersPage() {
   }
 
   async function handleBulkStatusUpdate(newStatus: MemberStatus) {
-    if (selectedIds.size === 0 || !isOwner) return
+    if (selectedIds.size === 0 || !isOwner || !firm) return
     if (!confirm(`Update status to ${newStatus} for ${selectedIds.size} selected members?`)) return
     
     setSaving(true)
-    const { error } = await supabase.from('members').update({ status: newStatus }).in('id', Array.from(selectedIds))
+    const { error } = await supabase.from('members').update({ status: newStatus }).in('id', Array.from(selectedIds)).eq('firm_id', firm.id)
     
     if (error) showToast(error.message, 'error')
     else {
@@ -223,12 +223,12 @@ export default function MembersPage() {
   }
 
   async function handleBulkMoveToTrash() {
-    if (selectedIds.size === 0 || !can('deleteMember')) return
+    if (selectedIds.size === 0 || !can('deleteMember') || !firm) return
     if (!confirm(`Move ${selectedIds.size} selected tickets to trash?`)) return
     haptics.heavy()
     
     setSaving(true)
-    const { error } = await supabase.from('members').update({ deleted_at: new Date() }).in('id', Array.from(selectedIds))
+    const { error } = await supabase.from('members').update({ deleted_at: new Date() }).in('id', Array.from(selectedIds)).eq('firm_id', firm.id)
     
     if (error) showToast(error.message, 'error')
     else {

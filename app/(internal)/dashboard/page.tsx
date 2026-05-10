@@ -4,11 +4,12 @@
  import { useRouter } from 'next/navigation'
  import { createClient } from '@/lib/supabase/client'
  import { useFirm } from '@/lib/firm/context'
- import { fmt, fmtDate, fmtMonth, getToday, getGroupDisplayName } from '@/lib/utils'
+ import { cn, fmt, fmtDate, fmtMonth, getToday, getGroupDisplayName } from '@/lib/utils'
  import { 
    Users, Layers, TrendingUp, DollarSign, Wallet, ShieldCheck, 
    ArrowUpRight, Clock, Info, ShieldAlert, AlertTriangle, BarChart3,
-   Gavel, CheckCircle2, Settings2, BookOpen, ChevronLeft, ChevronRight
+   Gavel, CheckCircle2, Settings2, BookOpen, ChevronLeft, ChevronRight,
+   Activity, Calendar, ArrowRight, Plus
  } from 'lucide-react'
  import { haptics } from '@/lib/utils/haptics'
  import Link from 'next/link'
@@ -36,6 +37,7 @@
    const [dashboardStats, setDashboardStats] = useState<any>(null)
    const [trends, setTrends] = useState<any[]>([])
    const [winnerInsightsRpc, setWinnerInsightsRpc] = useState<any>(null)
+   const [dailyTrends, setDailyTrends] = useState<any[]>([])
    const [totalCounts, setTotalCounts] = useState({ groups: 0, members: 0 })
    const isSuper = role === 'superadmin'
  
@@ -49,13 +51,14 @@
        }
  
        try {
-         const [g, a, p, dStats, collTrends, wInsights, totalG, totalM] = await Promise.all([
+         const [g, a, p, dStats, collTrends, wInsights, dTrends, totalG, totalM] = await Promise.all([
            withFirmScope(supabase.from('groups').select('id, name, auction_scheme').neq('status','archived'), targetId).is('deleted_at', null),
            withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status, is_payout_settled, payout_amount, payout_date, members!winner_id(id, ticket_no, persons(id, name))'), targetId).is('deleted_at', null).order('month', { ascending: false }).limit(10),
-           withFirmScope(supabase.from('payments').select('id, amount, payment_date, created_at, members!member_id(persons(id, name))'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }).limit(5),
+           withFirmScope(supabase.from('payments').select('id, amount, payment_date, created_at, members!member_id(persons(id, name))'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }).limit(8),
            supabase.rpc('get_firm_dashboard_stats', { p_firm_id: targetId }),
            supabase.rpc('get_firm_collection_trends', { p_firm_id: targetId }),
            supabase.rpc('get_firm_winner_insights', { p_firm_id: targetId }),
+           supabase.rpc('get_firm_daily_trends', { p_firm_id: targetId }),
            withFirmScope(supabase.from('groups').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null),
            withFirmScope(supabase.from('members').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null)
          ])
@@ -66,6 +69,7 @@
          setDashboardStats(dStats.data)
          setTrends(collTrends.data || [])
          setWinnerInsightsRpc(wInsights.data)
+         setDailyTrends(dTrends.data || [])
          setTotalCounts({ 
            groups: totalG.count || 0, 
            members: totalM.count || 0 
@@ -91,11 +95,11 @@
      const stats = {
        totalChitValue: s.totalChitValue || 0,
        collectedToday: s.collectedToday || 0,
-       totalOutstanding: s.totalOutstanding || 0,
-       activeMembersCount: s.totalActiveMembers || s.totalMembers || 0,
-       totalMembersCount: totalCounts.members || s.totalMembers || 0,
-       activeGroupsCount: groups.length,
-       totalGroupsCount: totalCounts.groups || groups.length
+       totalReceivable: s.totalReceivable || 0,
+       totalPayable: s.totalPayable || 0,
+       todayVariance: s.todayVariance || 0,
+       activeGroupsCount: s.activeGroups || groups.length,
+       totalMembersCount: totalCounts.members || s.totalMembers || 0
      }
  
      const trendMap = new Map<string, any>()
@@ -115,7 +119,7 @@
      const onboardingSteps = [
        { id: '1', title: t('onboarding_step1_title'), desc: t('onboarding_step1_desc'), link: '/settings', completed: !!firm, icon: Settings2 },
        { id: '2', title: t('onboarding_step2_title'), desc: t('onboarding_step2_desc'), link: '/members', completed: stats.totalMembersCount > 0, icon: Users },
-       { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/groups', completed: stats.totalGroupsCount > 0, icon: Layers },
+       { id: '3', title: t('onboarding_step3_title'), desc: t('onboarding_step3_desc'), link: '/groups', completed: stats.activeGroupsCount > 0, icon: Layers },
        { id: '4', title: t('onboarding_step4_title'), desc: t('onboarding_step4_desc'), link: '/groups', completed: auctions.length > 0, icon: Gavel },
        { id: '5', title: t('onboarding_step5_title'), desc: t('onboarding_step5_desc'), link: '/collection', completed: payments.length > 0, icon: Wallet },
        { id: '6', title: t('onboarding_step6_title'), desc: t('onboarding_step6_desc'), link: '/payments', completed: false, icon: DollarSign },
@@ -123,38 +127,51 @@
      ]
  
      return { stats, chartData, groupSeries, onboardingSteps }
-   }, [groups, dashboardStats, trends, firm, t])
+   }, [groups, dashboardStats, trends, firm, t, totalCounts])
  
    if (loading) return <Loading />
  
    return (
-     <div className="space-y-8">
-       <div className="flex items-center justify-between px-2">
-         <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t('dash_overview')}</h1>
-         {isSuper && <Badge variant="danger">{t('dash_super_view')}</Badge>}
+     <div className="space-y-8 pb-12">
+       {/* Top Bar / Header */}
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
+         <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t('dash_overview')}</h1>
+             <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
+               {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} • {firm?.name || 'Vault'}
+             </p>
+         </div>
+         <div className="flex items-center gap-2">
+            {isSuper && <Badge variant="danger" className="py-1.5 px-4">{t('dash_super_view')}</Badge>}
+            <Btn variant="secondary" size="sm" icon={Activity} onClick={() => router.push('/reports/activity')}>Audit Logs</Btn>
+         </div>
        </div>
  
-       <div className="relative group overflow-hidden rounded-[2.5rem] p-8 bg-slate-50 border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:bg-white">
+       {/* Welcome Hero Section */}
+       <div className="relative group overflow-hidden rounded-[2.5rem] p-10 bg-slate-50 border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:bg-white">
          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
            <div className="lg:col-span-3 flex flex-col justify-center">
-               <h2 className="text-2xl font-black text-slate-900 mb-2">
-                 {t('dash_welcome_back')}, {firm?.name || profile?.full_name || 'User'}!
+               <h2 className="text-3xl font-black text-slate-900 mb-2">
+                 {t('dash_welcome_back')}, {profile?.full_name?.split(' ')[0] || 'Partner'}
                </h2>
-               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-8">
+               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-10 max-w-xl leading-relaxed">
                  {isSuper 
                    ? t('dash_super_plane_desc')
                    : t('dash_firm_plane_desc')}
                </p>
-               <div className="flex flex-wrap gap-3">
-                  <Btn variant="primary" className="text-xs font-bold uppercase tracking-widest" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
-                  <Btn variant="secondary" className="text-xs font-bold uppercase tracking-widest bg-white" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
-                  <Btn variant="ghost" icon={Info} onClick={() => setShowHelpModal(true)} className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900">
+               <div className="flex flex-wrap gap-4">
+                  <Btn variant="primary" className="text-[10px] font-black uppercase tracking-[0.2em]" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
+                  <Btn variant="secondary" className="text-[10px] font-black uppercase tracking-[0.2em] bg-white" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
+                  <Btn variant="ghost" icon={Info} onClick={() => setShowHelpModal(true)} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900">
                     {t('onboarding_title')}
                   </Btn>
                </div>
            </div>
            <div className="hidden lg:flex items-center justify-center">
-              <TrendingUp size={100} className="text-slate-100" />
+              <div className="relative">
+                 <div className="absolute inset-0 bg-[var(--accent-dim)] rounded-full blur-3xl opacity-30 animate-pulse" />
+                 <TrendingUp size={120} className="text-slate-200 relative z-10" strokeWidth={1} />
+              </div>
            </div>
          </div>
        </div>
@@ -195,46 +212,204 @@
          </div>
        </Modal>
  
-       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+       {/* Primary Stats */}
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
          <StatCard label={t('report_today_title')} value={fmt(stats.collectedToday)} icon={DollarSign} sub={t('dash_today_collected')} color="success" />
-         <StatCard label={t('market_debt_label')} value={fmt(stats.totalOutstanding)} icon={Wallet} sub={t('dash_total_receivable')} color="danger" />
-         <StatCard label={t('nav_groups')} value={`${stats.activeGroupsCount} / ${stats.totalGroupsCount}`} icon={Layers} sub={t('dash_live_status')} color="info" />
-         <StatCard label={t('nav_members')} value={`${stats.activeMembersCount} / ${stats.totalMembersCount}`} icon={Users} sub={t('dash_live_status')} color="accent" />
+         <StatCard label="Total Receivable" value={fmt(stats.totalReceivable)} icon={Wallet} sub="Pending from Members" color="danger" />
+         <StatCard label="Pending Payouts" value={fmt(stats.totalPayable)} icon={Gavel} sub="Owed to Winners" color="warning" />
+         <StatCard 
+           label="Cash Variance" 
+           value={fmt(Math.abs(stats.todayVariance))} 
+           icon={Activity} 
+           sub={stats.todayVariance === 0 ? "Perfect Match" : (stats.todayVariance > 0 ? "Surplus Cash" : "Shortage Detected")} 
+           color={stats.todayVariance === 0 ? "success" : "danger"} 
+         />
        </div>
  
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <div className="lg:col-span-2">
-           <LineAnalytics 
-             title={t('dash_collection_perf')}
-             data={chartData} 
-             series={groupSeries} 
-             height={300} 
-             xKey="month" 
-           />
-         </div>
-         <div>
-           <TableCard title={t('dash_recent_activity')} subtitle={t('dash_realtime_feed')}>
-             <Table>
-               <thead><Tr><Th className="text-xs font-bold uppercase tracking-wider">{t('date')}</Th><Th className="text-xs font-bold uppercase tracking-wider">{t('nav_members')}</Th><Th right className="text-xs font-bold uppercase tracking-wider">{t('amount')}</Th></Tr></thead>
-               <tbody>
-                 {payments.map(p => (
-                   <Tr key={p.id}>
-                     <Td className="whitespace-nowrap font-medium text-[var(--text2)] text-[10px] leading-tight">
-                        <div>{fmtDate(p.payment_date)}</div>
-                        <div className="text-[var(--text3)] mt-0.5">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+       {/* Trends & Analytics Section - Same Width (50/50 Split) */}
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          <Card 
+            title={t('report_today_title')} 
+            subtitle="7-Day Reconciliation Pulse (Expected vs Actual)"
+            headerAction={
+              <button onClick={() => router.push('/reports/today_collection')} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                <ArrowUpRight size={20} className="text-slate-400" />
+              </button>
+            }
+            className="flex flex-col h-full bg-white shadow-sm border-slate-100"
+          >
+            <div className="px-8 py-10 flex flex-col h-full justify-between">
+               <div>
+                  <div className="flex items-end justify-between h-52 gap-4 mb-8 max-w-2xl mx-auto">
+                     {dailyTrends.map((d: any, i: number) => {
+                       const max = Math.max(...dailyTrends.map((x: any) => Math.max(Number(x.expected), Number(x.actual))), 100)
+                       const hExp = (Number(d.expected) / max) * 100
+                       const hAct = (Number(d.actual) / max) * 100
+                       return (
+                         <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
+                           <div className="flex items-end gap-1.5 h-full">
+                              <div 
+                                className="flex-1 bg-slate-200 group-hover:bg-slate-300 rounded-t-[6px] transition-all"
+                                style={{ height: `${Math.max(8, hExp)}%` }}
+                              />
+                              <div 
+                                className="flex-1 bg-[var(--success)] rounded-t-[6px] transition-all shadow-sm"
+                                style={{ height: `${Math.max(8, hAct)}%` }}
+                              />
+                           </div>
+                           <div className="mt-4 text-[10px] font-black uppercase text-slate-400 text-center tracking-tight">{d.label}</div>
+                           
+                           <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white p-5 rounded-2xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 whitespace-nowrap z-50 shadow-2xl border border-white/10">
+                             <div className="flex flex-col gap-3">
+                                <div className="text-[10px] font-black uppercase tracking-widest opacity-40 border-b border-white/10 pb-2 mb-1 text-center">{fmtDate(d.day)}</div>
+                                <div className="flex justify-between gap-10">
+                                   <span className="opacity-50 font-medium tracking-wide">System (Expected):</span>
+                                   <span className="font-mono">{fmt(d.expected)}</span>
+                                </div>
+                                <div className="flex justify-between gap-10">
+                                   <span className="opacity-50 font-medium tracking-wide">Physical (Actual):</span>
+                                   <span className="font-mono text-emerald-400">{fmt(d.actual)}</span>
+                                </div>
+                                <div className="mt-1 pt-2 border-t border-white/5 flex justify-between gap-10 items-center">
+                                   <span className="opacity-50 font-medium tracking-wide">Daily Variance:</span>
+                                   <Badge variant={Number(d.actual) < Number(d.expected) ? 'danger' : 'success'} className="font-mono text-[10px]">
+                                      {fmt(Math.abs(Number(d.actual) - Number(d.expected)))}
+                                   </Badge>
+                                </div>
+                             </div>
+                           </div>
+                         </div>
+                       )
+                     })}
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-10 mb-8 py-5 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                     <div className="flex items-center gap-2.5">
+                        <div className="w-3 h-3 rounded-full bg-slate-200 shadow-inner" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Records</span>
+                     </div>
+                     <div className="flex items-center gap-2.5">
+                        <div className="w-3 h-3 rounded-full bg-[var(--success)] shadow-inner" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vault Physical</span>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex gap-10">
+                    <div>
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Weekly Actual</div>
+                      <div className="text-3xl font-black text-slate-900 tracking-tighter">
+                        {fmt(dailyTrends.reduce((s, d) => s + Number(d.actual), 0))}
+                      </div>
+                    </div>
+                    <div className="hidden sm:block">
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Weekly Variance</div>
+                      <div className={cn("text-3xl font-black tracking-tighter", dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0) < 0 ? "text-red-500" : "text-emerald-500")}>
+                        {fmt(Math.abs(dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0)))}
+                      </div>
+                    </div>
+                  </div>
+                  <Btn variant="primary" size="sm" onClick={() => router.push('/cashbook')} className="h-12 w-12 p-0 rounded-2xl shadow-lg hover:shadow-xl transition-all">
+                    <ArrowRight size={22} />
+                  </Btn>
+               </div>
+            </div>
+          </Card>
+
+          <div className="flex flex-col h-full">
+            <LineAnalytics 
+              title={t('dash_collection_perf')}
+              data={chartData} 
+              series={groupSeries} 
+              height={440} 
+              xKey="month" 
+            />
+          </div>
+       </div>
+
+       {/* Detailed Activity & Recent Payments Grid */}
+       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+         <div className="lg:col-span-8">
+            <TableCard title={t('dash_recent_activity')} subtitle={t('dash_realtime_feed')}>
+              <Table>
+                <thead><Tr><Th className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('date')}</Th><Th className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('nav_members')}</Th><Th right className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('amount')}</Th></Tr></thead>
+                <tbody className="divide-y divide-slate-50">
+                  {payments.map(p => (
+                    <Tr key={p.id} className="hover:bg-slate-50/50 group/row">
+                      <Td className="whitespace-nowrap font-medium text-slate-400 text-xs px-8 py-6">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/row:bg-white group-hover/row:text-[var(--accent)] transition-all shadow-sm">
+                               <Calendar size={18} strokeWidth={1.5} />
+                            </div>
+                            <div>
+                               <div className="text-slate-900 font-bold">{fmtDate(p.payment_date)}</div>
+                               <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                            </div>
+                         </div>
+                       </Td>
+                      <Td className="px-8">
+                         <div className="font-bold text-sm text-slate-900">{(p.members as any)?.persons?.name}</div>
+                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('receipt_received')}</div>
                       </Td>
-                     <Td>
-                        <div className="font-bold text-sm text-slate-900">{(p.members as any)?.persons?.name}</div>
-                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('receipt_received')}</div>
-                     </Td>
-                     <Td right className="text-emerald-600 font-bold text-sm font-mono">{fmt(p.amount)}</Td>
-                   </Tr>
-                 ))}
-                 {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-12 text-slate-300 italic text-sm">{t('dash_no_recent_payments')}</Td></Tr>}
-               </tbody>
-             </Table>
-           </TableCard>
+                      <Td right className="px-8 text-emerald-600 font-black text-base font-mono italic">{fmt(p.amount)}</Td>
+                    </Tr>
+                  ))}
+                  {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-20 text-slate-300 italic text-sm">{t('dash_no_recent_payments')}</Td></Tr>}
+                </tbody>
+              </Table>
+            </TableCard>
          </div>
+
+          <div className="lg:col-span-4 space-y-6">
+            <Card className="p-8 bg-slate-50 border border-slate-100 shadow-sm relative overflow-hidden h-full flex flex-col justify-between group">
+               <div className="absolute top-0 right-0 p-8 text-slate-200 opacity-50 group-hover:scale-110 transition-transform">
+                  <TrendingUp size={100} strokeWidth={1} />
+               </div>
+               <div className="relative z-10">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-10">Firm Intelligence</h3>
+                  <div className="space-y-8">
+                     <div className="group/metric">
+                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Top Borrower</div>
+                        <div className="text-xl font-black text-slate-900 truncate">
+                          {winnerInsightsRpc?.topBorrower?.name || '---'}
+                        </div>
+                        <div className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-wider">
+                          {fmt(winnerInsightsRpc?.topBorrower?.totalDiscount || 0)} Total Discount
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200/60">
+                        <div className="group/metric">
+                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Early Birds</div>
+                           <div className="text-2xl font-black text-slate-900">{winnerInsightsRpc?.earlyBirdCount || 0}</div>
+                        </div>
+                        <div className="group/metric">
+                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Peak Bid</div>
+                           <div className="text-2xl font-black text-slate-900">{fmt(winnerInsightsRpc?.highestSingleDiscount || 0)}</div>
+                        </div>
+                     </div>
+
+                     <div className="pt-6 border-t border-slate-200/60">
+                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Quick Actions</div>
+                        <div className="grid grid-cols-2 gap-2">
+                           <button onClick={() => router.push('/collection')} className="p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-900 transition-all text-left shadow-sm">
+                              <Wallet size={16} className="text-emerald-500 mb-2" />
+                              <div className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Collect</div>
+                           </button>
+                           <button onClick={() => router.push('/groups?add=true')} className="p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-900 transition-all text-left shadow-sm">
+                              <Plus size={16} className="text-blue-500 mb-2" />
+                              <div className="text-[9px] font-black text-slate-900 uppercase tracking-widest">New Group</div>
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <Btn variant="secondary" className="relative z-10 w-full mt-10 bg-white border-slate-200 text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white" icon={ArrowRight} onClick={() => router.push('/reports')}>
+                  Analytics Hub
+               </Btn>
+            </Card>
+          </div>
        </div>
      </div>
    )

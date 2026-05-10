@@ -6,6 +6,7 @@ import { Table, TableCard, Th, Tr, Td, Btn, Badge } from '@/components/ui'
 import { fmt, fmtDate, fmtMonth, cn, getWhatsAppLink } from '@/lib/utils'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
+import { PrintOptionsModal } from '@/components/features/PrintOptionsModal'
 import type { Group, Member, Auction, Payment } from '@/types'
 
 interface MemberDirectoryProps {
@@ -17,7 +18,7 @@ interface MemberDirectoryProps {
   can: (perm: string) => boolean
   t: (key: string) => string
   firm?: { name: string }
-  handlePrintMemberList: () => void
+  handlePrintMemberList: (populateCols?: string[]) => void
   handleExport: () => void
   setImportOpen: (open: boolean) => void
   setAddOpen: (open: boolean) => void
@@ -46,6 +47,21 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   setCollectPersonId
 }) => {
   const [delModal, setDelModal] = React.useState<{ open: boolean, id: number | null, name: string }>({ open: false, id: null, name: '' })
+  const [printOpen, setPrintOpen] = React.useState(false)
+
+  const MEMBER_COLS = [
+    { id: 'ticket_no', label: 'Ticket #', category: 'identity' as const, required: true },
+    { id: 'name', label: 'Member Name', category: 'identity' as const, required: true },
+    { id: 'status', label: 'Member Status', category: 'identity' as const },
+    { id: 'won_month', label: 'Won Month', category: 'auction' as const },
+    { id: 'won_amount', label: 'Won Amount', category: 'auction' as const },
+    { id: 'remarks', label: 'Remarks', category: 'financial' as const },
+    { id: 'chit_value', label: 'Chit Value', category: 'financial' as const },
+    { id: 'duration', label: 'Duration', category: 'financial' as const },
+    { id: 'monthly_contribution', label: 'Monthly Pay', category: 'financial' as const },
+    { id: 'start_date', label: 'Start Date', category: 'financial' as const },
+    { id: 'dividend', label: 'Total Dividend', category: 'financial' as const },
+  ]
 
   const handleDeleteClick = (m: Member) => {
     setDelModal({ open: true, id: m.id, name: `${m.persons?.name} (Ticket #${m.ticket_no})` })
@@ -54,7 +70,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
     <TableCard title={t('member_directory')} subtitle={`${members.length} entities`}
       actions={
         <div className="flex gap-2">
-          <Btn variant="secondary" className="text-xs font-bold uppercase tracking-wider gap-2" size="sm" onClick={handlePrintMemberList}>
+          <Btn variant="secondary" className="text-xs font-bold uppercase tracking-wider gap-2" size="sm" onClick={() => setPrintOpen(true)}>
             <Printer size={16} /> Print
           </Btn>
           {isOwner && (
@@ -191,6 +207,15 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         title="Remove Member from Group?"
         targetId={delModal.id || ''}
         targetType="member"
+      />
+
+      <PrintOptionsModal 
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        onPrint={handlePrintMemberList}
+        availableCols={MEMBER_COLS}
+        defaultSelected={['ticket_no', 'name', 'status', 'chit_value', 'monthly_contribution']}
+        title={`Print List - ${group.name}`}
       />
     </TableCard>
   )

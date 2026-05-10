@@ -162,7 +162,7 @@ export default function GroupLedgerPage() {
             name: payload.name, nickname: payload.nickname, phone: payload.phone,
             address: payload.address, firm_id: firm.id, created_by: userData.user?.id
           })
-          .select().single()
+          .select('id').single()
         if (pErr) throw pErr
         person_id = pData.id
       }
@@ -447,7 +447,7 @@ export default function GroupLedgerPage() {
       {view === 'members' && (
         <MemberDirectory 
           group={group} members={members} auctionHistory={auctionHistory} payments={payments} isOwner={isOwner} can={can as any} t={t}
-          handlePrintMemberList={() => printMemberList(group, members, auctionHistory, payments, firm, t)}
+          handlePrintMemberList={(cols) => printMemberList(group, members, auctionHistory, payments, firm, t, { populateCols: cols })}
           handleExport={() => downloadCSV(members, `${group.name}_members`)}
           setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
           deleteMember={async (id) => { await supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', id); refresh() }}

@@ -115,7 +115,7 @@ export default function GroupsPage() {
   async function loadArchived() {
     setArchLoading(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
-    const { data } = await withFirmScope(supabase.from('groups').select('*, firms(name)').eq('status', 'archived'), targetId).is('deleted_at', null).order('id')
+    const { data } = await withFirmScope(supabase.from('groups').select('id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, firms(name)').eq('status', 'archived'), targetId).is('deleted_at', null).order('id')
     setArchived(data || [])
     setArchLoading(false)
   }

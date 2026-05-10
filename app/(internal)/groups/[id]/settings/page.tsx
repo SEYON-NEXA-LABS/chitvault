@@ -7,7 +7,7 @@ import { fmt, cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { Btn, Card, Loading, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Info, Settings2, Gavel, ArrowLeft, RefreshCcw, Database } from 'lucide-react'
+import { Info, Settings2, Gavel, ArrowLeft, RefreshCcw, Database, AlertTriangle } from 'lucide-react'
 import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
 import { useFirm } from '@/lib/firm/context'
@@ -17,6 +17,7 @@ import {
   calculateDistribution, 
   calculateNetInstallment
 } from '@/lib/utils/chit-calculations'
+import { inputClass, inputStyle } from '@/components/ui'
 
 export default function GroupSettingsPage() {
   const params   = useParams()
@@ -34,6 +35,18 @@ export default function GroupSettingsPage() {
   const [syncing,        setSyncing]        = useState(false)
   const [preview,        setPreview]        = useState<any>(null)
   const [testBid,        setTestBid]        = useState('')
+
+  const [auctionsDone, setAuctionsDone] = useState(0)
+  const [memberCount, setMemberCount] = useState(0)
+
+  const [core, setCore] = useState({
+    name: '',
+    chit_value: 0,
+    num_members: 0,
+    duration: 0,
+    monthly_contribution: 0,
+    start_date: ''
+  })
 
   // Form state mirrors group columns
   const [rules, setRules] = useState({
@@ -53,15 +66,41 @@ export default function GroupSettingsPage() {
     rules.commission_type !== (group.commission_type ?? 'percent_of_chit') ||
     rules.commission_value !== (group.commission_value ?? 5.00) ||
     rules.commission_recipient !== (group.commission_recipient ?? 'foreman') ||
-    rules.dividend_rule !== (group.dividend_rule ?? 'equal_split')
+    rules.dividend_rule !== (group.dividend_rule ?? 'equal_split') ||
+    core.name !== group.name ||
+    Number(core.chit_value) !== Number(group.chit_value) ||
+    Number(core.num_members) !== Number(group.num_members) ||
+    Number(core.duration) !== Number(group.duration) ||
+    Number(core.monthly_contribution) !== Number(group.monthly_contribution) ||
+    core.start_date !== group.start_date
   )
 
   useEffect(() => {
     async function load() {
       if (!firm) return
-      const { data } = await supabase.from('groups').select('id, firm_id, name, chit_value, min_bid_pct, max_bid_pct, discount_cap_pct, commission_type, commission_value, commission_recipient, dividend_rule, auction_scheme').eq('id', groupId).eq('firm_id', firm.id).single()
-      if (!data) { router.push('/groups'); return }
+      const fields = 'id, name, chit_value, num_members, duration, monthly_contribution, start_date, status, auction_scheme, min_bid_pct, max_bid_pct, discount_cap_pct, commission_type, commission_value, commission_recipient, dividend_rule'
+      const [gRes, aCountRes, mCountRes] = await Promise.all([
+        supabase.from('groups').select(fields).eq('id', groupId).eq('firm_id', firm.id).single(),
+        supabase.from('auctions').select('id', { count: 'exact', head: true }).eq('group_id', groupId).eq('status', 'confirmed').eq('firm_id', firm.id),
+        supabase.from('members').select('id', { count: 'exact', head: true }).eq('group_id', groupId).is('deleted_at', null).eq('firm_id', firm.id)
+      ])
+
+      if (!gRes.data) { router.push('/groups'); return }
+      
+      const data = gRes.data
       setGroup(data)
+      setAuctionsDone(aCountRes.count || 0)
+      setMemberCount(mCountRes.count || 0)
+
+      setCore({
+        name: data.name,
+        chit_value: Number(data.chit_value),
+        num_members: Number(data.num_members),
+        duration: Number(data.duration),
+        monthly_contribution: Number(data.monthly_contribution),
+        start_date: data.start_date
+      })
+
       setRules({
         min_bid_pct:          data.min_bid_pct          ?? 0.70,
         max_bid_pct:          data.max_bid_pct          ?? 1.00,
@@ -119,10 +158,16 @@ export default function GroupSettingsPage() {
 
   async function save() {
     if (!firm || !group) return
+    
+    if (core.num_members < memberCount) {
+      show(`Total members cannot be less than current enrolled members (${memberCount})`, 'error')
+      return
+    }
+
     setSaving(true)
     
     const isPercentType = ['percent_of_chit', 'percent_of_discount', 'percent_of_payout'].includes(rules.commission_type)
-    const limit = isPercentType ? 5 : (group.chit_value * 0.05)
+    const limit = isPercentType ? 5 : (core.chit_value * 0.05)
     
     if (rules.commission_value > limit) {
       show(`Legal limit exceeded: Maximum allowed commission is ${isPercentType ? '5%' : fmt(limit)}.`, 'error')
@@ -133,19 +178,26 @@ export default function GroupSettingsPage() {
     // Safety: Only update columns that exist in the DB schema
     const { dividend_rule, ...safeRules } = rules as any;
     
-    console.log('--- SAVING RULES ---', safeRules)
-    const { error, data } = await supabase.from('groups').update(safeRules).eq('id', groupId).eq('firm_id', firm.id).select()
+    const updatePayload = {
+      ...safeRules,
+      name: core.name,
+      chit_value: Number(core.chit_value),
+      num_members: Number(core.num_members),
+      duration: Number(core.duration),
+      monthly_contribution: Number(core.monthly_contribution),
+      start_date: core.start_date
+    }
+
+    const { error } = await supabase.from('groups').update(updatePayload).eq('id', groupId).eq('firm_id', firm.id)
     
     setSaving(false)
     if (error) { 
-      console.error('--- SAVE ERROR ---', error)
-      show(error.message || 'Failed to save rules', 'error')
+      show(error.message || 'Failed to save settings', 'error')
       return 
     }
     
-    console.log('--- SAVE SUCCESS ---', data)
-    show('Auction rules saved! ✓', 'success')
-    setGroup(g => g ? { ...g, ...safeRules } : g)
+    show('Group settings updated! ✓', 'success')
+    setGroup(g => g ? { ...g, ...updatePayload } : g)
     router.refresh()
   }
 
@@ -192,6 +244,48 @@ export default function GroupSettingsPage() {
         </div>
         <Btn onClick={() => router.push(`/groups/${groupId}`)} icon={Gavel}>View Ledger</Btn>
       </div>
+
+      <Card title="General Details" subtitle="Core properties of the group.">
+        <div className="p-5 space-y-4">
+          {auctionsDone > 0 && (
+            <div className="p-4 rounded-2xl text-xs flex gap-3 mb-4"
+              style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', color: 'var(--danger)' }}>
+              <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <div className="font-bold uppercase tracking-widest text-[9px]">Calculations Locked</div>
+                <div className="opacity-80 leading-relaxed">Core financial properties (Value, Duration, Members) cannot be edited once an auction has been recorded to ensure ledger consistency.</div>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Group Name</label>
+              <input className={inputClass} style={inputStyle} value={core.name} onChange={e => setCore(c => ({ ...c, name: e.target.value }))} placeholder="e.g. SEP2026-A" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Chit Value (₹)</label>
+              <input className={inputClass} style={inputStyle} type="number" value={core.chit_value} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, chit_value: +e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Total Members</label>
+              <input className={inputClass} style={inputStyle} type="number" value={core.num_members} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, num_members: +e.target.value }))} />
+              {auctionsDone === 0 && <div className="text-[9px] opacity-40">Must be at least {memberCount}</div>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Duration (Months)</label>
+              <input className={inputClass} style={inputStyle} type="number" value={core.duration} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, duration: +e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Monthly Installment (₹)</label>
+              <input className={inputClass} style={inputStyle} type="number" value={core.monthly_contribution} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, monthly_contribution: +e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase opacity-40">Start Date</label>
+              <input className={inputClass} style={inputStyle} type="date" value={core.start_date} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, start_date: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card title={t('nav_auctions')} subtitle={t('bid_thresholds_desc')}>
         <div className="p-5 space-y-6">
@@ -365,7 +459,7 @@ export default function GroupSettingsPage() {
         <div className="flex gap-3 w-full md:w-auto">
           <button className="px-4 py-2 rounded-xl border border-[var(--border)] text-xs font-bold hover:bg-[var(--surface2)] transition-colors" onClick={() => router.push(`/groups/${groupId}`)}>Discard</button>
           <Btn variant="primary" className="flex-1 md:flex-initial shadow-lg" loading={saving} onClick={save}>
-             Update Rules ✓
+             Save Settings ✓
           </Btn>
         </div>
       </div>
