@@ -151,9 +151,9 @@ export default function CashbookPage() {
   }
  
   async function del(id: number) {
-    if (!can('deleteCashEntry')) return
+    if (!can('deleteCashEntry') || !firm) return
     if (!confirm('Are you sure you want to move this cash entry to trash?')) return
-    const { error } = await supabase.from('denominations').update({ deleted_at: new Date() }).eq('id', id)
+    const { error } = await supabase.from('denominations').update({ deleted_at: new Date() }).eq('id', id).eq('firm_id', firm.id)
     if (error) { show(error.message, 'error'); return }
  
     show('Moved to trash.')
@@ -162,8 +162,8 @@ export default function CashbookPage() {
   }
  
   async function toggleVerify(id: number, current: boolean) {
-      if (!can('editCashEntry')) return
-      const { error } = await supabase.from('denominations').update({ is_verified: !current }).eq('id', id)
+      if (!can('editCashEntry') || !firm) return
+      const { error } = await supabase.from('denominations').update({ is_verified: !current }).eq('id', id).eq('firm_id', firm.id)
       if (error) { show(error.message, 'error'); return }
       show(!current ? 'Verified! ✓' : 'Verification removed.')
       load()
@@ -401,7 +401,14 @@ export default function CashbookPage() {
                   <thead>
                       <Tr>
                           <Th>{t('date')}</Th>
-                          <Th right>{t('system_cash_receipts')}</Th>
+                          <Th right>
+                            <div className="flex flex-col items-end">
+                              <span>{t('system_cash_receipts')}</span>
+                              <span className="text-[9px] font-normal text-slate-400 normal-case tracking-normal">
+                                (Incl. Cash Commissions)
+                              </span>
+                            </div>
+                          </Th>
                           <Th right>{t('physical_cashbook')}</Th>
                           <Th right>{t('diff')}</Th>
                           <Th className="text-center">{t('status')}</Th>

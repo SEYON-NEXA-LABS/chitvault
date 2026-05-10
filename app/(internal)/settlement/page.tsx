@@ -205,7 +205,7 @@ function SettlementPage() {
 
       // Fetch breakdown details for the print voucher
       const { data: commData } = await withFirmScope(
-        supabase.from('foreman_commissions').select('*').eq('auction_id', winnerAucs[0].id),
+        supabase.from('foreman_commissions').select('id, commission_amt, chit_value').eq('auction_id', winnerAucs[0].id),
         firm.id
       ).single()
       setSelectedAuctionCommission(commData || null)
@@ -248,7 +248,7 @@ function SettlementPage() {
       setTargetMonths(1)
 
       const { data: commData } = await withFirmScope(
-        supabase.from('foreman_commissions').select('*').eq('auction_id', Number(aId)),
+        supabase.from('foreman_commissions').select('id, commission_amt, chit_value').eq('auction_id', Number(aId)),
         firm?.id
       ).single()
       setSelectedAuctionCommission(commData || null)
@@ -393,7 +393,7 @@ function SettlementPage() {
                                 <Printer size={14} />
                               </button>
                              {can('deleteSettlement') && (
-                               <button onClick={() => { if(confirm(t('delete_confirm'))) supabase.from('settlements').delete().eq('id', s.id).then(() => load()) }} 
+                               <button onClick={() => { if(confirm(t('delete_confirm')) && firm) supabase.from('settlements').delete().eq('id', s.id).eq('firm_id', firm.id).then(() => load()) }} 
                                  className="p-2 opacity-0 group-hover:opacity-100 hover:text-rose-500 transition-all">
                                  <Trash2 size={14} />
                                </button>

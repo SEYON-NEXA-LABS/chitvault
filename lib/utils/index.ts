@@ -23,19 +23,19 @@ export function fmt(n: number | string | null | undefined): string {
 }
 
 // Format date to Indian format
-export function fmtDate(d: string | null | undefined): string {
-  if (!d) return '—'
+export function fmtDate(d: string | null | undefined, fallback: string = '—'): string {
+  if (!d) return fallback
   const date = new Date(d)
-  if (isNaN(date.getTime())) return '—'
+  if (isNaN(date.getTime())) return fallback
   return date.toLocaleDateString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric'
   })
 }
 
-export function fmtDateTime(d: string | null | undefined): string {
-  if (!d) return '—'
+export function fmtDateTime(d: string | null | undefined, fallback: string = '—'): string {
+  if (!d) return fallback
   const date = new Date(d)
-  if (isNaN(date.getTime())) return '—'
+  if (isNaN(date.getTime())) return fallback
   return date.toLocaleString('en-IN', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true
@@ -66,8 +66,8 @@ export function amountDue(monthlyContribution: number, dividend: number, scheme?
 }
 
 // Format month index to include MMM-YY
-export function fmtMonth(m: number, start?: string | null): string {
-  if (m === undefined || m === null || isNaN(m)) return '—'
+export function fmtMonth(m: number, start?: string | null, fallback: string = '—'): string {
+  if (m === undefined || m === null || isNaN(m)) return fallback
   if (!start) return `M${m}`
   const d = new Date(start)
   if (isNaN(d.getTime())) return `M${m}`

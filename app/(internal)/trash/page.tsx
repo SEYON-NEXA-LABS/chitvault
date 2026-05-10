@@ -79,7 +79,7 @@ export default function TrashPage() {
   useEffect(() => { load() }, [load])
 
   async function handleRestore(id: any, table: string) {
-    if (!isAdmin) return
+    if (!isAdmin || !firm) return
     if (!confirm('Are you sure you want to restore this record?')) return
     
     const targetTable = table === 'staff' ? 'profiles' : (table === 'commissions' ? 'foreman_commissions' : table)
@@ -88,11 +88,11 @@ export default function TrashPage() {
     if (table === 'members') {
       const member = data.find(m => m.id === id)
       if (member && member.person_id) {
-        await supabase.from('persons').update({ deleted_at: null }).eq('id', member.person_id)
+        await supabase.from('persons').update({ deleted_at: null }).eq('id', member.person_id).eq('firm_id', firm.id)
       }
     }
 
-    const { error } = await supabase.from(targetTable).update({ deleted_at: null }).eq('id', id)
+    const { error } = await supabase.from(targetTable).update({ deleted_at: null }).eq('id', id).eq('firm_id', firm.id)
     
     if (error) { show(error.message, 'error'); return }
     
@@ -104,7 +104,7 @@ export default function TrashPage() {
   }
 
   async function handleBulkRestore() {
-    if (selectedIds.size === 0 || !isAdmin) return
+    if (selectedIds.size === 0 || !isAdmin || !firm) return
     if (!confirm(`Restore ${selectedIds.size} selected records?`)) return
     
     const targetTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
@@ -113,11 +113,11 @@ export default function TrashPage() {
     if (activeTab === 'members') {
       const pIds = data.filter(item => selectedIds.has(item.id)).map(i => i.person_id).filter(Boolean)
       if (pIds.length > 0) {
-        await supabase.from('persons').update({ deleted_at: null }).in('id', Array.from(new Set(pIds)))
+        await supabase.from('persons').update({ deleted_at: null }).in('id', Array.from(new Set(pIds))).eq('firm_id', firm.id)
       }
     }
 
-    const { error } = await supabase.from(targetTable).update({ deleted_at: null }).in('id', Array.from(selectedIds))
+    const { error } = await supabase.from(targetTable).update({ deleted_at: null }).in('id', Array.from(selectedIds)).eq('firm_id', firm.id)
     
     if (error) { show(error.message, 'error'); return }
     
@@ -126,11 +126,11 @@ export default function TrashPage() {
   }
 
   async function handlePermanentDelete(id: any, table: string) {
-     if (!isAdmin) return
+     if (!isAdmin || !firm) return
      if (!confirm('EXTREME DANGER: This will permanently purge this record from the database. This action CANNOT be undone. Proceed?')) return
      
      const targetTable = table === 'staff' ? 'profiles' : (table === 'commissions' ? 'foreman_commissions' : table)
-     const { error } = await supabase.from(targetTable).delete().eq('id', id)
+     const { error } = await supabase.from(targetTable).delete().eq('id', id).eq('firm_id', firm.id)
      
      if (error) { show(error.message, 'error'); return }
      
@@ -139,11 +139,11 @@ export default function TrashPage() {
   }
 
   async function handleBulkPurge() {
-    if (selectedIds.size === 0 || !isAdmin) return
+    if (selectedIds.size === 0 || !isAdmin || !firm) return
     if (!confirm(`EXTREMEM DANGER: Permanently purge ${selectedIds.size} selected records? THIS CANNOT BE UNDONE.`)) return
     
     const targetTable = activeTab === 'staff' ? 'profiles' : (activeTab === 'commissions' ? 'foreman_commissions' : activeTab)
-    const { error } = await supabase.from(targetTable).delete().in('id', Array.from(selectedIds))
+    const { error } = await supabase.from(targetTable).delete().in('id', Array.from(selectedIds)).eq('firm_id', firm.id)
     
     if (error) { show(error.message, 'error'); return }
     

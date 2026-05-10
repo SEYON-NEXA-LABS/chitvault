@@ -173,7 +173,39 @@ begin
 end;
 $$;
 
--- 5. Group Progress Summaries
+-- 5. Daily Collection Trends (Last 7 Days)
+-- Returns sum of collections per day for the last 7 days.
+create or replace function public.get_firm_daily_trends(p_firm_id uuid)
+returns json 
+language plpgsql 
+security definer 
+set search_path = public
+as $$
+begin
+    return (
+        select json_agg(t) from (
+            select 
+                to_char(d.day, 'YYYY-MM-DD') as day,
+                to_char(d.day, 'Dy') as label,
+                -- "Expected" is what the system recorded (Payments + Cash Commissions)
+                (
+                  coalesce((select sum(amount) from payments where firm_id = p_firm_id and payment_date = d.day and deleted_at is null), 0) +
+                  coalesce((select sum(fc.commission_amt) from foreman_commissions fc join auctions a on fc.auction_id = a.id where fc.firm_id = p_firm_id and a.payout_date = d.day and a.payout_mode = 'Cash' and a.deleted_at is null), 0)
+                ) as expected,
+                -- "Actual" is what was physically counted in the cashbook
+                coalesce((select sum(total) from denominations where firm_id = p_firm_id and entry_date = d.day and deleted_at is null), 0) as actual
+            from (
+                select (current_date - interval '1 day' * i)::date as day
+                from generate_series(0, 6) i
+            ) d
+            group by d.day
+            order by d.day asc
+        ) t
+    );
+end;
+$$;
+
+-- 6. Group Progress Summaries
 -- Returns detailed progress and latest auction info per group.
 create or replace function public.get_firm_group_summaries(p_firm_id uuid)
 returns json 

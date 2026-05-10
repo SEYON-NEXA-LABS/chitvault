@@ -101,7 +101,7 @@ export function printPaymentReceipt(
         </div>
         <div style="text-align: right;">
           <span class="label">${t('date')}</span>
-          <div class="val">${fmtDate(paymentDate)}</div>
+          <div class="val">${fmtDate(paymentDate, '')}</div>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ export function printPaymentReceipt(
         <tbody>
           ${targetDues.map(d => `
             <tr>
-              <td>${d.groups?.name || d.groupName || '—'}</td>
+              <td>${d.groups?.name || d.groupName || ''}</td>
               <td>Month ${d.month}</td>
               <td style="text-align: right;">${fmt(d.amount || (d.amount_due - d.amount_paid))}</td>
             </tr>
@@ -167,13 +167,13 @@ export function printPayoutVoucher(
       <div class="grid">
         <div>
           <span class="label">${t('winner')}</span>
-          <div class="val">${winner.persons?.name || '—'}</div>
+          <div class="val">${winner.persons?.name || ''}</div>
           <div class="val" style="font-size: 11px; opacity: 0.6;">Ticket #${winner.ticket_no}</div>
         </div>
         <div style="text-align: right;">
           <span class="label">${t('group')}</span>
           <div class="val">${group.name}</div>
-          <div class="val" style="font-size: 11px; opacity: 0.6;">${fmtDate(auction.auction_date)}</div>
+          <div class="val" style="font-size: 11px; opacity: 0.6;">${fmtDate(auction.auction_date, '')}</div>
         </div>
       </div>
 
@@ -272,11 +272,11 @@ export function printSettlementReport(
       <div class="grid">
         <div>
           <span class="label">${t('member_name')}</span>
-          <div class="val">${member?.persons?.name || '—'}</div>
+          <div class="val">${member?.persons?.name || ''}</div>
         </div>
         <div style="text-align: right;">
           <span class="label">${t('group_name_label')}</span>
-          <div class="val">${group?.name || '—'}</div>
+          <div class="val">${group?.name || ''}</div>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ export function printSettlementReport(
               <tr>
                 <td>
                   ${e.label || `Month ${i+1}`}
-                  <div style="font-size: var(--print-font-xs); opacity: 0.5; font-weight: normal;">${e.date ? fmtDate(e.date) : ''}</div>
+                  <div style="font-size: var(--print-font-xs); opacity: 0.5; font-weight: normal;">${e.date ? fmtDate(e.date, '') : ''}</div>
                 </td>
                 <td style="text-align: right;">${fmt(e.amount)}</td>
                 <td style="text-align: right;">${fmt(balances[i]?.running)}</td>
@@ -305,8 +305,8 @@ export function printSettlementReport(
       ` : `
         <div style="padding: var(--print-gap); border: 1px dashed var(--print-border-light); border-radius: var(--print-radius); margin-bottom: var(--print-padding); text-align: center;">
           <div class="label">${t('settle_winner_month')}</div>
-          <div class="val" style="font-size: var(--print-font-lg);">${member?.auctionMonth ? `Month ${member.auctionMonth}` : '—'}</div>
-          <div style="font-size: var(--print-font-label); opacity: 0.5; margin-top: var(--print-gap-sm);">${member?.auctionDate ? fmtDate(member.auctionDate) : ''}</div>
+          <div class="val" style="font-size: var(--print-font-lg);">${member?.auctionMonth ? `Month ${member.auctionMonth}` : ''}</div>
+          <div style="font-size: var(--print-font-label); opacity: 0.5; margin-top: var(--print-gap-sm);">${member?.auctionDate ? fmtDate(member.auctionDate, '') : ''}</div>
         </div>
       `}
 
@@ -352,7 +352,36 @@ export function printSettlementReport(
 /**
  * Prints a Member List for a group.
  */
-export function printMemberList(group: Group, members: Member[], auctions: Auction[], payments: Payment[], firm: Firm | null, t: (k: string) => string) {
+export function printMemberList(
+  group: Group, 
+  members: Member[], 
+  auctions: Auction[], 
+  payments: Payment[], 
+  firm: Firm | null, 
+  t: (k: string) => string,
+  options: { populateCols?: string[] } = {}
+) {
+
+  // All possible columns definitions
+  const COL_DEFS: Record<string, { label: string, align?: string, width?: string }> = {
+    'ticket_no': { label: 'Ticket', align: 'left', width: '60px' },
+    'name': { label: 'Member Name', align: 'left' },
+    'status': { label: 'Status', align: 'left', width: '80px' },
+    'won_month': { label: 'Won Month', align: 'left', width: '90px' },
+    'won_amount': { label: 'Won Amount', align: 'right', width: '100px' },
+    'signature': { label: 'Signature', align: 'left', width: '120px' },
+    'remarks': { label: 'Remarks', align: 'left', width: '150px' }
+  }
+
+  // Summary fields (not in table)
+  const summaryIds = ['chit_value', 'duration', 'monthly_contribution', 'start_date', 'dividend']
+  
+  // FIXED Table Layout for consistent reporting
+  const tableIds = ['ticket_no', 'name', 'status', 'won_month', 'won_amount', 'signature', 'remarks']
+  
+  // Columns selected for population
+  const populateIds = options.populateCols || tableIds
+  
   const content = `
     <div style="max-width: 900px; margin: 0 auto; font-family: 'Inter', sans-serif; padding: var(--print-padding);">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--print-padding);">
@@ -366,28 +395,30 @@ export function printMemberList(group: Group, members: Member[], auctions: Aucti
       <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--print-gap); background: var(--print-bg-light); padding: var(--print-gap); border-radius: var(--print-radius); margin-bottom: var(--print-padding); border: var(--print-border-light);">
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Chit Value</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${fmt(group.chit_value)}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('chit_value') ? fmt(group.chit_value) : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Duration</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${group.duration} Months</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('duration') ? `${group.duration} Months` : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Monthly Pay</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${fmt(group.monthly_contribution)}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('monthly_contribution') ? fmt(group.monthly_contribution) : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Start Date</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${fmtDate(group.start_date)}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('start_date') ? fmtDate(group.start_date, '') : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: var(--print-color-muted); text-transform: uppercase;">
             ${group.auction_scheme === 'ACCUMULATION' ? 'Acc. Surplus Share' : 'Total Dividend'}
           </div>
           <div style="font-size: var(--print-font-md); font-weight: 900;">
-            ${group.auction_scheme === 'ACCUMULATION' 
-              ? fmt((group.accumulated_surplus || 0) / (group.num_members || 1))
-              : fmt(auctions.reduce((s, a) => s + (a.dividend || 0), 0))}
+            ${populateIds.includes('dividend') ? (
+                group.auction_scheme === 'ACCUMULATION' 
+                ? fmt((group.accumulated_surplus || 0) / (group.num_members || 1))
+                : fmt(auctions.reduce((s, a) => s + (a.dividend || 0), 0))
+            ) : ''}
           </div>
         </div>
       </div>
@@ -395,13 +426,7 @@ export function printMemberList(group: Group, members: Member[], auctions: Aucti
       <table class="table" style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr>
-            <th>Ticket</th>
-            <th>Member Name</th>
-            <th>Status</th>
-            <th>Won Month</th>
-            <th>Won Amount</th>
-            <th>Won Date</th>
-            <th>Signature</th>
+            ${tableIds.map(id => `<th style="text-align: ${COL_DEFS[id]?.align || 'left'}; width: ${COL_DEFS[id]?.width || 'auto'};">${COL_DEFS[id]?.label || id}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
@@ -410,16 +435,22 @@ export function printMemberList(group: Group, members: Member[], auctions: Aucti
 
             return `
               <tr>
-                <td>#${m.ticket_no}</td>
-                <td style="text-transform: uppercase;">
-                  ${m.persons?.name}
-                  <div style="font-size: var(--print-font-xs); opacity: 0.5;">${m.persons?.phone || ''}</div>
-                </td>
-                <td style="font-size: var(--print-font-xs);">${m.status === 'foreman' ? 'FOREMAN' : 'ACTIVE'}</td>
-                <td style="font-weight: 900;">${wonAuc ? `Month ${wonAuc.month}` : '—'}</td>
-                <td style="font-weight: 900;">${wonAuc ? fmt(wonAuc.net_payout || wonAuc.payout_amount) : '—'}</td>
-                <td style="font-size: var(--print-font-label);">${wonAuc ? fmtDate(wonAuc.auction_date) : '—'}</td>
-                <td style="width: var(--print-width-sm); border-bottom: var(--print-border);"></td>
+                ${tableIds.map(id => {
+                  let val = ''
+                  // Mandatory columns (ticket_no, name) are ALWAYS populated to identify rows
+                  if (populateIds.includes(id) || id === 'ticket_no' || id === 'name') {
+                    if (id === 'ticket_no') val = `#${m.ticket_no}`
+                    if (id === 'name') val = `<span style="text-transform: uppercase;">${m.persons?.name}</span><div style="font-size: var(--print-font-xs); opacity: 0.5;">${m.persons?.phone || ''}</div>`
+                    if (id === 'status') val = m.status === 'foreman' ? 'FOREMAN' : 'ACTIVE'
+                    if (id === 'won_month' && wonAuc) val = `Month ${wonAuc.month}`
+                    if (id === 'won_amount' && wonAuc) val = fmt(wonAuc.net_payout || wonAuc.payout_amount)
+                  }
+                  
+                  const align = COL_DEFS[id]?.align || 'left'
+                  const border = id === 'signature' ? 'border-bottom: var(--print-border);' : ''
+                  
+                  return `<td style="text-align: ${align}; ${border}">${val}</td>`
+                }).join('')}
               </tr>
             `
           }).join('')}
@@ -455,7 +486,7 @@ export function printCollectionsReport(
         </div>
         <div style="text-align: right;">
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Report Date</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${fmtDate(new Date().toISOString())}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${fmtDate(new Date().toISOString(), '')}</div>
         </div>
       </div>
 
@@ -498,5 +529,5 @@ export function printCollectionsReport(
       </table>
     </div>
   `
-  createPrintWindow(content, `Collection Report - ${fmtDate(new Date().toISOString())}`)
+  createPrintWindow(content, `Collection Report - ${fmtDate(new Date().toISOString(), '')}`)
 }
