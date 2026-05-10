@@ -447,7 +447,7 @@ export default function GroupLedgerPage() {
       {view === 'members' && (
         <MemberDirectory 
           group={group} members={members} auctionHistory={auctionHistory} payments={payments} isOwner={isOwner} can={can as any} t={t}
-          handlePrintMemberList={(cols) => printMemberList(group, members, auctionHistory, payments, firm, t, { populateCols: cols })}
+          handlePrintMemberList={(settings: Record<string, { include: boolean, populate: boolean }>) => printMemberList(group, members, auctionHistory, payments, firm, t, { settings })}
           handleExport={() => downloadCSV(members, `${group.name}_members`)}
           setImportOpen={setImportOpen} setAddOpen={setAddOpen} router={router}
           deleteMember={async (id) => { await supabase.from('members').update({ deleted_at: new Date().toISOString() }).eq('id', id); refresh() }}

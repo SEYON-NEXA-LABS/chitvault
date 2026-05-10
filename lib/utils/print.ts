@@ -48,8 +48,8 @@ function createPrintWindow(content: string, title: string = 'Print') {
           .payout-amt { font-size: var(--print-font-amt); font-weight: 900; letter-spacing: -1px; }
           .words { font-size: 11px; font-weight: 700; font-style: italic; color: #444; margin-top: 5px; }
           .table { width: 100%; border-collapse: collapse; margin-bottom: var(--print-gap); }
-          .table th { text-align: left; font-size: var(--print-font-label); font-weight: 900; text-transform: uppercase; padding: 8px; border-bottom: var(--print-border); }
-          .table td { padding: 8px; border-bottom: var(--print-border-light); font-size: var(--print-font-base); font-weight: 700; }
+          .table th { text-align: left; font-size: var(--print-font-label); font-weight: 900; text-transform: uppercase; padding: 10px; border: var(--print-border-light); background: var(--print-bg-light); }
+          .table td { padding: 10px; border: var(--print-border-light); font-size: var(--print-font-base); font-weight: 700; }
           .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 30px; text-align: center; }
           .sign-box { border: 1px dashed #ccc; height: 50px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-size: var(--print-font-label); font-weight: 900; text-transform: uppercase; border-radius: 6px; }
           .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 100px; font-weight: 900; color: rgba(0,0,0,0.03); pointer-events: none; white-space: nowrap; }
@@ -359,8 +359,15 @@ export function printMemberList(
   payments: Payment[], 
   firm: Firm | null, 
   t: (k: string) => string,
-  options: { populateCols?: string[] } = {}
+  options: { settings?: Record<string, { include: boolean, populate: boolean }> } = {}
 ) {
+  const settings = options.settings || {}
+  
+  // System Mandatory Columns (Always Included & Populated)
+  const MANDATORY_IDS = ['ticket_no', 'name', 'status', 'chit_value', 'duration', 'monthly_contribution', 'start_date']
+  
+  const isIncluded = (id: string) => MANDATORY_IDS.includes(id) || (settings[id] ? settings[id].include : false)
+  const isPopulated = (id: string) => MANDATORY_IDS.includes(id) || (settings[id] ? settings[id].populate : true)
 
   // All possible columns definitions
   const COL_DEFS: Record<string, { label: string, align?: string, width?: string }> = {
@@ -374,13 +381,34 @@ export function printMemberList(
   }
 
   // Summary fields (not in table)
-  const summaryIds = ['chit_value', 'duration', 'monthly_contribution', 'start_date', 'dividend']
+  const summaryIds = ['chit_value', 'duration', 'monthly_contribution', 'start_date']
   
-  // FIXED Table Layout for consistent reporting
-  const tableIds = ['ticket_no', 'name', 'status', 'won_month', 'won_amount', 'signature', 'remarks']
+  // Table Layout: Settings only control won_month, won_amount, and remarks
+  const tableIds = ['ticket_no', 'name', 'status']
+  if (isIncluded('won_month')) tableIds.push('won_month')
+  if (isIncluded('won_amount')) tableIds.push('won_amount')
+  if (isIncluded('remarks')) tableIds.push('remarks')
+  tableIds.push('signature')
   
-  // Columns selected for population
-  const populateIds = options.populateCols || tableIds
+  // Enforce mandatory columns
+  if (!tableIds.includes('ticket_no')) tableIds.unshift('ticket_no')
+  if (!tableIds.includes('name')) {
+    const tIdx = tableIds.indexOf('ticket_no'); 
+    tableIds.splice(tIdx + 1, 0, 'name')
+  }
+  if (!tableIds.includes('status')) {
+    const nIdx = tableIds.indexOf('name');
+    tableIds.splice(nIdx + 1, 0, 'status')
+  }
+  if (!tableIds.includes('won_month')) {
+    const sIdx = tableIds.indexOf('status');
+    tableIds.splice(sIdx + 1, 0, 'won_month')
+  }
+  if (!tableIds.includes('won_amount')) {
+    const wIdx = tableIds.indexOf('won_month');
+    tableIds.splice(wIdx + 1, 0, 'won_amount')
+  }
+  if (!tableIds.includes('signature')) tableIds.push('signature') 
   
   const content = `
     <div style="max-width: 900px; margin: 0 auto; font-family: 'Inter', sans-serif; padding: var(--print-padding);">
@@ -395,29 +423,31 @@ export function printMemberList(
       <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--print-gap); background: var(--print-bg-light); padding: var(--print-gap); border-radius: var(--print-radius); margin-bottom: var(--print-padding); border: var(--print-border-light);">
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Chit Value</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('chit_value') ? fmt(group.chit_value) : ''}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${isIncluded('chit_value') ? (isPopulated('chit_value') ? fmt(group.chit_value) : '') : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Duration</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('duration') ? `${group.duration} Months` : ''}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${isIncluded('duration') ? (isPopulated('duration') ? `${group.duration} Months` : '') : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Monthly Pay</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('monthly_contribution') ? fmt(group.monthly_contribution) : ''}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${isIncluded('monthly_contribution') ? (isPopulated('monthly_contribution') ? fmt(group.monthly_contribution) : '') : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: #666; text-transform: uppercase;">Start Date</div>
-          <div style="font-size: var(--print-font-md); font-weight: 900;">${populateIds.includes('start_date') ? fmtDate(group.start_date, '') : ''}</div>
+          <div style="font-size: var(--print-font-md); font-weight: 900;">${isIncluded('start_date') ? (isPopulated('start_date') ? fmtDate(group.start_date, '') : '') : ''}</div>
         </div>
         <div>
           <div style="font-size: var(--print-font-xs); font-weight: 900; color: var(--print-color-muted); text-transform: uppercase;">
             ${group.auction_scheme === 'ACCUMULATION' ? 'Acc. Surplus Share' : 'Total Dividend'}
           </div>
           <div style="font-size: var(--print-font-md); font-weight: 900;">
-            ${populateIds.includes('dividend') ? (
+            ${isIncluded('dividend') ? (
+              isPopulated('dividend') ? (
                 group.auction_scheme === 'ACCUMULATION' 
                 ? fmt((group.accumulated_surplus || 0) / (group.num_members || 1))
                 : fmt(auctions.reduce((s, a) => s + (a.dividend || 0), 0))
+              ) : ''
             ) : ''}
           </div>
         </div>
@@ -437,8 +467,7 @@ export function printMemberList(
               <tr>
                 ${tableIds.map(id => {
                   let val = ''
-                  // Mandatory columns (ticket_no, name) are ALWAYS populated to identify rows
-                  if (populateIds.includes(id) || id === 'ticket_no' || id === 'name') {
+                  if (isPopulated(id) || id === 'ticket_no' || id === 'name' || id === 'status') {
                     if (id === 'ticket_no') val = `#${m.ticket_no}`
                     if (id === 'name') val = `<span style="text-transform: uppercase;">${m.persons?.name}</span><div style="font-size: var(--print-font-xs); opacity: 0.5;">${m.persons?.phone || ''}</div>`
                     if (id === 'status') val = m.status === 'foreman' ? 'FOREMAN' : 'ACTIVE'
@@ -447,9 +476,7 @@ export function printMemberList(
                   }
                   
                   const align = COL_DEFS[id]?.align || 'left'
-                  const border = id === 'signature' ? 'border-bottom: var(--print-border);' : ''
-                  
-                  return `<td style="text-align: ${align}; ${border}">${val}</td>`
+                  return `<td style="text-align: ${align};">${val}</td>`
                 }).join('')}
               </tr>
             `

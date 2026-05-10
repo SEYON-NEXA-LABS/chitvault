@@ -18,7 +18,7 @@ interface MemberDirectoryProps {
   can: (perm: string) => boolean
   t: (key: string) => string
   firm?: { name: string }
-  handlePrintMemberList: (populateCols?: string[]) => void
+  handlePrintMemberList: (settings: Record<string, { include: boolean, populate: boolean }>) => void
   handleExport: () => void
   setImportOpen: (open: boolean) => void
   setAddOpen: (open: boolean) => void
@@ -50,17 +50,10 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
   const [printOpen, setPrintOpen] = React.useState(false)
 
   const MEMBER_COLS = [
-    { id: 'ticket_no', label: 'Ticket #', category: 'identity' as const, required: true },
-    { id: 'name', label: 'Member Name', category: 'identity' as const, required: true },
-    { id: 'status', label: 'Member Status', category: 'identity' as const },
     { id: 'won_month', label: 'Won Month', category: 'auction' as const },
     { id: 'won_amount', label: 'Won Amount', category: 'auction' as const },
-    { id: 'remarks', label: 'Remarks', category: 'financial' as const },
-    { id: 'chit_value', label: 'Chit Value', category: 'financial' as const },
-    { id: 'duration', label: 'Duration', category: 'financial' as const },
-    { id: 'monthly_contribution', label: 'Monthly Pay', category: 'financial' as const },
-    { id: 'start_date', label: 'Start Date', category: 'financial' as const },
     { id: 'dividend', label: 'Total Dividend', category: 'financial' as const },
+    { id: 'remarks', label: 'Remarks', category: 'financial' as const },
   ]
 
   const handleDeleteClick = (m: Member) => {
@@ -214,7 +207,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
         onClose={() => setPrintOpen(false)}
         onPrint={handlePrintMemberList}
         availableCols={MEMBER_COLS}
-        defaultSelected={['ticket_no', 'name', 'status', 'chit_value', 'monthly_contribution']}
+        defaultSelected={['won_month', 'won_amount']}
         title={`Print List - ${group.name}`}
       />
     </TableCard>
