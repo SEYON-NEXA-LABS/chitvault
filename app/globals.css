@@ -6,19 +6,19 @@
    Base Design Tokens (Plain Shadcn)
    =============================== */
 :root {
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 14px; /* TweakCN Dashboard Standard */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px; /* TweakCN Compact Standard */
   --font-base: 'Inter', sans-serif;
   font-size: var(--font-size-base, 14px);
   
   /* TweakCN Typographic Scale */
   --text-xs: 0.75rem;     /* 12px */
-  --text-sm: 0.8125rem;   /* 13px */
-  --text-base: 0.875rem;  /* 14px (TweakCN Body) */
-  --text-lg: 1rem;        /* 16px */
-  --text-xl: 1rem;        /* 16px (TweakCN H3) */
-  --text-2xl: 1rem;       /* 16px (TweakCN H2) */
+  --text-sm: 0.875rem;     /* 14px (TweakCN Standard) */
+  --text-base: 0.9375rem;  /* 15px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
   --text-3xl: 1.875rem;   /* 30px (TweakCN H1) */
   --text-4xl: 2.25rem;    /* 36px */
 }
@@ -39,8 +39,8 @@
   --surface3: #e4e4e7; 
   --border: #d4d4d8;
   --text: #09090b;   
-  --text2: #27272a;  /* Increased contrast */
-  --text3: #52525b;  /* Increased contrast */
+  --text2: #18181b;  /* Higher contrast Zinc-900 */
+  --text3: #3f3f46;  /* Higher contrast Zinc-700 */
   --shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
@@ -80,31 +80,70 @@
 /* ── Solid Profiles ── */
 
 [data-color-profile="eslinks"] {
-  --accent: oklch(0.5460 0.2450 262.8810);
-  --accent-light: oklch(0.7148 0.1257 215.2200);
-  --accent-dim: oklch(0.5460 0.2450 262.8810 / 0.08);
-  --bg: oklch(0.9842 0.0034 247.8600);
-  --surface: oklch(1 0 0);
-  --surface2: oklch(0.9288 0.0126 255.5100);
-  --border: oklch(0.8690 0.0198 252.8900);
-  --text: oklch(0.2795 0.0368 260.0300);
-  --text2: oklch(0.35 0.03 260);
-  --text3: oklch(0.4455 0.0374 257.2800);
-  --radius-lg: 0.625rem;
+  /* TweakCN High Fidelity Hex Mapping */
+  --bg: #F8FAFC;
+  --text: #1E293B;
+  --surface: #FFFFFF;
+  --surface2: #F1F5F9;
+  --border: #CBD5E1;
+  --accent: #155DFC;
+  --accent-light: #3B82F6;
+  --accent-dim: rgba(21, 93, 252, 0.08);
+  --text2: #64748B;
+  --text3: #94A3B8;
+  --radius-lg: 14px;
+
+  /* Shadcn standard variables */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: var(--accent);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.696 0.17 162.48);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: var(--surface2);
+  --muted-foreground: var(--text3);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.7107 0.0351 256.79);
 }
 
 [data-theme="dark"][data-color-profile="eslinks"] {
+  /* TweakCN Mapping */
   --bg: oklch(0.1995 0.0198 262.0232);
-  --surface: oklch(0.2417 0.0194 258.3564);
-  --surface2: oklch(0.2795 0.0204 260.6090);
-  --border: oklch(0.2750 0 0);
   --text: oklch(0.9801 0.0096 252.8096);
-  --text2: oklch(0.85 0.01 250);
-  --text3: oklch(0.7005 0.0204 248.1197);
+  --surface: oklch(0.2417 0.0194 258.3564);
+  --surface2: oklch(0.2795 0.0204 260.609);
+  --border: oklch(0.275 0 0);
   --accent: oklch(0.6854 0.1699 252.9926);
   --accent-light: oklch(0.7748 0.1318 201.6395);
+  --text2: oklch(0.85 0.01 250);
+  --text3: oklch(0.7005 0.0204 248.1197);
   --secondary: oklch(0.7233 0.1657 159.2353);
   --danger: oklch(0.5494 0.1993 25.1156);
+
+  /* Shadcn standard variables */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--bg);
+  --secondary-foreground: var(--bg);
+  --muted: var(--surface2);
+  --muted-foreground: var(--text3);
+  --accent-foreground: var(--bg);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--text);
+  --input: oklch(0.325 0 0);
+  --ring: oklch(0.556 0 0);
 }
 
 [data-color-profile="zinc"] {
@@ -295,5 +334,20 @@ p, .text-body {
   * {
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .only-print {
+    display: block !important;
+  }
+}
+
+@media screen {
+  .only-print {
+    display: none !important;
   }
 }

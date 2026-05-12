@@ -13,15 +13,15 @@ export function Badge({ variant = 'gray', children, className }: {
 }) {
   const styles: Record<BadgeVariant, React.CSSProperties> = {
     success: { background: 'var(--success-dim)', color: 'var(--success)' },
-    danger:  { background: 'var(--danger-dim)',   color: 'var(--danger)'  },
-    accent:  { background: 'var(--accent-dim)',   color: 'var(--accent)' },
-    info:    { background: 'var(--info-dim)',     color: 'var(--info)'  },
-    gray:    { background: 'var(--surface3)',     color: 'var(--text2)' },
-    warning: { background: 'var(--warning-dim)',  color: 'var(--warning)' },
+    danger:  { background: 'var(--danger-dim)',  color: 'var(--danger)'  },
+    accent:  { background: 'var(--accent-dim)',  color: 'var(--accent)'  },
+    info:    { background: 'var(--info-dim)',    color: 'var(--info)'    },
+    gray:    { background: 'var(--surface2)',    color: 'var(--text3)'   },
+    warning: { background: 'var(--warning-dim)', color: 'var(--warning)' },
   }
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider', className)}
-      style={styles[variant]}>
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold border border-transparent', className)}
+      style={{ ...styles[variant], borderColor: (styles[variant].color as string) + '20' }}>
       {children}
     </span>
   )
@@ -36,18 +36,18 @@ export function Btn({ variant = 'secondary', size = 'md', loading, icon: Icon, c
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]'
   const sizes = { 
-    sm: 'px-3 py-1.5 text-[13px]', 
-    md: 'px-4 py-2 text-sm', 
-    lg: 'px-6 py-3 text-base' 
+    sm: 'px-2 py-1 text-xs', 
+    md: 'px-3 py-1.5 text-sm', 
+    lg: 'px-5 py-2.5 text-base' 
   }
   
   // Style variants using ESLinks TweakCN tokens
   const variantClasses: Record<BtnVariant, string> = {
-    primary:   'bg-[#155DFC] text-white border-none hover:bg-blue-700 shadow-sm shadow-blue-500/20',
-    secondary: 'bg-[#F8FAFC] text-slate-900 border border-[#CBD5E1] hover:bg-slate-100',
-    danger:    'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100',
-    success:   'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100',
-    ghost:     'bg-transparent text-slate-600 hover:bg-slate-50'
+    primary:   'bg-[var(--accent)] text-[var(--bg)] border-none hover:opacity-90 shadow-sm',
+    secondary: 'bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface2)]',
+    danger:    'bg-[var(--danger-dim)] text-[var(--danger)] border border-[var(--danger)]/10 hover:bg-[var(--danger-dim)]/80',
+    success:   'bg-[var(--success-dim)] text-[var(--success)] border border-[var(--success)]/10 hover:bg-[var(--success-dim)]/80',
+    ghost:     'bg-transparent text-[var(--text2)] hover:bg-[var(--surface2)]'
   }
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -84,11 +84,11 @@ export function Card({ title, subtitle, headerAction, children, className, style
   children: React.ReactNode; className?: string; style?: React.CSSProperties; glass?: boolean; onClick?: () => void; padding?: boolean
 }) {
   return (
-    <div className={cn('rounded-lg border transition-all duration-300', glass ? 'glass-card' : 'bg-[var(--surface)]', className)}
+    <div className={cn('rounded-[14px] border transition-all duration-300 bg-[var(--surface)]', glass ? 'glass-card' : 'border-[var(--border)] shadow-sm', className)}
       onClick={onClick}
-      style={{ borderColor: 'var(--border)', cursor: onClick ? 'pointer' : 'default', ...style }}>
+      style={{ cursor: onClick ? 'pointer' : 'default', ...style }}>
       {(title || subtitle || headerAction) && (
-        <div className="px-6 py-6 border-b flex items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-3 py-2 border-b flex items-center justify-between gap-4 border-[var(--border)]">
           <div>
             {title && <h3 className="font-bold text-base leading-tight tracking-tight text-[var(--text)]">{title}</h3>}
             {subtitle && <p className="text-xs font-medium text-[var(--text3)] mt-1.5">{subtitle}</p>}
@@ -96,42 +96,45 @@ export function Card({ title, subtitle, headerAction, children, className, style
           {headerAction && <div className="flex shrink-0 items-center gap-2">{headerAction}</div>}
         </div>
       )}
-      <div className={cn(padding ? "px-6 py-6" : "p-0")}>{children}</div>
+      <div className={cn(padding ? "px-3 py-3" : "p-0")}>{children}</div>
     </div>
   )
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, color = 'accent', icon: Icon, onClick }: {
+export function StatCard({ label, value, sub, color = 'accent', icon: Icon, onClick, compact }: {
   label: string; value: string | number; sub?: string
   color?: 'accent' | 'success' | 'danger' | 'info' | 'warning'
-  icon?: any; onClick?: () => void
+  icon?: any; onClick?: () => void; compact?: boolean
 }) {
-  const colors = { accent: 'var(--accent)', success: 'var(--success)', danger: 'var(--danger)', info: 'var(--info)', warning: 'var(--warning)' }
+  const colors = { accent: '#3b82f6', success: '#10b981', danger: '#ef4444', info: '#0ea5e9', warning: '#f59e0b' }
   const bgColors = { 
-    accent: 'var(--accent-dim)', 
-    success: 'var(--success-dim)', 
-    danger: 'var(--danger-dim)', 
-    info: 'var(--info-dim)',
-    warning: 'var(--warning-dim)'
+    accent: '#eff6ff', 
+    success: '#ecfdf5', 
+    danger: '#fef2f2', 
+    info: '#f0f9ff',
+    warning: '#fffbeb'
   }
   
   return (
-    <Card className={cn("p-6 overflow-hidden relative group bg-white", onClick && "cursor-pointer")} onClick={onClick}>
+    <Card className={cn("overflow-hidden relative group bg-[var(--surface)] border border-[var(--border)]", 
+      compact ? "p-2.5" : "p-3",
+      onClick && "cursor-pointer hover:shadow-md transition-shadow")} onClick={onClick}>
       <div className="flex items-start justify-between relative z-10">
-        <div>
-          <div className="text-sm font-bold tracking-tight mb-3 text-[var(--text3)]">{label}</div>
-          <div className="text-3xl font-black tracking-tighter truncate" style={{ color: colors[color] }}>{value}</div>
-          {sub && <div className="text-xs font-medium mt-2 text-[var(--text2)] tracking-tight">{sub}</div>}
+        <div className="flex-1">
+          <div className={cn("font-bold text-[11px] text-[var(--text2)] leading-none", compact ? "mb-1.5" : "mb-3")}>{label}</div>
+          <div className={cn("font-extrabold tracking-tight truncate", compact ? "text-base" : "text-xl")} style={{ color: colors[color] }}>{value}</div>
+          {sub && <div className="text-[10px] font-medium mt-1.5 opacity-50 leading-none">{sub}</div>}
         </div>
         {Icon && (
-          <div className="w-10 h-10 rounded-md flex items-center justify-center transition-all shadow-sm border" 
+          <div className={cn("rounded-xl flex items-center justify-center transition-all shadow-sm border ml-4 shrink-0", 
+            compact ? "w-8 h-8" : "w-10 h-10")} 
             style={{ 
               background: bgColors[color], 
               color: colors[color],
-              borderColor: 'rgba(0,0,0,0.05)'
+              borderColor: colors[color] + '20'
             }}>
-            <Icon size={20} strokeWidth={2.5} />
+            <Icon size={compact ? 20 : 24} strokeWidth={2} />
           </div>
         )}
       </div>
@@ -177,7 +180,7 @@ export function Table({ children, className, responsive, ...props }: {
 
 export function Th({ children, right, className, ...props }: { children?: React.ReactNode; right?: boolean } & React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <th className={cn('px-2 py-3 text-[12px] font-black uppercase tracking-tight text-left whitespace-nowrap bg-[var(--surface2)] text-[var(--text)] border-r last:border-r-0 leading-tight',
+    <th className={cn('px-3 py-1.5 text-[11px] font-bold tracking-tight text-left whitespace-nowrap bg-[var(--surface2)] text-[var(--text2)] border-r-0 leading-tight',
       right && 'text-right', className)}
       style={{ borderBottom: '1px solid var(--border)' }}
       {...props}>
@@ -192,7 +195,7 @@ export function Td({ children, right, label, className, style, colSpan, onClick,
   return (
     <td 
       colSpan={colSpan} 
-      className={cn('px-2 py-4 text-sm font-semibold text-[var(--text)] border-r last:border-r-0 leading-tight', right && 'text-right font-black', className)}
+      className={cn('px-3 py-1.5 text-sm font-medium text-[var(--text)] border-r-0 leading-tight', right && 'text-right font-bold', className)}
       data-label={label}
       onClick={onClick}
       style={{ borderBottom: '1px solid var(--border)', cursor: onClick ? 'pointer' : 'default', ...style }}
@@ -217,12 +220,11 @@ export function TableCard({ title, subtitle, actions, children }: {
   actions?: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <Card className="overflow-hidden mb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b gap-3"
-        style={{ borderColor: 'var(--border)' }}>
+    <Card className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2 border-b gap-3 border-slate-200">
         <div>
-          <h2 className="font-bold text-base leading-tight text-[var(--text)]">{title}</h2>
-          {subtitle && <div className="text-xs font-medium text-[var(--text3)] mt-1">{subtitle}</div>}
+          <h2 className="font-bold text-base leading-tight text-[#09090B]">{title}</h2>
+          {subtitle && <div className="text-xs font-medium text-slate-600 mt-1.5">{subtitle}</div>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
@@ -256,18 +258,17 @@ export function Modal({ open, onClose, title, children, size = 'md', persist = f
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 no-print"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget && !persist) onClose() }}>
-      <div className={cn('w-full rounded-lg border shadow-2xl max-h-[90vh] overflow-y-auto bg-white', sizes[size])}
-        style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between px-4 py-2 border-b"
-          style={{ borderColor: 'var(--border)' }}>
-          <h2 className="uppercase tracking-tight">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-50 transition-colors text-[var(--text2)]">
+      <div className={cn('w-full rounded-t-[2rem] sm:rounded-[1.5rem] border border-[var(--border)] shadow-2xl max-h-[90vh] overflow-y-auto bg-[var(--surface)]', sizes[size])}
+        style={{}}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+          <h2 className="text-base font-bold text-[var(--text)] tracking-tight">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--surface2)] transition-colors text-[var(--text3)]">
             <X size={20} />
           </button>
         </div>
-        <div className="px-4 py-3">{children}</div>
+        <div className="px-4 py-4">{children}</div>
       </div>
     </div>
   )
@@ -279,7 +280,7 @@ export function Field({ label, error, children, className }: {
 }) {
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <label className="text-xs font-bold uppercase tracking-widest text-[var(--text3)] px-1">
+      <label className="text-xs font-bold tracking-wider text-[var(--text3)] px-1">
         {label}
       </label>
       {children}
@@ -318,15 +319,15 @@ export function Empty({ icon: Icon = '📭', title, text, subtitle, action }: {
   const mainTitle = title || text;
   return (
     <div className="flex flex-col items-center justify-center text-center gap-2 py-16 px-6 select-none">
-      <div className="w-20 h-20 rounded-lg bg-[var(--surface2)] flex items-center justify-center text-[var(--text)] mb-4 border border-[var(--border)]">
+      <div className="w-20 h-20 rounded-2xl bg-[var(--surface2)] flex items-center justify-center text-[var(--text)] mb-4 border border-[var(--border)]">
         {typeof Icon === 'string' ? (
            <span className="text-4xl">{Icon}</span>
         ) : (
-           <Icon size={32} strokeWidth={1.5} />
+           <Icon size={32} strokeWidth={1} />
         )}
       </div>
       <div className="max-w-xs space-y-1">
-        <h3 className="uppercase tracking-tight">
+        <h3 className="tracking-tight">
            {mainTitle || 'No Records'}
         </h3>
         {subtitle && (
@@ -457,7 +458,7 @@ export function Pagination({
           <select 
             value={pageSize} 
             onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-            className="text-xs font-bold uppercase tracking-widest bg-white border border-slate-200 px-3 py-1.5 rounded-md outline-none"
+            className="text-xs font-bold tracking-wider bg-white border border-slate-200 px-3 py-1.5 rounded-md outline-none"
           >
             <option value={10}>10</option>
             <option value={25}>25</option>
@@ -465,7 +466,7 @@ export function Pagination({
             <option value={100}>100</option>
           </select>
         )}
-        <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-[var(--text3)]">
+        <div className="flex items-center gap-1 text-xs font-bold tracking-wider text-[var(--text3)]">
           <span>{t('pagination_showing') || 'SHOWING'}</span>
           <span className="text-[var(--text)]">{start}</span>
           <span>—</span>

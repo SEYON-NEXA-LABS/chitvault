@@ -111,9 +111,9 @@ export default function DefaultersPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-[var(--text)] tracking-tight italic">
-            DEFAULTERS <span className="text-[var(--accent)] font-display not-italic">COMMAND CENTER</span>
+            Defaulters <span className="text-[var(--accent)] font-display not-italic">Command Center</span>
           </h1>
-          <p className="text-xs opacity-50 mt-1 font-medium uppercase tracking-widest">Real-time risk audit & recovery</p>
+          <p className="text-xs opacity-50 mt-1 font-medium tracking-wider">Real-time risk audit & recovery</p>
         </div>
         <Btn variant="secondary" size="sm" onClick={() => load()}>Refresh Registry</Btn>
       </div>
@@ -129,7 +129,7 @@ export default function DefaultersPage() {
         <button
           onClick={() => setActiveTab('ACCUMULATION')}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+            "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold tracking-wider transition-all",
             activeTab === 'ACCUMULATION' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
           )}
         >
@@ -138,7 +138,7 @@ export default function DefaultersPage() {
         <button
           onClick={() => setActiveTab('DIVIDEND_SHARE')}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+            "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold tracking-wider transition-all",
             activeTab === 'DIVIDEND_SHARE' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border border-[var(--border)]" : "opacity-40 hover:opacity-100"
           )}
         >
@@ -185,29 +185,29 @@ export default function DefaultersPage() {
                   <Td>
                     <div className="font-black text-base flex items-center gap-2 text-[var(--text)]">
                       {x.person.name}
-                      {x.member.status === 'defaulter' && <Badge variant="danger" className="text-[9px] uppercase font-black">Official Defaulter</Badge>}
+                      {x.member.status === 'defaulter' && <Badge variant="danger" className="text-[9px] font-black">Official Defaulter</Badge>}
                     </div>
-                    <div className="text-[11px] opacity-40 font-medium flex items-center gap-1.5 mt-0.5 uppercase tracking-tighter">
+                    <div className="text-[11px] opacity-40 font-medium flex items-center gap-1.5 mt-0.5 tracking-tight">
                       <Phone size={10} strokeWidth={3} /> {x.person.phone || 'No Contact'}
                     </div>
                   </Td>
                   <Td>
                     <div className="font-bold text-[var(--text)]">{x.group.name}</div>
-                    <div className="text-[10px] opacity-40 uppercase font-black tracking-widest mt-0.5">Ticket #{x.member.ticket_no}</div>
+                    <div className="text-[10px] opacity-40 font-black tracking-wider mt-0.5">Ticket #{x.member.ticket_no}</div>
                   </Td>
                   <Td>
                     <div className="flex flex-col gap-1.5">
                       {x.status.missedCount >= 3 ? (
                         <Badge variant="danger" className="w-fit flex items-center gap-1.5 py-1 px-2.5 bg-red-500/10 text-red-500 border-red-500/20">
-                          <ShieldAlert size={12} strokeWidth={2.5} /> {x.status.missedCount} MONTHS CRITICAL
+                          <ShieldAlert size={12} strokeWidth={2.5} /> {x.status.missedCount} Months Critical
                         </Badge>
                       ) : x.status.missedCount === 2 ? (
                         <Badge variant="danger" className="w-fit flex items-center gap-1.5 py-1 px-2.5 bg-orange-500/10 text-orange-500 border-orange-500/20">
-                          <AlertTriangle size={12} strokeWidth={2.5} /> {x.status.missedCount} MONTHS WARNING
+                          <AlertTriangle size={12} strokeWidth={2.5} /> {x.status.missedCount} Months Warning
                         </Badge>
                       ) : (
                         <Badge variant="accent" className="w-fit flex items-center gap-1.5 py-1 px-2.5 bg-blue-500/10 text-blue-500 border-blue-500/20">
-                          <AlertCircle size={12} strokeWidth={2.5} /> {x.status.missedCount} MONTH ARREARS
+                          <AlertCircle size={12} strokeWidth={2.5} /> {x.status.missedCount} Month Arrears
                         </Badge>
                       )}
                       <div className="flex gap-0.5 mt-0.5">
@@ -224,7 +224,7 @@ export default function DefaultersPage() {
                     <div className="font-mono font-black text-xl text-[var(--danger)] leading-none italic">
                       {fmt(x.status.balance)}
                     </div>
-                    <div className="text-[9px] opacity-30 font-bold uppercase tracking-tight mt-1">Total Due: {fmt(x.status.totalDue)}</div>
+                    <div className="text-[9px] opacity-30 font-bold tracking-tight mt-1">Total Due: {fmt(x.status.totalDue)}</div>
                   </Td>
                   <Td className="text-center">
                     <div className="flex items-center justify-center gap-1.5">
@@ -250,8 +250,8 @@ export default function DefaultersPage() {
           <Info size={24} />
         </div>
         <div>
-          <h4 className="text-sm font-black uppercase tracking-widest text-[var(--text)] italic">Understanding Arrears by Scheme</h4>
-          <p className="text-xs opacity-50 mt-1 leading-relaxed max-w-2xl font-medium uppercase tracking-tighter">
+          <h4 className="text-sm font-black tracking-wider text-[var(--text)] italic">Understanding Arrears by Scheme</h4>
+          <p className="text-xs opacity-50 mt-1 leading-relaxed max-w-2xl font-medium tracking-tight">
             **Dividend Scheme**: Members are considered in arrears for the current month if their auction hasn&apos;t occurred yet, as the dividend is not yet applied.
             **Accumulation Scheme**: Future months are never considered arrears. Only completed auction months contribute to the outstanding balance.
           </p>

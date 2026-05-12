@@ -37,6 +37,7 @@ export type DistributionResult = {
   dividendPool: number;
   dividendPerMember: number;
   surplusAdded: number;
+  commissionStrategy: 'deduct_from_dividend' | 'deduct_from_payout';
 };
 
 // ── 1. Core Arithmetic Functions ──────────────────────────────────────────────
@@ -108,9 +109,12 @@ export function calculateDistribution(
   numMembers: number,
   discount: number,
   commission: number,
-  config?: SchemeConfig
+  config?: SchemeConfig,
+  commissionStrategy: 'deduct_from_dividend' | 'deduct_from_payout' = 'deduct_from_dividend'
 ): DistributionResult {
-  const netDiscount = Math.max(0, discount - commission);
+  const netDiscount = commissionStrategy === 'deduct_from_dividend' 
+    ? Math.max(0, discount - commission)
+    : discount;
   
   let dividendPool = 0;
   let surplusAdded = 0;
@@ -145,7 +149,8 @@ export function calculateDistribution(
   return {
     dividendPool,
     dividendPerMember: numMembers > 0 ? dividendPool / numMembers : 0,
-    surplusAdded
+    surplusAdded,
+    commissionStrategy
   };
 }
 
@@ -175,12 +180,12 @@ export function calculateWinnerPayoutDirect(
   pot: number,
   discount: number,
   commission: number,
-  deductCommissionFromPayout: boolean = true
+  commissionStrategy: 'deduct_from_dividend' | 'deduct_from_payout' = 'deduct_from_dividend'
 ): number {
-  if (deductCommissionFromPayout) {
+  if (commissionStrategy === 'deduct_from_payout') {
     return pot - discount - commission;
   }
-  return pot - discount; // Commission paid separately
+  return pot - discount; // Commission was already deducted from dividend
 }
 
 /**

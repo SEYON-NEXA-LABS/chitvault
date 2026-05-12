@@ -234,13 +234,13 @@ export default function CashbookPage() {
       {/* Controls */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <div className="flex items-center gap-2 group">
-          <span className="text-[10px] font-black uppercase opacity-20 group-hover:opacity-100 transition-opacity tracking-widest">{t('from')}</span>
+          <span className="text-[10px] font-black opacity-20 group-hover:opacity-100 transition-opacity tracking-wider">{t('from')}</span>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
             className="px-3 py-1.5 rounded-lg border text-sm outline-none"
             style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
         </div>
         <div className="flex items-center gap-2 group">
-          <span className="text-[10px] font-black uppercase opacity-20 group-hover:opacity-100 transition-opacity tracking-widest">{t('to')}</span>
+          <span className="text-[10px] font-black opacity-20 group-hover:opacity-100 transition-opacity tracking-wider">{t('to')}</span>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
             className="px-3 py-1.5 rounded-lg border text-sm outline-none"
             style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
@@ -309,7 +309,7 @@ export default function CashbookPage() {
                             <div className="grid grid-cols-2 gap-4 mb-4">
                               {/* Notes */}
                               <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>{t('notes_label')}</div>
+                                <div className="text-xs font-semibold tracking-wider mb-2" style={{ color: 'var(--text3)' }}>{t('notes_label')}</div>
                                 <table className="w-full text-sm">
                                   <thead>
                                     <tr>
@@ -335,7 +335,7 @@ export default function CashbookPage() {
                               </div>
                               {/* Coins */}
                               <div>
-                                <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--text3)' }}>{t('coins_label')}</div>
+                                <div className="text-xs font-semibold tracking-wider mb-2" style={{ color: 'var(--text3)' }}>{t('coins_label')}</div>
                                 <table className="w-full text-sm">
                                   <thead>
                                     <tr>
@@ -451,13 +451,13 @@ export default function CashbookPage() {
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title={t('denomination_entry')} size="lg">
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>{t('date')}</label>
+            <label className="text-xs font-semibold tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>{t('date')}</label>
             <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }} />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>{t('collected_by')}</label>
+            <label className="text-xs font-semibold tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>{t('collected_by')}</label>
             <select value={staffId || ''} onChange={e => setStaffId(e.target.value || null)}
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
               style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}>
@@ -474,7 +474,7 @@ export default function CashbookPage() {
         <div className="grid grid-cols-2 gap-5 mb-5">
           {/* Notes */}
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text2)' }}>📄 Notes (Currency)</div>
+            <div className="text-xs font-bold tracking-wider mb-3" style={{ color: 'var(--text2)' }}>📄 Notes (Currency)</div>
             <div className="space-y-2">
               {notes_section.map(d => (
                 <div key={d.key} className="flex items-center gap-3">
@@ -497,7 +497,7 @@ export default function CashbookPage() {
  
           {/* Coins */}
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text2)' }}>🪙 Coins</div>
+            <div className="text-xs font-bold tracking-wider mb-3" style={{ color: 'var(--text2)' }}>🪙 Coins</div>
             <div className="space-y-2">
               {coins_section.map(d => (
                 <div key={d.key} className="flex items-center gap-3">
@@ -530,7 +530,7 @@ export default function CashbookPage() {
  
         {/* Notes text */}
         <div className="mb-5">
-          <label className="text-xs font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--text2)' }}>Notes (optional)</label>
+          <label className="text-xs font-semibold tracking-wider block mb-1" style={{ color: 'var(--text2)' }}>Notes (optional)</label>
           <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="e.g. Morning collection — Route A"
             className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"

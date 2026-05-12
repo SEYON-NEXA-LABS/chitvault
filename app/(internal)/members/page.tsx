@@ -8,7 +8,7 @@ import { fmt, fmtDate, cn, getToday, amountDue } from '@/lib/utils'
 import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, Pagination, CSVImportModal
+  Modal, Field, Loading, Empty, Toast, Pagination, CSVImportModal, StatCard
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -16,7 +16,7 @@ import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet, ChevronDown, TrendingUp } from 'lucide-react'
+import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet, ChevronDown, ChevronRight, TrendingUp, Users, CheckCircle2, Wallet, Activity, ArrowRight } from 'lucide-react'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
@@ -530,43 +530,48 @@ export default function MembersPage() {
   return (
     <div className="space-y-6 pb-24">
       {/* Redesigned Header Section */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
         <div>
-          <h1>{t('member_directory')}</h1>
-          <p className="text-sub mt-1">{t('members_page_desc')}</p>
+          <h1 className="text-3xl font-black text-[var(--text)] tracking-tighter leading-none">{t('member_directory')}</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="accent" className="py-0.5 px-2 text-[10px] font-bold">
+              {summaryStats.activePeople} {t('registry_label')}
+            </Badge>
+            <span className="text-[11px] font-medium text-[var(--text3)]">
+              {summaryStats.totalPeople} Total Registered
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex p-1 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex p-0.5 bg-[var(--surface2)] rounded-lg border border-[var(--border)]">
             <button 
               onClick={() => { setView('people'); setSelectedIds(new Set()) }}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                view === 'people' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+                "px-3 py-1 rounded-md text-[11px] font-bold transition-all",
+                view === 'people' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm" : "opacity-40 hover:opacity-100"
               )}
-              style={view === 'people' ? { borderColor: 'var(--border)' } : {}}
             >
               {t('all_people')}
             </button>
             <button 
               onClick={() => { setView('groups'); setSelectedIds(new Set()) }}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                view === 'groups' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm border" : "opacity-40 hover:opacity-100"
+                "px-3 py-1 rounded-md text-[11px] font-bold transition-all",
+                view === 'groups' ? "bg-[var(--surface)] text-[var(--accent)] shadow-sm" : "opacity-40 hover:opacity-100"
               )}
-              style={view === 'groups' ? { borderColor: 'var(--border)' } : {}}
             >
               {t('by_groups')}
             </button>
           </div>
           {view === 'people' && can('addMember') && (
-            <div className="flex gap-2">
-               <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet}>CSV</Btn>
-               <Btn variant="secondary" size="sm" onClick={() => setImportOpen(true)} icon={Upload}>Import</Btn>
+            <div className="flex gap-1.5">
+               <Btn variant="secondary" size="sm" className="text-xs font-bold" onClick={handleExport} icon={FileSpreadsheet}>Export</Btn>
+               <Btn variant="secondary" size="sm" className="text-xs font-bold" onClick={() => setImportOpen(true)} icon={Upload}>Import</Btn>
             </div>
           )}
           {can('addMember') && (
-            <Btn variant="primary" onClick={() => setAddOpen(true)} icon={Plus}>
+            <Btn variant="primary" size="sm" className="text-xs font-bold px-4" onClick={() => setAddOpen(true)} icon={Plus}>
               {t('register_person')}
             </Btn>
           )}
@@ -575,50 +580,10 @@ export default function MembersPage() {
 
       {/* Stats Summary Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent)]/10"><User size={20}/></div>
-             <Badge variant="accent">{t('registry_label')}</Badge>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-[var(--text)] tracking-tighter">
-              {summaryStats.activePeople} <span className="text-sm font-normal text-[var(--text3)]">/ {summaryStats.totalPeople}</span>
-            </div>
-            <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('registry_members')}</div>
-          </div>
-        </div>
-        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
-          <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)] border border-[var(--info)]/10"><UserCheck size={20}/></div>
-             <Badge variant="info">{t('subscribers_label')}</Badge>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-[var(--text)] tracking-tighter">
-              {summaryStats.activeTickets} <span className="text-sm font-normal text-[var(--text3)]">/ {summaryStats.totalTickets}</span>
-            </div>
-            <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('active_tickets_label')}</div>
-          </div>
-        </div>
-        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
-           <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--danger-dim)] text-[var(--danger)] border border-[var(--danger)]/10"><CreditCard size={20}/></div>
-             <Badge variant="danger">{t('payouts_label')}</Badge>
-           </div>
-           <div>
-             <div className="text-2xl font-black text-[var(--text)] tracking-tighter">{fmt(summaryStats.totalPayouts)}</div>
-             <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('payout_registry')}</div>
-           </div>
-        </div>
-        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
-           <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--success-dim)] text-[var(--success)] border border-[var(--success)]/10"><TrendingUp size={20}/></div>
-             <Badge variant="success">Value</Badge>
-           </div>
-           <div>
-             <div className="text-2xl font-black text-[var(--text)] tracking-tighter">{fmt(summaryStats.totalChitValue)}</div>
-             <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('chit_value_registry')}</div>
-           </div>
-        </div>
+        <StatCard label="Active Registry" value={summaryStats.activePeople} icon={Users} sub={`${summaryStats.totalPeople} Registered`} color="accent" compact />
+        <StatCard label="Active Subscriptions" value={summaryStats.activeTickets} icon={Activity} sub={`${summaryStats.totalTickets} Total Tickets`} color="info" compact />
+        <StatCard label="Total Exposure" value={fmt(summaryStats.totalChitValue)} icon={TrendingUp} sub="Sum of Chit Values" color="success" compact />
+        <StatCard label="Total Payouts" value={fmt(summaryStats.totalPayouts)} icon={Wallet} sub="Owed to Winners" color="warning" compact />
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -633,75 +598,83 @@ export default function MembersPage() {
            <Plus className="absolute left-3 top-1/2 -translate-y-1/2 rotate-45 text-[var(--text3)]" size={18} />
         </div>
         
-        <label className="flex items-center gap-2 cursor-pointer bg-[var(--surface2)] px-3 py-2 rounded-md border hover:border-[var(--accent)] transition-all shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <label className="flex items-center gap-2 cursor-pointer bg-[var(--surface2)] px-2 py-1.5 rounded-lg border hover:border-[var(--accent)] transition-all shrink-0" style={{ borderColor: 'var(--border)' }}>
           <input 
             type="checkbox" 
-            className="w-4 h-4 rounded-lg bg-[var(--surface)] text-[var(--accent)] border-none ring-offset-0 focus:ring-0" 
+            className="w-4 h-4 rounded-md bg-[var(--surface)] text-[var(--accent)] border-none ring-offset-0 focus:ring-0" 
             checked={showInactive} 
             onChange={e => setShowInactive(e.target.checked)} 
           />
-          <span className="text-[10px] font-black uppercase tracking-wider opacity-60">{t('past_members_label')}</span>
+          <span className="text-[11px] font-bold opacity-60">{t('past_members_label')}</span>
         </label>
       </div>
 
 
       {view === 'people' ? (
-        <TableCard title={`${t('total_registry_label')} (${summaryStats.activePeople} / ${summaryStats.totalPeople})`} subtitle={t('members_page_desc')}>
+        <TableCard title={
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-bold text-[var(--text2)] opacity-40">{t('total_registry_label')}</div>
+            <div className="text-[11px] font-bold text-[var(--text2)] opacity-40">{summaryStats.activePeople} {t('registry_label')}</div>
+          </div>
+        }>
           <Table responsive>
-            <thead><tr>
-              <Th className="w-10">
-                 <input type="checkbox" checked={selectedIds.size === filteredPeople.length && filteredPeople.length > 0} onChange={() => toggleAll(filteredPeople.map(p => p.id))} />
-              </Th>
-              {isSuper && <Th>Firm</Th>}
-              <Th>{t('register_person')}</Th>
-              <Th className="hidden md:table-cell">{t('phone')}</Th>
-              <Th className="hidden sm:table-cell">{t('active_tickets')}</Th>
-              <Th>{t('total_outstanding')}</Th>
-              <Th right>{t('action')}</Th>
-            </tr></thead>
-            <tbody>
+            <thead>
+              <Tr className="bg-[var(--surface2)]/30">
+                <Th className="w-10 px-3">
+                  <input type="checkbox" className="rounded border-slate-300" checked={selectedIds.size === filteredPeople.length && filteredPeople.length > 0} onChange={() => toggleAll(filteredPeople.map(p => p.id))} />
+                </Th>
+                {isSuper && <Th className="text-[11px] font-bold py-2">{t('firm')}</Th>}
+                <Th className="text-[11px] font-bold py-2">{t('register_person')}</Th>
+                <Th className="hidden md:table-cell text-[11px] font-bold">{t('phone')}</Th>
+                <Th className="hidden sm:table-cell text-[11px] font-bold">{t('active_tickets')}</Th>
+                <Th className="text-[11px] font-bold">{t('total_outstanding')}</Th>
+                <Th right className="text-[11px] font-bold px-3">{t('action')}</Th>
+              </Tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
               {filteredPeople.map(c => {
                 const isSelected = selectedIds.has(c.id)
                 return (
-                  <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/50 transition-colors cursor-pointer")} onClick={() => toggleSelect(c.id)}>
-                    <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
-                    {isSuper && <Td label="Firm"><Badge variant="gray">{c.firms?.name || '—'}</Badge></Td>}
+                  <Tr key={c.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/50 group/row transition-colors cursor-pointer")} onClick={() => toggleSelect(c.id)}>
+                    <Td label="Select" className="px-3"><input type="checkbox" className="rounded border-slate-300" checked={isSelected} readOnly /></Td>
+                    {isSuper && <Td label="Firm"><Badge variant="gray" className="text-[10px] font-bold">{c.firms?.name || '—'}</Badge></Td>}
                     <Td label="Person">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-bold text-xs uppercase overflow-hidden shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--surface2)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] font-bold text-xs transition-colors">
                           {c.name.substring(0, 2)}
                         </div>
                         <div>
-                          <div className="font-bold text-[var(--text)] tracking-tight leading-tight">
-                            {c.name} {c.nickname && <span className="text-[var(--accent)] font-medium text-xs ml-1">({c.nickname})</span>}
+                          <div className="font-bold text-sm text-[var(--text)] tracking-tight">
+                            {c.name} {c.nickname && <span className="text-[var(--accent)] font-bold text-[10px] ml-1 opacity-60">({c.nickname})</span>}
                           </div>
-                          <div className="text-sub flex items-center gap-1 mt-1 font-medium italic"><MapPin size={10}/> {c.address || t('no_address')}</div>
+                          <div className="text-[11px] font-medium text-[var(--text3)] flex items-center gap-1 mt-0.5 opacity-60">
+                            <MapPin size={10} className="opacity-40" /> {c.address || t('no_address')}
+                          </div>
                         </div>
                       </div>
                     </Td>
-                    <Td label="Phone" className="hidden md:table-cell font-mono text-xs text-[var(--text3)] tracking-tighter">{c.phone || '—'}</Td>
+                    <Td label="Phone" className="hidden md:table-cell font-mono text-xs font-medium text-[var(--text3)] opacity-60">{c.phone || '—'}</Td>
                     <Td label="Tickets" className="hidden sm:table-cell">
                       {c.activeCount > 0 ? (
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="info">{c.activeCount} {t('status_active')}</Badge>
-                          <div className="flex -space-x-1 ml-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                            {c.tickets.slice(0, 3).map((t, i) => (
-                              <div key={i} className="w-4 h-4 rounded-full border border-white bg-[var(--info)]" />
-                            ))}
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="info" className="text-[10px] font-bold">{c.activeCount} {t('status_active')}</Badge>
                         </div>
-                      ) : <span className="text-[10px] uppercase font-bold opacity-20">None</span>}
+                      ) : <span className="text-[10px] font-medium opacity-20 tracking-wider">No active enrollment</span>}
                     </Td>
                     <Td label="Outstanding">
                        <div className={cn("font-bold font-mono text-sm tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                           {fmt(c.totalBalance)}
                        </div>
-                       {c.totalPaid > 0 && <div className="text-sub mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
+                       {c.totalPaid > 0 && <div className="text-[10px] font-medium opacity-40 mt-0.5">Paid: {fmt(c.totalPaid)}</div>}
                     </Td>
-                    <Td label="Action" right>
-                      <div className="flex gap-2 justify-end">
-                        <Btn size="sm" variant="secondary" onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${c.id}`) }}>{t('profile')}</Btn>
-                        <Btn size="sm" variant="ghost" icon={Trash2} onClick={(e: any) => { e.stopPropagation(); deletePerson(c.id) }} className="text-[var(--danger)]" />
+                    <Td label="Action" right className="px-3">
+                      <div className="flex gap-1.5 justify-end opacity-0 group-hover/row:opacity-100 transition-opacity">
+                        <Btn size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-lg shadow-sm" onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${c.id}`) }}>
+                          <ChevronRight size={14} />
+                        </Btn>
+                        <Btn size="sm" variant="danger" className="h-7 w-7 p-0 rounded-lg shadow-sm" onClick={(e: any) => { e.stopPropagation(); deletePerson(c.id) }}>
+                          <Trash2 size={14} />
+                        </Btn>
                       </div>
                     </Td>
                   </Tr>
@@ -713,19 +686,21 @@ export default function MembersPage() {
             </tbody>
           </Table>
           {view === 'people' && (
-            <Pagination 
-              current={page} 
-              total={totalCount} 
-              pageSize={PAGE_SIZE} 
-              onPageChange={setPage} 
-            />
+            <div className="p-4 bg-slate-50/30 border-t border-slate-100">
+              <Pagination 
+                current={page} 
+                total={totalCount} 
+                pageSize={PAGE_SIZE} 
+                onPageChange={setPage} 
+              />
+            </div>
           )}
         </TableCard>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-end gap-2 mb-2 no-print">
-            <Btn size="sm" variant="secondary" onClick={() => setExpandedGroups(new Set(allGroups.map(g => g.id)))}>Expand All</Btn>
-            <Btn size="sm" variant="secondary" onClick={() => setExpandedGroups(new Set())}>Collapse All</Btn>
+          <div className="flex justify-end gap-1.5 mb-1 no-print">
+            <Btn size="sm" variant="secondary" className="text-[11px] font-bold" onClick={() => setExpandedGroups(new Set(allGroups.map(g => g.id)))}>Expand All</Btn>
+            <Btn size="sm" variant="secondary" className="text-[11px] font-bold" onClick={() => setExpandedGroups(new Set())}>Collapse All</Btn>
           </div>
           
           {allGroups.filter(g => g.status !== 'archived').map(g => {
@@ -735,11 +710,11 @@ export default function MembersPage() {
             
             return (
               <div key={g.id} className={cn(
-                "bg-[var(--surface)] border rounded-lg overflow-hidden transition-all",
-                isOpen ? "border-[var(--accent)] shadow-sm" : "border-[var(--border)]"
+                "bg-[var(--surface)] border rounded-2xl overflow-hidden transition-all shadow-sm",
+                isOpen ? "border-[var(--accent)]" : "border-[var(--border)]"
               )}>
                 <div 
-                  className="px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-[var(--surface2)]"
+                  className="px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-[var(--surface2)]/50 transition-colors"
                   onClick={() => {
                     const next = new Set(expandedGroups)
                     if (next.has(g.id)) next.delete(g.id)
@@ -747,57 +722,65 @@ export default function MembersPage() {
                     setExpandedGroups(next)
                   }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all", isOpen ? "bg-[var(--accent)] text-white" : "bg-[var(--surface2)] opacity-40")}>
-                      <ChevronDown size={16} className={cn("transition-transform", isOpen && "rotate-180")} />
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all", isOpen ? "bg-[var(--text)] text-white" : "bg-[var(--surface2)] opacity-40")}>
+                      <ChevronDown size={16} className={cn("transition-transform duration-300", isOpen && "rotate-180")} />
                     </div>
                     <div>
-                       <div className="font-bold text-base uppercase tracking-tight">{g.name}</div>
-                      <div className="text-[9px] font-bold opacity-40 uppercase tracking-widest">{fmt(g.chit_value)} · {gMembers.length} Members</div>
+                       <div className="font-bold text-sm text-[var(--text)] tracking-tight">{g.name}</div>
+                      <div className="text-[11px] font-medium opacity-50">{fmt(g.chit_value)} · {gMembers.length} {t('members')}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {isSuper && <Badge variant="accent" className="hidden sm:flex">{g.firms?.name}</Badge>}
-                    <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={(e: any) => { e.stopPropagation(); handleExportGroup(g) }}>{t('export')}</Btn>
+                  <div className="flex items-center gap-2">
+                    {isSuper && <Badge variant="gray" className="hidden sm:flex text-[10px] font-bold">{g.firms?.name}</Badge>}
+                    <Btn variant="secondary" size="sm" className="h-8 px-3 text-xs font-bold bg-white" icon={FileSpreadsheet} onClick={(e: any) => { e.stopPropagation(); handleExportGroup(g) }}>{t('export')}</Btn>
                   </div>
                 </div>
 
                 {isOpen && (
-                  <div className="border-t animate-in slide-in-from-top-2 duration-200" style={{ borderColor: 'var(--border)' }}>
+                  <div className="border-t animate-in slide-in-from-top-2 duration-300" style={{ borderColor: 'var(--border)' }}>
                     <Table responsive>
-                        <thead><tr>
-                          <Th className="w-10">
-                             <input type="checkbox" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
-                          </Th>
-                          <Th>Ticket</Th>
-                          <Th>{t('register_person')}</Th>
-                          <Th className="hidden md:table-cell">{t('phone')}</Th>
-                          <Th className="hidden sm:table-cell">{t('group_status')}</Th>
-                          <Th right>{t('action')}</Th>
-                        </tr></thead>
-                        <tbody>
+                        <thead>
+                          <Tr className="bg-[var(--surface2)]/30">
+                            <Th className="w-10 px-3">
+                               <input type="checkbox" className="rounded border-slate-300" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
+                            </Th>
+                            <Th className="text-[11px] font-bold py-2">Ticket</Th>
+                            <Th className="text-[11px] font-bold py-2">{t('register_person')}</Th>
+                            <Th className="hidden md:table-cell text-[11px] font-bold">{t('phone')}</Th>
+                            <Th className="hidden sm:table-cell text-[11px] font-bold">{t('group_status')}</Th>
+                            <Th right className="text-[11px] font-bold px-3">{t('action')}</Th>
+                          </Tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
                           {gMembers.map(m => {
                             const isSelected = selectedIds.has(m.id)
                             const isWinner = auctions.some(a => a.winner_id === m.id)
                             return (
-                              <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 transition-colors")} onClick={() => toggleSelect(m.id)}>
-                                <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
-                                <Td label="Ticket" className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
-                                <Td label="Person" className="font-bold">
+                              <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 group/row transition-colors cursor-pointer")} onClick={() => toggleSelect(m.id)}>
+                                <Td label="Select" className="px-3"><input type="checkbox" className="rounded border-slate-300" checked={isSelected} readOnly /></Td>
+                                <Td label="Ticket" className="font-mono font-bold text-sm text-[var(--accent)] tracking-tighter">#{String(m.ticket_no).padStart(2, '0')}</Td>
+                                <Td label="Person">
                                    <div className="flex items-center gap-2">
-                                     {m.persons?.name} 
-                                     {m.persons?.nickname && <span className="text-[var(--accent)] font-medium text-xs opacity-70">({m.persons.nickname})</span>}
-                                     {isWinner && <Badge variant="accent" className="text-[9px] py-0.5">Winner</Badge>}
+                                     <span className="font-bold text-sm text-[var(--text)] tracking-tight">{m.persons?.name}</span>
+                                     {m.persons?.nickname && <span className="text-[var(--accent)] font-bold text-[10px] opacity-60">({m.persons.nickname})</span>}
+                                     {isWinner && <Badge variant="accent" className="text-[10px] font-bold">Winner</Badge>}
                                    </div>
                                 </Td>
-                                <Td label="Phone" className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
+                                <Td label="Phone" className="hidden md:table-cell text-xs font-medium text-[var(--text3)] font-mono opacity-60">{m.persons?.phone || '—'}</Td>
                                 <Td label="Status" className="hidden sm:table-cell">
-                                   {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
+                                   {m.status === 'foreman' 
+                                    ? <Badge variant="info" className="text-[10px] font-bold">Foreman</Badge> 
+                                    : <Badge variant="success" className="text-[10px] font-bold">Active</Badge>}
                                 </Td>
-                                <Td label="Action" right>
-                                   <div className="flex gap-2 justify-end">
-                                      <Btn size="sm" variant="ghost" icon={CreditCard} onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }}>{t('record_payment')}</Btn>
-                                      <Btn size="sm" variant="ghost" icon={Info} onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} />
+                                <Td label="Action" right className="px-3">
+                                   <div className="flex gap-1.5 justify-end opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                      <button onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }} className="h-7 w-7 flex items-center justify-center rounded-lg bg-[var(--surface2)] text-[var(--text3)] hover:text-[var(--accent)] transition-all">
+                                        <Wallet size={14} />
+                                      </button>
+                                      <button onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} className="h-7 w-7 flex items-center justify-center rounded-lg bg-[var(--surface2)] text-[var(--text3)] hover:text-[var(--accent)] transition-all">
+                                        <ChevronRight size={14} />
+                                      </button>
                                    </div>
                                 </Td>
                               </Tr>

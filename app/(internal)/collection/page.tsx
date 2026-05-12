@@ -175,7 +175,7 @@ function CollectionContent() {
 
         {viewMode === 'workspace' && (
           <button onClick={() => setShowAll(!showAll)}
-            className={cn('px-4 py-2 rounded-md text-[10px] font-black uppercase tracking-widest border transition-all',
+            className={cn('px-4 py-2 rounded-md text-[10px] font-black tracking-wider border transition-all',
               showAll ? 'bg-[var(--accent-dim)] border-[var(--accent)] text-[var(--accent)]' : 'bg-[var(--surface2)] border-[var(--border)] text-[var(--text3)]')}>
             {showAll ? 'All Members' : 'Dues Only'}
           </button>
@@ -215,7 +215,7 @@ function CollectionContent() {
               ) : data.map(person => (
                 <Tr key={person.person_id}>
                   <Td className="align-top">
-                    <div className="font-black text-[var(--text)] uppercase tracking-tight">{person.person_name}</div>
+                    <div className="font-black text-[var(--text)] tracking-tight">{person.person_name}</div>
                     <div className="text-[var(--text3)] font-bold mt-0.5">{person.person_phone}</div>
                   </Td>
                   <Td className="align-top">
@@ -228,7 +228,7 @@ function CollectionContent() {
                         return (
                           <div key={m.member.id} className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-2">
-                              <span className="text-[var(--text2)] font-black uppercase tracking-tight">{m.group?.name}</span>
+                              <span className="text-[var(--text2)] font-black tracking-tight">{m.group?.name}</span>
                               <span className="text-[var(--text3)] font-bold">[{months}]</span>
                             </div>
                             <span className="text-[var(--text3)] font-black">{fmt(groupBal)}</span>
@@ -298,10 +298,10 @@ function AuditTable({ data, isOwner, onRevert, firm, t }: { data: any[], isOwner
                 <div className="font-bold text-[var(--text)]">{fmtDate(p.payment_date)}</div>
                 <div className="text-[10px] text-[var(--text3)] mt-0.5">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
               </Td>
-              <Td className="font-black text-[var(--text)] uppercase tracking-tight">
+              <Td className="font-black text-[var(--text)] tracking-tight">
                 {p.members?.persons?.name || 'Unknown'}
               </Td>
-              <Td className="font-bold text-[var(--accent)] uppercase">{p.groups?.name} · M{p.month}</Td>
+              <Td className="font-bold text-[var(--accent)]">{p.groups?.name} · M{p.month}</Td>
               <Td right className="font-black text-emerald-600 text-base">+{fmt(p.amount)}</Td>
               <Td>
                 <Badge variant="gray">{p.mode}</Badge>
@@ -346,7 +346,7 @@ function DuesSnapshotModal({ person, onClose, t }: { person: CollectionItem; onC
             { label: 'Groups', value: person.memberships.length, color: 'accent' as const },
           ].map(s => (
             <div key={s.label} className="bg-[var(--surface2)] rounded-lg p-4 text-center border border-[var(--border)]">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text3)]">{s.label}</p>
+              <p className="text-[10px] font-bold tracking-wider text-[var(--text3)]">{s.label}</p>
               <p className="text-xl font-black tracking-tighter mt-1">{s.value}</p>
             </div>
           ))}
@@ -362,8 +362,8 @@ function DuesSnapshotModal({ person, onClose, t }: { person: CollectionItem; onC
               <div key={m.member?.id} className="bg-[var(--surface2)] rounded-lg border border-[var(--border)] p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-[var(--text)] uppercase tracking-tight">{m.group?.name}</p>
-                    <p className="text-[10px] font-bold text-[var(--text3)] uppercase tracking-widest mt-0.5">{m.group?.slug}</p>
+                    <p className="font-bold text-[var(--text)] tracking-tight">{m.group?.name}</p>
+                    <p className="text-[10px] font-bold text-[var(--text3)] tracking-wider mt-0.5">{m.group?.slug}</p>
                   </div>
                   <p className={cn('text-lg font-black tracking-tighter', groupBal > 0 ? 'text-rose-600' : 'text-emerald-600')}>
                     {groupBal > 0 ? fmt(groupBal) : '✓ Clear'}
@@ -381,15 +381,15 @@ function DuesSnapshotModal({ person, onClose, t }: { person: CollectionItem; onC
                             'flex flex-col items-center px-3 py-2 rounded-md border text-center min-w-[60px]',
                             isPartial ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'
                           )}>
-                          <span className="text-[9px] font-black uppercase tracking-wider">M{d.month}</span>
+                          <span className="text-[9px] font-black tracking-wider">M{d.month}</span>
                           <span className="text-sm font-black mt-0.5">{fmt(bal)}</span>
-                          {isPartial && <span className="text-[8px] font-black uppercase opacity-60">Partial</span>}
+                          {isPartial && <span className="text-[8px] font-black tracking-wider opacity-60">Partial</span>}
                         </div>
                       )
                     })}
                   </div>
                 ) : (
-                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">All months settled ✓</p>
+                  <p className="text-[10px] font-bold text-emerald-600 tracking-wider">All months settled ✓</p>
                 )}
               </div>
             )
