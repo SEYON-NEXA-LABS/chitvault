@@ -13,7 +13,7 @@ import {
   CreditCard, BarChart3, ClipboardList, Settings,
   LogOut, Sun, Moon, Menu, Building2, UserCog, BookOpen, Palette, Calculator, HelpCircle, Languages, Download, Lock, Monitor,
   ShieldAlert, Phone, MapPin, Search, AlertTriangle, Archive,
-  ShieldCheck, Scale
+  ShieldCheck, Scale, Plus
 } from 'lucide-react'
 import { CommandPalette, NetworkStatus, BottomNav } from '@/components/ui'
 import { useI18n } from '@/lib/i18n/context'
@@ -140,10 +140,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto text-4xl">
             🔒
           </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black text-[var(--text)] uppercase tracking-tight">Access Locked</h2>
-            <p className="text-sm text-[var(--text2)] leading-relaxed">
-              Subscription for <strong>{firm?.name}</strong> has expired. To maintain your instance and access your data, please renew your plan.
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-[var(--text)] tracking-tight">Access Locked</h2>
+            <p className="text-xs text-[var(--text2)] leading-relaxed">
+              Subscription for <strong>{firm?.name}</strong> has expired. Renew your plan to continue.
             </p>
           </div>
           <div className="pt-4 flex flex-col gap-3">
@@ -174,21 +174,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <>
       <NetworkStatus />
       <IdleTimeout />
-      <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div className="flex min-h-screen bg-slate-50" style={{ background: 'var(--bg)' }}>
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={cn(
-          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print bg-[#FAFAFA]',
+          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )} style={{ borderColor: '#E4E4E7' }}>
-          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: '#E4E4E7' }}>
+        )} style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
+          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#E4E4E7' }}>
             <Link href="/dashboard" className="flex items-center gap-2.5 group">
               <Image src="/icons/icon-512.png" alt={APP_NAME} width={28} height={28} className="w-7 h-7 object-contain transition-transform group-hover:rotate-12 duration-500" />
-              <span className="font-bold text-xl tracking-tight text-[#09090B] font-brand">{APP_NAME}</span>
+              <span className="font-bold text-lg tracking-tight text-[#09090B] font-brand">{APP_NAME}</span>
             </Link>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
+          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
             {NAV.map((group, i) => {
               if (group.superAdminOnly && role !== 'superadmin') return null
               if (group.ownerOnly && !isOwner) return null
@@ -200,13 +200,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div key={i} className="space-y-1">
                   <button
                     onClick={() => setExpanded(e => ({ ...e, [group.label]: !e[group.label] }))}
-                    className="w-full flex items-center justify-between px-3 py-1 text-xs font-black uppercase tracking-widest text-[var(--text3)] hover:text-[var(--text)] transition-colors"
+                    className="w-full flex items-center justify-between px-3 py-1 text-[11px] font-bold text-[var(--text2)] hover:text-[var(--text)] transition-colors"
                   >
                     <div className="flex items-center gap-2">
-                      {Icon && <Icon size={14} className="opacity-40" />}
+                      {Icon && <Icon size={13} className="opacity-60" />}
                       {t(group.label)}
                     </div>
-                    <ChevronDown size={14} className={cn("transition-transform duration-300 opacity-40", !isExp && "-rotate-90")} />
+                    <ChevronDown size={12} className={cn("transition-transform duration-300 opacity-60", !isExp && "-rotate-90")} />
                   </button>
 
                   <div className={cn("space-y-1 overflow-hidden transition-all duration-300", isExp ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0")}>
@@ -221,14 +221,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={j}
                           href={effectiveHref}
                           className={cn(
-                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
+                            'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all',
                             active
-                              ? 'bg-[#F4F4F5] text-[#09090B] font-bold shadow-none'
-                              : 'text-slate-600 hover:text-[#09090B] hover:bg-[#F4F4F5]/50'
+                              ? 'bg-[var(--accent)] text-white font-bold shadow-md shadow-blue-500/10'
+                              : 'text-[var(--text2)] hover:text-[var(--text)] hover:bg-[var(--surface2)]'
                           )}
                           onClick={() => setSidebarOpen(false)}
                         >
-                          {SIcon && <SIcon size={16} className={cn(active ? "text-[#155DFC]" : "text-slate-400")} />}
+                          {SIcon && <SIcon size={14} className={cn(active ? "text-white" : "text-[var(--text3)]")} />}
                           <span>{t(item.label)}</span>
                         </Link>
                       )
@@ -239,7 +239,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          <div className="p-6 border-t space-y-6" style={{ borderColor: '#E4E4E7' }}>
+          <div className="p-4 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1">
                 <button
@@ -276,9 +276,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
+            <div className="p-3 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[var(--text3)] shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text3)] shrink-0">
                   <UserCog size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -301,7 +301,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <button
                 onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-                className="w-full py-2 rounded-xl bg-white border border-slate-200 text-red-600 text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors"
+                className="w-full py-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-red-600 text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors"
               >
                 {t('sign_out')}
               </button>
@@ -309,46 +309,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col lg:ml-64">
-          <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 border-b no-print bg-white/80 backdrop-blur-md"
-            style={{ borderColor: '#E4E4E7' }}>
-            <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900" onClick={() => setSidebarOpen(true)}>
-                <Menu size={20} />
-              </button>
-              <h2 className="text-sm font-bold text-[#09090B] uppercase tracking-tight">
-                {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              {hasPin ? (
-                <button onClick={lock} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                  <Lock size={14} /> Lock
+        <div className="flex-1 flex flex-col lg:ml-64 bg-[var(--bg)] transition-all">
+          <main className="flex-1 m-1.5 lg:m-2 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-auto flex flex-col transition-all">
+            <header className="sticky top-0 z-30 flex items-center justify-between px-3 py-1.5 border-b no-print bg-[var(--surface)]/80 backdrop-blur-md"
+              style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <button className="lg:hidden p-1.5 -ml-1 text-slate-400 hover:text-slate-900" onClick={() => setSidebarOpen(true)}>
+                  <Menu size={18} />
                 </button>
-              ) : (
-                <Link href="/settings#lock-config" className="px-4 py-2 rounded-xl bg-orange-50 text-orange-600 border border-orange-200 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                  <Lock size={14} /> Security
-                </Link>
-              )}
-            </div>
-          </header>
+                <h2 className="text-xs font-bold text-[var(--text2)]">
+                  {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasPin ? (
+                  <button onClick={lock} className="px-3 py-1 rounded-lg bg-[var(--text)] text-[var(--bg)] text-[11px] font-bold flex items-center gap-1.5 hover:opacity-90 transition-colors">
+                    <Lock size={12} /> Lock
+                  </button>
+                ) : (
+                  <Link href="/settings#lock-config" className="px-3 py-1 rounded-lg bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-bold flex items-center gap-1.5 hover:bg-orange-100 transition-colors">
+                    <Lock size={12} /> Security
+                  </Link>
+                )}
+              </div>
+            </header>
 
-          {status === 'restricted' && role !== 'superadmin' && (
-            <div className="bg-red-50 border-b border-red-100 px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
-               <div className="flex items-center gap-3 text-red-600">
-                  <AlertTriangle size={18} className="shrink-0" />
-                  <div className="text-xs font-bold uppercase tracking-widest leading-tight">
-                    <div>View-Only Mode Active</div>
-                    <div className="opacity-60 text-[9px] mt-0.5">Please renew your AMC to enable data entry</div>
-                  </div>
-               </div>
-               <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${firm?.name}`} target="_blank" className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-lg shadow-red-500/20 hover:scale-105 active:scale-95 transition-all">
-                  Renew via WhatsApp
-               </a>
-            </div>
-          )}
+            {status === 'restricted' && role !== 'superadmin' && (
+              <div className="bg-red-50 border-b border-red-100 px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+                 <div className="flex items-center gap-3 text-red-600">
+                    <AlertTriangle size={18} className="shrink-0" />
+                    <div className="text-xs font-bold uppercase tracking-widest leading-tight">
+                      <div>View-Only Mode Active</div>
+                      <div className="opacity-60 text-[9px] mt-0.5">Please renew your AMC to enable data entry</div>
+                    </div>
+                 </div>
+                 <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${firm?.name}`} target="_blank" className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-lg shadow-red-500/20 hover:scale-105 active:scale-95 transition-all">
+                    Renew via WhatsApp
+                 </a>
+              </div>
+            )}
 
-          <main className="flex-1 p-6 overflow-auto pb-24 lg:pb-6 text-sm">{children}</main>
+            <div className="flex-1 p-3 pb-20 lg:pb-3 text-sm">
+              {children}
+            </div>
+          </main>
           <BottomNav onMenuClick={() => setSidebarOpen(true)} />
           <CommandPalette />
         </div>

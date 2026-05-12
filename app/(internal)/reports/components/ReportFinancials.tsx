@@ -116,11 +116,11 @@ export function ReportTodayCollection({ payments, members, groups, stats, select
       <div className="only-print">
         <div className="mb-6 border-b-2 border-slate-900 pb-4 flex justify-between items-end">
           <div>
-            <h1 className="text-xl font-black uppercase tracking-tight">Daily Collection Report</h1>
-            <p className="text-xs font-bold text-slate-500 uppercase mt-1">Date: {fmtDate(targetDate)}</p>
+            <h1 className="text-xl font-black tracking-tight">Daily Collection Report</h1>
+            <p className="text-xs font-bold text-slate-500 mt-1">Date: {fmtDate(targetDate)}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Collected</p>
+            <p className="text-[10px] font-black tracking-wider text-slate-400">Total Collected</p>
             <p className="text-xl font-black tracking-tighter">{fmt(grandTotal)}</p>
           </div>
         </div>
@@ -132,7 +132,7 @@ export function ReportTodayCollection({ payments, members, groups, stats, select
             { label: 'Bank', val: todayPayments.filter(p => p.mode === 'Bank Transfer').reduce((s, p) => s + Number(p.amount), 0) },
           ].map(s => (
             <div key={s.label} className="border border-slate-200 p-3 rounded-xl text-center">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
+              <p className="text-[9px] font-black tracking-wider text-slate-400">{s.label}</p>
               <p className="text-sm font-black mt-1">{fmt(s.val)}</p>
             </div>
           ))}
@@ -141,11 +141,11 @@ export function ReportTodayCollection({ payments, members, groups, stats, select
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-slate-900">
-              <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Time</th>
-              <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Subscriber</th>
-              <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Group</th>
-              <th className="py-2 text-left text-[var(--text-xs)] font-black uppercase tracking-widest">Mode</th>
-              <th className="py-2 text-right text-[var(--text-xs)] font-black uppercase tracking-widest">Amount</th>
+              <th className="py-2 text-left text-[var(--text-xs)] font-black tracking-wider">Time</th>
+              <th className="py-2 text-left text-[var(--text-xs)] font-black tracking-wider">Subscriber</th>
+              <th className="py-2 text-left text-[var(--text-xs)] font-black tracking-wider">Group</th>
+              <th className="py-2 text-left text-[var(--text-xs)] font-black tracking-wider">Mode</th>
+              <th className="py-2 text-right text-[var(--text-xs)] font-black tracking-wider">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -157,7 +157,7 @@ export function ReportTodayCollection({ payments, members, groups, stats, select
                   <td className="py-2 text-[var(--text-xs)] font-mono text-slate-500">
                     {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td className="py-2 text-[var(--text-xs)] font-bold uppercase">{memberName}</td>
+                  <td className="py-2 text-[var(--text-xs)] font-bold">{memberName}</td>
                   <td className="py-2 text-[var(--text-xs)] text-slate-500">{g?.name || '—'}</td>
                   <td className="py-2 text-[var(--text-xs)] text-slate-500">{p.mode}</td>
                   <td className="py-2 text-right text-[var(--text-xs)] font-black">{fmt(p.amount)}</td>

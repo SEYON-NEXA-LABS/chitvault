@@ -128,75 +128,81 @@ export default function MemberProfilePage() {
 
   return (
     <div className="space-y-6 pb-24 max-w-7xl mx-auto">
-      <div className="flex items-center gap-4 mb-2">
-        <Btn variant="ghost" icon={ArrowLeft} onClick={() => router.back()} className="rounded-full w-10 h-10 p-0" />
-        <h1>Member Profile</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <Btn variant="secondary" size="sm" onClick={() => router.back()} className="h-8 w-8 p-0 rounded-lg">
+          <ArrowLeft size={16} />
+        </Btn>
+        <h1 className="text-2xl font-black text-[var(--text)] tracking-tight">Member Profile</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
-          <Card className="p-8 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4">
-              <Btn variant="ghost" icon={Edit3} onClick={() => setEditOpen(true)} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+          <Card className="p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-2">
+              <button onClick={() => setEditOpen(true)} className="h-7 w-7 flex items-center justify-center rounded-lg bg-[var(--surface2)] text-[var(--text3)] hover:text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-all">
+                <Edit3 size={14} />
+              </button>
             </div>
             
-            <div className="flex flex-col items-center text-center mb-8">
-              <div className="w-24 h-24 rounded-[2rem] bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center mb-4 border-2 border-[var(--accent)] shadow-lg">
-                <User size={48} strokeWidth={2.5} />
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-[var(--accent-dim)] text-[var(--accent)] flex items-center justify-center mb-3 border border-[var(--accent)]/20">
+                <User size={32} strokeWidth={2.5} />
               </div>
-              <h2>{person.name}</h2>
-              <p className="text-sub mt-1">{person.nickname || 'Individual Member'}</p>
+              <h2 className="text-xl font-black">{person.name}</h2>
+              <p className="text-xs font-medium opacity-50 mt-0.5">{person.nickname || 'Individual Member'}</p>
             </div>
 
-            <div className="space-y-4 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)]"><Phone size={16} /></div>
+            <div className="space-y-3 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--text3)]"><Phone size={14} /></div>
                 <div>
-                  <div className="text-sub uppercase font-black">Phone Number</div>
-                  <div className="text-sm font-bold">{person.phone || '—'}</div>
+                  <div className="text-[10px] font-bold opacity-40">Phone Number</div>
+                  <div className="text-xs font-bold">{person.phone || '—'}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)]"><MapPin size={16} /></div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--text3)]"><MapPin size={14} /></div>
                 <div>
-                  <div className="text-sub uppercase font-black">Address</div>
-                  <div className="text-sm font-bold">{person.address || 'No address provided'}</div>
+                  <div className="text-[10px] font-bold opacity-40">Address</div>
+                  <div className="text-xs font-bold line-clamp-1">{person.address || 'No address provided'}</div>
                 </div>
               </div>
             </div>
           </Card>
 
-          <StatCard label="Total Investment Value" value={fmt(totals.chitValue)} icon={DollarSign} color="accent" />
+          <StatCard label="Total Portfolio Value" value={fmt(totals.chitValue)} icon={DollarSign} color="accent" compact />
         </div>
 
         <div className="lg:col-span-2">
           <TableCard title="Active Memberships" subtitle="Groups this person is currently participating in">
             <Table>
               <thead>
-                <Tr>
-                  <Th>Group</Th>
-                  <Th>Ticket</Th>
-                  <Th>Status</Th>
-                  <Th right>Actions</Th>
+                <Tr className="bg-[var(--surface2)]/30">
+                  <Th className="text-[11px] font-bold py-2 px-3">Group</Th>
+                  <Th className="text-[11px] font-bold py-2">Ticket</Th>
+                  <Th className="text-[11px] font-bold py-2">Status</Th>
+                  <Th right className="text-[11px] font-bold py-2 px-3">Actions</Th>
                 </Tr>
               </thead>
               <tbody>
                 {memberships.map(m => (
-                  <Tr key={m.id}>
-                    <Td>
-                      <div className="font-bold text-sm text-[var(--accent)] cursor-pointer" onClick={() => router.push(`/groups/${m.group.id}`)}>
+                  <Tr key={m.id} className="group/row">
+                    <Td className="px-3">
+                      <div className="font-bold text-sm text-[var(--accent)] hover:underline cursor-pointer" onClick={() => router.push(`/groups/${m.group.id}`)}>
                         {getGroupDisplayName(m.group, t)}
                       </div>
-                      <div className="text-sub font-mono">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
+                      <div className="text-[10px] font-medium opacity-50">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
                     </Td>
                     <Td>
-                      <div className="font-black text-sm">#{m.ticket_no}</div>
+                      <div className="font-bold text-sm">#{m.ticket_no}</div>
                     </Td>
                     <Td>
-                      <Badge variant={m.group.status === 'active' ? 'success' : 'info'}>{m.group.status}</Badge>
+                      <Badge variant={m.group.status === 'active' ? 'success' : 'gray'} className="text-[10px] font-bold">{m.group.status}</Badge>
                     </Td>
-                    <Td right>
-                      <Btn variant="ghost" size="sm" icon={Trash2} color="danger" onClick={() => handleDeleteMember(String(m.id))} />
+                    <Td right className="px-3">
+                      <button onClick={() => handleDeleteMember(String(m.id))} className="h-7 w-7 flex items-center justify-center rounded-lg bg-[var(--surface2)] text-[var(--danger)] opacity-0 group-hover/row:opacity-100 hover:bg-red-50 transition-all">
+                        <Trash2 size={14} />
+                      </button>
                     </Td>
                   </Tr>
                 ))}
@@ -212,15 +218,15 @@ export default function MemberProfilePage() {
       </div>
 
       <div className="pt-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3 px-1">
            <div>
-              <h2>Financial Ledger</h2>
-              <p className="text-sub">Unified transaction history across all enrolled group tickets.</p>
+              <h2 className="text-xl font-black">Financial Ledger</h2>
+              <p className="text-xs font-medium opacity-50">Unified transaction history across all enrolled group tickets.</p>
            </div>
-           <Btn size="sm" variant="secondary" icon={Receipt} onClick={() => router.push('/payments')}>Record New Receipt</Btn>
+           <Btn size="sm" variant="secondary" className="text-xs font-bold" icon={Receipt} onClick={() => router.push('/payments')}>New Receipt</Btn>
         </div>
         
-        <div className="bg-[var(--surface)] p-6 rounded-3xl border-2 shadow-sm" style={{ borderColor: 'var(--border)' }}>
+        <div className="bg-[var(--surface)] p-4 rounded-2xl border-2 shadow-sm" style={{ borderColor: 'var(--border)' }}>
           <MemberLedger personId={Number(personId)} firmId={firm?.id || ''} />
         </div>
       </div>

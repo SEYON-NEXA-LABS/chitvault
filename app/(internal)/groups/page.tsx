@@ -3,23 +3,38 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, fmtDate, getGroupDisplayName, getToday } from '@/lib/utils'
+import { fmt, fmtDate, getGroupDisplayName, getToday, cn } from '@/lib/utils'
 import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, ProgressBar, Card
+  Modal, Field, Loading, Empty, Toast, ProgressBar, Card, StatCard
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { logActivity } from '@/lib/utils/logger'
 import { downloadCSV } from '@/lib/utils/csv'
-import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet, Info, AlertTriangle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Archive, RotateCcw, Trash2, Settings2, Gavel, FileSpreadsheet, Info, AlertTriangle, Activity, TrendingUp, CheckCircle2, Users } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Group, Auction, Payment, Firm } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
+
+const initialFormState = {
+  name: '', chit_value: '', num_members: '', duration: '',
+  monthly_contribution: '', start_date: getToday(),
+  auction_scheme: 'ACCUMULATION' as any,
+  min_bid_pct: '5', max_bid_pct: '40',
+  commission_type: 'percent_of_chit', commission_value: '5',
+  dividend_strategy: 'pro_n',
+  commission_recipient: 'foreman',
+  dividend_rule: 'equal_split',
+  discount_cap_pct: '40',
+  dividend_split_pct: '50',
+  surplus_split_pct: '50',
+  step_amount: '0'
+}
 
 export default function GroupsPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -40,13 +55,7 @@ export default function GroupsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [firms, setFirms] = useState<Firm[]>([])
 
-  const [form, setForm] = useState({
-    name: '', chit_value: '', num_members: '', duration: '',
-    monthly_contribution: '', start_date: getToday(),
-    auction_scheme: 'ACCUMULATION' as any,
-    min_bid_pct: '5', max_bid_pct: '40',
-    commission_type: 'percent_of_chit', commission_value: '5'
-  })
+  const [form, setForm] = useState(initialFormState)
   const [saving, setSaving] = useState(false)
   const [totalGroupCount, setTotalGroupCount] = useState(0)
 
@@ -155,7 +164,14 @@ export default function GroupsPage() {
       min_bid_pct: (+form.min_bid_pct || 5) / 100,
       max_bid_pct: (+form.max_bid_pct || 40) / 100,
       commission_type: form.commission_type,
-      commission_value: +form.commission_value
+      commission_value: +form.commission_value,
+      dividend_strategy: form.dividend_strategy,
+      commission_recipient: form.commission_recipient,
+      dividend_rule: form.dividend_rule,
+      discount_cap_pct: (+form.discount_cap_pct || 40) / 100,
+      dividend_split_pct: (+form.dividend_split_pct || 50) / 100,
+      surplus_split_pct: (+form.surplus_split_pct || 50) / 100,
+      step_amount: +form.step_amount || 0
     })
     setSaving(false)
     if (error) { showToast(error.message, 'error'); return }
@@ -226,65 +242,81 @@ export default function GroupsPage() {
   const GroupTable = ({ list, showArchBtn }: { list: Group[], showArchBtn: boolean }) => (
     <Table responsive>
       <thead>
-        <tr>
-          {isSuper && <Th>{t('firm')}</Th>}
-          <Th>{t('group')}</Th>
-          <Th right>{t('value')}</Th>
-          <Th className="hidden sm:table-cell">{t('members')}</Th>
-          <Th right className="hidden md:table-cell">{t('monthly')}</Th>
-          <Th>{t('progress')}</Th>
-          <Th className="hidden lg:table-cell">{t('status')}</Th>
-          <Th className="hidden xl:table-cell">{t('ends')}</Th>
-          <Th className="hidden md:table-cell">{t('pending')}</Th>
-          <Th>{t('action')}</Th>
-        </tr>
+        <Tr className="bg-[var(--surface2)]/30">
+          {isSuper && <Th className="text-[11px] font-bold py-2 px-3">{t('firm')}</Th>}
+          <Th className="text-[11px] font-bold py-2">{t('group')}</Th>
+          <Th right className="text-[11px] font-bold">{t('value')}</Th>
+          <Th className="hidden sm:table-cell text-[11px] font-bold">{t('members')}</Th>
+          <Th right className="hidden md:table-cell text-[11px] font-bold">{t('monthly')}</Th>
+          <Th className="text-[11px] font-bold">{t('progress')}</Th>
+          <Th className="hidden lg:table-cell text-[11px] font-bold">{t('status')}</Th>
+          <Th className="hidden xl:table-cell text-[11px] font-bold">{t('ends')}</Th>
+          <Th className="hidden md:table-cell text-[11px] font-bold">{t('pending')}</Th>
+          <Th right className="text-[11px] font-bold px-3">{t('action')}</Th>
+        </Tr>
       </thead>
-      <tbody>
+      <tbody className="divide-y divide-slate-50">
         {list.map((g, idx) => {
           const s = groupStats(g)
           return (
-            <Tr key={g.id}>
-              {isSuper && <Td label="Firm"><Badge variant="gray">{g.firms?.name}</Badge></Td>}
+            <Tr key={g.id} className="hover:bg-[var(--surface2)]/50 group/row transition-colors">
+              {isSuper && <Td label="Firm" className="px-3"><Badge variant="gray" className="text-[10px] font-bold">{g.firms?.name}</Badge></Td>}
               <Td label="Group">
-                <Link href={`/groups/${g.id}`} className="font-semibold hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
-                  {getGroupDisplayName(g, t)}
-                </Link>
+                <div className="flex flex-col">
+                  <Link href={`/groups/${g.id}`} className="font-bold text-sm text-[var(--text)] hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
+                    {getGroupDisplayName(g, t)}
+                  </Link>
+                  <span className="text-[10px] font-medium text-[var(--text3)] opacity-60">{g.auction_scheme?.replace('_', ' ')}</span>
+                </div>
               </Td>
-              <Td label="Chit Value" right>{fmt(g.chit_value)}</Td>
-              <Td label="Members" className="hidden sm:table-cell">{g.num_members}</Td>
-              <Td label="Monthly" right className="hidden md:table-cell">{fmt(g.monthly_contribution)}</Td>
+              <Td label="Chit Value" right>
+                <div className="font-bold text-sm text-[var(--text)] font-mono">{fmt(g.chit_value)}</div>
+              </Td>
+              <Td label="Members" className="hidden sm:table-cell">
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <Users size={12} className="text-[var(--text3)]" />
+                  {g.num_members}
+                </div>
+              </Td>
+              <Td label="Monthly" right className="hidden md:table-cell">
+                <div className="font-bold text-xs text-[var(--text3)]">{fmt(g.monthly_contribution)}</div>
+              </Td>
               <Td label="Progress">
-                <div className="flex items-center gap-2">
-                  <div className="hidden md:block w-20"><ProgressBar pct={s.pct} /></div>
-                  <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text2)' }}>{s.done}/{g.duration}</span>
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:block w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[var(--accent)] transition-all duration-500" style={{ width: `${s.pct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-black tracking-tighter" style={{ color: 'var(--text2)' }}>{s.done}/{g.duration}</span>
                 </div>
               </Td>
               <Td label="Status" className="hidden lg:table-cell">
                 {s.pct >= 100
-                  ? <Badge variant="success">{t('completed')} ✓</Badge>
+                  ? <Badge variant="success" className="text-[10px] font-bold">{t('completed')}</Badge>
                   : s.done > 0
-                    ? <Badge variant="info">{g.duration - s.done} {t('mo_left')}</Badge>
-                    : <Badge variant="gray">{t('not_started')}</Badge>}
+                    ? <Badge variant="info" className="text-[10px] font-bold">{g.duration - s.done} {t('mo_left')}</Badge>
+                    : <Badge variant="gray" className="text-[10px] font-bold">{t('not_started')}</Badge>}
               </Td>
-              <Td label="Ends" className="hidden xl:table-cell">{s.endDate}</Td>
+              <Td label="Ends" className="hidden xl:table-cell text-xs font-medium text-[var(--text3)] opacity-60">{s.endDate}</Td>
               <Td label="Pending" className="hidden md:table-cell">
                 {s.pending > 0
-                  ? <Badge variant="danger">{s.pending} {t('pending')}</Badge>
-                  : <Badge variant="success">{t('all_paid')}</Badge>}
+                  ? <Badge variant="danger" className="text-[10px] font-bold">{s.pending} {t('pending')}</Badge>
+                  : <Badge variant="success" className="text-[10px] font-bold">{t('all_paid')}</Badge>}
               </Td>
-              <Td label="Action">
-                <div className="flex items-center gap-1.5">
-                  <Btn size="sm" variant="ghost" icon={Gavel} onClick={() => router.push(`/groups/${g.id}`)}
-                    style={{ color: 'var(--info)', border: '1px solid var(--info-dim)' }}>
-                    {t('view')}
+              <Td label="Action" right className="px-3">
+                <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                  <Btn size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-lg" onClick={() => router.push(`/groups/${g.id}`)}>
+                    <ChevronRight size={14} />
                   </Btn>
                   {showArchBtn && can('archiveGroup') && (
-                    <Btn size="sm" variant="ghost" onClick={() => archive(g.id)}
-                      style={{ color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-                      <Archive size={12} /> {t('archive')}
+                    <Btn size="sm" variant="secondary" className="h-7 w-7 p-0 rounded-lg text-[var(--accent)]" onClick={() => archive(g.id)}>
+                      <Archive size={14} />
                     </Btn>
                   )}
-                  {can('deleteGroup') && <Btn size="sm" variant="danger" onClick={() => del(g.id)}><Trash2 size={12} /></Btn>}
+                  {can('deleteGroup') && (
+                    <Btn size="sm" variant="danger" className="h-7 w-7 p-0 rounded-lg" onClick={() => del(g.id)}>
+                      <Trash2 size={14} />
+                    </Btn>
+                  )}
                 </div>
               </Td>
             </Tr>
@@ -297,17 +329,37 @@ export default function GroupsPage() {
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-3xl font-black text-[var(--text)] tracking-tighter leading-none">{t('active_groups')}</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="accent" className="py-0.5 px-2 text-[10px] font-bold">
+              {active.length} {t('active_groups')}
+            </Badge>
+            <span className="text-[11px] font-medium text-[var(--text3)]">
+              {totalGroupCount} Total Registered
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOwner && <Btn variant="secondary" size="sm" className="text-xs font-bold" onClick={handleExport} icon={FileSpreadsheet}>Export CSV</Btn>}
+          {can('createGroup') && <Btn variant="primary" size="sm" className="text-xs font-bold px-4" onClick={() => setAddOpen(true)} icon={Plus} id="tour-group-add">{t('new_group')}</Btn>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Active Portfolio" value={active.length} icon={Activity} sub="Ongoing Auctions" color="accent" compact />
+        <StatCard label="Total Value" value={fmt(active.reduce((s, g) => s + g.chit_value, 0))} icon={TrendingUp} sub="Cumulative Chit Value" color="success" compact />
+        <StatCard label="Registry Capacity" value={active.reduce((s, g) => s + g.num_members, 0)} icon={Users} sub="Total Member Slots" color="info" compact />
+        <StatCard label="Ready to Archive" value={completed.length} icon={CheckCircle2} sub="Term Completed" color="warning" compact />
+      </div>
+
       {/* Active */}
       <TableCard title={
         <div className="flex items-center justify-between">
-          <h1>
-            {t('active_groups')} <span className="text-sub font-normal ml-2">({active.length} / {totalGroupCount})</span>
-          </h1>
-          <div className="flex gap-2">
-            {isOwner && <Btn variant="secondary" size="sm" onClick={handleExport} icon={FileSpreadsheet} title={t('export_people')}>CSV</Btn>}
-            {can('createGroup') && <Btn variant="primary" size="sm" onClick={() => setAddOpen(true)} icon={Plus} id="tour-group-add">{t('new_group')}</Btn>}
-          </div>
+          <div className="text-[11px] font-bold text-[var(--text2)] opacity-40">{t('active_groups')}</div>
+          <div className="text-[11px] font-bold text-[var(--text2)] opacity-40">Live Registry</div>
         </div>
       }>
         <div id="tour-group-list">
@@ -321,34 +373,51 @@ export default function GroupsPage() {
 
       {/* Completed */}
       {completed.length > 0 && (
-        <TableCard title={`✅ ${t('groups_ready_arch')} (${completed.length})`}
+        <TableCard 
+          title={
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-[var(--success)]" />
+              <div className="text-[10px] font-black tracking-wider">{t('groups_ready_arch')}</div>
+            </div>
+          }
           subtitle={t('groups_ready_arch_desc')}
-          actions={<Btn size="sm" onClick={archiveAll} style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--accent-border)' }}>
-            <Archive size={12} /> {t('archive_all')}
-          </Btn>}>
+          actions={
+            <Btn size="sm" variant="secondary" className="text-[9px] font-black tracking-wider bg-[var(--accent-dim)] text-[var(--accent)] border-none hover:bg-[var(--accent)] hover:text-white" onClick={archiveAll}>
+              <Archive size={12} className="mr-1.5" /> {t('archive_all')}
+            </Btn>
+          }
+        >
           <GroupTable list={completed} showArchBtn={true} />
         </TableCard>
       )}
 
       {/* Archived — on demand */}
-      <Card className="overflow-hidden">
-        <button className="w-full flex items-center justify-between px-4 py-2 text-left"
-          style={{ color: 'var(--text2)' }}
+      <Card className="overflow-hidden border-[var(--border)] shadow-sm bg-[var(--surface)]">
+        <button className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[var(--surface2)]/50 transition-colors"
           onClick={() => {
             if (!showArch) { setShowArch(true); loadArchived() }
             else setShowArch(false)
           }}>
-          <div>
-            <div className="font-semibold text-sm">📦 {t('archived_groups_label')}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--text3)' }}>{t('archived_click_load')}</div>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+              <Archive size={20} />
+            </div>
+            <div>
+              <div className="text-[10px] font-black tracking-wider text-[var(--text)]">{t('archived_groups_label')}</div>
+              <div className="text-[10px] font-bold mt-0.5 text-[var(--text3)] tracking-wider opacity-60">{t('archived_click_load')}</div>
+            </div>
           </div>
-          {showArch ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          <div className="text-[var(--text3)]">
+            {showArch ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
         </button>
         {showArch && (
-          archLoading ? <Loading text={t('arch_loading')} /> :
-            archived.length === 0
-              ? <Empty icon="📦" text={t('archived_no_groups')} />
-              : <div className="p-2"><GroupTable list={archived} showArchBtn={false} /></div>
+          <div className="border-t border-[var(--border)]">
+            {archLoading ? <Loading text={t('arch_loading')} /> :
+              archived.length === 0
+                ? <Empty icon="📦" text={t('archived_no_groups')} />
+                : <div className="p-0"><GroupTable list={archived} showArchBtn={false} /></div>}
+          </div>
         )}
       </Card>
 
@@ -381,7 +450,7 @@ export default function GroupsPage() {
           <Field label={t('start_date')}><input className={inputClass} style={inputStyle} type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required /></Field>
 
           <div className="col-span-1 md:col-span-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-            <h3 className="uppercase tracking-widest text-[var(--text3)] mb-3 flex items-center gap-2">
+            <h3 className="tracking-widest text-[var(--text3)] mb-3 flex items-center gap-2">
               <Gavel size={14} /> {t('rules_comm_header')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -390,6 +459,9 @@ export default function GroupsPage() {
               </Field>
               <Field label={t('max_discount')}>
                 <input className={inputClass} style={inputStyle} type="number" value={form.max_bid_pct} onChange={e => setForm(f => ({ ...f, max_bid_pct: e.target.value }))} placeholder="40" />
+              </Field>
+              <Field label="Discount Cap (%)">
+                <input className={inputClass} style={inputStyle} type="number" value={form.discount_cap_pct} onChange={e => setForm(f => ({ ...f, discount_cap_pct: e.target.value }))} placeholder="40" />
               </Field>
               <Field label={t('commission_type')}>
                 <select className={inputClass} style={inputStyle} value={form.commission_type} onChange={e => setForm(f => ({ ...f, commission_type: e.target.value }))}>
@@ -412,6 +484,57 @@ export default function GroupsPage() {
                   {form.commission_type === 'fixed_amount' && `Flat ₹${form.commission_value || 0} per month`}
                 </div>
               </Field>
+
+              <Field label="Recipient">
+                <select className={inputClass} style={inputStyle} value={form.commission_recipient} onChange={e => setForm(f => ({ ...f, commission_recipient: e.target.value as any }))}>
+                  <option value="foreman">Foreman</option>
+                  <option value="firm">Firm</option>
+                </select>
+              </Field>
+
+              <Field label="Dividend Strategy" className="col-span-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setForm(f => ({ ...f, dividend_strategy: 'standard' }))}
+                    className={cn("text-left px-2 py-2 rounded-lg border transition-all", 
+                      form.dividend_strategy === 'standard' ? 'border-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] bg-[var(--surface2)] opacity-70')}>
+                    <div className="font-bold text-[10px]">Standard (N)</div>
+                    <div className="text-[8px] opacity-60 leading-tight">Comm from Pool<br/>Split by All</div>
+                  </button>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, dividend_strategy: 'pro_n1' }))}
+                    className={cn("text-left px-2 py-2 rounded-lg border transition-all", 
+                      form.dividend_strategy === 'pro_n1' ? 'border-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] bg-[var(--surface2)] opacity-70')}>
+                    <div className="font-bold text-[10px]">Professional (N-1)</div>
+                    <div className="text-[8px] opacity-60 leading-tight">Comm from Winner<br/>Split by Non-Winners</div>
+                  </button>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, dividend_strategy: 'pro_n' }))}
+                    className={cn("text-left px-2 py-2 rounded-lg border transition-all", 
+                      form.dividend_strategy === 'pro_n' ? 'border-[var(--accent)] bg-[var(--accent-dim)]' : 'border-[var(--border)] bg-[var(--surface2)] opacity-70')}>
+                    <div className="font-bold text-[10px]">Winner Pays (N)</div>
+                    <div className="text-[8px] opacity-60 leading-tight">Comm from Winner<br/>Split by All</div>
+                  </button>
+                </div>
+              </Field>
+
+
+              {form.auction_scheme === 'HYBRID_SPLIT' && (
+                <>
+                  <Field label="Dividend Share (%)">
+                    <input className={inputClass} style={inputStyle} type="number" value={form.dividend_split_pct} 
+                      onChange={e => setForm(f => ({ ...f, dividend_split_pct: e.target.value, surplus_split_pct: String(100 - +e.target.value) }))} />
+                  </Field>
+                  <Field label="Surplus Share (%)">
+                    <input className={inputClass} style={inputStyle} type="number" value={form.surplus_split_pct} 
+                      onChange={e => setForm(f => ({ ...f, surplus_split_pct: e.target.value, dividend_split_pct: String(100 - +e.target.value) }))} />
+                  </Field>
+                </>
+              )}
+
+              {form.auction_scheme === 'STEPPED_INSTALLMENT' && (
+                <Field label="Monthly Step Amount (₹)" className="col-span-2">
+                  <input className={inputClass} style={inputStyle} type="number" value={form.step_amount} 
+                    onChange={e => setForm(f => ({ ...f, step_amount: e.target.value }))} placeholder="e.g. 100" />
+                </Field>
+              )}
             </div>
             <p className="text-[10px] opacity-40 mt-4 italic">
               * The &quot;Min Discount&quot; is usually your commission rate (e.g., 5%).
@@ -419,9 +542,14 @@ export default function GroupsPage() {
             </p>
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
-          <Btn variant="secondary" onClick={() => setAddOpen(false)}>{t('cancel')}</Btn>
-          <Btn variant="primary" loading={saving} onClick={handleSave}>{t('create_group')}</Btn>
+        <div className="flex justify-between items-center mt-8 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+          <button type="button" onClick={() => setForm({...initialFormState, start_date: getToday()})} className="text-xs font-bold text-[var(--text3)] hover:text-[var(--text)] transition-colors flex items-center gap-1.5 px-2 py-1">
+            <RotateCcw size={12} /> Reset to Defaults
+          </button>
+          <div className="flex gap-3">
+            <Btn variant="secondary" onClick={() => setAddOpen(false)}>{t('cancel')}</Btn>
+            <Btn variant="primary" loading={saving} onClick={handleSave}>{t('create_group')}</Btn>
+          </div>
         </div>
       </Modal>
 

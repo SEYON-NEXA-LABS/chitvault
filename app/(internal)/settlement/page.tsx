@@ -260,7 +260,7 @@ function SettlementPage() {
     <div className="flex items-center justify-center py-20 text-center">
       <div className="bg-[var(--surface2)] p-10 rounded-[3rem] border border-[var(--border)]">
         <div className="text-6xl mb-6">🔒</div>
-        <div className="text-sm font-black uppercase tracking-widest opacity-40">{t('access_denied_settle')}</div>
+        <div className="text-sm font-black tracking-wider opacity-40">{t('access_denied_settle')}</div>
       </div>
     </div>
   )
@@ -274,16 +274,16 @@ function SettlementPage() {
             <AlertCircle size={24} />
          </div>
          <div className="space-y-3 flex-1 text-center md:text-left">
-            <h3 className="text-xs font-black uppercase tracking-widest text-amber-700">{t('settle_guide_title')}</h3>
+            <h3 className="text-xs font-black tracking-wider text-amber-700">{t('settle_guide_title')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-blue-600 flex items-center justify-center md:justify-start gap-1">
+                  <p className="text-[10px] font-black text-blue-600 flex items-center justify-center md:justify-start gap-1">
                      <Sparkles size={10} /> {t('settle_guide_winners_title')}
                   </p>
                   <p className="text-[11px] leading-relaxed opacity-60">{t('settle_guide_winners_desc')}</p>
                </div>
                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-emerald-600 flex items-center justify-center md:justify-start gap-1">
+                  <p className="text-[10px] font-black text-emerald-600 flex items-center justify-center md:justify-start gap-1">
                      <TrendingUp size={10} /> {t('settle_guide_non_winners_title')}
                   </p>
                   <p className="text-[11px] leading-relaxed opacity-60">{t('settle_guide_non_winners_desc')}</p>
@@ -291,7 +291,7 @@ function SettlementPage() {
             </div>
          </div>
          <div className="shrink-0 border-l border-amber-500/10 pl-5 hidden md:block max-w-[200px]">
-            <p className="text-[9px] font-black uppercase text-amber-600/40 mb-1">{t('settle_audit_ready')}</p>
+            <p className="text-[9px] font-black text-amber-600/40 mb-1">{t('settle_audit_ready')}</p>
             <p className="text-[10px] leading-tight opacity-40">{t('settle_audit_desc')}</p>
          </div>
       </div>
@@ -325,7 +325,7 @@ function SettlementPage() {
                 ))}
              </select>
              <Btn onClick={handleSave} icon={Save} loading={saving} variant="primary" className="py-5 px-8 shadow-xl">
-               {t('save_record').toUpperCase()}
+               {t('save_record')}
              </Btn>
           </div>
         )}
@@ -360,7 +360,7 @@ function SettlementPage() {
                           </div>
                        </Td>
                        <Td right className="font-bold text-sm">{fmt(s.total_amount)}</Td>
-                       <Td right><Badge variant="accent" className="font-black">{fmt(s.final_payout_amount)}</Badge></Td>
+                       <Td right><Badge variant="accent" className="font-black tracking-wider">{fmt(s.final_payout_amount)}</Badge></Td>
                        <Td className="text-center">
                           <div className="flex items-center justify-center gap-2">
                              <button 

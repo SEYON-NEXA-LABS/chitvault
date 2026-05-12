@@ -58,6 +58,7 @@ export interface Group {
   commission_type: 'percent_of_chit' | 'percent_of_discount' | 'percent_of_payout' | 'fixed_amount';
   commission_value: number;
   commission_recipient: 'foreman' | 'firm';
+  dividend_strategy: 'standard' | 'pro_n1' | 'pro_n';
   created_at: string
   created_by: string | null
   updated_at: string | null
@@ -124,7 +125,7 @@ export interface Payment {
   amount:       number
   amount_due:   number
   balance_due:  number
-  payment_type: 'full' | 'partial'
+  payment_type: 'full' | 'partial' | 'advance'
   payment_date: string | null
   mode:         'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'
   status:       'paid' | 'pending' | 'partial'
@@ -183,6 +184,7 @@ export interface GroupWithRules extends Group {
   commission_value:      number   // % or ₹ amount
   commission_recipient:  CommissionRecipient
   dividend_rule:         DividendRule
+  dividend_strategy:     'standard' | 'pro_n1' | 'pro_n'
 }
 
 // Foreman Commission record (one per auction month)
@@ -241,6 +243,7 @@ export interface AuctionCalculation {
   commission_rate:      number
   commission_amt:       number
   commission_recipient: CommissionRecipient
+  dividend_strategy:    'standard' | 'pro_n1' | 'pro_n'
   net_dividend:         number
   num_members:          number
   per_member_div:       number

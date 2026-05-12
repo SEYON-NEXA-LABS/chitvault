@@ -13,7 +13,7 @@ export function useGroupLedgerData(groupId: number, firmId?: string | number, ro
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const gQuery = supabase.from('groups').select('id, firm_id, name, duration, monthly_contribution, auction_scheme, start_date, num_members, accumulated_surplus, chit_value, commission_type, commission_value, commission_recipient, status, min_bid_pct, max_bid_pct, discount_cap_pct, dividend_split_pct, surplus_split_pct, step_amount').eq('id', groupId)
+      const gQuery = supabase.from('groups').select('id, firm_id, name, duration, monthly_contribution, auction_scheme, start_date, num_members, accumulated_surplus, chit_value, commission_type, commission_value, commission_recipient, status, min_bid_pct, max_bid_pct, discount_cap_pct, dividend_split_pct, surplus_split_pct, step_amount, dividend_strategy, dividend_rule').eq('id', groupId)
       const mQuery = supabase.from('members').select('id, ticket_no, group_id, person_id, status, created_at, persons:persons(id, name, phone, address)').eq('group_id', groupId).order('ticket_no')
       const aQuery = supabase.from('auctions').select('id, group_id, month, auction_date, payout_date, winner_id, auction_discount, dividend, net_payout, status, is_payout_settled, payout_amount, payout_mode, payout_note').eq('group_id', groupId).order('month')
       const fcQuery = supabase.from('foreman_commissions').select('id, auction_id, group_id, month, commission_amt, foreman_member_id, status').eq('group_id', groupId).order('month')

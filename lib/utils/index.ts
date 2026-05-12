@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.1.0'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.1.3'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_SLOGAN = ''
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and secure auction auditing.'

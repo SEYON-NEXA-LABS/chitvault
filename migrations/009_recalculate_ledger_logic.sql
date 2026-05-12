@@ -20,7 +20,7 @@ BEGIN
     WHERE a.group_id = p_group_id AND a.status = 'confirmed'
   ) LOOP
     -- Determine what the "Bid" was based on existing columns
-    IF r.auction_scheme = 'DIVIDEND' THEN
+    IF r.auction_scheme = 'DIVIDEND_SHARE' THEN
       v_bid_to_use := r.chit_value - r.auction_discount;
     ELSE
       v_bid_to_use := r.auction_discount;
