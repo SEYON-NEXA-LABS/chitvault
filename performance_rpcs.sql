@@ -107,6 +107,10 @@ declare
     v_defaulters_count int;
     v_active_groups_count int;
     v_total_members_count int;
+    v_collected_today numeric(15,2);
+    v_receivable numeric(15,2);
+    v_payable numeric(15,2);
+    v_variance numeric(15,2);
 begin
     -- 1. Total Chit Value (Active Groups)
     select coalesce(sum(chit_value), 0), count(*) 
@@ -124,11 +128,40 @@ begin
     from members 
     where firm_id = p_firm_id and deleted_at is null;
 
+    -- 4. Today's Collections
+    select coalesce(sum(amount), 0) into v_collected_today
+    from payments
+    where firm_id = p_firm_id and payment_date = current_date and deleted_at is null;
+
+    -- 5. Total Receivable (Total Dues - Total Paid)
+    select coalesce(sum(amount_due), 0) - coalesce(sum(amount), 0) into v_receivable
+    from payments
+    where firm_id = p_firm_id and deleted_at is null;
+    if v_receivable < 0 then v_receivable := 0; end if;
+
+    -- 6. Total Payable (Unsettled Payouts)
+    select coalesce(sum(payout_amount), 0) into v_payable
+    from auctions
+    where firm_id = p_firm_id 
+      and status = 'confirmed' 
+      and is_payout_settled = false 
+      and deleted_at is null;
+
+    -- 7. Today's Cash Variance (System vs Physical)
+    select 
+      coalesce((select sum(amount) from payments where firm_id = p_firm_id and payment_date = current_date and deleted_at is null), 0) -
+      coalesce((select sum(total) from denominations where firm_id = p_firm_id and entry_date = current_date and deleted_at is null), 0)
+    into v_variance;
+
     return json_build_object(
         'totalChitValue', v_total_chit_value,
         'defaulters', v_defaulters_count,
         'activeGroups', v_active_groups_count,
-        'totalMembers', v_total_members_count
+        'totalMembers', v_total_members_count,
+        'collectedToday', v_collected_today,
+        'totalReceivable', v_receivable,
+        'totalPayable', v_payable,
+        'todayVariance', v_variance
     );
 end;
 $$;

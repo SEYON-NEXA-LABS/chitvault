@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [trends, setTrends] = useState<any[]>([])
   const [winnerInsightsRpc, setWinnerInsightsRpc] = useState<any>(null)
   const [dailyTrends, setDailyTrends] = useState<any[]>([])
+  const [ledgerStats, setLedgerStats] = useState<any>(null)
   const [totalCounts, setTotalCounts] = useState({ groups: 0, members: 0 })
   const isSuper = role === 'superadmin'
 
@@ -48,7 +49,10 @@ export default function DashboardPage() {
       }
 
       try {
-        const [g, a, p, dStats, collTrends, wInsights, dTrends, totalG, totalM] = await Promise.all([
+        const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+        const lastDay = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
+
+        const [g, a, p, dStats, collTrends, wInsights, dTrends, lStats, totalG, totalM] = await Promise.all([
           withFirmScope(supabase.from('groups').select('id, name, auction_scheme').neq('status','archived'), targetId).is('deleted_at', null),
           withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_discount, dividend, winner_id, status, is_payout_settled, payout_amount, payout_date, members!winner_id(id, ticket_no, persons(id, name))'), targetId).is('deleted_at', null).order('month', { ascending: false }).limit(10),
           withFirmScope(supabase.from('payments').select('id, amount, payment_date, created_at, members!member_id(persons(id, name))'), targetId).is('deleted_at', null).order('payment_date', { ascending: false }).limit(8),
@@ -56,6 +60,7 @@ export default function DashboardPage() {
           supabase.rpc('get_firm_collection_trends', { p_firm_id: targetId }),
           supabase.rpc('get_firm_winner_insights', { p_firm_id: targetId }),
           supabase.rpc('get_firm_daily_trends', { p_firm_id: targetId }),
+          supabase.rpc('get_firm_ledger_stats', { p_firm_id: targetId, p_start_date: firstDay, p_end_date: lastDay }),
           withFirmScope(supabase.from('groups').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null),
           withFirmScope(supabase.from('members').select('id', { count: 'exact', head: true }), targetId).is('deleted_at', null)
         ])
@@ -67,6 +72,7 @@ export default function DashboardPage() {
         setTrends(collTrends.data || [])
         setWinnerInsightsRpc(wInsights.data)
         setDailyTrends(dTrends.data || [])
+        setLedgerStats(lStats.data)
         setTotalCounts({ 
           groups: totalG.count || 0, 
           members: totalM.count || 0 
@@ -186,92 +192,157 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Trends & Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        <Card 
-          title="Daily Reconciliation" 
-          subtitle="7-Day Pulse (System vs Physical)"
-          headerAction={
-            <button onClick={() => router.push('/reports/today_collection')} className="p-2 hover:bg-[var(--surface2)] rounded-xl transition-colors">
-              <ArrowUpRight size={20} />
-            </button>
-          }
-          className="flex flex-col h-full bg-white shadow-sm border-[var(--border)]"
-        >
-          <div className="flex flex-col h-full justify-between">
-            <div>
-              <div className="flex items-end justify-between h-52 gap-4 mb-8 max-w-2xl mx-auto">
-                {dailyTrends.map((d: any, i: number) => {
-                  const max = Math.max(...dailyTrends.map((x: any) => Math.max(Number(x.expected), Number(x.actual))), 100)
-                  const hExp = (Number(d.expected) / max) * 100
-                  const hAct = (Number(d.actual) / max) * 100
-                  return (
-                    <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
-                      <div className="flex items-end gap-1.5 h-full">
-                        <div 
-                          className="flex-1 bg-slate-100 group-hover:bg-slate-200 rounded-t-[6px] transition-all"
-                          style={{ height: `${Math.max(8, hExp)}%` }}
-                        />
-                        <div 
-                          className="flex-1 bg-[var(--success)] rounded-t-[6px] transition-all shadow-sm"
-                          style={{ height: `${Math.max(8, hAct)}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 text-[9px] font-bold text-center tracking-tight opacity-40">{d.label}</div>
-                      
-                      <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white p-5 rounded-2xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 whitespace-nowrap z-50 shadow-2xl border border-white/10">
-                        <div className="flex flex-col gap-3">
-                          <div className="text-[10px] font-black tracking-widest opacity-40 border-b border-white/10 pb-2 mb-1 text-center">{fmtDate(d.day)}</div>
-                          <div className="flex justify-between gap-10">
-                            <span className="opacity-50 font-medium tracking-wide">System Expected:</span>
-                            <span className="font-mono">{fmt(d.expected)}</span>
-                          </div>
-                          <div className="flex justify-between gap-10">
-                            <span className="opacity-50 font-medium tracking-wide">Physical Actual:</span>
-                            <span className="font-mono text-emerald-400">{fmt(d.actual)}</span>
-                          </div>
+      {/* High-Density Insights Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-4">
+          <Card 
+            title="Daily Reconciliation" 
+            subtitle="7-Day Pulse"
+            headerAction={
+              <button onClick={() => router.push('/reports/today_collection')} className="p-1 hover:bg-[var(--surface2)] rounded-lg transition-colors">
+                <ArrowUpRight size={16} />
+              </button>
+            }
+            className="flex flex-col h-full bg-white shadow-sm border-[var(--border)]"
+          >
+            <div className="flex flex-col h-full justify-between">
+              <div>
+                <div className="flex items-end justify-between h-40 gap-2 mb-6 max-w-2xl mx-auto">
+                  {dailyTrends.map((d: any, i: number) => {
+                    const max = Math.max(...dailyTrends.map((x: any) => Math.max(Number(x.expected), Number(x.actual))), 100)
+                    const hExp = (Number(d.expected) / max) * 100
+                    const hAct = (Number(d.actual) / max) * 100
+                    return (
+                      <div key={i} className="flex-1 group relative h-full flex flex-col justify-end">
+                        <div className="flex items-end gap-1 h-full">
+                          <div 
+                            className="flex-1 bg-slate-100 group-hover:bg-slate-200 rounded-t-[4px] transition-all"
+                            style={{ height: `${Math.max(8, hExp)}%` }}
+                          />
+                          <div 
+                            className="flex-1 bg-[var(--success)] rounded-t-[4px] transition-all shadow-sm"
+                            style={{ height: `${Math.max(8, hAct)}%` }}
+                          />
                         </div>
+                        <div className="mt-1.5 text-[8px] font-bold text-center tracking-tight opacity-40">{d.label}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border)]">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <div className="text-[9px] font-black text-[var(--text3)] tracking-widest mb-1 leading-none uppercase opacity-50">Weekly Actual</div>
+                    <div className="text-lg font-black text-[var(--text)] tracking-tighter">
+                      {fmt(dailyTrends.reduce((s, d) => s + Number(d.actual), 0))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-black text-[var(--text3)] tracking-widest mb-1 leading-none uppercase opacity-50">Variance</div>
+                    <div className={cn("text-lg font-black tracking-tighter", dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                      {fmt(Math.abs(dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0)))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                  <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-3 leading-none">Monthly Money Flow</div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[8px] font-bold text-emerald-600 mb-0.5 uppercase tracking-wide">Money In</div>
+                      <div className="text-sm font-black text-slate-900">{fmt(ledgerStats?.collectedInRange || 0)}</div>
+                    </div>
+                    <div className="h-8 w-[1px] bg-slate-200" />
+                    <div>
+                      <div className="text-[8px] font-bold text-rose-600 mb-0.5 uppercase tracking-wide">Money Out</div>
+                      <div className="text-sm font-black text-slate-900">{fmt(ledgerStats?.payoutsInRange || 0)}</div>
+                    </div>
+                    <div className="h-8 w-[1px] bg-slate-200" />
+                    <div className="text-right">
+                      <div className="text-[8px] font-bold text-slate-500 mb-0.5 uppercase tracking-wide">Diff</div>
+                      <div className={cn("text-sm font-black", (ledgerStats?.collectedInRange - ledgerStats?.payoutsInRange) >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                        {fmt(Math.abs((ledgerStats?.collectedInRange || 0) - (ledgerStats?.payoutsInRange || 0)))}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
-              <div className="flex gap-10">
-                <div>
-                  <div className="text-[10px] font-black text-[var(--text3)] tracking-widest mb-1.5 leading-none">Weekly Actual</div>
-                  <div className="text-3xl font-black text-[var(--text)] tracking-tighter">
-                    {fmt(dailyTrends.reduce((s, d) => s + Number(d.actual), 0))}
                   </div>
                 </div>
-                <div className="hidden sm:block">
-                  <div className="text-[10px] font-black text-[var(--text3)] tracking-widest mb-1.5 leading-none">Weekly Variance</div>
-                  <div className={cn("text-3xl font-black tracking-tighter", dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                    {fmt(Math.abs(dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0)))}
+                
+                <div className="flex items-center justify-between bg-[var(--surface2)] rounded-lg p-2 border border-[var(--border)]">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2 h-2 rounded-full animate-pulse", stats.todayVariance === 0 ? "bg-emerald-500" : "bg-amber-500")} />
+                    <div className="text-[10px] font-bold text-[var(--text2)]">
+                      Today: {stats.todayVariance === 0 ? "Balanced" : (stats.todayVariance > 0 ? "Surplus" : "Shortage")}
+                    </div>
+                  </div>
+                  <Btn variant="ghost" size="sm" onClick={() => router.push('/cashbook')} className="h-6 px-2 text-[10px] font-black tracking-widest uppercase text-[var(--accent)]">
+                    Audit →
+                  </Btn>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-3">
+          <Card className="p-4 bg-[var(--surface2)] border-[var(--border)] h-full flex flex-col justify-between group">
+            <div className="relative z-10">
+              <h3 className="text-[10px] font-black tracking-widest mb-5 opacity-40 uppercase">Intelligence</h3>
+              <div className="space-y-5">
+                <div className="group/metric">
+                  <div className="text-[9px] font-bold mb-1 opacity-60">Top Borrower</div>
+                  <div className="text-lg font-black text-[var(--text)] tracking-tight truncate">
+                    {winnerInsightsRpc?.topBorrower?.name || '---'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="group/metric">
+                    <div className="text-[9px] font-bold mb-1 opacity-60">Early Birds</div>
+                    <div className="text-xl font-black text-[var(--text)]">{winnerInsightsRpc?.earlyBirdCount || 0}</div>
+                  </div>
+                  <div className="group/metric">
+                    <div className="text-[9px] font-bold mb-1 opacity-60">Peak Bid</div>
+                    <div className="text-xl font-black text-[var(--text)] font-mono">{fmt(winnerInsightsRpc?.highestSingleDiscount || 0)}</div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-200">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => router.push('/collection')} className="p-2.5 rounded-xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
+                      <Wallet size={12} className="text-emerald-500 mb-1" />
+                      <div className="text-[9px] font-bold text-[var(--text)]">Collect</div>
+                    </button>
+                    <button onClick={() => router.push('/groups?add=true')} className="p-2.5 rounded-xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
+                      <Plus size={12} className="text-blue-500 mb-1" />
+                      <div className="text-[9px] font-bold text-[var(--text)]">New</div>
+                    </button>
                   </div>
                 </div>
               </div>
-              <Btn variant="primary" size="sm" onClick={() => router.push('/cashbook')} className="h-10 w-10 p-0 rounded-md shadow-sm">
-                <ArrowRight size={22} />
-              </Btn>
             </div>
-          </div>
-        </Card>
+            
+            <button className="relative z-10 w-full mt-4 text-[9px] font-black tracking-widest text-[var(--accent)] hover:underline text-left uppercase" onClick={() => router.push('/reports')}>
+              Full Analytics Hub →
+            </button>
+          </Card>
+        </div>
 
-        <LineAnalytics 
-          title={t('dash_collection_perf')}
-          data={chartData} 
-          series={groupSeries} 
-          height={440} 
-          xKey="month" 
-        />
+        <div className="lg:col-span-5">
+          <LineAnalytics 
+            title={t('dash_collection_perf')}
+            data={chartData} 
+            series={groupSeries} 
+            height={320} 
+            xKey="month" 
+          />
+        </div>
       </div>
 
       {/* Activity & Insights Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-12">
           <TableCard title={t('dash_recent_activity')} subtitle={t('dash_realtime_feed')}>
             <Table>
               <thead>
@@ -310,54 +381,6 @@ export default function DashboardPage() {
               </tbody>
             </Table>
           </TableCard>
-        </div>
-
-        <div className="lg:col-span-4">
-          <Card className="p-4 bg-[var(--surface2)] border-[var(--border)] h-full flex flex-col justify-between group">
-            <div className="relative z-10">
-              <h3 className="text-[11px] font-bold mb-6 opacity-40">Firm Intelligence</h3>
-              <div className="space-y-6">
-                <div className="group/metric">
-                  <div className="text-[10px] font-bold mb-1 opacity-60">Top Borrower</div>
-                  <div className="text-xl font-extrabold text-[var(--text)] tracking-tight">
-                    {winnerInsightsRpc?.topBorrower?.name || '---'}
-                  </div>
-                  <div className="text-[10px] font-bold text-emerald-600 mt-1.5 bg-emerald-50 w-fit px-2 py-0.5 rounded">
-                    {fmt(winnerInsightsRpc?.topBorrower?.totalDiscount || 0)} Discount Recovery
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="group/metric">
-                    <div className="text-[10px] font-bold mb-1 opacity-60">Early Birds</div>
-                    <div className="text-2xl font-extrabold text-[var(--text)]">{winnerInsightsRpc?.earlyBirdCount || 0}</div>
-                  </div>
-                  <div className="group/metric">
-                    <div className="text-[10px] font-bold mb-1 opacity-60">Peak Bid</div>
-                    <div className="text-2xl font-extrabold text-[var(--text)]">{fmt(winnerInsightsRpc?.highestSingleDiscount || 0)}</div>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-slate-200">
-                  <div className="text-[10px] font-bold mb-4 opacity-60">Operations</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => router.push('/collection')} className="p-3 rounded-xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
-                      <Wallet size={14} className="text-emerald-500 mb-1.5" />
-                      <div className="text-[10px] font-bold text-[var(--text)]">Collect</div>
-                    </button>
-                    <button onClick={() => router.push('/groups?add=true')} className="p-3 rounded-xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
-                      <Plus size={14} className="text-blue-500 mb-1.5" />
-                      <div className="text-[10px] font-bold text-[var(--text)]">New Group</div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <Btn variant="primary" size="sm" className="relative z-10 w-full mt-6 text-xs font-bold" icon={ArrowRight} onClick={() => router.push('/reports')}>
-              Analytics Hub
-            </Btn>
-          </Card>
         </div>
       </div>
 
