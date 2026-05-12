@@ -16,7 +16,7 @@ import { logActivity } from '@/lib/utils/logger'
 import type { Group, Member, Auction, Payment, Person, Firm, MemberStatus } from '@/types'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
-import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet } from 'lucide-react'
+import { Plus, Trash2, CreditCard, Info, User, UserCheck, History, MapPin, Upload, FileSpreadsheet, ChevronDown, TrendingUp } from 'lucide-react'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
@@ -64,6 +64,7 @@ export default function MembersPage() {
   const PAGE_SIZE = 20
 
   const [delModal, setDelModal] = useState<{ open: boolean, id: number | string | null, name: string, isBulk: boolean }>({ open: false, id: null, name: '', isBulk: false })
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
 
   const [summaryStats, setSummaryStats] = useState({ 
     activePeople: 0, 
@@ -71,7 +72,9 @@ export default function MembersPage() {
     activeTickets: 0, 
     totalTickets: 0,
     totalOutstanding: 0, 
-    totalPaid: 0 
+    totalPaid: 0,
+    totalPayouts: 0,
+    totalChitValue: 0
   })
 
   const load = useCallback(async (isInitial = false) => {
@@ -95,7 +98,9 @@ export default function MembersPage() {
           totalOutstanding: d.totalOutstanding || d.total_outstanding || 0,
           totalPaid: d.totalPaid || d.total_paid || 0,
           totalPeople: totalPCount.count || d.totalPeople || d.total_people || 0,
-          totalTickets: totalTCount.count || d.totalTickets || d.total_tickets || 0
+          totalTickets: totalTCount.count || d.totalTickets || d.total_tickets || 0,
+          totalPayouts: d.totalPayouts || d.total_payouts || 0,
+          totalChitValue: d.totalChitValue || d.total_chit_value || 0
         })
       }
 
@@ -378,21 +383,59 @@ export default function MembersPage() {
 
   const isOwner = role === 'owner' || role === 'superadmin'
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!isOwner && !isSuper) return
-    const data = filteredPeople.map(p => ({
-      ID: p.id, Name: p.name, Nickname: p.nickname || '', Phone: p.phone || '', Address: p.address || '',
-      'Active Tickets': p.activeCount, 'Total Paid': p.totalPaid, 'Balance Due': p.totalBalance
-    }))
-    downloadCSV(data, 'people_directory')
+    const targetId = isSuper ? switchedFirmId : firm?.id
+    if (!targetId) return
+    
+    setLoading(true)
+    try {
+      const { data: allPeople } = await withFirmScope(supabase.from('persons').select('id, name, nickname, phone, address'), targetId).is('deleted_at', null).order('name')
+      if (!allPeople) return
+
+      // Since we need totals, we also need ALL members for these people
+      const { data: allMembers } = await withFirmScope(supabase.from('members').select('id, person_id, group_id, status'), targetId).is('deleted_at', null)
+      
+      const data = allPeople.map((p: any) => {
+        const pMembers = (allMembers || []).filter((m: any) => m.person_id === p.id)
+        const activeCount = pMembers.filter((m: any) => {
+          const g = allGroups.find(x => x.id === m.group_id)
+          return g && g.status !== 'archived'
+        }).length
+        
+        return {
+          ID: p.id, 
+          Name: p.name, 
+          Nickname: p.nickname || '', 
+          Phone: p.phone || '', 
+          Address: p.address || '',
+          'Active Tickets': activeCount
+        }
+      })
+      downloadCSV(data, 'people_directory_full')
+    } finally {
+      setLoading(false)
+    }
   }
   
-  const handleExportGroup = (g: Group) => {
-    const gMembers = members.filter(m => m.group_id === g.id).sort((a,b) => a.ticket_no - b.ticket_no)
-    const data = gMembers.map(m => ({
-      'Ticket No': m.ticket_no, Member: m.persons?.name, Nickname: m.persons?.nickname || '', Phone: m.persons?.phone || '', Status: m.status
-    }))
-    downloadCSV(data, `enrollment_${g.name.toLowerCase().replace(/\s+/g,'_')}`)
+  const handleExportGroup = async (g: Group) => {
+    const targetId = isSuper ? switchedFirmId : firm?.id
+    if (!targetId) return
+    setLoading(true)
+    try {
+      const { data: gMembers } = await withFirmScope(supabase.from('members').select('ticket_no, status, persons(name, nickname, phone)'), targetId)
+        .eq('group_id', g.id)
+        .is('deleted_at', null)
+        .order('ticket_no')
+        
+      if (!gMembers) return
+      const data = gMembers.map((m: any) => ({
+        'Ticket No': m.ticket_no, Member: m.persons?.name, Nickname: m.persons?.nickname || '', Phone: m.persons?.phone || '', Status: m.status
+      }))
+      downloadCSV(data, `enrollment_${g.name.toLowerCase().replace(/\s+/g,'_')}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleImport = async (data: any[]) => {
@@ -492,6 +535,7 @@ export default function MembersPage() {
           <h1>{t('member_directory')}</h1>
           <p className="text-sub mt-1">{t('members_page_desc')}</p>
         </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex p-1 bg-[var(--surface2)] rounded-xl border" style={{ borderColor: 'var(--border)' }}>
             <button 
@@ -531,65 +575,65 @@ export default function MembersPage() {
 
       {/* Stats Summary Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)]"><User size={18}/></div>
+             <div className="p-2 rounded-lg bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent)]/10"><User size={20}/></div>
              <Badge variant="accent">{t('registry_label')}</Badge>
           </div>
           <div>
-            <div className="text-2xl font-black text-[var(--text)]">
-              {summaryStats.activePeople} <span className="text-sub font-normal">/ {summaryStats.totalPeople}</span>
+            <div className="text-2xl font-black text-[var(--text)] tracking-tighter">
+              {summaryStats.activePeople} <span className="text-sm font-normal text-[var(--text3)]">/ {summaryStats.totalPeople}</span>
             </div>
-            <div className="text-sub mt-0.5">{t('registry_members')}</div>
+            <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('registry_members')}</div>
           </div>
         </div>
-        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)]"><UserCheck size={18}/></div>
+             <div className="p-2 rounded-lg bg-[var(--info-dim)] text-[var(--info)] border border-[var(--info)]/10"><UserCheck size={20}/></div>
              <Badge variant="info">{t('subscribers_label')}</Badge>
           </div>
           <div>
-            <div className="text-2xl font-black text-[var(--text)]">
-              {summaryStats.activeTickets} <span className="text-sub font-normal">/ {summaryStats.totalTickets}</span>
+            <div className="text-2xl font-black text-[var(--text)] tracking-tighter">
+              {summaryStats.activeTickets} <span className="text-sm font-normal text-[var(--text3)]">/ {summaryStats.totalTickets}</span>
             </div>
-            <div className="text-sub mt-0.5">{t('active_tickets_label')}</div>
+            <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('active_tickets_label')}</div>
           </div>
         </div>
-        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
            <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--danger-dim)] text-[var(--danger)]"><CreditCard size={18}/></div>
-             <Badge variant="danger">{t('market_debt_label')}</Badge>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalOutstanding)}</div>
-            <div className="text-sub mt-0.5">{t('total_outstanding')}</div>
-          </div>
+             <div className="p-2 rounded-lg bg-[var(--danger-dim)] text-[var(--danger)] border border-[var(--danger)]/10"><CreditCard size={20}/></div>
+             <Badge variant="danger">{t('payouts_label')}</Badge>
+           </div>
+           <div>
+             <div className="text-2xl font-black text-[var(--text)] tracking-tighter">{fmt(summaryStats.totalPayouts)}</div>
+             <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('payout_registry')}</div>
+           </div>
         </div>
-        <div className="p-4 rounded-2xl border-2 bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
+        <div className="p-6 rounded-lg border bg-[var(--surface)] flex flex-col justify-between" style={{ borderColor: 'var(--border)' }}>
            <div className="flex items-center justify-between mb-4">
-             <div className="p-2 rounded-lg bg-[var(--success-dim)] text-[var(--success)]"><History size={18}/></div>
-             <Badge variant="success">{t('life_time_label')}</Badge>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-[var(--text)]">{fmt(summaryStats.totalPaid)}</div>
-            <div className="text-sub mt-0.5">{t('paid_label')}</div>
-          </div>
+             <div className="p-2 rounded-lg bg-[var(--success-dim)] text-[var(--success)] border border-[var(--success)]/10"><TrendingUp size={20}/></div>
+             <Badge variant="success">Value</Badge>
+           </div>
+           <div>
+             <div className="text-2xl font-black text-[var(--text)] tracking-tighter">{fmt(summaryStats.totalChitValue)}</div>
+             <div className="text-sm font-bold text-[var(--text3)] mt-1 tracking-tight">{t('chit_value_registry')}</div>
+           </div>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 group">
            <input 
-              className="w-full bg-[var(--surface)] border-2 rounded-2xl p-4 pl-12 font-bold text-sm focus:border-[var(--accent)] transition-all outline-none"
+              className="w-full bg-[var(--surface)] border rounded-md p-2.5 pl-10 font-medium text-sm focus:border-[var(--accent)] transition-all outline-none"
               style={{ borderColor: 'var(--border)' }}
               placeholder="Search by name, phone, or address..."
               value={search}
               onChange={e => setSearch(e.target.value)}
            />
-           <Plus className="absolute left-4 top-1/2 -translate-y-1/2 rotate-45 opacity-30" size={20} />
+           <Plus className="absolute left-3 top-1/2 -translate-y-1/2 rotate-45 text-[var(--text3)]" size={18} />
         </div>
         
-        <label className="flex items-center gap-2 cursor-pointer bg-[var(--surface2)] px-4 py-3 rounded-2xl border-2 hover:border-[var(--accent)] transition-all shrink-0" style={{ borderColor: 'var(--border)' }}>
+        <label className="flex items-center gap-2 cursor-pointer bg-[var(--surface2)] px-3 py-2 rounded-md border hover:border-[var(--accent)] transition-all shrink-0" style={{ borderColor: 'var(--border)' }}>
           <input 
             type="checkbox" 
             className="w-4 h-4 rounded-lg bg-[var(--surface)] text-[var(--accent)] border-none ring-offset-0 focus:ring-0" 
@@ -649,7 +693,7 @@ export default function MembersPage() {
                       ) : <span className="text-[10px] uppercase font-bold opacity-20">None</span>}
                     </Td>
                     <Td label="Outstanding">
-                       <div className={cn("font-bold font-mono text-base tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                       <div className={cn("font-bold font-mono text-sm tracking-tighter", c.totalBalance > 0.01 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                           {fmt(c.totalBalance)}
                        </div>
                        {c.totalPaid > 0 && <div className="text-sub mt-0.5">PAID: {fmt(c.totalPaid)}</div>}
@@ -678,63 +722,94 @@ export default function MembersPage() {
           )}
         </TableCard>
       ) : (
-        <div className="space-y-6">
-           {allGroups.filter(g => g.status !== 'archived').map(g => {
-              const gMembers = members.filter(m => m.group_id === g.id)
-              const gSelectedCount = gMembers.filter(m => selectedIds.has(m.id)).length
-              
-              return (
-                <TableCard key={g.id} title={g.name} subtitle={`${gMembers.length} active enrollments · ${fmt(g.chit_value)} chit`}
-                  actions={
-                    <div className="flex items-center gap-2">
-                       {isSuper && <Badge variant="accent">Owned by: {g.firms?.name}</Badge>}
-                       <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={() => handleExportGroup(g)}>{t('export')}</Btn>
+        <div className="space-y-4">
+          <div className="flex justify-end gap-2 mb-2 no-print">
+            <Btn size="sm" variant="secondary" onClick={() => setExpandedGroups(new Set(allGroups.map(g => g.id)))}>Expand All</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => setExpandedGroups(new Set())}>Collapse All</Btn>
+          </div>
+          
+          {allGroups.filter(g => g.status !== 'archived').map(g => {
+            const gMembers = members.filter(m => m.group_id === g.id)
+            const isOpen = expandedGroups.has(g.id)
+            const gSelectedCount = gMembers.filter(m => selectedIds.has(m.id)).length
+            
+            return (
+              <div key={g.id} className={cn(
+                "bg-[var(--surface)] border rounded-lg overflow-hidden transition-all",
+                isOpen ? "border-[var(--accent)] shadow-sm" : "border-[var(--border)]"
+              )}>
+                <div 
+                  className="px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-[var(--surface2)]"
+                  onClick={() => {
+                    const next = new Set(expandedGroups)
+                    if (next.has(g.id)) next.delete(g.id)
+                    else next.add(g.id)
+                    setExpandedGroups(next)
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all", isOpen ? "bg-[var(--accent)] text-white" : "bg-[var(--surface2)] opacity-40")}>
+                      <ChevronDown size={16} className={cn("transition-transform", isOpen && "rotate-180")} />
                     </div>
-                  }>
-                  <Table responsive>
-                      <thead><tr>
-                        <Th className="w-10">
-                           <input type="checkbox" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
-                        </Th>
-                        <Th>Ticket</Th>
-                        <Th>{t('register_person')}</Th>
-                        <Th className="hidden md:table-cell">{t('phone')}</Th>
-                        <Th className="hidden sm:table-cell">{t('group_status')}</Th>
-                        <Th right>{t('action')}</Th>
-                      </tr></thead>
-                      <tbody>
-                        {gMembers.map(m => {
-                          const isSelected = selectedIds.has(m.id)
-                          const isWinner = auctions.some(a => a.winner_id === m.id)
-                          return (
-                            <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 transition-colors")} onClick={() => toggleSelect(m.id)}>
-                              <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
-                              <Td label="Ticket" className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
-                              <Td label="Person" className="font-bold">
-                                 <div className="flex items-center gap-2">
-                                   {m.persons?.name} 
-                                   {m.persons?.nickname && <span className="text-[var(--accent)] font-medium text-xs opacity-70">({m.persons.nickname})</span>}
-                                   {isWinner && <Badge variant="accent" className="text-[9px] py-0.5">Winner</Badge>}
-                                 </div>
-                              </Td>
-                              <Td label="Phone" className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
-                              <Td label="Status" className="hidden sm:table-cell">
-                                 {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
-                              </Td>
-                              <Td label="Action" right>
-                                 <div className="flex gap-2 justify-end">
-                                    <Btn size="sm" variant="ghost" icon={CreditCard} onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }}>{t('record_payment')}</Btn>
-                                    <Btn size="sm" variant="ghost" icon={Info} onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} />
-                                 </div>
-                              </Td>
-                            </Tr>
-                          )
-                        })}
-                      </tbody>
-                  </Table>
-                </TableCard>
-              )
-           })}
+                    <div>
+                       <div className="font-bold text-base uppercase tracking-tight">{g.name}</div>
+                      <div className="text-[9px] font-bold opacity-40 uppercase tracking-widest">{fmt(g.chit_value)} · {gMembers.length} Members</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {isSuper && <Badge variant="accent" className="hidden sm:flex">{g.firms?.name}</Badge>}
+                    <Btn variant="secondary" size="sm" icon={FileSpreadsheet} onClick={(e: any) => { e.stopPropagation(); handleExportGroup(g) }}>{t('export')}</Btn>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="border-t animate-in slide-in-from-top-2 duration-200" style={{ borderColor: 'var(--border)' }}>
+                    <Table responsive>
+                        <thead><tr>
+                          <Th className="w-10">
+                             <input type="checkbox" checked={gSelectedCount === gMembers.length && gMembers.length > 0} onChange={() => toggleAll(gMembers.map(m => m.id))} />
+                          </Th>
+                          <Th>Ticket</Th>
+                          <Th>{t('register_person')}</Th>
+                          <Th className="hidden md:table-cell">{t('phone')}</Th>
+                          <Th className="hidden sm:table-cell">{t('group_status')}</Th>
+                          <Th right>{t('action')}</Th>
+                        </tr></thead>
+                        <tbody>
+                          {gMembers.map(m => {
+                            const isSelected = selectedIds.has(m.id)
+                            const isWinner = auctions.some(a => a.winner_id === m.id)
+                            return (
+                              <Tr key={m.id} className={cn(isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--surface2)]/30 transition-colors")} onClick={() => toggleSelect(m.id)}>
+                                <Td label="Select"><input type="checkbox" checked={isSelected} readOnly /></Td>
+                                <Td label="Ticket" className="font-mono font-black text-sm text-[var(--accent)]">#{m.ticket_no}</Td>
+                                <Td label="Person" className="font-bold">
+                                   <div className="flex items-center gap-2">
+                                     {m.persons?.name} 
+                                     {m.persons?.nickname && <span className="text-[var(--accent)] font-medium text-xs opacity-70">({m.persons.nickname})</span>}
+                                     {isWinner && <Badge variant="accent" className="text-[9px] py-0.5">Winner</Badge>}
+                                   </div>
+                                </Td>
+                                <Td label="Phone" className="hidden md:table-cell text-xs font-medium opacity-50">{m.persons?.phone || '—'}</Td>
+                                <Td label="Status" className="hidden sm:table-cell">
+                                   {m.status === 'foreman' ? <Badge variant="info">Foreman</Badge> : <Badge variant="success">Active</Badge>}
+                                </Td>
+                                <Td label="Action" right>
+                                   <div className="flex gap-2 justify-end">
+                                      <Btn size="sm" variant="ghost" icon={CreditCard} onClick={(e: any) => { e.stopPropagation(); setPayMember(m) }}>{t('record_payment')}</Btn>
+                                      <Btn size="sm" variant="ghost" icon={Info} onClick={(e: any) => { e.stopPropagation(); router.push(`/members/${m.person_id}`) }} />
+                                   </div>
+                                </Td>
+                              </Tr>
+                            )
+                          })}
+                        </tbody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

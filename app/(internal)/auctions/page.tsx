@@ -4,10 +4,11 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtMonth, fmtDate, getGroupDisplayName } from '@/lib/utils'
-import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination, Modal } from '@/components/ui'
+import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination, Modal, Empty } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import Link from 'next/link'
-import { FileSpreadsheet, ChevronLeft, ChevronRight, ExternalLink, Calculator, Info, Printer, CheckCircle2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FileSpreadsheet, ChevronLeft, ChevronRight, ExternalLink, Calculator, Info, Printer, CheckCircle2, ChevronDown, ChevronUp, LayoutList, LayoutGrid } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
 import { useTerminology } from '@/lib/hooks/useTerminology'
@@ -23,6 +24,7 @@ export default function AuctionsPage() {
   const { firm, role, can, switchedFirmId } = useFirm()
   const { t } = useI18n()
   const term = useTerminology(firm)
+  const router = useRouter()
   const { toast, show, hide } = useToast()
 
   const [groups,      setGroups]      = useState<Group[]>([])
@@ -35,6 +37,7 @@ export default function AuctionsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [selectedAuctionForBreakdown, setSelectedAuctionForBreakdown] = useState<number | null>(null)
   const [settlingAuctionId, setSettlingAuctionId] = useState<number | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
 
   const handleMarkSettled = async (id: number) => {
     const { error } = await supabase
@@ -98,6 +101,32 @@ export default function AuctionsPage() {
   const pageYield = useMemo(() => auctions.reduce((s, a) => s + Number(a.auction_discount || 0), 0), [auctions])
   const pagePayouts = useMemo(() => auctions.reduce((s, a) => s + Number(a.net_payout || 0), 0), [auctions])
 
+  const groupedAuctions = useMemo(() => {
+    const map: Record<number, Auction[]> = {}
+    auctions.forEach(a => {
+      if (!map[a.group_id]) map[a.group_id] = []
+      map[a.group_id].push(a)
+    })
+    return map
+  }, [auctions])
+
+  const toggleGroup = (id: number) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const expandAll = () => {
+    setExpandedGroups(new Set(Object.keys(groupedAuctions).map(Number)))
+  }
+
+  const collapseAll = () => {
+    setExpandedGroups(new Set())
+  }
+
   if (loading) return <Loading />
 
   return (
@@ -109,7 +138,49 @@ export default function AuctionsPage() {
           <p className="text-sub mt-1">{t('auctions_history_log')}</p>
         </div>
         <div className="flex gap-2">
-           <Btn variant="secondary" size="sm" onClick={() => downloadCSV(auctions, 'auctions')} icon={FileSpreadsheet}>CSV</Btn>
+             {(() => {
+               const handleExportFull = async () => {
+                 const targetId = role === 'superadmin' ? switchedFirmId : firm?.id
+                 if (!targetId) return
+                 setLoading(true)
+                 try {
+                   const { data: allData } = await withFirmScope(supabase.from('auctions').select('id, group_id, month, auction_date, payout_date, winner_id, auction_discount, dividend, net_payout, status, is_payout_settled'), targetId)
+                     .is('deleted_at', null)
+                     .order('auction_date', { ascending: false })
+                   
+                   if (!allData) return
+                   
+                   const data = allData.map((a: any) => {
+                     const g = groups.find(x => x.id === a.group_id);
+                     const w = members.find(x => x.id === a.winner_id);
+                     return {
+                       'Group': g ? getGroupDisplayName(g, t) : '—',
+                       'Month': a.month,
+                       'Date': a.auction_date ? fmtDate(a.auction_date) : '—',
+                       'Winner': w?.persons?.name || '—',
+                       'Ticket': w ? `Ticket #${w.ticket_no}` : '—',
+                       'Bid Amount': a.auction_discount,
+                       'Net Payout': a.net_payout,
+                       'Status': a.status,
+                       'Settled': a.is_payout_settled ? 'Yes' : 'No',
+                       'Payout Date': a.payout_date ? fmtDate(a.payout_date) : '—'
+                     }
+                   });
+
+                   // Sort by Group Name, then by Month (Descending)
+                   data.sort((a: any, b: any) => {
+                     if (a.Group !== b.Group) return a.Group.localeCompare(b.Group);
+                     return b.Month - a.Month;
+                   });
+
+                   downloadCSV(data, 'auctions_full');
+                 } finally {
+                   setLoading(false)
+                 }
+               }
+
+               return <Btn variant="secondary" size="sm" onClick={handleExportFull} icon={FileSpreadsheet}>CSV (Full)</Btn>
+             })()}
         </div>
       </div>
 
@@ -126,96 +197,132 @@ export default function AuctionsPage() {
     </div>
 
     <TableCard title={t('auction_ledger')} subtitle={`${t('page')} ${page} ${t('of')} ${totalPages || 1} • ${t('total_records')}: ${totalCount}`}>
-        <Table responsive>
-          <thead><tr>
-            <Th>{t('group')}</Th>
-            <Th>{t('auction_month')}</Th>
-            <Th>{t('winner')}</Th>
-            <Th right>{t('bid_amount')}</Th>
-            <Th right>{t('net_payout')}</Th>
-            <Th right>{t('actions')}</Th>
-          </tr></thead>
-          <tbody>
-            {auctions.map(a => {
-              const g = groups.find(x => x.id === a.group_id)
-              const w = members.find(x => x.id === a.winner_id)
-              const c = commissions.find(x => x.auction_id === a.id)
-              
+        <div className="p-4 space-y-4">
+          <div className="flex justify-end gap-2 mb-2 no-print">
+            <Btn size="sm" variant="secondary" onClick={expandAll}>Expand All</Btn>
+            <Btn size="sm" variant="secondary" onClick={collapseAll}>Collapse All</Btn>
+          </div>
+          {Object.keys(groupedAuctions).length === 0 ? (
+            <Empty icon="📭" title="No Auctions Found" subtitle="Try adjusting your page or filters" />
+          ) : (
+            Object.keys(groupedAuctions).map(idStr => {
+              const gid = Number(idStr)
+              const gAucs = groupedAuctions[gid]
+              const g = groups.find(x => x.id === gid)
+              const isExpanded = expandedGroups.has(gid)
+
               return (
-                <Tr key={a.id}>
-                  <Td label="Group">
-                    <Link href={`/groups/${a.group_id}`} className="flex flex-col min-h-[48px] justify-center hover:opacity-70 transition-opacity">
-                      <span className="text-sm font-semibold text-[var(--accent)]">{g ? getGroupDisplayName(g, t) : '—'}</span>
-                      <span className="text-xs text-sub flex items-center gap-1">
-                        {t('group')} <ExternalLink size={8} />
-                      </span>
-                    </Link>
-                  </Td>
-                  <Td label="Month">
-                    <div className="flex flex-col min-h-[48px] justify-center">
-                      <span className="text-sm font-bold text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
-                      <span className="text-xs text-sub">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
+                <div key={gid} className="border-2 rounded-3xl overflow-hidden transition-all duration-300" style={{ borderColor: isExpanded ? 'var(--accent)' : 'var(--border)' }}>
+                  <button 
+                    onClick={() => toggleGroup(gid)}
+                    className="w-full flex items-center justify-between px-6 py-4 bg-slate-50/50 hover:bg-slate-100/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-white shadow-sm border border-slate-100">
+                        {isExpanded ? <ChevronUp size={18} className="text-[var(--accent)]" /> : <ChevronDown size={18} />}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-black text-sm uppercase tracking-tight">{g ? getGroupDisplayName(g, t) : `Group #${gid}`}</div>
+                        <div className="text-[10px] text-sub font-bold uppercase tracking-widest">{gAucs.length} {t('auctions_history_log')}</div>
+                      </div>
                     </div>
-                  </Td>
-                  <Td label="Winner">
-                    <div className="flex flex-col min-h-[48px] justify-center">
-                      <span className="text-sm font-semibold text-[var(--text)] truncate max-w-[100px]">👑 {w?.persons?.name || '—'}</span>
-                      <span className="text-xs text-sub">{w ? `Ticket #${w.ticket_no}` : 'N/A'}</span>
+                    <div className="flex items-center gap-4">
+                       <div className="hidden sm:block text-right">
+                          <div className="text-[10px] text-sub font-bold uppercase tracking-widest">Total Yield</div>
+                          <div className="font-black text-[var(--accent)]">{fmt(gAucs.reduce((s, a) => s + Number(a.auction_discount || 0), 0))}</div>
+                       </div>
+                       <Btn size="sm" variant="ghost" icon={ExternalLink} onClick={(e) => { e.stopPropagation(); router.push(`/groups/${gid}`) }} />
                     </div>
-                  </Td>
-                  <Td label="Bid" right>
-                    <div className="flex flex-col min-h-[48px] justify-center items-end">
-                      <span className="text-sm font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</span>
-                      <span className="text-xs text-sub">{t('winning_bid_label')}</span>
-                    </div>
-                  </Td>
-                  <Td label="Payout" right>
-                    <div className="flex flex-col min-h-[48px] justify-center items-end">
-                      <span className="text-sm font-bold text-[var(--success)]">{fmt(a.net_payout)}</span>
-                      <span className="text-xs text-sub">
-                        {a.is_payout_settled ? `${t('payout_amt')}: ${fmtDate(a.payout_date || '')}` : t('unsettled')}
-                      </span>
-                    </div>
-                  </Td>
-                  <Td label="Actions" right>
-                    <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => setSelectedAuctionForBreakdown(a.id)}
-                          className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
-                          title={t('view_breakdown')}
-                        >
-                          <Info size={18} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const g = groups.find(x => x.id === a.group_id)
+                  </button>
+
+                  {isExpanded && (
+                    <div className="animate-in slide-in-from-top-2 duration-300">
+                      <Table>
+                        <thead>
+                          <tr>
+                            <Th>{t('auction_month')}</Th>
+                            <Th>{t('winner')}</Th>
+                            <Th right>{t('bid_amount')}</Th>
+                            <Th right>{t('net_payout')}</Th>
+                            <Th right>{t('actions')}</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gAucs.map(a => {
                             const w = members.find(x => x.id === a.winner_id)
                             const c = commissions.find(x => x.auction_id === a.id)
-                            if (g && w) {
-                              printPayoutVoucher(g, a, w, c, firm, t)
-                            }
-                          }}
-                          className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
-                          title={t('settle_print_doc')}
-                        >
-                          <Printer size={18} />
-                        </button>
-                        {!a.is_payout_settled && (
-                          <button 
-                            onClick={() => setSettlingAuctionId(a.id)}
-                            className="p-2 rounded-xl bg-[var(--success-dim)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white transition-all"
-                            title={t('mark_as_settled') || 'Mark as Paid'}
-                          >
-                            <CheckCircle2 size={18} />
-                          </button>
-                        )}
+                            
+                            return (
+                              <Tr key={a.id}>
+                                <Td label="Month">
+                                  <div className="flex flex-col min-h-[48px] justify-center">
+                                    <span className="text-sm font-bold text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
+                                    <span className="text-xs text-sub">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
+                                  </div>
+                                </Td>
+                                <Td label="Winner">
+                                  <div className="flex flex-col min-h-[48px] justify-center">
+                                    <span className="text-sm font-semibold text-[var(--text)]">👑 {w?.persons?.name || '—'}</span>
+                                    <span className="text-xs text-sub">{w ? `Ticket #${w.ticket_no}` : 'N/A'}</span>
+                                  </div>
+                                </Td>
+                                <Td label="Bid" right>
+                                  <div className="flex flex-col min-h-[48px] justify-center items-end">
+                                    <span className="text-sm font-bold text-[var(--danger)]">{fmt(a.auction_discount)}</span>
+                                    <span className="text-xs text-sub">{t('winning_bid_label')}</span>
+                                  </div>
+                                </Td>
+                                <Td label="Payout" right>
+                                  <div className="flex flex-col min-h-[48px] justify-center items-end">
+                                    <span className="text-sm font-bold text-[var(--success)]">{fmt(a.net_payout)}</span>
+                                    <span className="text-xs text-sub">
+                                      {a.is_payout_settled ? `${t('payout_amt')}: ${fmtDate(a.payout_date || '')}` : t('unsettled')}
+                                    </span>
+                                  </div>
+                                </Td>
+                                <Td label="Actions" right>
+                                  <div className="flex items-center justify-end gap-2">
+                                      <button 
+                                        onClick={() => setSelectedAuctionForBreakdown(a.id)}
+                                        className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                                        title={t('view_breakdown')}
+                                      >
+                                        <Info size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          if (g && w) {
+                                            printPayoutVoucher(g, a, w, c, firm, t)
+                                          }
+                                        }}
+                                        className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                                        title={t('settle_print_doc')}
+                                      >
+                                        <Printer size={18} />
+                                      </button>
+                                      {!a.is_payout_settled && (
+                                        <button 
+                                          onClick={() => setSettlingAuctionId(a.id)}
+                                          className="p-2 rounded-xl bg-[var(--success-dim)] text-[var(--success)] hover:bg-[var(--success)] hover:text-white transition-all"
+                                          title={t('mark_as_settled') || 'Mark as Paid'}
+                                        >
+                                          <CheckCircle2 size={18} />
+                                        </button>
+                                      )}
+                                  </div>
+                                </Td>
+                              </Tr>
+                            )
+                          })}
+                        </tbody>
+                      </Table>
                     </div>
-                  </Td>
-                </Tr>
+                  )}
+                </div>
               )
-            })}
-          </tbody>
-        </Table>
+            })
+          )}
+        </div>
         
         <Pagination 
           current={page} 

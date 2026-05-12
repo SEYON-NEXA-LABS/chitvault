@@ -51,7 +51,7 @@ const ChartTooltip = ({ active, x, y, data, colors }: any) => {
   
   return (
     <div 
-      className="absolute z-50 pointer-events-none bg-[var(--surface)] border border-[var(--border)] p-3 rounded-xl shadow-2xl text-[10px] min-w-[140px] transition-all duration-75"
+      className="absolute z-50 pointer-events-none bg-white border border-[#E4E4E7] p-3 rounded-lg shadow-xl text-[11px] min-w-[150px] transition-all duration-75"
       style={{ 
         left: x, 
         top: y, 
@@ -59,13 +59,13 @@ const ChartTooltip = ({ active, x, y, data, colors }: any) => {
         opacity: active ? 1 : 0
       }}
     >
-      <p className="font-black mb-2 uppercase tracking-widest opacity-40">{data.label}</p>
+      <p className="font-black mb-1 uppercase tracking-widest text-[var(--text3)]">{data.label}</p>
       <div className="space-y-1.5">
         {data.values.map((v: any, i: number) => (
           <div key={i} className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: colors[v.key] || COLORS[i % COLORS.length] }} />
-              <span className="font-bold opacity-70 whitespace-nowrap">{v.name}</span>
+              <span className="font-bold text-[var(--text2)] whitespace-nowrap">{v.name}</span>
             </div>
             <span className="font-black font-mono">{fmt(v.value)}</span>
           </div>
@@ -200,9 +200,9 @@ export function LineAnalytics({
   }
 
   return (
-    <Card className="p-6 relative overflow-hidden group/chart hidden lg:block" style={{ minWidth: 0 }}>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-40">{title}</h3>
+    <Card className="p-4 relative overflow-hidden group/chart hidden lg:block" style={{ minWidth: 0 }}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text3)]">{title}</h3>
       </div>
       
       <div 
@@ -216,8 +216,8 @@ export function LineAnalytics({
           {/* Grid Lines */}
           {grid.map((g, i) => (
             <g key={i}>
-              <line x1="40" y1={g.y} x2="800" y2={g.y} stroke="var(--border)" strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
-              <text x="0" y={g.y + 4} fill="var(--text)" fontSize="12" className="opacity-30 font-bold">
+              <line x1="40" y1={g.y} x2="800" y2={g.y} stroke="#E4E4E7" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
+              <text x="0" y={g.y + 4} fill="#71717A" fontSize="10" className="font-medium">
                 {g.val >= 1000 ? (g.val/1000).toFixed(0) + 'k' : g.val.toFixed(0)}
               </text>
             </g>
@@ -231,8 +231,8 @@ export function LineAnalytics({
             
             return (
               <g key={p.key}>
-                <path d={p.area} fill={p.color} fillOpacity="0.05" />
-                <path d={p.line} fill="none" stroke={p.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d={p.area} fill={p.color} fillOpacity="0.08" />
+                <path d={p.line} fill="none" stroke={p.color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 {isSingle && point && (
                   <circle cx={point.x} cy={point.y} r="6" fill={p.color} className="animate-pulse" />
                 )}
@@ -242,7 +242,7 @@ export function LineAnalytics({
 
           {/* X Labels */}
           {labels.map((l, i) => (
-            <text key={i} x={l.x} y="395" textAnchor="middle" fill="var(--text)" fontSize="12" className="opacity-30 font-bold uppercase tracking-widest">
+            <text key={i} x={l.x} y="395" textAnchor="middle" fill="var(--text3)" fontSize="10" className="font-bold uppercase tracking-widest">
               {l.label}
             </text>
           ))}
@@ -296,10 +296,10 @@ export function PieDistribution({ title, description, data, dataKey, nameKey, he
   let currentOffset = 0
 
   return (
-    <Card className="p-6 hidden lg:block">
-      <div className="mb-6">
-        <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-40">{title}</h3>
-        {description && <p className="text-[10px] font-medium opacity-30 mt-1">{description}</p>}
+    <Card className="p-4 hidden lg:block">
+      <div className="mb-4">
+        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text3)]">{title}</h3>
+        {description && <p className="text-[10px] font-medium text-[var(--text3)] mt-1">{description}</p>}
       </div>
       <div className="flex flex-col md:flex-row items-center justify-around gap-8" style={{ minHeight: height - 80 }}>
         <div className="relative w-[180px] h-[180px]">
@@ -329,7 +329,7 @@ export function PieDistribution({ title, description, data, dataKey, nameKey, he
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-2xl font-black">{total}</span>
-            <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Records</span>
+            <span className="text-[10px] font-bold text-[var(--text3)] uppercase tracking-widest">Records</span>
           </div>
         </div>
 
@@ -338,7 +338,7 @@ export function PieDistribution({ title, description, data, dataKey, nameKey, he
             <div key={i} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                <span className="text-[10px] font-black uppercase tracking-tight opacity-60">{entry[nameKey]}</span>
+                <span className="text-[10px] font-black uppercase tracking-tight text-[var(--text2)]">{entry[nameKey]}</span>
               </div>
               <span className="text-sm font-black italic">{entry[dataKey]}</span>
             </div>
@@ -354,8 +354,8 @@ export function BarAnalytics({ title, data, dataKey, xKey, height = 300 }: {
   title: string; data: any[]; dataKey: string; xKey: string; height?: number
 }) {
   return (
-    <Card className="p-6 hidden lg:block">
-       <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-4 opacity-40">{title}</h3>
+    <Card className="p-4 hidden lg:block">
+       <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-3 text-[var(--text3)]">{title}</h3>
        <div className="flex items-end justify-between gap-2 px-2" style={{ height: height - 60 }}>
           {data.map((d, i) => {
              const max = Math.max(...data.map(x => Number(x[dataKey])), 1)
@@ -369,7 +369,7 @@ export function BarAnalytics({ title, data, dataKey, xKey, height = 300 }: {
                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[var(--surface)] border border-[var(--border)] px-2 py-1 rounded-md text-[9px] font-black opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                       {fmt(Number(d[dataKey]))}
                    </div>
-                   <div className="mt-2 text-[9px] font-black uppercase tracking-widest opacity-30 origin-left text-center overflow-hidden text-ellipsis whitespace-nowrap">
+                   <div className="mt-2 text-[9px] font-black uppercase tracking-widest text-[var(--text3)] origin-left text-center overflow-hidden text-ellipsis whitespace-nowrap">
                       {d[xKey]}
                    </div>
                 </div>

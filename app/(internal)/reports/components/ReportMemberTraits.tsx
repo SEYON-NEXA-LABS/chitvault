@@ -32,7 +32,7 @@ export function ReportDefaulters({ members, groups, auctions }: { members: Membe
                   <span className="opacity-40 ml-1 text-xs">(#{m.ticket_no})</span>
                 </Td>
                 <Td>{m.persons?.phone || '—'}</Td>
-                <Td className="text-xs max-w-[200px] truncate">{m.notes || '—'}</Td>
+                <Td className="text-xs">{m.notes || '—'}</Td>
               </Tr>
             )
           })}

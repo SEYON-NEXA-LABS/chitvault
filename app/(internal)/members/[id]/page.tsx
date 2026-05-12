@@ -160,7 +160,7 @@ export default function MemberProfilePage() {
                 <div className="p-2 rounded-lg bg-[var(--surface2)] text-[var(--accent)]"><MapPin size={16} /></div>
                 <div>
                   <div className="text-sub uppercase font-black">Address</div>
-                  <div className="text-sm font-bold truncate max-w-[180px]">{person.address || 'No address provided'}</div>
+                  <div className="text-sm font-bold">{person.address || 'No address provided'}</div>
                 </div>
               </div>
             </div>

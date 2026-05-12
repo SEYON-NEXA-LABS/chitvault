@@ -141,8 +141,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             🔒
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Access Locked</h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <h2 className="text-2xl font-black text-[var(--text)] uppercase tracking-tight">Access Locked</h2>
+            <p className="text-sm text-[var(--text2)] leading-relaxed">
               Subscription for <strong>{firm?.name}</strong> has expired. To maintain your instance and access your data, please renew your plan.
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 Renew via WhatsApp
              </a>
              <button onClick={async () => { await supabase.auth.signOut(); router.push('/login') }}
-               className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
+               className="text-xs font-bold text-[var(--text3)] uppercase tracking-widest hover:text-[var(--text)] transition-colors">
                Sign Out
              </button>
           </div>
@@ -178,17 +178,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={cn(
-          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print bg-white',
+          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print bg-[#FAFAFA]',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        )} style={{ borderColor: 'var(--border)' }}>
-          <div className="p-8 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <Link href="/dashboard" className="flex items-center gap-3 group">
-              <Image src="/icons/icon-512.png" alt={APP_NAME} width={32} height={32} className="w-8 h-8 object-contain transition-transform group-hover:scale-110 duration-500" />
-              <span className="font-black text-2xl tracking-tighter uppercase text-slate-900 font-brand">{APP_NAME}</span>
+        )} style={{ borderColor: '#E4E4E7' }}>
+          <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: '#E4E4E7' }}>
+            <Link href="/dashboard" className="flex items-center gap-2.5 group">
+              <Image src="/icons/icon-512.png" alt={APP_NAME} width={28} height={28} className="w-7 h-7 object-contain transition-transform group-hover:rotate-12 duration-500" />
+              <span className="font-bold text-xl tracking-tight text-[#09090B] font-brand">{APP_NAME}</span>
             </Link>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-6">
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
             {NAV.map((group, i) => {
               if (group.superAdminOnly && role !== 'superadmin') return null
               if (group.ownerOnly && !isOwner) return null
@@ -200,7 +200,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div key={i} className="space-y-1">
                   <button
                     onClick={() => setExpanded(e => ({ ...e, [group.label]: !e[group.label] }))}
-                    className="w-full flex items-center justify-between px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+                    className="w-full flex items-center justify-between px-3 py-1 text-xs font-black uppercase tracking-widest text-[var(--text3)] hover:text-[var(--text)] transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       {Icon && <Icon size={14} className="opacity-40" />}
@@ -221,15 +221,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           key={j}
                           href={effectiveHref}
                           className={cn(
-                            'flex items-center gap-3 px-3 py-2 rounded-xl text-base transition-all',
+                            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
                             active
-                              ? 'bg-[var(--accent)] text-white shadow-lg'
-                              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                              ? 'bg-[#F4F4F5] text-[#09090B] font-bold shadow-none'
+                              : 'text-slate-600 hover:text-[#09090B] hover:bg-[#F4F4F5]/50'
                           )}
                           onClick={() => setSidebarOpen(false)}
                         >
-                          {SIcon && <SIcon size={16} />}
-                          <span className={active ? "font-bold" : "font-medium"}>{t(item.label)}</span>
+                          {SIcon && <SIcon size={16} className={cn(active ? "text-[#155DFC]" : "text-slate-400")} />}
+                          <span>{t(item.label)}</span>
                         </Link>
                       )
                     })}
@@ -239,12 +239,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          <div className="p-5 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="p-6 border-t space-y-6" style={{ borderColor: '#E4E4E7' }}>
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1">
                 <button
                   onClick={toggleTheme}
-                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-colors"
+                  className="p-2 rounded-xl hover:bg-[var(--surface2)] text-[var(--text3)] hover:text-[var(--text)] transition-colors"
                   title="Toggle Theme"
                 >
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -254,14 +254,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 <button
                   onClick={() => adjustFont(-1)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-50 text-[10px] font-bold text-slate-400 hover:text-slate-900 transition-colors border border-transparent hover:border-[var(--border)]"
+                  className="w-8 h-8 rounded-lg hover:bg-[var(--surface2)] text-[10px] font-bold text-[var(--text3)] hover:text-[var(--text)] transition-colors border border-transparent hover:border-[var(--border)]"
                   title="Decrease Font"
                 >
                   A-
                 </button>
                 <button
                   onClick={() => adjustFont(1)}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-50 text-sm font-bold text-slate-400 hover:text-slate-900 transition-colors border border-transparent hover:border-[var(--border)]"
+                  className="w-8 h-8 rounded-lg hover:bg-[var(--surface2)] text-sm font-bold text-[var(--text3)] hover:text-[var(--text)] transition-colors border border-transparent hover:border-[var(--border)]"
                   title="Increase Font"
                 >
                   A+
@@ -270,15 +270,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               
               <button
                 onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}
-                className="px-3 py-1 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-600"
+                className="px-3 py-1 rounded-xl border border-slate-200 bg-[var(--surface2)] text-xs font-bold uppercase tracking-widest text-slate-600"
               >
                 {lang === 'en' ? 'EN' : 'தமிழ்'}
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+            <div className="p-4 rounded-2xl bg-[var(--surface2)] border border-[var(--border)] space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[var(--text3)] shrink-0">
                   <UserCog size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -289,10 +289,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                   ) : (
                     <>
-                      <p className="text-sm font-bold text-slate-900 truncate">
+                      <p className="text-sm font-bold text-[var(--text)] truncate">
                         {profile?.full_name || userEmail.split('@')[0] || 'Account'}
                       </p>
-                      <p className="text-xs text-slate-400 truncate uppercase tracking-widest">
+                      <p className="text-xs text-[var(--text3)] truncate uppercase tracking-widest">
                         {firm?.name || (role === 'superadmin' ? 'Control Plane' : 'Global')}
                       </p>
                     </>
@@ -310,15 +310,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         <div className="flex-1 flex flex-col lg:ml-64">
-          <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 border-b no-print bg-white"
-            style={{ borderColor: 'var(--border)' }}>
+          <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 border-b no-print bg-white/80 backdrop-blur-md"
+            style={{ borderColor: '#E4E4E7' }}>
             <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 -ml-2 text-slate-400" onClick={() => setSidebarOpen(true)}>
+              <button className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900" onClick={() => setSidebarOpen(true)}>
                 <Menu size={20} />
               </button>
-              <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+              <h2 className="text-sm font-bold text-[#09090B] uppercase tracking-tight">
                 {t(NAV.find(n => n.href === pathname)?.label || '') || firm?.name || APP_NAME}
-              </h1>
+              </h2>
             </div>
             <div className="flex items-center gap-3">
               {hasPin ? (
@@ -348,7 +348,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
 
-          <main className="flex-1 p-8 overflow-auto pb-24 lg:pb-8 text-sm">{children}</main>
+          <main className="flex-1 p-6 overflow-auto pb-24 lg:pb-6 text-sm">{children}</main>
           <BottomNav onMenuClick={() => setSidebarOpen(true)} />
           <CommandPalette />
         </div>

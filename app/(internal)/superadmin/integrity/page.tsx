@@ -123,7 +123,7 @@ export default function IntegrityPage() {
                   <div className="p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)]">
                     <p className="text-[10px] font-black uppercase opacity-40 mb-2">Firm ID in JWT</p>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-mono font-bold truncate ${secContext?.firm_id_in_jwt === 'N/A' || !secContext?.firm_id_in_jwt ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      <span className={`text-xs font-mono font-bold ${secContext?.firm_id_in_jwt === 'N/A' || !secContext?.firm_id_in_jwt ? 'text-rose-500' : 'text-emerald-500'}`}>
                         {secContext?.firm_id_in_jwt || 'Locating...'}
                       </span>
                       {secContext?.firm_id_in_jwt && secContext.firm_id_in_jwt !== 'N/A' && <CheckCircle2 size={14} className="text-emerald-500" />}

@@ -260,7 +260,7 @@ export default function SettingsPage() {
                       color: colorProfile === cp.id ? 'var(--accent)' : 'var(--text)',
                     }}>
                     <div className="w-3 h-3 rounded-full shadow-sm" style={{ background: cp.color }} />
-                    <span className="truncate">{cp.name}</span>
+                    <span>{cp.name}</span>
                   </button>
                 ))}
               </div>
