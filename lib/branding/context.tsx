@@ -14,7 +14,7 @@ interface BrandingContext {
 
 const Ctx = createContext<BrandingContext>({
   name: 'ChitVault Manager',
-  font: 'Inter', colorProfile: 'indigo',
+  font: 'Inter', colorProfile: 'eslinks',
   setTheme: () => {}
 })
 
@@ -25,12 +25,12 @@ export function BrandingProvider({ children }: {
   const name = firm?.name || APP_NAME
   const font = firm?.font || 'Inter'
   
-  const [colorProfile, setColorProfile] = useState<string>('indigo')
+  const [colorProfile, setColorProfile] = useState<string>('eslinks')
   const [isBrandingReady, setIsBrandingReady] = useState(false)
 
   useEffect(() => {
     // Enforcement: Only Firm Default is used (Managed White-Labeling)
-    const firmDefault = firm?.color_profile || 'indigo'
+    const firmDefault = firm?.color_profile || 'eslinks'
     setColorProfile(firmDefault)
     setIsBrandingReady(true)
   }, [firm?.color_profile])
@@ -71,23 +71,24 @@ export function BrandingProvider({ children }: {
 export function useBranding() { return useContext(Ctx) }
 
 export const AVAILABLE_FONTS = [
-  { label: 'AudioWide (Brand Header)', value: 'Audiowide' },
-  { label: 'Outfit (English Standard)', value: 'Outfit' },
-  { label: 'Hind Madurai (Tamil Standard)', value: 'Hind Madurai' },
+  { label: 'Inter (System Standard)', value: 'Inter' },
 ]
 
 export const COLOR_PROFILES = [
-  { id: 'indigo',       name: 'Trust Blue',       color: '#0038b8' },
-  { id: 'emerald',      name: 'Emerald Growth',   color: '#10b981' },
-  { id: 'slate',        name: 'Onyx Slate',       color: '#475569' },
-  { id: 'rose',         name: 'Rose Alert',       color: '#e11d48' },
+  { id: 'eslinks',      name: 'ESLinks (Default)', color: '#2563eb' },
+  { id: 'zinc',         name: 'Zinc',             color: '#18181b' },
+  { id: 'slate',        name: 'Slate Blue',       color: '#0f172a' },
+  { id: 'stone',        name: 'Warm Stone',       color: '#1c1917' },
+  { id: 'neutral',      name: 'Pure Neutral',     color: '#171717' },
+  { id: 'sky-genesis',  name: 'Sky Genesis',      color: '#1e293b' },
+  { id: 'stillwater',   name: 'Stillwater',       color: '#475569' },
 ]
 
 // For backward compatibility with picker UI
 export const PRESET_COLORS = COLOR_PROFILES.map(p => ({ label: p.name, value: p.color, id: p.id }))
 
 // Apply CSS variables + Load local font definitions
-export function applyBranding(font: string, colorProfile: string = 'indigo') {
+export function applyBranding(font: string, colorProfile: string = 'eslinks') {
   const root = document.documentElement
 
   // Set Profile Attribute (Source of truth for CSS variables in globals.css)

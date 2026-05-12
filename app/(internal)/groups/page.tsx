@@ -332,7 +332,7 @@ export default function GroupsPage() {
 
       {/* Archived — on demand */}
       <Card className="overflow-hidden">
-        <button className="w-full flex items-center justify-between px-5 py-4 text-left"
+        <button className="w-full flex items-center justify-between px-4 py-2 text-left"
           style={{ color: 'var(--text2)' }}
           onClick={() => {
             if (!showArch) { setShowArch(true); loadArchived() }
@@ -348,7 +348,7 @@ export default function GroupsPage() {
           archLoading ? <Loading text={t('arch_loading')} /> :
             archived.length === 0
               ? <Empty icon="📦" text={t('archived_no_groups')} />
-              : <div className="p-3"><GroupTable list={archived} showArchBtn={false} /></div>
+              : <div className="p-2"><GroupTable list={archived} showArchBtn={false} /></div>
         )}
       </Card>
 

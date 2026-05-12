@@ -99,7 +99,7 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
                   </Td>
                   <Td>
                     <div className="flex flex-col py-2 justify-center">
-                      <span className="text-sm font-bold truncate max-w-[140px] text-slate-900">
+                      <span className="text-sm font-bold text-slate-900">
                         {winner?.persons?.name || '—'}
                       </span>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">

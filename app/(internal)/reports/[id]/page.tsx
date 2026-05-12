@@ -251,16 +251,49 @@ function ReportContent() {
                     } else if (id === 'reconciliation') {
                       table = 'denominations'; exportCols = 'id, entry_date, total, notes, created_at'
                     } else if (id === 'pnl') {
-                      table = 'foreman_commissions'; exportCols = 'id, group_id, month, commission_amt, status, created_at'
-                    } else if (['today_collection', 'cashflow'].includes(id)) {
-                      table = 'payments'; exportCols = 'id, member_id, group_id, month, amount, mode, payment_date, created_at'
+                      table = 'foreman_commissions'; exportCols = 'id, group_id, month, commission_amt, status, created_at, groups:group_id(name)'
+                    } else if (['today_collection', 'cashflow', 'reconciliation'].includes(id)) {
+                      table = 'payments'; exportCols = 'id, member_id, group_id, month, amount, mode, payment_date, created_at, members:member_id(ticket_no, persons:person_id(name)), groups:group_id(name)'
+                    } else if (['group_enrollment', 'defaulters', 'member_history'].includes(id)) {
+                      table = 'members'; exportCols = 'id, ticket_no, group_id, status, persons:person_id(name, phone, address), groups:group_id(name)'
+                    } else if (id === 'winners') {
+                      table = 'auctions'; exportCols = 'id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status, created_at, winners:winner_id(ticket_no, persons:person_id(name)), groups:group_id(name)'
                     } else {
-                      table = 'auctions'; exportCols = 'id, group_id, month, winner_id, auction_discount, dividend, net_payout, payout_amount, is_payout_settled, payout_date, status, created_at'
+                      // Default to auctions for general insights
+                      table = 'auctions'; exportCols = 'id, group_id, month, winner_id, auction_discount, dividend, net_payout, status, created_at, groups:group_id(name), winners:winner_id(persons:person_id(name))'
                     }
 
                     const q = withFirmScope(supabase.from(table).select(exportCols), targetId)
                     const { data: fullData } = await q
-                    if (fullData) downloadCSV(fullData, `chitvault-report-${id}-${getToday()}.csv`)
+                    if (fullData) {
+                      // Manual renaming for better headers, while downloadCSV handles the object flattening
+                      const mapped = fullData.map((row: any) => {
+                        const flat: any = { ...row }
+                        if (row.groups) { flat.Group = row.groups.name; delete flat.groups }
+                        if (row.members) {
+                          flat.Member = row.members.persons?.name
+                          flat.Ticket = row.members.ticket_no
+                          delete flat.members
+                        }
+                        if (row.persons) {
+                          flat.Name = row.persons.name
+                          flat.Phone = row.persons.phone
+                          flat.Address = row.persons.address
+                          delete flat.persons
+                        }
+                        if (row.winners) {
+                          flat.Winner = row.winners.persons?.name
+                          flat.Ticket = row.winners.ticket_no
+                          delete flat.winners
+                        }
+                        if (row.metadata && typeof row.metadata === 'object') {
+                          flat.Metadata = JSON.stringify(row.metadata)
+                          delete flat.metadata
+                        }
+                        return flat
+                      })
+                      downloadCSV(mapped, `chitvault-report-${id}-${getToday()}.csv`)
+                    }
                   } finally {
                     setLoading(false)
                   }

@@ -136,8 +136,8 @@
        {/* Top Bar / Header */}
        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t('dash_overview')}</h1>
-             <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">
+             <h1 className="text-[var(--text)]">{t('dash_overview')}</h1>
+              <p className="text-sub font-bold uppercase tracking-widest mt-1">
                {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} • {firm?.name || 'Vault'}
              </p>
          </div>
@@ -148,29 +148,29 @@
        </div>
  
        {/* Welcome Hero Section */}
-       <div className="relative group overflow-hidden rounded-[2.5rem] p-10 bg-slate-50 border border-slate-100 shadow-sm transition-all hover:shadow-xl hover:bg-white">
+        <div className="relative group overflow-hidden rounded-lg p-4 bg-[var(--surface2)] border border-[var(--border)] shadow-sm transition-all hover:bg-white">
          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
            <div className="lg:col-span-3 flex flex-col justify-center">
-               <h2 className="text-3xl font-black text-slate-900 mb-2">
-                 {t('dash_welcome_back')}, {profile?.full_name?.split(' ')[0] || 'Partner'}
-               </h2>
-               <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-10 max-w-xl leading-relaxed">
+                <h2 className="text-[var(--text)] mb-2">
+                  {t('dash_welcome_back')}, {profile?.full_name?.split(' ')[0] || 'Partner'}
+                </h2>
+                <p className="text-sm  font-medium mb-6 max-w-xl leading-relaxed">
                  {isSuper 
                    ? t('dash_super_plane_desc')
                    : t('dash_firm_plane_desc')}
                </p>
-               <div className="flex flex-wrap gap-4">
-                  <Btn variant="primary" className="text-[10px] font-black uppercase tracking-[0.2em]" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
-                  <Btn variant="secondary" className="text-[10px] font-black uppercase tracking-[0.2em] bg-white" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
-                  <Btn variant="ghost" icon={Info} onClick={() => setShowHelpModal(true)} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-900">
-                    {t('onboarding_title')}
-                  </Btn>
-               </div>
+                <div className="flex flex-wrap gap-3">
+                   <Btn variant="primary" size="sm" className="uppercase tracking-widest" icon={Users} onClick={() => router.push('/members')}>{t('dash_manage_reg')}</Btn>
+                   <Btn variant="secondary" size="sm" className="uppercase tracking-widest bg-white" icon={Layers} onClick={() => router.push('/groups')}>{t('dash_view_groups')}</Btn>
+                   <Btn variant="ghost" size="sm" icon={Info} onClick={() => setShowHelpModal(true)} className="uppercase tracking-widest  hover:text-[var(--text)]">
+                     {t('onboarding_title')}
+                   </Btn>
+                </div>
            </div>
            <div className="hidden lg:flex items-center justify-center">
               <div className="relative">
                  <div className="absolute inset-0 bg-[var(--accent-dim)] rounded-full blur-3xl opacity-30 animate-pulse" />
-                 <TrendingUp size={120} className="text-slate-200 relative z-10" strokeWidth={1} />
+                 <TrendingUp size={120} className="text-[var(--text3)] relative z-10" strokeWidth={1} />
               </div>
            </div>
          </div>
@@ -183,7 +183,7 @@
          title={t('onboarding_steps_guide')}
        >
          <div className="space-y-6 py-4">
-           <p className="text-sm text-slate-400 font-medium px-2">{t('onboarding_subtitle')}</p>
+           <p className="text-sm  font-medium px-2">{t('onboarding_subtitle')}</p>
            <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto px-1 pr-2 custom-scrollbar">
              {onboardingSteps.map((step) => {
                const Icon = step.icon
@@ -192,14 +192,14 @@
                    href={step.link} 
                    key={step.id} 
                    onClick={() => setShowHelpModal(false)}
-                   className={`flex items-center gap-4 p-5 rounded-3xl border transition-all ${step.completed ? 'bg-emerald-50 border-emerald-100 opacity-60' : 'bg-slate-50 border-slate-100 hover:border-slate-900 hover:bg-white'}`}
+                    className={`flex items-center gap-4 p-3 rounded-lg border transition-all ${step.completed ? 'bg-emerald-50 border-emerald-100 opacity-60' : 'bg-[var(--surface2)] border-[var(--border)] hover:border-slate-900 hover:bg-white'}`}
                  >
-                   <div className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center ${step.completed ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 border'}`}>
+                    <div className={`w-10 h-10 shrink-0 rounded-md flex items-center justify-center ${step.completed ? 'bg-emerald-500 text-white' : 'bg-white  border'}`}>
                      {step.completed ? <CheckCircle2 size={20} /> : <Icon size={20} />}
                    </div>
                    <div className="flex-1 min-w-0">
-                     <h4 className={`font-bold text-sm mb-0.5 ${step.completed ? 'text-emerald-700 line-through opacity-40' : 'text-slate-900'}`}>{step.title}</h4>
-                     <p className="text-xs text-slate-400 line-clamp-1">{step.desc}</p>
+                     <h4 className={`font-bold text-sm mb-0.5 ${step.completed ? 'text-emerald-700 line-through opacity-40' : 'text-[var(--text)]'}`}>{step.title}</h4>
+                     <p className="text-xs ">{step.desc}</p>
                    </div>
                    <ArrowUpRight size={16} className="text-slate-300" />
                  </Link>
@@ -213,7 +213,7 @@
        </Modal>
  
        {/* Primary Stats */}
-       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
          <StatCard label={t('report_today_title')} value={fmt(stats.collectedToday)} icon={DollarSign} sub={t('dash_today_collected')} color="success" />
          <StatCard label="Total Receivable" value={fmt(stats.totalReceivable)} icon={Wallet} sub="Pending from Members" color="danger" />
          <StatCard label="Pending Payouts" value={fmt(stats.totalPayable)} icon={Gavel} sub="Owed to Winners" color="warning" />
@@ -227,18 +227,18 @@
        </div>
  
        {/* Trends & Analytics Section - Same Width (50/50 Split) */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           <Card 
             title={t('report_today_title')} 
             subtitle="7-Day Reconciliation Pulse (Expected vs Actual)"
             headerAction={
-              <button onClick={() => router.push('/reports/today_collection')} className="p-2 hover:bg-slate-50 rounded-xl transition-colors">
-                <ArrowUpRight size={20} className="text-slate-400" />
+              <button onClick={() => router.push('/reports/today_collection')} className="p-2 hover:bg-[var(--surface2)] rounded-xl transition-colors">
+                <ArrowUpRight size={20} className="" />
               </button>
             }
-            className="flex flex-col h-full bg-white shadow-sm border-slate-100"
+            className="flex flex-col h-full bg-white shadow-sm border-[var(--border)]"
           >
-            <div className="px-8 py-10 flex flex-col h-full justify-between">
+            <div className="flex flex-col h-full justify-between">
                <div>
                   <div className="flex items-end justify-between h-52 gap-4 mb-8 max-w-2xl mx-auto">
                      {dailyTrends.map((d: any, i: number) => {
@@ -257,7 +257,7 @@
                                 style={{ height: `${Math.max(8, hAct)}%` }}
                               />
                            </div>
-                           <div className="mt-4 text-[10px] font-black uppercase text-slate-400 text-center tracking-tight">{d.label}</div>
+                            <div className="mt-2 text-[9px] font-bold uppercase  text-center tracking-tight">{d.label}</div>
                            
                            <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white p-5 rounded-2xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 whitespace-nowrap z-50 shadow-2xl border border-white/10">
                              <div className="flex flex-col gap-3">
@@ -283,34 +283,34 @@
                      })}
                   </div>
                   
-                  <div className="flex items-center justify-center gap-10 mb-8 py-5 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                  <div className="flex items-center justify-center gap-6 mb-6 py-3 bg-[var(--surface2)] rounded-lg border border-dashed border-slate-200">
                      <div className="flex items-center gap-2.5">
                         <div className="w-3 h-3 rounded-full bg-slate-200 shadow-inner" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Records</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest ">System Records</span>
                      </div>
                      <div className="flex items-center gap-2.5">
                         <div className="w-3 h-3 rounded-full bg-[var(--success)] shadow-inner" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vault Physical</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest ">Vault Physical</span>
                      </div>
                   </div>
                </div>
 
-               <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
+               <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between">
                   <div className="flex gap-10">
                     <div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Weekly Actual</div>
-                      <div className="text-3xl font-black text-slate-900 tracking-tighter">
+                      <div className="text-[10px] font-black text-[var(--text3)] uppercase tracking-widest mb-1.5 leading-none">Weekly Actual</div>
+                      <div className="text-3xl font-black text-[var(--text)] tracking-tighter">
                         {fmt(dailyTrends.reduce((s, d) => s + Number(d.actual), 0))}
                       </div>
                     </div>
                     <div className="hidden sm:block">
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Weekly Variance</div>
-                      <div className={cn("text-3xl font-black tracking-tighter", dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0) < 0 ? "text-red-500" : "text-emerald-500")}>
+                      <div className="text-[10px] font-black text-[var(--text3)] uppercase tracking-widest mb-1.5 leading-none">Weekly Variance</div>
+                      <div className={cn("text-3xl font-black tracking-tighter", dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0) < 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
                         {fmt(Math.abs(dailyTrends.reduce((s, d) => s + (Number(d.actual) - Number(d.expected)), 0)))}
                       </div>
                     </div>
                   </div>
-                  <Btn variant="primary" size="sm" onClick={() => router.push('/cashbook')} className="h-12 w-12 p-0 rounded-2xl shadow-lg hover:shadow-xl transition-all">
+                  <Btn variant="primary" size="sm" onClick={() => router.push('/cashbook')} className="h-10 w-10 p-0 rounded-md shadow-sm">
                     <ArrowRight size={22} />
                   </Btn>
                </div>
@@ -329,30 +329,30 @@
        </div>
 
        {/* Detailed Activity & Recent Payments Grid */}
-       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
          <div className="lg:col-span-8">
             <TableCard title={t('dash_recent_activity')} subtitle={t('dash_realtime_feed')}>
               <Table>
-                <thead><Tr><Th className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('date')}</Th><Th className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('nav_members')}</Th><Th right className="text-[10px] font-black uppercase tracking-[0.2em] px-8 py-5">{t('amount')}</Th></Tr></thead>
+                <thead><Tr><Th className="text-[10px] font-black uppercase tracking-[0.2em]">{t('date')}</Th><Th className="text-[10px] font-black uppercase tracking-[0.2em]">{t('nav_members')}</Th><Th right className="text-[10px] font-black uppercase tracking-[0.2em]">{t('amount')}</Th></Tr></thead>
                 <tbody className="divide-y divide-slate-50">
                   {payments.map(p => (
-                    <Tr key={p.id} className="hover:bg-slate-50/50 group/row">
-                      <Td className="whitespace-nowrap font-medium text-slate-400 text-xs px-8 py-6">
+                    <Tr key={p.id} className="hover:bg-[var(--surface2)]/50 group/row">
+                      <Td className="whitespace-nowrap font-medium  text-xs px-8 py-6">
                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/row:bg-white group-hover/row:text-[var(--accent)] transition-all shadow-sm">
+                            <div className="w-10 h-10 rounded-2xl bg-[var(--surface2)] flex items-center justify-center  group-hover/row:bg-white group-hover/row:text-[var(--accent)] transition-all shadow-sm">
                                <Calendar size={18} strokeWidth={1.5} />
                             </div>
                             <div>
-                               <div className="text-slate-900 font-bold">{fmtDate(p.payment_date)}</div>
+                               <div className="text-[var(--text)] font-bold">{fmtDate(p.payment_date)}</div>
                                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">{new Date(p.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
                             </div>
                          </div>
                        </Td>
                       <Td className="px-8">
-                         <div className="font-bold text-sm text-slate-900">{(p.members as any)?.persons?.name}</div>
-                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('receipt_received')}</div>
+                         <div className="font-bold text-sm text-[var(--text)]">{(p.members as any)?.persons?.name}</div>
+                         <div className="text-[10px] font-black  uppercase tracking-widest">{t('receipt_received')}</div>
                       </Td>
-                      <Td right className="px-8 text-emerald-600 font-black text-base font-mono italic">{fmt(p.amount)}</Td>
+                      <Td right className="text-emerald-600 font-bold text-sm font-mono italic">{fmt(p.amount)}</Td>
                     </Tr>
                   ))}
                   {payments.length === 0 && <Tr><Td colSpan={3} className="text-center py-20 text-slate-300 italic text-sm">{t('dash_no_recent_payments')}</Td></Tr>}
@@ -362,16 +362,16 @@
          </div>
 
           <div className="lg:col-span-4 space-y-6">
-            <Card className="p-8 bg-slate-50 border border-slate-100 shadow-sm relative overflow-hidden h-full flex flex-col justify-between group">
-               <div className="absolute top-0 right-0 p-8 text-slate-200 opacity-50 group-hover:scale-110 transition-transform">
+            <Card className="p-3 bg-[var(--surface2)] border border-[var(--border)] shadow-sm relative overflow-hidden h-full flex flex-col justify-between group">
+               <div className="absolute top-0 right-0 p-8 text-[var(--text3)] opacity-50 group-hover:scale-110 transition-transform">
                   <TrendingUp size={100} strokeWidth={1} />
                </div>
                <div className="relative z-10">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-10">Firm Intelligence</h3>
-                  <div className="space-y-8">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em]  mb-6">Firm Intelligence</h3>
+                  <div className="space-y-6">
                      <div className="group/metric">
-                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Top Borrower</div>
-                        <div className="text-xl font-black text-slate-900 truncate">
+                        <div className="text-[9px] font-black  uppercase tracking-[0.2em] mb-1">Top Borrower</div>
+                        <div className="text-xl font-black text-[var(--text)]">
                           {winnerInsightsRpc?.topBorrower?.name || '---'}
                         </div>
                         <div className="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-wider">
@@ -381,31 +381,31 @@
 
                      <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200/60">
                         <div className="group/metric">
-                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Early Birds</div>
-                           <div className="text-2xl font-black text-slate-900">{winnerInsightsRpc?.earlyBirdCount || 0}</div>
+                           <div className="text-[9px] font-black  uppercase tracking-[0.2em] mb-1">Early Birds</div>
+                           <div className="text-2xl font-black text-[var(--text)]">{winnerInsightsRpc?.earlyBirdCount || 0}</div>
                         </div>
                         <div className="group/metric">
-                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Peak Bid</div>
-                           <div className="text-2xl font-black text-slate-900">{fmt(winnerInsightsRpc?.highestSingleDiscount || 0)}</div>
+                           <div className="text-[9px] font-black  uppercase tracking-[0.2em] mb-1">Peak Bid</div>
+                           <div className="text-2xl font-black text-[var(--text)]">{fmt(winnerInsightsRpc?.highestSingleDiscount || 0)}</div>
                         </div>
                      </div>
 
                      <div className="pt-6 border-t border-slate-200/60">
-                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Quick Actions</div>
+                        <div className="text-[9px] font-black  uppercase tracking-[0.2em] mb-4">Quick Actions</div>
                         <div className="grid grid-cols-2 gap-2">
-                           <button onClick={() => router.push('/collection')} className="p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-900 transition-all text-left shadow-sm">
+                           <button onClick={() => router.push('/collection')} className="p-4 rounded-2xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
                               <Wallet size={16} className="text-emerald-500 mb-2" />
-                              <div className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Collect</div>
+                              <div className="text-[9px] font-black text-[var(--text)] uppercase tracking-widest">Collect</div>
                            </button>
-                           <button onClick={() => router.push('/groups?add=true')} className="p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-900 transition-all text-left shadow-sm">
+                           <button onClick={() => router.push('/groups?add=true')} className="p-4 rounded-2xl bg-white border border-[var(--border)] hover:border-slate-900 transition-all text-left shadow-sm">
                               <Plus size={16} className="text-blue-500 mb-2" />
-                              <div className="text-[9px] font-black text-slate-900 uppercase tracking-widest">New Group</div>
+                              <div className="text-[9px] font-black text-[var(--text)] uppercase tracking-widest">New Group</div>
                            </button>
                         </div>
                      </div>
                   </div>
                </div>
-               <Btn variant="secondary" className="relative z-10 w-full mt-10 bg-white border-slate-200 text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white" icon={ArrowRight} onClick={() => router.push('/reports')}>
+                <Btn variant="secondary" size="sm" className="relative z-10 w-full mt-6 bg-white border-slate-200 text-[var(--text)] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-900 hover:text-white" icon={ArrowRight} onClick={() => router.push('/reports')}>
                   Analytics Hub
                </Btn>
             </Card>
