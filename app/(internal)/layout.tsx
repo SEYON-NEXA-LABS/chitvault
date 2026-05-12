@@ -178,7 +178,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={cn(
-          'fixed top-0 left-0 bottom-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print',
+          'fixed inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 border-r no-print h-screen overflow-hidden',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )} style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#E4E4E7' }}>
@@ -239,7 +239,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          <div className="p-4 border-t space-y-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="p-4 border-t space-y-4 mt-auto" style={{ borderColor: 'var(--border)' }}>
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-1">
                 <button
