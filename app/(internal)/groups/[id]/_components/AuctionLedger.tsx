@@ -1,7 +1,7 @@
 'use client'
  
 import React from 'react'
-import { CheckCircle2, Calculator, Info, Printer } from 'lucide-react'
+import { CheckCircle2, Calculator, Info, Printer, Pencil, Trash2 } from 'lucide-react'
 import { Table, TableCard, Th, Tr, Td, Btn, Badge } from '@/components/ui'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
 import { printPayoutVoucher } from '@/lib/utils/print'
@@ -20,6 +20,8 @@ interface AuctionLedgerProps {
   setMathModal: (data: { auction: Auction; commission: ForemanCommission } | null) => void
   setSettlingAuctionId?: (id: number | null) => void
   onViewBreakdown?: (id: number) => void
+  onEditAuction?: (a: Auction) => void
+  onDeleteAuction?: (id: number) => void
 }
  
 export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
@@ -34,7 +36,9 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
   handleConfirmDraft,
   setMathModal,
   setSettlingAuctionId,
-  onViewBreakdown
+  onViewBreakdown,
+  onEditAuction,
+  onDeleteAuction
 }) => {
   const confirmedAucs = auctionHistory.filter(a => a.status === 'confirmed')
   const draftAucs = auctionHistory.filter(a => a.status === 'draft')
@@ -215,6 +219,24 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
                         )}
                         {a.status === 'draft' && (
                            <Btn size="sm" variant="primary" className="text-[10px] font-black py-2" onClick={() => handleConfirmDraft(a.id)}>{t('confirm')}</Btn>
+                        )}
+                        {onEditAuction && (
+                          <button
+                            onClick={() => onEditAuction(a)}
+                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all border border-blue-100"
+                            title={t('edit') || 'Edit Auction'}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                        {onDeleteAuction && (
+                          <button
+                            onClick={() => onDeleteAuction(a.id)}
+                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all border border-red-100"
+                            title={t('delete') || 'Delete Auction'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         )}
                       </div>
                       {a.is_payout_settled && (

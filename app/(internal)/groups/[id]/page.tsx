@@ -12,11 +12,11 @@ import { fmt, getToday, cn, fmtDate, getGroupDisplayName } from '@/lib/utils'
 import { 
   Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal,
   TableCard, Table, Tr, Th, Td,
-  Modal, Pagination
+  Modal, Pagination, Field
 } from '@/components/ui'
 import { 
   Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2,
-  CheckCircle2, Printer
+  CheckCircle2, Printer, Pencil
 } from 'lucide-react'
 import { PayoutVoucherModal } from '@/components/features/PayoutVoucherModal'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
@@ -76,6 +76,10 @@ export default function GroupLedgerPage() {
   const [settlingAuctionId, setSettlingAuctionId] = useState<number | null>(null)
   const [selectedAuctionForPrint, setSelectedAuctionForPrint] = useState<number | null>(null)
   const [paymentPage, setPaymentPage] = useState(1)
+  const [editingAuction, setEditingAuction] = useState<Auction | null>(null)
+  const [editForm, setEditForm] = useState({ auction_date: '', auction_discount: '', winner_id: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [deletingAuctionId, setDeletingAuctionId] = useState<number | null>(null)
   const PAYMENT_PAGE_SIZE = 15
 
   const handleQuickSettle = async (id: number) => {
@@ -503,6 +507,15 @@ export default function GroupLedgerPage() {
                 setSettling={setSettling} setSettleForm={setSettleForm} handleConfirmDraft={handleConfirmDraft} setMathModal={setMathModal}
                 setSettlingAuctionId={setSettlingAuctionId}
                 onViewBreakdown={setSelectedAuctionForPrint}
+                onEditAuction={(a) => {
+                  setEditingAuction(a)
+                  setEditForm({
+                    auction_date: a.auction_date || '',
+                    auction_discount: String(a.auction_discount || ''),
+                    winner_id: String(a.winner_id || '')
+                  })
+                }}
+                onDeleteAuction={(id) => setDeletingAuctionId(id)}
               />
             </div>
           </>
@@ -682,6 +695,140 @@ export default function GroupLedgerPage() {
       />
 
       <CSVImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={async () => {}} title="Import Members" requiredFields={['Name']} />
+
+      <Modal
+        open={!!editingAuction}
+        onClose={() => setEditingAuction(null)}
+        title={t('edit_auction') || 'Edit Auction'}
+      >
+        {(() => {
+          if (!editingAuction) return null
+          const inputClass = "w-full bg-[var(--surface2)] border-2 border-transparent focus:border-[var(--accent)] rounded-xl px-4 py-2.5 text-sm font-bold transition-all outline-none"
+          const inputStyle = { borderColor: 'var(--border)' }
+
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Pencil size={32} />
+                </div>
+                <h3 className="text-xl font-black tracking-tight">{t('edit_auction') || 'Edit Auction'}</h3>
+                <p className="text-sm text-slate-500">
+                  {getGroupDisplayName(group, t)} — Month {editingAuction.month}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <Field label={t('auction_date') || 'Auction Date'}>
+                  <input
+                    className={inputClass}
+                    style={inputStyle}
+                    type="date"
+                    value={editForm.auction_date}
+                    onChange={e => setEditForm(f => ({ ...f, auction_date: e.target.value }))}
+                  />
+                </Field>
+
+                <Field label={t('winning_bid_label') || 'Bid Amount'}>
+                  <input
+                    className={inputClass}
+                    style={inputStyle}
+                    type="number"
+                    value={editForm.auction_discount}
+                    onChange={e => setEditForm(f => ({ ...f, auction_discount: e.target.value }))}
+                    placeholder="e.g. 5000"
+                  />
+                </Field>
+
+                <Field label={t('winner') || 'Winner'}>
+                  <select
+                    className={inputClass}
+                    style={inputStyle}
+                    value={editForm.winner_id}
+                    onChange={e => setEditForm(f => ({ ...f, winner_id: e.target.value }))}
+                  >
+                    <option value="">{t('select_winner') || 'Select Winner'}</option>
+                    {members.map(m => (
+                      <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no})</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Btn variant="secondary" onClick={() => setEditingAuction(null)}>
+                  {t('cancel')}
+                </Btn>
+                <Btn variant="primary" loading={editSaving} onClick={async () => {
+                  if (!editingAuction) return
+                  setEditSaving(true)
+                  try {
+                    const updatePayload: Record<string, any> = {}
+                    if (editForm.auction_date) updatePayload.auction_date = editForm.auction_date
+                    if (editForm.auction_discount) updatePayload.auction_discount = Number(editForm.auction_discount)
+                    if (editForm.winner_id) updatePayload.winner_id = Number(editForm.winner_id)
+
+                    if (editForm.auction_discount && group) {
+                      const chitVal = (group.monthly_contribution || 0) * (group.duration || 0)
+                      updatePayload.net_payout = chitVal - Number(editForm.auction_discount)
+                    }
+
+                    const { error } = await supabase
+                      .from('auctions')
+                      .update(updatePayload)
+                      .eq('id', editingAuction.id)
+                    if (error) throw error
+                    showToast(t('updated_success') || 'Auction updated', 'success')
+                    setEditingAuction(null)
+                    refresh()
+                  } catch (err: any) {
+                    showToast(err.message, 'error')
+                  } finally {
+                    setEditSaving(false)
+                  }
+                }}>
+                  {t('save') || 'Save Changes'}
+                </Btn>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      <Modal
+        open={!!deletingAuctionId}
+        onClose={() => setDeletingAuctionId(null)}
+        title={t('confirm_delete_title') || 'Confirm Delete'}
+      >
+        {(() => {
+          const a = auditedAuctions.find((x: any) => x.id === deletingAuctionId)
+          if (!a) return null
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-[var(--danger-dim)] text-[var(--danger)] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={32} />
+                </div>
+                <h3 className="text-xl font-black tracking-tight">{t('confirm_delete_q') || 'Delete this auction?'}</h3>
+                <p className="text-sm text-slate-500">{t('confirm_delete_desc') || 'This will soft‑delete the auction. It can be restored from the Trash page.'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Btn variant="secondary" onClick={() => setDeletingAuctionId(null)}>
+                  {t('cancel')}
+                </Btn>
+                <Btn variant="danger" onClick={async () => {
+                  if (!a) return
+                  const { error } = await supabase.from('auctions').update({ deleted_at: new Date().toISOString() }).eq('id', a.id)
+                  if (error) showToast(error.message, 'error')
+                  else { showToast(t('deleted_success') || 'Auction deleted', 'success'); setDeletingAuctionId(null); refresh() }
+                }}>
+                  {t('delete') || 'Delete'}
+                </Btn>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hideToast} />}
     </div>

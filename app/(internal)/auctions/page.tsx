@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import React from 'react';
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtMonth, fmtDate, getGroupDisplayName, cn } from '@/lib/utils'
@@ -8,7 +9,7 @@ import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination, Modal, E
 import { useToast } from '@/lib/hooks/useToast'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FileSpreadsheet, ChevronLeft, ChevronRight, ExternalLink, Calculator, Info, Printer, CheckCircle2, ChevronDown, ChevronUp, LayoutList, LayoutGrid, TrendingUp, Activity, ArrowRight, Gavel } from 'lucide-react'
+import { FileSpreadsheet, ChevronLeft, ChevronRight, ExternalLink, Calculator, Info, Printer, CheckCircle2, ChevronDown, ChevronUp, LayoutList, LayoutGrid, TrendingUp, Activity, ArrowRight, Gavel, Trash2, Pencil } from 'lucide-react'
 import { useI18n } from '@/lib/i18n/context'
 import { downloadCSV } from '@/lib/utils/csv'
 import { useTerminology } from '@/lib/hooks/useTerminology'
@@ -16,6 +17,7 @@ import type { Group, Member, Auction, ForemanCommission, Firm } from '@/types'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { PayoutVoucherModal } from '@/components/features/PayoutVoucherModal'
 import { printPayoutVoucher } from '@/lib/utils/print'
+import { Field } from '@/components/ui'
 
 const PAGE_SIZE = 20
 
@@ -37,6 +39,10 @@ export default function AuctionsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const [selectedAuctionForBreakdown, setSelectedAuctionForBreakdown] = useState<number | null>(null)
   const [settlingAuctionId, setSettlingAuctionId] = useState<number | null>(null)
+  const [deletingAuctionId, setDeletingAuctionId] = useState<number | null>(null)
+  const [editingAuction, setEditingAuction] = useState<Auction | null>(null)
+  const [editForm, setEditForm] = useState({ auction_date: '', auction_discount: '', winner_id: '' })
+  const [editSaving, setEditSaving] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
 
   const handleMarkSettled = async (id: number) => {
@@ -223,9 +229,12 @@ export default function AuctionsPage() {
                   "bg-[var(--surface)] border rounded-2xl overflow-hidden transition-all shadow-sm",
                   isExpanded ? "border-[var(--accent)]" : "border-[var(--border)]"
                 )}>
-                  <button 
+                  <div 
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleGroup(gid)}
-                    className="w-full flex items-center justify-between px-6 py-4 hover:bg-[var(--surface2)]/50 transition-colors"
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGroup(gid); } }}
+                    className="w-full flex items-center justify-between px-6 py-4 hover:bg-[var(--surface2)]/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-4">
                       <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-all", isExpanded ? "bg-[var(--text)] text-white" : "bg-[var(--surface2)] opacity-40")}>
@@ -265,7 +274,7 @@ export default function AuctionsPage() {
                          <ArrowRight size={16} />
                        </Btn>
                     </div>
-                  </button>
+                  </div>
 
                   {isExpanded && (
                     <div className="border-t animate-in slide-in-from-top-2 duration-300" style={{ borderColor: 'var(--border)' }}>
@@ -362,6 +371,27 @@ export default function AuctionsPage() {
                                           <CheckCircle2 size={14} />
                                         </button>
                                       )}
+                                       <button 
+                                         onClick={() => {
+                                           setEditingAuction(a)
+                                           setEditForm({
+                                             auction_date: a.auction_date || '',
+                                             auction_discount: String(a.auction_discount || ''),
+                                             winner_id: String(a.winner_id || '')
+                                           })
+                                         }}
+                                         className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-all shadow-sm border border-blue-100"
+                                         title={t('edit') || 'Edit Auction'}
+                                       >
+                                         <Pencil size={14} />
+                                       </button>
+                                       <button 
+                                         onClick={() => setDeletingAuctionId(a.id)}
+                                         className="h-8 w-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white flex items-center justify-center transition-all shadow-sm border border-red-100"
+                                         title={t('delete') || 'Delete Auction'}
+                                       >
+                                         <Trash2 size={14} />
+                                       </button>
                                   </div>
                                 </Td>
                               </Tr>
@@ -384,8 +414,6 @@ export default function AuctionsPage() {
           onPageChange={setPage} 
         />
       </TableCard>
-
-      {/* Unified Auction Breakdown Modal handled at bottom */}
 
       <Modal
         open={!!settlingAuctionId}
@@ -430,6 +458,144 @@ export default function AuctionsPage() {
                 </Btn>
                 <Btn variant="primary" onClick={() => handleMarkSettled(a.id)}>
                   {t('confirm_mark_settled')}
+                </Btn>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      <Modal
+         open={!!deletingAuctionId}
+         onClose={() => setDeletingAuctionId(null)}
+         title={t('confirm_delete_title') || 'Confirm Delete'}
+       >
+         {(() => {
+           const a = auctions.find(x => x.id === deletingAuctionId)
+           if (!a) return null
+           return (
+             <div className="space-y-6">
+               <div className="text-center space-y-2">
+                 <div className="w-16 h-16 bg-[var(--danger-dim)] text-[var(--danger)] rounded-full flex items-center justify-center mx-auto mb-4">
+                   <Trash2 size={32} />
+                 </div>
+                 <h3 className="text-xl font-black tracking-tight">{t('confirm_delete_q') || 'Delete this auction?'}</h3>
+                 <p className="text-sm text-slate-500">{t('confirm_delete_desc') || 'This will soft‑delete the auction. It can be restored from the Trash page.'}</p>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                 <Btn variant="secondary" onClick={() => setDeletingAuctionId(null)}>
+                   {t('cancel')}
+                 </Btn>
+                 <Btn variant="danger" onClick={async () => {
+                   if (!a) return
+                   const { error } = await supabase.from('auctions').update({ deleted_at: new Date().toISOString() }).eq('id', a.id).eq('firm_id', firm?.id)
+                   if (error) show(error.message, 'error')
+                   else { show(t('deleted_success') || 'Auction deleted', 'success'); setDeletingAuctionId(null); load() }
+                 }}>
+                   {t('delete') || 'Delete'}
+                 </Btn>
+               </div>
+             </div>
+           )
+         })()}
+       </Modal>
+
+      <Modal
+        open={!!editingAuction}
+        onClose={() => { setEditingAuction(null) }}
+        title={t('edit_auction') || 'Edit Auction'}
+      >
+        {(() => {
+          if (!editingAuction) return null
+          const g = groups.find(x => x.id === editingAuction.group_id)
+          const groupMembers = members.filter(m => m.group_id === editingAuction.group_id || m.id === editingAuction.winner_id)
+          const inputClass = "w-full bg-[var(--surface2)] border-2 border-transparent focus:border-[var(--accent)] rounded-xl px-4 py-2.5 text-sm font-bold transition-all outline-none"
+          const inputStyle = { borderColor: 'var(--border)' }
+
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Pencil size={32} />
+                </div>
+                <h3 className="text-xl font-black tracking-tight">{t('edit_auction') || 'Edit Auction'}</h3>
+                <p className="text-sm text-slate-500">
+                  {g ? getGroupDisplayName(g, t) : `Group #${editingAuction.group_id}`} — Month {editingAuction.month}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <Field label={t('auction_date') || 'Auction Date'}>
+                  <input
+                    className={inputClass}
+                    style={inputStyle}
+                    type="date"
+                    value={editForm.auction_date}
+                    onChange={e => setEditForm(f => ({ ...f, auction_date: e.target.value }))}
+                  />
+                </Field>
+
+                <Field label={t('winning_bid_label') || 'Bid Amount'}>
+                  <input
+                    className={inputClass}
+                    style={inputStyle}
+                    type="number"
+                    value={editForm.auction_discount}
+                    onChange={e => setEditForm(f => ({ ...f, auction_discount: e.target.value }))}
+                    placeholder="e.g. 5000"
+                  />
+                </Field>
+
+                <Field label={t('winner') || 'Winner'}>
+                  <select
+                    className={inputClass}
+                    style={inputStyle}
+                    value={editForm.winner_id}
+                    onChange={e => setEditForm(f => ({ ...f, winner_id: e.target.value }))}
+                  >
+                    <option value="">{t('select_winner') || 'Select Winner'}</option>
+                    {groupMembers.map(m => (
+                      <option key={m.id} value={m.id}>{m.persons?.name} (#{m.ticket_no})</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Btn variant="secondary" onClick={() => setEditingAuction(null)}>
+                  {t('cancel')}
+                </Btn>
+                <Btn variant="primary" loading={editSaving} onClick={async () => {
+                  if (!editingAuction) return
+                  setEditSaving(true)
+                  try {
+                    const updatePayload: Record<string, any> = {}
+                    if (editForm.auction_date) updatePayload.auction_date = editForm.auction_date
+                    if (editForm.auction_discount) updatePayload.auction_discount = Number(editForm.auction_discount)
+                    if (editForm.winner_id) updatePayload.winner_id = Number(editForm.winner_id)
+
+                    // Recalculate net_payout if bid changed
+                    if (editForm.auction_discount && g) {
+                      const chitVal = (g.monthly_contribution || 0) * (g.duration || 0)
+                      updatePayload.net_payout = chitVal - Number(editForm.auction_discount)
+                    }
+
+                    const { error } = await supabase
+                      .from('auctions')
+                      .update(updatePayload)
+                      .eq('id', editingAuction.id)
+                      .eq('firm_id', firm?.id)
+                    if (error) throw error
+                    show(t('updated_success') || 'Auction updated', 'success')
+                    setEditingAuction(null)
+                    load()
+                  } catch (err: any) {
+                    show(err.message, 'error')
+                  } finally {
+                    setEditSaving(false)
+                  }
+                }}>
+                  {t('save') || 'Save Changes'}
                 </Btn>
               </div>
             </div>
