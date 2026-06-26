@@ -22,11 +22,23 @@ export const AuditModal: React.FC<AuditModalProps> = ({
   if (!mathModal) return null
   const { auction, commission } = mathModal
 
-  const pool = (auction?.auction_discount || 0) - (commission?.commission_amt || 0);
-  const share = pool / (group?.num_members || 1);
+  const discount = auction?.auction_discount || 0;
+  const commAmt = commission?.commission_amt || 0;
+  const strategy = group?.dividend_strategy || 'standard';
+  const isPro = strategy.startsWith('pro_');
   const isAcc = group.auction_scheme === 'ACCUMULATION';
   const monthlyDue = Number(group.monthly_contribution);
+  const numMembers = group?.num_members || 1;
+
+  // Pro strategies: commission is deducted from winner's payout, full discount goes to pool
+  // Standard: commission is deducted from the pool before splitting
+  const pool = isPro ? discount : (discount - commAmt);
+  const divisor = strategy === 'pro_n1' ? (numMembers - 1) : numMembers;
+  const share = divisor > 0 ? pool / divisor : 0;
   const youPay = isAcc ? monthlyDue : (monthlyDue - share);
+
+  const poolLabel = isPro ? '(Full Discount)' : '(Discount — Fee)';
+  const divisorLabel = strategy === 'pro_n1' ? `(Pool ÷ ${numMembers} - 1 Members)` : `(Pool ÷ ${numMembers} Members)`;
 
   return (
     <Modal open={open} onClose={onClose} title={`${group?.auction_scheme === 'ACCUMULATION' ? 'Accumulation' : 'Dividend'} Audit Report`} size="sm">
@@ -43,26 +55,40 @@ export const AuditModal: React.FC<AuditModalProps> = ({
           </div>
 
           <div className="space-y-6">
-            {/* Step 1: Net Benefit Pool */}
+            {/* Step 1: Benefit Pool */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--danger)]">Step 1: Benefit Pool</span>
-                <span className="text-[9px] font-bold opacity-40 uppercase">(Discount — Fee)</span>
+                <span className="text-[9px] font-bold opacity-40 uppercase">{poolLabel}</span>
               </div>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] font-mono shadow-sm">
-                <span className="text-xs">{fmt(auction?.auction_discount || 0)} — {fmt(commission?.commission_amt || 0)}</span>
-                <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt(pool)}</span>
+                {isPro ? (
+                  <>
+                    <span className="text-xs">{fmt(discount)} (Full Discount)</span>
+                    <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt(pool)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs">{fmt(discount)} — {fmt(commAmt)}</span>
+                    <span className="font-extrabold text-sm text-[var(--danger)]">= {fmt(pool)}</span>
+                  </>
+                )}
               </div>
+              {isPro && (
+                <div className="text-[9px] px-2 opacity-50 italic">
+                  * Commission of {fmt(commAmt)} is deducted from the winner&apos;s payout, not from the dividend pool.
+                </div>
+              )}
             </div>
 
             {/* Step 2: Per Member Share */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)]">Step 2: Individual Share</span>
-                <span className="text-[9px] font-bold opacity-40 uppercase">(Pool ÷ {group?.num_members} Members)</span>
+                <span className="text-[9px] font-bold opacity-40 uppercase">{divisorLabel}</span>
               </div>
               <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] font-mono shadow-sm">
-                <span className="text-xs">{fmt(pool)} ÷ {group?.num_members}</span>
+                <span className="text-xs">{fmt(pool)} ÷ {divisor}</span>
                 <span className="font-extrabold text-sm text-[var(--accent)]">= {fmt(share)}</span>
               </div>
             </div>
@@ -101,9 +127,9 @@ export const AuditModal: React.FC<AuditModalProps> = ({
               <div className="relative z-10">
                 <div className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Mathematical Reconciliation</div>
                 <p className="text-[11px] font-bold leading-relaxed italic opacity-80">
-                  &quot;The total auction discount of {fmt(auction?.auction_discount || 0)} is perfectly accounted for:
-                  {fmt(commission?.commission_amt || 0)} as foreman fee and
-                  {fmt(share * (group?.num_members || 1))} as {isAcc ? 'surplus accumulation' : 'member dividends'}.&quot;
+                  &quot;The total auction discount of {fmt(discount)} is perfectly accounted for:
+                  {fmt(commAmt)} as foreman fee{isPro ? ' (deducted from winner payout)' : ''} and
+                  {fmt(share * divisor)} as {isAcc ? 'surplus accumulation' : 'member dividends'}{strategy === 'pro_n1' ? ` (split among ${divisor} members)` : ''}.&quot;
                 </p>
               </div>
             </div>

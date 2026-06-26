@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit",
+    "type-check": "npx tsc --noEmit",
     "build:electron": "cross-env ELECTRON_BUILD=1 next build",
     "build:electron:win": "cross-env ELECTRON_BUILD=1 next build && cd electron && npm install --no-audit --no-fund --silent && npm run build:win",
     "electron:dev": "cd electron && npm start"
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
-    "@types/react": "19.2.14",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.5.0",
     "cross-env": "10.1.0",
