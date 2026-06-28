@@ -12,6 +12,7 @@ export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(
 export const APP_SLOGAN = ''
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and secure auction auditing.'
 export const APP_DEVELOPER = 'NVision Systems (Finance & Tech)'
+export const DEVELOPER_URL = 'https://nvisionsystems.in'
 export const SUPPORT_EMAIL = 'seyonnexalabs@gmail.com'
 export const SUPERADMIN_EMAIL = 'seyonnexalabs@gmail.com'
 

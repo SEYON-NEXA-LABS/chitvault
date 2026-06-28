@@ -5,7 +5,7 @@ import { ArrowLeft, Cookie, ShieldCheck, Settings, Globe } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
-import { APP_DEVELOPER } from '@/lib/utils'
+import { APP_DEVELOPER, DEVELOPER_URL } from '@/lib/utils'
 
 export default function CookiePolicyPage() {
   const router = useRouter()
@@ -97,7 +97,9 @@ export default function CookiePolicyPage() {
           <div className="footer-doc pt-12 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-6 opacity-40">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-widest">Document Ref: CV-POL-COOKIES</p>
-              <p className="text-[10px]">© 2026 {APP_DEVELOPER}. All Rights Reserved.</p>
+              <p className="text-[10px]">
+                © 2026 <a href={DEVELOPER_URL} target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-[var(--accent)] transition-colors">{APP_DEVELOPER}</a>. All Rights Reserved.
+              </p>
             </div>
           </div>
         </div>

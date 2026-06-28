@@ -1,7 +1,7 @@
 'use client'
  
  import { useState, useEffect, useCallback, Suspense } from 'react'
- import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID } from '@/lib/utils/index'
+ import { APP_DEVELOPER, APP_NAME, APP_VERSION, APP_COMMIT_ID, DEVELOPER_URL } from '@/lib/utils/index'
  import { useRouter, useSearchParams } from 'next/navigation'
  import Link from 'next/link'
  import { createClient } from '@/lib/supabase/client'
@@ -164,7 +164,9 @@
            <div className="relative z-10 mt-auto pt-10 border-t border-slate-200/60 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">{APP_DEVELOPER} &copy; 2026</span>
+                  <a href={DEVELOPER_URL} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-slate-900 uppercase tracking-wider hover:underline hover:text-[var(--accent)] transition-colors">
+                    {APP_DEVELOPER} &copy; 2026
+                  </a>
                   <span className="text-xs font-bold text-[var(--accent)] mt-0.5">Build V{APP_VERSION} - {APP_COMMIT_ID}</span>
                 </div>
                 {/* <Badge variant="gray" className="bg-slate-200/50 text-slate-500 border-0">{t('login_audited')}</Badge> */}
