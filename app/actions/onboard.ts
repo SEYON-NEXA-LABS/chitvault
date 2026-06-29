@@ -18,7 +18,22 @@ export async function onboardFirmAction(formData: {
 
   // 1. Security Check: Must be Superadmin
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== process.env.SUPERADMIN_EMAIL) {
+  if (!user) {
+    throw new Error('UNAUTHORIZED: Not logged in.')
+  }
+
+  // Check database profile role
+  const { data: profile, error: profileErr } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const isDbSuperadmin = profile?.role === 'superadmin'
+  const isEnvSuperadmin = process.env.SUPERADMIN_EMAIL && user.email === process.env.SUPERADMIN_EMAIL
+
+  if (!isDbSuperadmin && !isEnvSuperadmin) {
+    console.error('Onboarding Security Check Failed. User:', user.email, 'DB Role:', profile?.role);
     throw new Error('UNAUTHORIZED: Only the platform Superadmin can onboard new firms.')
   }
 
