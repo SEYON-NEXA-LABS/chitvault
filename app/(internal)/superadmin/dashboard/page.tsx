@@ -35,7 +35,7 @@ export default function SuperadminDashboard() {
   // Modals
   const [editOpen, setEditOpen] = useState(false)
   const [editingFirm, setEditingFirm] = useState<any>(null)
-  const [editForm, setEditForm] = useState({ name: '', slug: '', city: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', slug: '', city: '', phone: '', plan: '', plan_status: '' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,23 +90,29 @@ export default function SuperadminDashboard() {
 
   async function handleUpdateFirm() {
     if (!editingFirm) return
-    const { error } = await updateFirmDetails(editingFirm.id, editForm)
-    if (error) { show(error, 'error'); return }
-    show('Firm updated successfully')
+
+    const confirmSave = window.confirm(`Are you sure you want to save all changes for "${editForm.name}"?`)
+    if (!confirmSave) return
+
+    const { error } = await supabase
+      .from('firms')
+      .update({
+        name: editForm.name,
+        city: editForm.city || null,
+        phone: editForm.phone || null,
+        plan: editForm.plan,
+        plan_status: editForm.plan_status
+      })
+      .eq('id', editingFirm.id)
+
+    if (error) { 
+      show(error.message, 'error')
+      return 
+    }
+
+    show('Firm profile updated successfully')
     setEditOpen(false)
     load()
-  }
-
-  async function updatePlan(firmId: string, plan: string) {
-    const { error } = await supabase.from('firms').update({ plan }).eq('id', firmId)
-    if (error) show(error.message, 'error')
-    else { show('Plan updated'); load() }
-  }
-
-  async function updateStatus(firmId: string, plan_status: string) {
-    const { error } = await supabase.from('firms').update({ plan_status }).eq('id', firmId)
-    if (error) show(error.message, 'error')
-    else { show('Status updated'); load() }
   }
 
   if (loading && firms.length === 0) return <Loading />
@@ -211,19 +217,11 @@ export default function SuperadminDashboard() {
                   </div>
                 </Td>
                 <Td>
-                  <select 
-                    className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1 text-[11px] font-bold outline-none"
-                    style={{ color: firm.plan === 'pro' || firm.plan === 'perpetual' ? 'var(--accent)' : 'var(--text2)' }}
-                    value={firm.plan}
-                    onChange={e => updatePlan(firm.id, e.target.value)}
-                  >
-                    <option value="trial">Trial</option>
-                    <option value="basic">Standard</option>
-                    <option value="pro">Enterprise</option>
-                    <option value="perpetual">Perpetual</option>
-                  </select>
+                  <Badge variant={firm.plan === 'pro' || firm.plan === 'perpetual' ? 'accent' : 'gray'} className="capitalize font-bold">
+                    {firm.plan === 'basic' ? 'Standard' : firm.plan === 'pro' ? 'Enterprise' : firm.plan}
+                  </Badge>
                   {firm.plan === 'perpetual' ? (
-                    <div className="space-y-1">
+                    <div className="space-y-1 mt-1">
                       <div className="text-[9px] text-[var(--accent)] font-black uppercase">∞ Perpetual</div>
                       {firm.trial_ends && <div className="text-[9px] text-[var(--danger)] font-bold">AMC Due: {fmtDate(firm.trial_ends)}</div>}
                     </div>
@@ -232,27 +230,32 @@ export default function SuperadminDashboard() {
                   )}
                 </Td>
                 <Td>
-                  <select 
-                    className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg px-2 py-1 text-[11px] font-bold outline-none"
-                    style={{ color: firm.plan_status === 'active' ? 'var(--success)' : 'var(--danger)' }}
-                    value={firm.plan_status}
-                    onChange={e => updateStatus(firm.id, e.target.value)}
-                  >
-                    <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
+                  <Badge variant={firm.plan_status === 'active' ? 'success' : 'danger'} className="capitalize font-bold">
+                    {firm.plan_status}
+                  </Badge>
                 </Td>
                 <Td right>
                   <div className="flex items-center justify-end gap-1">
                     <button 
-                      onClick={() => { setEditingFirm(firm); setEditForm({ name: firm.name, slug: firm.slug, city: firm.city || '', phone: firm.phone || '' }); setEditOpen(true) }}
+                      onClick={() => { 
+                        setEditingFirm(firm); 
+                        setEditForm({ 
+                          name: firm.name, 
+                          slug: firm.slug, 
+                          city: firm.city || '', 
+                          phone: firm.phone || '', 
+                          plan: firm.plan || 'trial', 
+                          plan_status: firm.plan_status || 'active' 
+                        }); 
+                        setEditOpen(true) 
+                      }}
                       className="p-2 rounded-lg hover:bg-[var(--surface3)] text-[var(--text3)] hover:text-[var(--text)] transition-all"
-                      title="Edit Firm"
+                      title="Edit Firm Profile"
                     >
                       <Pencil size={16} />
                     </button>
                     <a 
-                      href={`https://${firm.slug}.chitvault.app`} 
+                      href={`https://${firm.slug}.chitvault.in`} 
                       target="_blank" 
                       className="p-2 rounded-lg hover:bg-[var(--surface3)] text-[var(--text3)] hover:text-[var(--accent)] transition-all"
                       title="Open Instance"
@@ -276,9 +279,9 @@ export default function SuperadminDashboard() {
           </tbody>
         </Table>
       </TableCard>
-
+ 
       {/* Edit Modal */}
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Update Firm Metadata">
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Update Firm Profile">
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-sub uppercase">Business Name</label>
@@ -304,6 +307,32 @@ export default function SuperadminDashboard() {
                 value={editForm.phone} 
                 onChange={e => setEditForm(f=>({...f, phone: e.target.value}))} 
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-sub uppercase">Deployment Plan</label>
+              <select 
+                className="w-full p-3 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-sm font-semibold outline-none"
+                value={editForm.plan} 
+                onChange={e => setEditForm(f=>({...f, plan: e.target.value}))} 
+              >
+                <option value="trial">Trial</option>
+                <option value="basic">Standard</option>
+                <option value="pro">Enterprise</option>
+                <option value="perpetual">Perpetual</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-sub uppercase">Subscription Status</label>
+              <select 
+                className="w-full p-3 rounded-xl bg-[var(--surface2)] border border-[var(--border)] text-sm font-semibold outline-none"
+                value={editForm.plan_status} 
+                onChange={e => setEditForm(f=>({...f, plan_status: e.target.value}))} 
+              >
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
             </div>
           </div>
           <Btn variant="primary" className="w-full mt-4" onClick={handleUpdateFirm}>

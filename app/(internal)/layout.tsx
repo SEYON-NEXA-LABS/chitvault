@@ -143,7 +143,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-[var(--text)] tracking-tight">Access Locked</h2>
             <p className="text-xs text-[var(--text2)] leading-relaxed">
-              Subscription for <strong>{firm?.name}</strong> has expired. Renew your plan to continue.
+              Subscription for <strong>{firm?.name}</strong> has been suspended. 
+              <span className="block mt-2 font-semibold text-emerald-600">✓ All your records and history are completely safe and preserved.</span> 
+              Renew your plan to resume active management.
             </p>
           </div>
           <div className="pt-4 flex flex-col gap-3">
