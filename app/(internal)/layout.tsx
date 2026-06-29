@@ -174,7 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <>
       <NetworkStatus />
       <IdleTimeout />
-      <div className="flex min-h-screen bg-slate-50" style={{ background: 'var(--bg)' }}>
+      <div className="flex h-screen overflow-hidden bg-slate-50" style={{ background: 'var(--bg)' }}>
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={cn(
@@ -309,7 +309,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col lg:ml-64 bg-[var(--bg)] transition-all">
+        <div className="flex-1 flex flex-col lg:ml-64 bg-[var(--bg)] transition-all h-screen overflow-hidden">
           <main className="flex-1 m-1.5 lg:m-2 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-auto flex flex-col transition-all">
             <header className="sticky top-0 z-30 flex items-center justify-between px-3 py-1.5 border-b no-print bg-[var(--surface)]/80 backdrop-blur-md"
               style={{ borderColor: 'var(--border)' }}>

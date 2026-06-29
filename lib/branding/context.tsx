@@ -75,24 +75,33 @@ export const AVAILABLE_FONTS = [
 ]
 
 export const COLOR_PROFILES = [
-  { id: 'eslinks',      name: 'ESLinks (Default)', color: '#2563eb' },
-  { id: 'zinc',         name: 'Zinc',             color: '#18181b' },
-  { id: 'slate',        name: 'Slate Blue',       color: '#0f172a' },
-  { id: 'stone',        name: 'Warm Stone',       color: '#1c1917' },
-  { id: 'neutral',      name: 'Pure Neutral',     color: '#171717' },
-  { id: 'sky-genesis',  name: 'Sky Genesis',      color: '#1e293b' },
-  { id: 'stillwater',   name: 'Stillwater',       color: '#475569' },
+  { id: 'cobalt',   name: 'Classic Cobalt',   color: '#0f62fe' },
+  { id: 'violet',   name: 'Royal Violet',     color: '#8a3ffc' },
+  { id: 'charcoal', name: 'Nordic Charcoal',   color: '#393939' },
+  { id: 'emerald',  name: 'Forest Emerald',   color: '#198038' },
+  { id: 'amber',    name: 'Sunset Amber',     color: '#d57300' },
+  { id: 'crimson',  name: 'Crimson Rose',     color: '#da1e28' },
 ]
 
 // For backward compatibility with picker UI
 export const PRESET_COLORS = COLOR_PROFILES.map(p => ({ label: p.name, value: p.color, id: p.id }))
 
 // Apply CSS variables + Load local font definitions
-export function applyBranding(font: string, colorProfile: string = 'eslinks') {
+export function applyBranding(font: string, colorProfile: string = 'cobalt') {
   const root = document.documentElement
 
+  // Map legacy color profiles to new ones to ensure backward compatibility
+  let normalizedProfile = colorProfile
+  if (colorProfile === 'eslinks' || colorProfile === 'sky-genesis') {
+    normalizedProfile = 'cobalt'
+  } else if (colorProfile === 'slate') {
+    normalizedProfile = 'violet'
+  } else if (colorProfile === 'zinc' || colorProfile === 'neutral' || colorProfile === 'stone' || colorProfile === 'stillwater') {
+    normalizedProfile = 'charcoal'
+  }
+
   // Set Profile Attribute (Source of truth for CSS variables in globals.css)
-  root.setAttribute('data-color-profile', colorProfile)
+  root.setAttribute('data-color-profile', normalizedProfile)
 
   // Apply font stack
   const fontStack = `'${font}', sans-serif`

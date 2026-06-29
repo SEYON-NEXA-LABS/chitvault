@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Building2, Users, Crown, Calendar, 
@@ -18,9 +19,10 @@ import { useToast } from '@/lib/hooks/useToast'
 import { registerFirm, updateFirmDetails } from '../../admin/actions'
 import { COLOR_PROFILES } from '@/lib/branding/context'
 import { PLAN_LIMITS } from '@/types'
-
+ 
 export default function SuperadminDashboard() {
   const supabase = createClient()
+  const router = useRouter()
   const { t } = useI18n()
   const { toast, show, hide } = useToast()
   
@@ -29,9 +31,8 @@ export default function SuperadminDashboard() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all'|'active'|'trial'|'suspended'>('all')
   const [revStats, setRevStats] = useState({ setup: 0, amc: 0, hosting: 85200, profit: 0 })
-
+ 
   // Modals
-  const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingFirm, setEditingFirm] = useState<any>(null)
   const [editForm, setEditForm] = useState({ name: '', slug: '', city: '', phone: '' })
@@ -124,7 +125,7 @@ export default function SuperadminDashboard() {
         </div>
         
         <div className="flex gap-2">
-          <Btn variant="primary" icon={Plus} onClick={() => setCreateOpen(true)}>
+          <Btn variant="primary" icon={Plus} onClick={() => router.push('/superadmin/onboard')}>
             Onboard New Firm
           </Btn>
         </div>
