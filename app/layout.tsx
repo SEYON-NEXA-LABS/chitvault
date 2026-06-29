@@ -99,33 +99,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               handleSync(msg); 
             });
 
-            // Register PWA Service Worker with cache invalidation
+            // Unregister legacy PWA Service Worker if present
             if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                var appVersion = '${APP_COMMIT_ID !== 'N/A' ? APP_COMMIT_ID : APP_VERSION}';
-                var swPath = '/sw.js?v=' + appVersion;
-
-                navigator.serviceWorker.register(swPath).then(function(reg) {
-                  // 1. Detect updates from standard SW lifecycle
-                  reg.addEventListener('updatefound', function() {
-                    var newWorker = reg.installing;
-                    if (newWorker) {
-                      newWorker.addEventListener('statechange', function() {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                          window.dispatchEvent(new CustomEvent('app-update-available'));
-                        }
-                      });
-                    }
-                  });
-
-                  // 2. FORCE PROBE: Check for update on every page load (Bypass Hostinger cache)
-                  // We fetch sw.js with a timestamp to see if the server has a newer one
-                  if (navigator.onLine) {
-                    reg.update().catch(function(e) { console.debug('Probe failed', e); });
-                  }
-                }).catch(function(err) {
-                  console.warn('SW registration failed: ', err);
-                });
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (var i = 0; i < registrations.length; i++) {
+                  registrations[i].unregister();
+                }
+              }).catch(function(err) {
+                console.warn('SW unregistration failed: ', err);
               });
             }
           })();
