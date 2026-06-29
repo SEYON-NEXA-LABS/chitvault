@@ -31,7 +31,7 @@ create table if not exists firms (
   created_by      uuid references auth.users(id),
   updated_at      timestamptz default now(),
   updated_by      uuid references auth.users(id),
-  constraint firms_plan_chk check (plan in ('trial','basic','pro')),
+  constraint firms_plan_chk check (plan in ('trial','basic','pro','perpetual')),
   constraint firms_plan_status_chk check (plan_status in ('active','suspended','cancelled'))
 );
 
@@ -536,8 +536,8 @@ begin
   end if;
 
   -- Create firm
-  insert into firms (name, slug, owner_id, city, phone, plan)
-  values (p_name, p_slug, auth.uid(), p_city, p_phone, 'trial')
+  insert into firms (name, slug, owner_id, city, phone, plan, plan_status)
+  values (p_name, p_slug, auth.uid(), p_city, p_phone, 'trial', 'active')
   returning id into v_firm_id;
 
   -- Create or link profile: insert if not exists, or update firm_id/role if does
@@ -559,10 +559,16 @@ create or replace function public.get_firm_branding(p_slug text)
 returns table (
   name text, theme_id text, logo_url text,
   font text, plan_status text,
-  color_profile text
+  color_profile text, plan text,
+  trial_ends timestamptz, is_suspended boolean,
+  is_expired boolean
 )
 language sql stable security definer set search_path = public as $$
-  select name, theme_id, logo_url, font, plan_status, color_profile
+  select 
+    name, theme_id, logo_url, font, plan_status, 
+    color_profile, plan, trial_ends,
+    (plan_status = 'suspended') as is_suspended,
+    (plan != 'perpetual' and trial_ends is not null and trial_ends < now()) as is_expired
   from firms where slug = p_slug
 $$;
 grant execute on function public.get_firm_branding(text) to anon, authenticated;
@@ -775,13 +781,12 @@ begin
   if not exists (select 1 from profiles where id = auth.uid() and role = 'superadmin') then
     raise exception 'Superadmin access required';
   end if;
-bash
   if exists (select 1 from firms where slug = p_slug) then
     raise exception 'SLUG_TAKEN';
   end if;
 
-  insert into firms (name, slug, owner_id, city, phone, plan, color_profile, font)
-  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, p_color_profile, p_font)
+  insert into firms (name, slug, owner_id, city, phone, plan, plan_status, color_profile, font)
+  values (p_name, p_slug, p_owner_id, p_city, p_phone, p_plan, 'active', p_color_profile, p_font)
   returning id into v_firm_id;
 
   -- Create or link profile immediately

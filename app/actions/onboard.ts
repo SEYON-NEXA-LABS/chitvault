@@ -67,6 +67,7 @@ export async function onboardFirmAction(formData: {
         city: formData.city,
         owner_id: authUser.user.id,
         plan: 'trial',
+        plan_status: 'active',
         font: formData.font || 'Noto Sans',
         color_profile: formData.color_profile || 'indigo'
       })

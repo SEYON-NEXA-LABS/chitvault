@@ -310,7 +310,7 @@ function AdminDashboard() {
                             <div className="flex items-center justify-between group">
                               <div>
                                 <div style={{ fontWeight: 700, color: 'var(--text)' }}>{f.name}</div>
-                                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{f.slug}.chitvault.app</div>
+                                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{f.slug}.chitvault.in</div>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => { setEditingFirm(f); setEditForm({ name: f.name, slug: f.slug, city: f.city||'', phone: f.phone||'', font: f.font||'Noto Sans' }); setEditOpen(true) }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md transition-colors" title="Edit">
@@ -319,7 +319,7 @@ function AdminDashboard() {
                                 <button onClick={() => { setInvitingFirm(f); setInviteOpen(true); setInviteLink(''); setInviteEmail('') }} className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--info)] transition-colors" title="Invite">
                                   <UserPlus size={12} />
                                 </button>
-                                <a href={`https://${f.slug}.chitvault.app`} target="_blank" className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--text3)]" title="Open Link"><ExternalLink size={12} /></a>
+                                <a href={`https://${f.slug}.chitvault.in`} target="_blank" className="p-1.5 hover:bg-[var(--surface3)] rounded-md text-[var(--text3)]" title="Open Link"><ExternalLink size={12} /></a>
                               </div>
                             </div>
                           </td>
@@ -536,7 +536,7 @@ function AdminDashboard() {
           <Field label="Platform Subdomain">
             <div className="flex items-center gap-2">
               <input style={{ ...sty.input, color: 'var(--text3)' }} value={editForm.slug} readOnly />
-              <div style={{ fontSize: 13, color: 'var(--text3)' }}>.chitvault.app</div>
+              <div style={{ fontSize: 13, color: 'var(--text3)' }}>.chitvault.in</div>
             </div>
           </Field>
           <Btn variant="primary" className="w-full mt-4" loading={updating === editingFirm?.id} onClick={handleUpdateFirm}>Save Metadata Changes</Btn>

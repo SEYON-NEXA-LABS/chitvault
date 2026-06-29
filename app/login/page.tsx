@@ -14,7 +14,10 @@
  
  interface FirmBranding {
    name: string; color_profile: string;
-   font: string
+   font: string;
+   is_suspended?: boolean;
+   is_expired?: boolean;
+   plan?: string;
  }
  
  type Tab = 'signin' | 'forgot'
@@ -54,8 +57,12 @@
            .rpc('get_firm_branding', { p_slug: firmSlug }) as any
          if (data) {
            setBranding({
-             name: data.name, color_profile: data.color_profile || 'indigo',
-             font: data.font || 'Noto Sans'
+             name: data.name, 
+             color_profile: data.color_profile || 'indigo',
+             font: data.font || 'Noto Sans',
+             is_suspended: data.is_suspended,
+             is_expired: data.is_expired,
+             plan: data.plan
            })
            applyBranding(data.font || 'Noto Sans', data.color_profile || 'indigo')
          }
@@ -69,7 +76,7 @@
        router.refresh()
        let { data: profile } = await supabase
          .from('profiles')
-         .select('firm_id, role')
+         .select('firm_id, role, firms (plan_status)')
          .eq('id', user.id)
          .maybeSingle()
  
@@ -77,15 +84,24 @@
          await new Promise(resolve => setTimeout(resolve, 800))
          const { data: retryProfile } = await supabase
            .from('profiles')
-           .select('firm_id, role')
+           .select('firm_id, role, firms (plan_status)')
            .eq('id', user.id)
            .maybeSingle()
          profile = retryProfile
        }
  
-       const nextPath = searchParams.get('next')
        if (!profile) { window.location.replace('/access-denied'); return }
  
+       // If the user is not superadmin and the firm is suspended, block login
+       const firmStatus = (profile as any).firms?.plan_status
+       if (profile.role !== 'superadmin' && firmStatus === 'suspended') {
+         setError('Vault Access Locked. The subscription is currently suspended.')
+         await supabase.auth.signOut()
+         setLoading(false)
+         return
+       }
+ 
+       const nextPath = searchParams.get('next')
        if (profile.role === 'superadmin') {
          window.location.replace(nextPath || '/superadmin/dashboard')
        } else {
@@ -214,23 +230,66 @@
                </p>
              </div>
  
-             <div className="space-y-4 mb-8">
-               {error && (
-                 <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-bold flex items-center gap-3">
-                   <AlertCircle size={16} /> {error}
-                 </div>
-               )}
-               {success && (
-                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm font-bold flex items-center gap-3">
-                   <CheckCircle2 size={16} /> {success}
-                 </div>
-               )}
-             </div>
- 
-             <div className="space-y-8">
-               {tab === 'signin' ? (
-                 <form onSubmit={handleSignIn} method="POST" className="space-y-8">
-                   <div className="space-y-5">
+              <div className="space-y-4 mb-8">
+                {branding.is_suspended && (
+                  <div className="p-5 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-xs space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="font-bold flex items-center gap-2 text-sm text-rose-800">
+                      <AlertCircle size={18} /> Vault Access Locked
+                    </div>
+                    <p className="leading-relaxed">
+                      The subscription for <strong>{branding.name}</strong> has been suspended.
+                    </p>
+                    <div className="p-3 bg-white/60 rounded-xl border border-rose-100/50 font-medium text-rose-900/80">
+                      ✓ All your records and history are completely safe and preserved. No data has been or will be deleted.
+                    </div>
+                    <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${branding.name}`} target="_blank" className="inline-flex items-center gap-2 font-bold text-rose-600 hover:underline mt-1">
+                      Renew Subscription via WhatsApp →
+                    </a>
+                  </div>
+                )}
+                {branding.is_expired && !branding.is_suspended && (
+                  <div className="p-5 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 text-xs space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="font-bold flex items-center gap-2 text-sm text-amber-800">
+                      <AlertCircle size={18} /> View-Only Mode Active
+                    </div>
+                    <p className="leading-relaxed">
+                      The free trial / subscription for <strong>{branding.name}</strong> has expired. 
+                    </p>
+                    <div className="p-3 bg-white/60 rounded-xl border border-amber-100/50 font-medium text-amber-900/80">
+                      ✓ Your historic data is fully preserved and safe. You can log in to view records, but data entry is disabled.
+                    </div>
+                    <a href={`https://wa.me/917397503761?text=Renew%20ChitVault%20for%20${branding.name}`} target="_blank" className="inline-flex items-center gap-2 font-bold text-amber-900 hover:underline mt-1">
+                      Upgrade to Resume Full Access →
+                    </a>
+                  </div>
+                )}
+                {error && (
+                  <div className="p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-bold flex items-center gap-3">
+                    <AlertCircle size={16} /> {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm font-bold flex items-center gap-3">
+                    <CheckCircle2 size={16} /> {success}
+                  </div>
+                )}
+              </div>
+  
+              <div className="space-y-8">
+                {tab === 'signin' ? (
+                  branding.is_suspended ? (
+                    <div className="text-center py-8 bg-slate-50 border border-slate-100 rounded-3xl p-6">
+                      <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mx-auto text-3xl mb-4">
+                        🔒
+                      </div>
+                      <h3 className="text-base font-bold text-slate-800">Access Suspended</h3>
+                      <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                        Signing in is disabled. Please contact your administrator or renew the subscription to regain access.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSignIn} method="POST" className="space-y-8">
+                      <div className="space-y-5">
                       <div className="space-y-1 group">
                         <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 group-focus-within:text-[var(--accent)] transition-colors">{t('login_email')}</label>
                         <div className="relative">
@@ -339,7 +398,7 @@
                      )}
                    </button>
                  </form>
-               ) : (
+               ) ) : (
                  <form onSubmit={handleForgotPassword} method="POST" className="space-y-8">
                    <div className="space-y-2 group">
                      <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">{t('login_recovery_email')}</label>

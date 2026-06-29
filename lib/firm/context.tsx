@@ -136,9 +136,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
       // Perpetual clients never get locked out, they remain active for data entry even if AMC expires
       if (firm.plan === 'perpetual') return 'active'
       
-      // Standard/Enterprise get 7 days grace then lockout
-      if (daysOverdue > 7) return 'locked'
-      
+      // Standard/Enterprise/Trial get restricted (Read-Only) status indefinitely after expiry
       return 'restricted'
     })()
 
