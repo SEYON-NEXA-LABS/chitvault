@@ -181,7 +181,7 @@
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
                   <a href={DEVELOPER_URL} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-slate-900 uppercase tracking-wider hover:underline hover:text-[var(--accent)] transition-colors">
-                    {APP_DEVELOPER} &copy; 2026
+                    &copy; 2026 {APP_DEVELOPER}
                   </a>
                   <span className="text-xs font-bold text-[var(--accent)] mt-0.5">Build V{APP_VERSION} - {APP_COMMIT_ID}</span>
                 </div>
