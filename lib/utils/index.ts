@@ -5,9 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs)
 }
 
+// Global group symbols and colors
+export { getGroupTheme, GROUP_PALETTE, type GroupTheme } from './groupTheme'
+
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.1.3'
+export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.1.4'
 export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
 export const APP_SLOGAN = ''
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and secure auction auditing.'
@@ -22,6 +25,24 @@ export function fmt(n: number | string | null | undefined): string {
   if (isNaN(num)) return '₹0'
   return '₹' + num.toLocaleString('en-IN')
 }
+
+// Return consistent positive (green), negative (red), or neutral class names
+export function getAmountColor(
+  n: number | string | null | undefined, 
+  mode: 'positive-green' | 'due-red' = 'positive-green'
+): string {
+  const num = Number(String(n || 0).replace(/[^\d.-]/g, ''))
+  if (isNaN(num) || Math.abs(num) < 0.01) return 'text-[var(--text2)]'
+  
+  if (mode === 'due-red') {
+    // When positive means a pending debt / due balance
+    return num > 0 ? 'text-[var(--danger)] font-bold' : 'text-[var(--success)] font-bold'
+  }
+  
+  // Standard P&L / Cash flow: positive is green, negative is red
+  return num > 0 ? 'text-[var(--success)] font-bold' : 'text-[var(--danger)] font-bold'
+}
+
 
 // Format date to Indian format
 export function fmtDate(d: string | null | undefined, fallback: string = '—'): string {

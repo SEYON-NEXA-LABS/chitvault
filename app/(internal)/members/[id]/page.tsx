@@ -10,7 +10,7 @@ import {
   Layers, TrendingUp, DollarSign, Wallet, ShieldCheck,
   ArrowLeft, Edit3, Receipt, Trash2
 } from 'lucide-react'
-import { Card, Loading, Badge, StatCard, TableCard, Btn, Modal, Field, Toast, Table, Th, Td, Tr } from '@/components/ui'
+import { Card, Loading, Badge, StatCard, TableCard, Btn, Modal, Field, Toast, Table, Th, Td, Tr, GroupAvatar, GroupBadge } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
@@ -188,10 +188,15 @@ export default function MemberProfilePage() {
                 {memberships.map(m => (
                   <Tr key={m.id} className="group/row">
                     <Td className="px-3">
-                      <div className="font-bold text-sm text-[var(--accent)] hover:underline cursor-pointer" onClick={() => router.push(`/groups/${m.group.id}`)}>
-                        {getGroupDisplayName(m.group, t)}
+                      <div className="flex items-center gap-2.5">
+                        <GroupAvatar groupId={m.group?.id} groupName={m.group?.name} size={30} iconSize={15} />
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-[var(--accent)] hover:underline cursor-pointer truncate" onClick={() => router.push(`/groups/${m.group.id}`)}>
+                            {getGroupDisplayName(m.group, t)}
+                          </div>
+                          <div className="text-[10px] font-medium opacity-50">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
+                        </div>
                       </div>
-                      <div className="text-[10px] font-medium opacity-50">Value: {fmt(Number(m.group?.duration || 0) * Number(m.group?.monthly_contribution || 0))}</div>
                     </Td>
                     <Td>
                       <div className="font-bold text-sm">#{m.ticket_no}</div>

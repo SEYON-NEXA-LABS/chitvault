@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, cn, getGroupDisplayName, fmtDate } from '@/lib/utils'
-import { Loading, Empty, Badge, Btn, Modal, Toast, Pagination, Table, TableCard, Th, Td, Tr, Tabs } from '@/components/ui'
+import { Loading, Empty, Badge, Btn, Modal, Toast, Pagination, Table, TableCard, Th, Td, Tr, Tabs, GroupBadge } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import {
   Search, UsersRound, TrendingUp, AlertCircle, Printer, MessageCircle, Wallet, History, ChevronDown, LayoutGrid,
@@ -227,18 +227,23 @@ function CollectionContent() {
                         
                         return (
                           <div key={m.member.id} className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[var(--text2)] font-black tracking-tight">{m.group?.name}</span>
-                              <span className="text-[var(--text3)] font-bold">[{months}]</span>
+                            <div className="flex items-center gap-1.5">
+                              <GroupBadge 
+                                groupId={m.group?.id} 
+                                groupName={m.group?.name} 
+                                ticketNo={m.member?.ticket_no}
+                                size="xs"
+                              />
+                              <span className="text-[var(--text3)] font-mono text-[11px] font-bold">[{months}]</span>
                             </div>
-                            <span className="text-[var(--text3)] font-black">{fmt(groupBal)}</span>
+                            <span className="text-[var(--text3)] font-black text-xs">{fmt(groupBal)}</span>
                           </div>
                         );
                       })}
                     </div>
                   </Td>
                   <Td right className="align-top">
-                    <div className="font-black text-[var(--text)]">{fmt(person.total_balance)}</div>
+                    <div className="font-black text-[var(--danger)]">{fmt(person.total_balance)}</div>
                   </Td>
                   <Td right className="align-top">
                     <div className="flex justify-end gap-2">

@@ -289,6 +289,19 @@ p, .text-body {
 .pmonth.paid { background: var(--success-dim); color: var(--success); }
 .pmonth.unpaid { background: var(--surface3); color: var(--text3); }
 
+/* ── Financial Number Utilities ─────────────────────────── */
+.num-pos, .text-positive {
+  color: var(--success) !important;
+  font-weight: 700;
+}
+.num-neg, .text-negative {
+  color: var(--danger) !important;
+  font-weight: 700;
+}
+.num-zero, .text-zero {
+  color: var(--text3) !important;
+}
+
 /* ── Card ─────────────────────────────────────────────── */
 .card {
   background: var(--surface);
@@ -298,19 +311,81 @@ p, .text-body {
 }
 
 @media print {
-  /* ... (Keep print styles mostly same but ensure solid) ... */
   * {
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
   }
-}
 
-@media print {
+  /* Unconstrain viewport and scroll containers so all pages print */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Remove sticky/fixed layout clipping and sidebar margins */
+  div, main, aside, section, article {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .lg\:ml-64 {
+    margin-left: 0 !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Page margins and break rules */
+  @page {
+    margin: 12mm 10mm;
+    size: auto;
+  }
+
   .no-print {
     display: none !important;
   }
+
   .only-print {
     display: block !important;
+  }
+
+  /* Avoid awkward breaks inside crucial summary blocks */
+  .break-inside-avoid,
+  tr,
+  .card,
+  [class*="Card"],
+  .table-row {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  table {
+    page-break-inside: auto !important;
+    width: 100% !important;
+  }
+
+  /* Make links appear clean on paper without blue outlines */
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
   }
 }
 

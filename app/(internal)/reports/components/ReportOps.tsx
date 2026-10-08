@@ -1,7 +1,7 @@
 'use client'
 
 import { fmt, fmtDate, fmtMonth, getToday, cn } from '@/lib/utils'
-import { StatCard, TableCard, Table, Th, Td, Tr, Badge } from '@/components/ui'
+import { StatCard, TableCard, Table, Th, Td, Tr, Badge, GroupAvatar, GroupBadge } from '@/components/ui'
 import Link from 'next/link'
 import type { Group, Member, Auction, Payment } from '@/types'
 
@@ -72,9 +72,12 @@ export function ReportUpcomingPay({ groups, members, auctions, payments }: any) 
               </Td>
               <Td>
                 {pData.items.map((it: any) => (
-                  <div key={it.member.id} className="text-[10px] flex justify-between bg-[var(--surface2)] p-1 rounded mb-1 border" style={{ borderColor: 'var(--border)' }}>
-                    <span>{it.group.name} | {it.mPending.map((p:any)=>`M${p.month}`).join(', ')}</span>
-                    <span className="font-bold opacity-70">{fmt(it.mOutstanding)}</span>
+                  <div key={it.member.id} className="text-[10px] flex items-center justify-between bg-[var(--surface2)] p-1.5 rounded mb-1 border" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center gap-1.5">
+                      <GroupBadge groupId={it.group.id} groupName={it.group.name} size="xs" />
+                      <span className="font-mono text-[10px] text-[var(--text3)] font-bold">[{it.mPending.map((p:any)=>`M${p.month}`).join(', ')}]</span>
+                    </div>
+                    <span className="font-bold text-[var(--danger)]">{fmt(it.mOutstanding)}</span>
                   </div>
                 ))}
               </Td>
@@ -142,7 +145,15 @@ export function ReportEnrollment({ groups, members, auctions, targetGroupId }: a
   const clubbed = Array.from(clubbedMap.values())
 
   return (
-    <TableCard title={`Enrollment: ${group?.name}`} subtitle={`${gMembers.length} tickets across ${clubbed.length} members`}>
+    <TableCard 
+      title={
+        <div className="flex items-center gap-2.5">
+          <GroupAvatar groupId={group?.id} groupName={group?.name} size={28} iconSize={14} />
+          <span>Enrollment: {group?.name}</span>
+        </div>
+      } 
+      subtitle={`${gMembers.length} tickets across ${clubbed.length} members`}
+    >
       <Table>
         <thead><tr><Th>Name</Th><Th>Phone</Th><Th>Tickets</Th><Th>Won Month</Th><Th right>Count</Th></tr></thead>
         <tbody>

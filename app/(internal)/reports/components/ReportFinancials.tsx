@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { fmt, fmtDate, fmtMonth, getToday } from '@/lib/utils'
 import { StatCard, TableCard, Table, Th, Td, Tr, Badge } from '@/components/ui'
+import { GroupAvatar } from '@/components/ui/GroupBadge'
 import Link from 'next/link'
 import type { Group, Member, Auction, Payment, ForemanCommission } from '@/types'
 
@@ -35,17 +36,38 @@ export function ReportPNL({ groups, commissions, stats, t, term }: { groups: Gro
             {groups.map(g => {
               const groupComms = commissions.filter(c => c.group_id === g.id)
               const inc = groupComms.reduce((s, c) => s + Number(c.commission_amt), 0)
+              
+              // Format rate cleanly according to scheme
+              let rateLabel = '5% of Chit'
+              const cType = g.commission_type || 'percent_of_chit'
+              const cVal = g.commission_value ?? 5
+
+              if (cType === 'percent_of_chit') {
+                rateLabel = `${cVal}% of Chit`
+              } else if (cType === 'percent_of_discount') {
+                rateLabel = `${cVal}% of Discount`
+              } else if (cType === 'percent_of_payout') {
+                rateLabel = `${cVal}% of Payout`
+              } else if (cType === 'fixed_amount') {
+                rateLabel = `Fixed ${fmt(cVal)}`
+              } else {
+                rateLabel = `${cVal}%`
+              }
+
               return (
                 <Tr key={g.id}>
                   <Td>
-                    <Link href={`/groups/${g.id}`} className="font-bold hover:text-[var(--accent)] hover:underline transition-colors">
-                      {g.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <GroupAvatar groupId={g.id} groupName={g.name} size={24} iconSize={12} />
+                      <Link href={`/groups/${g.id}`} className="font-bold hover:text-[var(--accent)] hover:underline transition-colors">
+                        {g.name}
+                      </Link>
+                    </div>
                   </Td>
-                  <Td className="text-[var(--text-xs)] opacity-60">
-                    {g.commission_type === 'percent_of_chit' ? `${g.commission_value}% of Chit` : `Fixed ₹${g.commission_value}`}
+                  <Td className="text-[var(--text-xs)] opacity-75 font-mono">
+                    {rateLabel}
                   </Td>
-                  <Td right className="font-black text-[var(--text-sm)]" style={{ color: 'var(--success)' }}>{fmt(inc)}</Td>
+                  <Td right className="font-black text-[var(--text-sm)] num-pos">{fmt(inc)}</Td>
                   <Td right><Badge variant="gray">{groupComms.length} / {g.duration}</Badge></Td>
                 </Tr>
               )

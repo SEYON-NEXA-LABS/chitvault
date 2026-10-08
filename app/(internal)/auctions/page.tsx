@@ -5,7 +5,7 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
 import { fmt, fmtMonth, fmtDate, getGroupDisplayName, cn } from '@/lib/utils'
-import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination, Modal, Empty, StatCard, Badge } from '@/components/ui'
+import { Btn, TableCard, Table, Th, Td, Tr, Loading, Toast, Pagination, Modal, Empty, StatCard, Badge, GroupAvatar } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -240,6 +240,7 @@ export default function AuctionsPage() {
                       <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-all", isExpanded ? "bg-[var(--text)] text-white" : "bg-[var(--surface2)] opacity-40")}>
                         <ChevronDown size={18} className={cn("transition-transform duration-300", isExpanded && "rotate-180")} />
                       </div>
+                      <GroupAvatar groupId={gid} groupName={g?.name} size={36} iconSize={18} />
                       <div className="text-left">
                         <div className="font-bold text-sm text-[var(--text)] tracking-tight">{g ? getGroupDisplayName(g, t) : `Group #${gid}`}</div>
                         <div className="text-[11px] font-medium opacity-50">{gAucs.length} {t('auctions_history_log')}</div>

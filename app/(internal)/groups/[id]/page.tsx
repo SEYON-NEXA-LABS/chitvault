@@ -12,7 +12,7 @@ import { fmt, getToday, cn, fmtDate, getGroupDisplayName } from '@/lib/utils'
 import { 
   Loading, Badge, StatCard, Btn, Card, Toast, CSVImportModal,
   TableCard, Table, Tr, Th, Td,
-  Modal, Pagination, Field
+  Modal, Pagination, Field, GroupAvatar, GroupBadge
 } from '@/components/ui'
 import { 
   Gavel, Settings2, Calculator, Plus, ArrowLeft, RefreshCw, ChevronDown, AlertTriangle, History as HistoryIcon, Trash2,
@@ -407,12 +407,13 @@ export default function GroupLedgerPage() {
     <div className="space-y-6">
       {/* Header & Stats Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button onClick={() => router.push('/groups')} className="p-2.5 rounded-xl bg-[var(--surface2)] border border-[var(--border)] hover:border-slate-900 transition-all shadow-sm">
             <ArrowLeft size={18} />
           </button>
+          <GroupAvatar groupId={group.id} groupName={group.name} size={42} iconSize={20} />
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-black text-[var(--text)] tracking-tight leading-none">{getGroupDisplayName(group, t)}</h1>
               <Badge variant={group.status === 'active' ? 'success' : 'gray'} className="py-0.5 px-2 font-bold text-[10px]">{group.status}</Badge>
             </div>

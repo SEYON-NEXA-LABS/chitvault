@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { fmt, fmtDate, fmtMonth, cn } from '@/lib/utils'
-import { StatCard, TableCard, Table, Th, Td, Tr, Badge } from '@/components/ui'
+import { StatCard, TableCard, Table, Th, Td, Tr, Badge, GroupAvatar, GroupBadge } from '@/components/ui'
 import Link from 'next/link'
 import type { Group, Member, Auction, Payment } from '@/types'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
@@ -20,25 +20,66 @@ export function ReportWinners({ auctions, groups, members, filter, onFilterChang
     <div className="space-y-4">
       <TableCard title="Auction Winners">
         <Table>
-          <thead><tr><Th>Date</Th><Th>Winner</Th><Th>Group</Th><Th right>Payout</Th><Th>Status</Th></tr></thead>
+          <thead>
+            <tr>
+              <Th>Auction Month</Th>
+              <Th>Winner</Th>
+              <Th>Ticket</Th>
+              <Th>Group</Th>
+              <Th right>Winning Bid</Th>
+              <Th right>Net Payout</Th>
+              <Th>Status</Th>
+            </tr>
+          </thead>
           <tbody>
             {wonAucs.map(a => {
-              const m = members.find(x => x.id === a.winner_id)
+              const m = members.find(x => x.id === a.winner_id) || (a as any).winners
               const g = groups.find(x => x.id === a.group_id)
+              const winnerName = m?.persons?.name || (a as any).winners?.persons?.name || 'Unknown'
+              const personId = m?.person_id || (a as any).winners?.person_id
+              const ticketNo = m?.ticket_no || (a as any).winners?.ticket_no
+              
+              // Calculate actual net payout accurately
+              const chitVal = Number(g?.chit_value || 0)
+              const discount = Number(a.auction_discount || 0)
+              const payoutVal = Number(a.net_payout || a.payout_amount || (chitVal > 0 && discount > 0 ? chitVal - discount : 0))
+
               return (
                 <Tr key={a.id}>
-                  <Td>{fmtDate(a.created_at)}</Td>
                   <Td>
-                    <Link href={`/members/${m?.person_id}`} className="font-semibold hover:text-[var(--accent)] hover:underline transition-colors">
-                      👑 {m?.persons?.name || 'Unknown'}
-                    </Link>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
+                      <span className="text-[10px] text-[var(--text3)] opacity-70">{fmtDate(a.created_at)}</span>
+                    </div>
                   </Td>
                   <Td>
-                    <Link href={`/groups/${g?.id}`} className="hover:text-[var(--accent)] hover:underline transition-colors">
-                      {g?.name}
-                    </Link>
+                    {personId ? (
+                      <Link href={`/members/${personId}`} className="font-bold text-sm hover:text-[var(--accent)] hover:underline transition-colors">
+                        👑 {winnerName}
+                      </Link>
+                    ) : (
+                      <span className="font-bold text-sm text-[var(--text)]">👑 {winnerName}</span>
+                    )}
                   </Td>
-                  <Td right className="font-mono font-bold text-success-600">{fmt(a.net_payout || a.auction_discount)}</Td>
+                  <Td>
+                    <span className="text-xs px-2 py-0.5 rounded font-mono font-semibold bg-[var(--surface2)] border border-[var(--border)] text-[var(--text2)]">
+                      #{ticketNo || '—'}
+                    </span>
+                  </Td>
+                  <Td>
+                    <div className="flex items-center gap-2">
+                      <GroupAvatar groupId={g?.id} groupName={g?.name} size={24} iconSize={12} />
+                      <Link href={`/groups/${g?.id}`} className="hover:text-[var(--accent)] hover:underline transition-colors font-medium text-xs">
+                        {g?.name || '—'}
+                      </Link>
+                    </div>
+                  </Td>
+                  <Td right className="font-mono text-xs font-semibold text-[var(--danger)]">
+                    {fmt(a.auction_discount)}
+                  </Td>
+                  <Td right className="font-mono font-bold text-sm text-emerald-700">
+                    {fmt(payoutVal)}
+                  </Td>
                   <Td>{a.is_payout_settled ? <Badge variant="success">✓ Settled</Badge> : <Badge variant="danger">Pending</Badge>}</Td>
                 </Tr>
               )
@@ -57,7 +98,7 @@ export function ReportWinnerIntelligence({ auctions, groups, members, payments }
     const personAgg = new Map<number, any>()
     confirmed.forEach(a => {
       const g = groups.find(gx => gx.id === a.group_id)
-      const m = members.find(mx => mx.id === a.winner_id)
+      const m = members.find(mx => mx.id === a.winner_id) || (a as any).winners
       if (!g || !m) return
       const isEarly = a.month <= (g.duration / 4)
       const pId = m.person_id

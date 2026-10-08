@@ -7,7 +7,8 @@ import { fmt, fmtDate, getGroupDisplayName, getToday, cn } from '@/lib/utils'
 import { haptics } from '@/lib/utils/haptics'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr,
-  Modal, Field, Loading, Empty, Toast, ProgressBar, Card, StatCard
+  Modal, Field, Loading, Empty, Toast, ProgressBar, Card, StatCard,
+  GroupAvatar
 } from '@/components/ui'
 import { inputClass, inputStyle } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
@@ -262,11 +263,14 @@ export default function GroupsPage() {
             <Tr key={g.id} className="hover:bg-[var(--surface2)]/50 group/row transition-colors">
               {isSuper && <Td label="Firm" className="px-3"><Badge variant="gray" className="text-[10px] font-bold">{g.firms?.name}</Badge></Td>}
               <Td label="Group">
-                <div className="flex flex-col">
-                  <Link href={`/groups/${g.id}`} className="font-bold text-sm text-[var(--text)] hover:text-[var(--accent)] transition-colors" id={idx === 0 ? "tour-group-card" : undefined}>
-                    {getGroupDisplayName(g, t)}
-                  </Link>
-                  <span className="text-[10px] font-medium text-[var(--text3)] opacity-60">{g.auction_scheme?.replace('_', ' ')}</span>
+                <div className="flex items-center gap-2.5">
+                  <GroupAvatar groupId={g.id} groupName={g.name} size={30} iconSize={15} />
+                  <div className="flex flex-col min-w-0">
+                    <Link href={`/groups/${g.id}`} className="font-bold text-sm text-[var(--text)] hover:text-[var(--accent)] transition-colors truncate" id={idx === 0 ? "tour-group-card" : undefined}>
+                      {getGroupDisplayName(g, t)}
+                    </Link>
+                    <span className="text-[10px] font-medium text-[var(--text3)] opacity-60">{g.auction_scheme?.replace('_', ' ')}</span>
+                  </div>
                 </div>
               </Td>
               <Td label="Chit Value" right>
