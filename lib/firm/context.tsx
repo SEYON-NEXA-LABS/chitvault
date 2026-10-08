@@ -43,6 +43,10 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
+      if (!supabase?.auth?.getUser) {
+        setLoading(false)
+        return
+      }
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) { 
@@ -99,6 +103,10 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     load()
 
     // Listen for auth changes (Login/Logout/Refresh)
+    if (!supabase?.auth?.onAuthStateChange) {
+      return
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
       // Use silent reload for background events
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
@@ -114,7 +122,7 @@ export function FirmProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe?.()
     }
   }, [load, supabase])
 

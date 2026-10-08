@@ -25,7 +25,9 @@ export default function ResetPasswordPage() {
     }
     checkSession()
     
-    // Also listen for auth state changes just in case it loads slowly
+    // Also listen for auth changes just in case it loads slowly
+    if (!supabase?.auth?.onAuthStateChange) return
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === 'PASSWORD_RECOVERY' || session) {
         setIsValidSession(true)
@@ -36,9 +38,9 @@ export default function ResetPasswordPage() {
     document.documentElement.classList.remove('dark')
 
     return () => {
-      authListener.subscription.unsubscribe()
+      authListener?.subscription?.unsubscribe?.()
     }
-  }, [supabase.auth])
+  }, [supabase?.auth])
 
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault()
