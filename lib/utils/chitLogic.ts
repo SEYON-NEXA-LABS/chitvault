@@ -10,6 +10,10 @@ export type StreakEntry = {
   due: number
   paid: number
   isAdvance: boolean
+  hasAuctionHappened: boolean
+  auctionDate?: string | null
+  winnerName?: string | null
+  winnerTicket?: number | null
 }
 
 export type FinancialStatus = {
@@ -120,7 +124,8 @@ export function getMemberFinancialStatus(
     const amountDue = monthlyContr - dividend
     const amountPaid = paidByMonth.get(m) ?? 0
 
-    const hasAuctionHappened = m <= latestMonth
+    const auctionForMonth = groupAucs.find(a => a.month === m)
+    const hasAuctionHappened = !!auctionForMonth && auctionForMonth.status === 'confirmed'
     const isCurrentMonth = m === currentDueMonth
     const isFullyPaid = amountPaid >= amountDue - PAID_TOLERANCE
 
@@ -153,6 +158,10 @@ export function getMemberFinancialStatus(
       due: amountDue,
       paid: amountPaid,
       isAdvance: amountPaid > 0 && !hasAuctionHappened,
+      hasAuctionHappened,
+      auctionDate: auctionForMonth?.auction_date,
+      winnerName: (auctionForMonth as any)?.members?.persons?.name,
+      winnerTicket: (auctionForMonth as any)?.members?.ticket_no
     })
   }
 

@@ -115,7 +115,7 @@ export const AuctionLedger: React.FC<AuctionLedgerProps> = ({
                 <Tr key={a.id}>
                   <Td className="px-4">
                     <div className="flex flex-col py-2 justify-center">
-                      <span className="text-sm font-bold text-[var(--text)]">{fmtMonth(a.month, group?.start_date)}</span>
+                      <span className="text-sm font-bold text-[var(--text)]">{fmtMonth(a.month, group?.start_date, '—', a.auction_date)}</span>
                       <span className={cn("text-[9px] font-black tracking-wider", a.status === 'draft' ? "text-blue-600" : "text-[var(--text3)]")}>
                         {a.status === 'draft' ? 'Draft Projection' : (a.auction_date ? fmtDate(a.auction_date) : 'Confirmed')}
                       </span>

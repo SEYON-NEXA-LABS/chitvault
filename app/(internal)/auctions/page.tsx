@@ -299,7 +299,7 @@ export default function AuctionsPage() {
                               <Tr key={a.id} className="hover:bg-[var(--surface2)]/30 group/row transition-colors">
                                 <Td label="Month" className="px-4">
                                   <div className="flex flex-col">
-                                    <span className="font-bold text-sm text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
+                                    <span className="font-bold text-sm text-[var(--text)]">{fmtMonth(a.month, g?.start_date, '—', a.auction_date)}</span>
                                     <span className="text-[11px] font-medium text-[var(--text3)] opacity-60">{a.auction_date ? fmtDate(a.auction_date) : t('no_date_set')}</span>
                                   </div>
                                 </Td>

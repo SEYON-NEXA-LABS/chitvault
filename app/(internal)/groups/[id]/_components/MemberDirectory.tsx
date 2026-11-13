@@ -7,6 +7,7 @@ import { fmt, fmtDate, fmtMonth, cn, getWhatsAppLink } from '@/lib/utils'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
 import { CascadeDeleteModal } from '@/components/features/CascadeDeleteModal'
 import { PrintOptionsModal } from '@/components/features/PrintOptionsModal'
+import { StreakBar } from '@/components/features/StreakBar'
 import type { Group, Member, Auction, Payment } from '@/types'
 
 interface MemberDirectoryProps {
@@ -130,11 +131,9 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
                   })()}
                 </Td>
                 <Td className="hidden xl:table-cell">
-                  <div className="flex gap-1">
-                    {financial?.streak.slice(0, 10).map(s => (
-                      <div key={s.month} className="w-2 h-4 rounded-[2px]" style={{ background: `var(--${s.status})`, opacity: 0.6 }} />
-                    ))}
-                  </div>
+                  {financial && (
+                    <StreakBar streak={financial.streak} startDate={group?.start_date} maxMonths={12} />
+                  )}
                 </Td>
                 <Td right className="hidden lg:table-cell">
                   <span className="text-xs text-[var(--text3)] font-bold">

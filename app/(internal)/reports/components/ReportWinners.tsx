@@ -48,7 +48,7 @@ export function ReportWinners({ auctions, groups, members, filter, onFilterChang
                 <Tr key={a.id}>
                   <Td>
                     <div className="flex flex-col">
-                      <span className="font-bold text-sm text-[var(--text)]">{fmtMonth(a.month, g?.start_date)}</span>
+                      <span className="font-bold text-sm text-[var(--text)]">{fmtMonth(a.month, g?.start_date, '—', a.auction_date)}</span>
                       <span className="text-[10px] text-[var(--text3)] opacity-70">{fmtDate(a.created_at)}</span>
                     </div>
                   </Td>

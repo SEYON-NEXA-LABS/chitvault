@@ -8,10 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 // Global group symbols and colors
 export { getGroupTheme, GROUP_PALETTE, type GroupTheme } from './groupTheme'
 
+import versionInfo from '@/lib/version.json'
+
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '3.1.4'
-export const APP_COMMIT_ID = (process.env.NEXT_PUBLIC_COMMIT_ID || 'N/A').slice(0, 10)
+export const APP_VERSION = '3.2.0'
+export const APP_COMMIT_ID = versionInfo.commit || 'dev'
 export const APP_SLOGAN = ''
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and secure auction auditing.'
 export const APP_DEVELOPER = 'NVision Systems Pvt Ltd.'
@@ -44,24 +46,28 @@ export function getAmountColor(
 }
 
 
-// Format date to Indian format
+// Format date to Indian dd-MMM-yyyy format (e.g. 06-Apr-2026)
 export function fmtDate(d: string | null | undefined, fallback: string = '—'): string {
   if (!d) return fallback
   const date = new Date(d)
   if (isNaN(date.getTime())) return fallback
-  return date.toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric'
-  })
+  
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = date.toLocaleString('en-IN', { month: 'short' })
+  const year = date.getFullYear()
+  return `${day}-${month}-${year}`
 }
 
 export function fmtDateTime(d: string | null | undefined, fallback: string = '—'): string {
   if (!d) return fallback
   const date = new Date(d)
   if (isNaN(date.getTime())) return fallback
-  return date.toLocaleString('en-IN', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true
-  })
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = date.toLocaleString('en-IN', { month: 'short' })
+  const year = date.getFullYear()
+  const time = date.toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return `${day}-${month}-${year}, ${time}`
 }
 
 // Calculate completion date from start + duration
@@ -88,8 +94,19 @@ export function amountDue(monthlyContribution: number, dividend: number, scheme?
 }
 
 // Format month index to include MMM-YY
-export function fmtMonth(m: number, start?: string | null, fallback: string = '—'): string {
+export function fmtMonth(m: number, start?: string | null, fallback: string = '—', actualDate?: string | null): string {
   if (m === undefined || m === null || isNaN(m)) return fallback
+  
+  // If an actual date is provided (e.g. auction_date), use its real month/year
+  if (actualDate) {
+    const act = new Date(actualDate)
+    if (!isNaN(act.getTime())) {
+      const mon = act.toLocaleString('en-IN', { month: 'short' })
+      const yr = act.getFullYear().toString().slice(-2)
+      return `M${m} (${mon}-${yr})`
+    }
+  }
+
   if (!start) return `M${m}`
   const d = new Date(start)
   if (isNaN(d.getTime())) return `M${m}`

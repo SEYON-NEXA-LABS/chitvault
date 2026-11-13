@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { fmt, cn } from '@/lib/utils'
+import { fmt, fmtDate, cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { Btn, Card, Loading, Toast } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { Info, Settings2, Gavel, ArrowLeft, RefreshCw, Database, AlertTriangle, ShieldCheck, Calculator, TrendingUp } from 'lucide-react'
+import { Info, Settings2, Gavel, ArrowLeft, RefreshCw, Database, AlertTriangle, ShieldCheck, Calculator, TrendingUp, Terminal, CheckCircle2, X } from 'lucide-react'
 import type { GroupWithRules, CommissionType } from '@/types'
 import { COMMISSION_TYPE_LABELS as CTL } from '@/types'
 import { useFirm } from '@/lib/firm/context'
@@ -35,6 +35,11 @@ export default function GroupSettingsPage() {
   const [syncing,        setSyncing]        = useState(false)
   const [preview,        setPreview]        = useState<any>(null)
   const [testBid,        setTestBid]        = useState('')
+
+  // Sync Console State
+  const [showConsole, setShowConsole] = useState(false)
+  const [syncLogs, setSyncLogs] = useState<Array<{ text: string, type: 'info' | 'success' | 'warn' | 'error', time: string }>>([])
+  const [syncFinished, setSyncFinished] = useState(false)
 
   const [auctionsDone, setAuctionsDone] = useState(0)
   const [memberCount, setMemberCount] = useState(0)
@@ -223,13 +228,79 @@ export default function GroupSettingsPage() {
   }
 
   async function recalculateLedger() {
-    if (!confirm('This will retroactively update all historical dividends and commissions for this group based on current settings. Proceed?')) return
+    setShowConsole(true)
     setSyncing(true)
-    const { error } = await supabase.rpc('recalculate_group_ledger', { p_group_id: groupId })
-    setSyncing(false)
-    if (error) { show(error.message, 'error'); return }
-    show('Ledger recalculated successfully! ✓', 'success')
-    router.refresh()
+    setSyncFinished(false)
+    setSyncLogs([])
+
+    const addLog = (text: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
+      const now = new Date()
+      const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+      setSyncLogs(prev => [...prev, { text, type, time }])
+    }
+
+    addLog(`Initializing Sync Console for Group #${groupId} (${group?.name || ''})...`, 'info')
+    addLog(`Active Rules: Scheme=${group?.auction_scheme}, Strategy=${rules.dividend_strategy}, Commission=${rules.commission_value}%`, 'info')
+
+    try {
+      // 1. Fetch confirmed auctions to inspect
+      addLog('Fetching historical confirmed auctions...', 'info')
+      const { data: auctions, error: aErr } = await supabase
+        .from('auctions')
+        .select('id, month, auction_date, auction_discount, dividend, net_payout, winner_id, members!winner_id(ticket_no, persons(name))')
+        .eq('group_id', groupId)
+        .eq('status', 'confirmed')
+        .order('month', { ascending: true })
+
+      if (aErr) {
+        addLog(`Error fetching auctions: ${aErr.message}`, 'error')
+        setSyncing(false)
+        return
+      }
+
+      const totalAucs = auctions?.length || 0
+      addLog(`Found ${totalAucs} confirmed auction(s) in ledger.`, totalAucs > 0 ? 'info' : 'warn')
+
+      if (totalAucs > 0 && auctions) {
+        auctions.forEach((a: any) => {
+          const winnerName = a.members?.persons?.name || 'Unknown'
+          const ticket = a.members?.ticket_no ? `#${a.members.ticket_no}` : ''
+          addLog(`  • Month ${a.month} (${fmtDate(a.auction_date || '')}): Winner=${winnerName} ${ticket} | Discount=₹${Number(a.auction_discount || 0).toLocaleString('en-IN')}`, 'info')
+        })
+      }
+
+      addLog('Executing database ledger recalculation RPC [recalculate_group_ledger]...', 'info')
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc('recalculate_group_ledger', { p_group_id: groupId })
+
+      if (rpcErr) {
+        addLog(`Sync failed: ${rpcErr.message}`, 'error')
+        setSyncing(false)
+        return
+      }
+
+      // 2. Fetch updated auctions to report differences
+      addLog('Auditing updated auction dividends & payouts...', 'info')
+      const { data: updatedAucs } = await supabase
+        .from('auctions')
+        .select('id, month, auction_discount, dividend, net_payout')
+        .eq('group_id', groupId)
+        .eq('status', 'confirmed')
+        .order('month', { ascending: true })
+
+      if (updatedAucs) {
+        updatedAucs.forEach((ua: any) => {
+          addLog(`  ✓ M${ua.month}: Dividend/Member=₹${Number(ua.dividend || 0).toLocaleString('en-IN')} | Net Payout=₹${Number(ua.net_payout || 0).toLocaleString('en-IN')}`, 'success')
+        })
+      }
+
+      addLog(`Historical ledger sync completed successfully! Total ${totalAucs} auctions synced.`, 'success')
+      setSyncFinished(true)
+      show('Ledger recalculated successfully! ✓', 'success')
+    } catch (err: any) {
+      addLog(`Unexpected error during sync: ${err.message || err}`, 'error')
+    } finally {
+      setSyncing(false)
+    }
   }
 
   if (loading) return <Loading />
@@ -263,9 +334,9 @@ export default function GroupSettingsPage() {
         <div className="space-y-4">
           <Card title="General Details" padding={true}>
             {auctionsDone > 0 && (
-              <div className="p-3 rounded-lg text-[11px] flex gap-2 mb-4 bg-red-50 border border-red-100 text-red-600">
-                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                <div className="font-medium leading-tight">Financials locked due to existing auctions.</div>
+              <div className="p-3 rounded-lg text-[11px] flex gap-2 mb-4 bg-amber-50 border border-amber-200 text-amber-800">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-600" />
+                <div className="font-medium leading-tight">Chit value, monthly dues, and duration are locked due to existing auctions. Start date and group name can still be modified.</div>
               </div>
             )}
             <div className="space-y-3">
@@ -289,8 +360,13 @@ export default function GroupSettingsPage() {
                   <input className={inputClass} style={inputStyle} type="number" value={core.duration} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, duration: +e.target.value }))} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-[var(--text2)]">Start Date</label>
-                  <input className={inputClass} style={inputStyle} type="date" value={core.start_date} disabled={auctionsDone > 0} onChange={e => setCore(c => ({ ...c, start_date: e.target.value }))} />
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-bold text-[var(--text2)]">Start Date</label>
+                    {core.start_date && (
+                      <span className="text-[10px] font-bold text-[var(--accent)] font-mono">{fmtDate(core.start_date)}</span>
+                    )}
+                  </div>
+                  <input className={inputClass} style={inputStyle} type="date" value={core.start_date} onChange={e => setCore(c => ({ ...c, start_date: e.target.value }))} />
                 </div>
               </div>
             </div>
@@ -458,6 +534,102 @@ export default function GroupSettingsPage() {
           </Btn>
         </div>
       </div>
+
+      {/* Sync Console Modal */}
+      {showConsole && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] text-slate-100 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Terminal size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+                    Ledger Sync Console
+                    {syncing && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping" />}
+                  </h3>
+                  <p className="text-[10px] text-slate-400">Historical recalculation stream for {group.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowConsole(false)
+                  if (syncFinished) router.refresh()
+                }}
+                disabled={syncing}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Terminal Output */}
+            <div className="p-4 overflow-y-auto font-mono text-[11px] space-y-2 flex-1 bg-[#0b1120] min-h-[260px]">
+              {syncLogs.map((log, idx) => (
+                <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                  <span className="text-slate-500 text-[10px] select-none">{log.time}</span>
+                  <span className={cn(
+                    "flex-1",
+                    log.type === 'info' && "text-slate-300",
+                    log.type === 'success' && "text-emerald-400 font-semibold",
+                    log.type === 'warn' && "text-amber-400",
+                    log.type === 'error' && "text-red-400 font-semibold"
+                  )}>
+                    {log.text}
+                  </span>
+                </div>
+              ))}
+              {syncing && (
+                <div className="flex items-center gap-2 text-slate-500 text-xs italic py-1 animate-pulse">
+                  <span>Processing database transactions...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-900/70 flex items-center justify-between">
+              <div className="text-[11px] text-slate-400">
+                {syncing ? (
+                  <span className="text-amber-400 flex items-center gap-1.5">
+                    <RefreshCw size={12} className="animate-spin" /> Synchronizing...
+                  </span>
+                ) : syncFinished ? (
+                  <span className="text-emerald-400 flex items-center gap-1.5 font-bold">
+                    <CheckCircle2 size={13} /> Complete
+                  </span>
+                ) : (
+                  <span>Status: Ready</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const text = syncLogs.map(l => `[${l.time}] ${l.text}`).join('\n')
+                    navigator.clipboard.writeText(text)
+                    show('Console logs copied to clipboard!', 'success')
+                  }}
+                  disabled={syncLogs.length === 0}
+                  className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-[11px] font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition-colors disabled:opacity-40"
+                >
+                  Copy Log
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConsole(false)
+                    if (syncFinished) router.refresh()
+                  }}
+                  disabled={syncing}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-colors disabled:opacity-40"
+                >
+                  Close Console
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={hide} />}
     </>

@@ -16,6 +16,7 @@ import {
 import { useI18n } from '@/lib/i18n/context'
 import { withFirmScope } from '@/lib/supabase/firmQuery'
 import { getMemberFinancialStatus } from '@/lib/utils/chitLogic'
+import { StreakBar } from '@/components/features/StreakBar'
 import type { Group, Member, Auction, Payment, Person } from '@/types'
 
 export default function DefaultersPage() {
@@ -210,13 +211,8 @@ export default function DefaultersPage() {
                           <AlertCircle size={12} strokeWidth={2.5} /> {x.status.missedCount} Month Arrears
                         </Badge>
                       )}
-                      <div className="flex gap-0.5 mt-0.5">
-                        {x.status.streak.slice(0, 12).map((s: any, idx: number) => (
-                          <div key={idx} className={cn(
-                            "w-1.5 h-1.5 rounded-full ring-1 ring-[var(--border)]",
-                            s.status === 'success' ? "bg-green-500" : s.status === 'danger' ? "bg-red-500" : s.status === 'info' ? "bg-blue-500" : "bg-gray-300 opacity-20"
-                          )} title={`Month ${s.month}: ${s.status}`} />
-                        ))}
+                      <div className="mt-1">
+                        <StreakBar streak={x.status.streak} startDate={x.group?.start_date} maxMonths={12} compact={true} />
                       </div>
                     </div>
                   </Td>
