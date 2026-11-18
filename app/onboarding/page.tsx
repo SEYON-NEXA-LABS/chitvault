@@ -39,7 +39,7 @@ export default function OnboardingPage() {
   const steps = [
     {
       icon: '🎉',
-      title: `Welcome to Seyon Chit Vault!`,
+      title: `Welcome to ChitVault!`,
       body: `Your account for ${firm?.name || 'your business'} is ready. You have a 30-day free trial to explore everything.`,
       action: 'Get Started →'
     },

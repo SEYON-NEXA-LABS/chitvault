@@ -307,6 +307,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 {t('sign_out')}
               </button>
+              <div className="text-center text-[10px] font-mono text-[var(--text3)] opacity-50 tracking-wider">
+                v{APP_VERSION} ({APP_COMMIT_ID})
+              </div>
             </div>
           </div>
         </aside>

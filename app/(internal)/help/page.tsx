@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useI18n } from "@/lib/i18n/context"
 import { cn } from "@/lib/utils"
+import { GoogleTranslateEmbed } from "@/components/ui/GoogleTranslateEmbed"
 
 export default function AppReferenceGuide() {
   const router = useRouter()
@@ -68,9 +69,12 @@ export default function AppReferenceGuide() {
         
         {/* Help Book Cover */}
         <div className="space-y-8 mb-32">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-dim)] border border-[var(--accent-border)]">
-            <BookOpen size={14} className="text-[var(--accent)]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">CHITVAULT HELP BOOK v2.5</span>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-dim)] border border-[var(--accent-border)]">
+              <BookOpen size={14} className="text-[var(--accent)]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">CHITVAULT HELP BOOK v2.5</span>
+            </div>
+            <GoogleTranslateEmbed />
           </div>
           <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.85]" style={{ color: 'var(--text)' }}>
              The Auction <br />
@@ -278,7 +282,7 @@ export default function AppReferenceGuide() {
         </div>
 
         <div className="mt-12 text-center opacity-20 text-[9px] font-black uppercase tracking-[0.5em]">
-          Powered by Seyon Nexa Labs • Ultimate Help Book Edition 
+          Powered by ChitVault Platform • Ultimate Help Book Edition 
         </div>
       </div>
     </div>

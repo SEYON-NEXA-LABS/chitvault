@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, cn } from '@/lib/utils'
+import { fmt, cn, getWhatsAppLink } from '@/lib/utils'
 import {
   Btn, Badge, TableCard, Table, Th, Td, Tr, inputClass, inputStyle,
   Loading, Empty, Toast, StatCard
@@ -95,7 +95,9 @@ export default function DefaultersPage() {
 
   const sendWhatsApp = (x: any) => {
     const msg = `Hello ${x.person.name}, this is a reminder from Your Chit Firm regarding ${x.group.name}. You have an outstanding balance of ₹${Math.round(x.status.balance)} for ${x.status.missedCount} month(s). Please clear your dues at the earliest. Thank you!`
-    window.open(`https://wa.me/${x.person.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank')
+    const link = getWhatsAppLink(x.person.phone, msg)
+    if (link === '#') return show('No valid phone number.', 'error')
+    window.open(link, '_blank')
   }
 
   const markAsDefaulter = async (memberId: number) => {

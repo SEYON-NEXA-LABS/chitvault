@@ -1,8 +1,8 @@
 {
   "name": "chitvault-desktop",
-  "productName": "Seyon Chit Vault",
+  "productName": "ChitVault",
   "version": "1.0.0",
-  "description": "Seyon Chit Vault — Auction Chit Fund Management Software",
+  "description": "ChitVault — Auction Chit Fund Management Software",
   "main": "main.js",
   "private": true,
   "author": {
@@ -24,8 +24,8 @@
   },
   "build": {
     "appId": "app.chitvault.desktop",
-    "productName": "Seyon Chit Vault",
-    "copyright": "Copyright © 2026 Seyon Chit Vault",
+    "productName": "ChitVault",
+    "copyright": "Copyright © 2026 ChitVault",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -69,14 +69,14 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "Seyon Chit Vault"
+      "publisherName": "ChitVault"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Seyon Chit Vault",
+      "shortcutName": "ChitVault",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "license": "LICENSE.txt"

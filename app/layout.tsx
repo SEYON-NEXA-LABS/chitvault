@@ -11,10 +11,46 @@ import { CookieConsent } from '@/components/ui/CookieConsent'
 import './globals.css'
 export const metadata: Metadata = {
   title: {
-    default: APP_SLOGAN ? `${APP_NAME} | ${APP_SLOGAN}` : APP_NAME,
+    default: 'ChitVault | Digital Ledger & Auction Management for Chit Funds',
     template: `%s | ${APP_NAME}`,
   },
-  description: APP_DESCRIPTION,
+  description: 'Industrial-grade digital ledger for transparent chit fund auctions, dividend distribution, member passbooks, and instant WhatsApp receipts.',
+  keywords: [
+    'Chit Fund Software',
+    'Auction Chit Management',
+    'Chit Fund Digital Ledger',
+    'Chit Fund App India',
+    'Foreman Commission Calculator',
+    'Chit Dividend Split',
+    'Tamil Nadu Chit Fund Software',
+    'Chit Passbook App'
+  ],
+  authors: [{ name: 'NVision Systems Pvt Ltd', url: 'https://nvisionsystems.in' }],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://chitvault.in'),
+  openGraph: {
+    title: 'ChitVault — Transparent Digital Ledger for Chit Funds',
+    description: 'Automate auction bidding, dividend calculations, member passbooks, and instant WhatsApp receipts.',
+    url: 'https://chitvault.in',
+    siteName: 'ChitVault',
+    locale: 'en_IN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ChitVault — Digital Ledger for Chit Funds',
+    description: 'Automate chit fund auctions, dividends, collections, and WhatsApp receipts.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png'

@@ -248,10 +248,10 @@ function CollectionContent() {
                   <Td right className="align-top">
                     <div className="flex justify-end gap-2">
                       <Btn variant="secondary" size="sm" onClick={() => {
-                        const phone = person.person_phone?.replace(/[^\d]/g, '')
-                        if (!phone) return show('No phone recorded.', 'error')
                         const msg = `Hi ${person.person_name}, you have ₹${person.total_balance.toLocaleString('en-IN')} outstanding with ${firm?.name}.`
-                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+                        const link = getWhatsAppLink(person.person_phone, msg)
+                        if (link === '#') return show('No valid phone number.', 'error')
+                        window.open(link, '_blank')
                       }} className="h-8 w-8 p-0" icon={MessageCircle} />
                       <Btn variant="secondary" size="sm" onClick={() => setHistoryModal(person)} className="h-8 w-8 p-0" icon={History} />
                       <Btn variant="primary" size="sm" onClick={() => setPayModal(person)} className="h-8 px-4" icon={Wallet}>Collect</Btn>

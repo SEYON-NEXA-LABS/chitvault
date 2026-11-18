@@ -1,5 +1,60 @@
 # ChitVault Progress & Changelog
 
+## [3.3.0] - 2026-11-18
+
+### Overview of Version 3.3.0 Release
+
+#### 7. WhatsApp (`wa.me`) Instant Payment Receipts & Audit Sharing
+- **Feature**: Integrated instant WhatsApp payment receipts following the pattern used in PledgeVault.
+- **Implementation**:
+  - **Record Collection Success Modal (`RecordCollectionModal.tsx`)**: Added a prominent **"Send WhatsApp Receipt"** button right after recording a payment, pre-formatting a professional receipt with firm name, member name, amount received, payment mode, applied installments, and date (`dd-MMM-yyyy`).
+  - **Payment Audit Table (`/collection`)**: Added a quick WhatsApp icon button next to the Print button on each payment entry so cashiers can re-send payment confirmations at any time.
+  - **Centralized Phone Normalization (`normalizePhone`)**: Created `normalizePhone()` in `lib/utils/index.ts` to ensure phone numbers always have country code prefixes (`91` for India) and clean out leading zeroes, spaces, and punctuation across all WhatsApp triggers (`RecordCollectionModal`, `/collection`, and `/defaulters`).
+
+#### 8. Phone Number Strict 10-Digit Validation
+- **Problem**: Previously, incomplete phone numbers (e.g., 5 or 7 digits) could be submitted, leading to invalid WhatsApp links and broken communication.
+- **Fix**:
+  - **Utility Level (`lib/utils/index.ts`)**: Added `isValidPhone()` and updated `normalizePhone()` so numbers with fewer than 10 digits are treated as invalid/empty instead of generating broken `wa.me` URLs.
+  - **Registration & Enrollment Modals**:
+    - `AddMemberModal.tsx` & `/groups/[id]/page.tsx`: Added `maxLength={10}`, digit filtering, and exact 10-digit validation on submission.
+    - `/members/page.tsx` (Person Registration): Added exact 10-digit validation (`/^\d{10}$/`).
+    - `/members/[id]/page.tsx` (Profile Edit Modal): Added `maxLength={10}` and exact 10-digit validation before saving.
+    - `/settings/page.tsx` (Support Phone): Added exact 10-digit validation on firm profile update.
+
+#### 9. Modern Public Landing Page & Self-Serve "Start Trial" Flow
+- **Feature**: Added a public-facing product landing page and automated 30-day free trial enrollment.
+- **Implementation**:
+  - **Public Landing Page (`app/page.tsx`)**: Built a modern dark-mode landing page highlighting ChitVault's core capabilities (Automated Auction Ledger, Instant WhatsApp Receipts, Risk Radar, and Audit Prints). Automatically redirects authenticated users straight to `/dashboard`.
+  - **Self-Serve Trial Wizard (`app/start-trial/page.tsx`)**: Created a 2-step onboarding wizard (Chit Firm Details &rarr; Admin Account Setup) with instant 30-day trial activation via `startTrialAction`. Includes mandatory agreement checkbox linked to legal documents (`/legal/terms` & `/legal/privacy`).
+  - **Server Action (`app/actions/start-trial.ts`)**: Initializes the new firm with `plan: 'trial'`, sets `trial_ends` to +30 days, generates a unique firm slug, registers the owner account, and links their profile. Also provides a one-click WhatsApp demo booking link.
+
+#### 10. SEO Optimization, Dynamic Robots & Sitemap
+- **Feature**: Full search engine indexing setup and crawler controls.
+- **Implementation**:
+  - **Dynamic `robots.ts` (`app/robots.ts`)**: Instructs search engines to index public pages (`/`, `/start-trial`, `/plans`, `/legal/*`) while strictly blocking internal firm data, admin routes, member passbooks, collection workspaces, and auction logs (`/admin/`, `/superadmin/`, `/groups/`, `/members/`, `/collection/`).
+  - **Dynamic `sitemap.ts` (`app/sitemap.ts`)**: Automatically generates an XML sitemap with change frequencies and priorities for Google, Bing, etc.
+  - **Enhanced Meta Tags (`app/layout.tsx`)**: Configured OpenGraph, Twitter Cards, rich title templates, targeted Indian chit fund keywords, and canonical metadataBase.
+
+#### 11. Standardized Version & Subsidiary Credit Footers
+- **Feature**: Standardized corporate credits, subsidiary acknowledgment, and version format matching the NDT Exchange / Seyon Nexa Labs standard.
+- **Format**:
+  `© {currentYear} CHITVAULT. Developed by SEYON NEXA LABS (A subsidiary of NVISION SYSTEMS) • v{APP_VERSION} ({APP_COMMIT_ID})`.
+- **Applied In**:
+  - Landing Page footer (`app/page.tsx`)
+  - Start Trial wizard footer (`app/start-trial/page.tsx`)
+  - Internal Sidebar (`app/(internal)/layout.tsx`)
+  - Firm Passport Badge & System Status (`app/(internal)/settings/page.tsx`)
+
+#### 12. Product Branding & Identity Cleanup ("Silenced Seyon")
+- **Refinement**: Standardized user-facing product branding strictly to **ChitVault** (single word, no prefix or space) while preserving "Seyon Nexa Labs" exclusively for developer credits and corporate attribution lines.
+- **Changes**:
+  - `app/onboarding/page.tsx`: Changed welcome header from `Welcome to Seyon ChitVault!` to `Welcome to ChitVault!`.
+  - `electron/package.json`: Updated `productName`, `description`, `copyright`, `publisherName`, and `shortcutName` to remove "Seyon" prefix. Corporate authorship (`Seyon Nexa Labs`) remains intact.
+  - `electron/loading.html`: Updated splash logo from `Seyon ChitVault` to `ChitVault`.
+  - `app/(internal)/help/page.tsx`: Updated footer from `Powered by Seyon Nexa Labs • Ultimate Help Book Edition` to `Powered by ChitVault Platform • Ultimate Help Book Edition`.
+
+---
+
 ## [3.2.0] - 2026-11-13
 
 ### Comprehensive Overview of Changes
@@ -62,4 +117,46 @@
 - **Implementation**:
   - **Record Collection Success Modal (`RecordCollectionModal.tsx`)**: Added a prominent **"Send WhatsApp Receipt"** button right after recording a payment, pre-formatting a professional receipt with firm name, member name, amount received, payment mode, applied installments, and date (`dd-MMM-yyyy`).
   - **Payment Audit Table (`/collection`)**: Added a quick WhatsApp icon button next to the Print button on each payment entry so cashiers can re-send payment confirmations at any time.
-  - Utilizes `getWhatsAppLink()` with automatic Indian country code prefixing (`+91`) and zero-cost, serverless dispatch.
+  - **Centralized Phone Normalization (`normalizePhone`)**: Created `normalizePhone()` in `lib/utils/index.ts` to ensure phone numbers always have country code prefixes (`91` for India) and clean out leading zeroes, spaces, and punctuation across all WhatsApp triggers (`RecordCollectionModal`, `/collection`, and `/defaulters`).
+
+#### 8. Phone Number Strict 10-Digit Validation
+- **Problem**: Previously, incomplete phone numbers (e.g., 5 or 7 digits) could be submitted, leading to invalid WhatsApp links and broken communication.
+- **Fix**:
+  - **Utility Level (`lib/utils/index.ts`)**: Added `isValidPhone()` and updated `normalizePhone()` so numbers with fewer than 10 digits are treated as invalid/empty instead of generating broken `wa.me` URLs.
+  - **Registration & Enrollment Modals**:
+    - `AddMemberModal.tsx` & `/groups/[id]/page.tsx`: Added `maxLength={10}`, digit filtering, and exact 10-digit validation on submission.
+    - `/members/page.tsx` (Person Registration): Added exact 10-digit validation (`/^\d{10}$/`).
+    - `/members/[id]/page.tsx` (Profile Edit Modal): Added `maxLength={10}` and exact 10-digit validation before saving.
+    - `/settings/page.tsx` (Support Phone): Added exact 10-digit validation on firm profile update.
+
+#### 9. Modern Public Landing Page & Self-Serve "Start Trial" Flow
+- **Feature**: Added a public-facing product landing page and automated 30-day free trial enrollment.
+- **Implementation**:
+  - **Public Landing Page (`app/page.tsx`)**: Built a modern dark-mode landing page highlighting ChitVault's core capabilities (Automated Auction Ledger, Instant WhatsApp Receipts, Risk Radar, and Audit Prints). Automatically redirects authenticated users straight to `/dashboard`.
+  - **Self-Serve Trial Wizard (`app/start-trial/page.tsx`)**: Created a 2-step onboarding wizard (Chit Firm Details &rarr; Admin Account Setup) with instant 30-day trial activation via `startTrialAction`. Includes mandatory agreement checkbox linked to legal documents (`/legal/terms` & `/legal/privacy`).
+  - **Server Action (`app/actions/start-trial.ts`)**: Initializes the new firm with `plan: 'trial'`, sets `trial_ends` to +30 days, generates a unique firm slug, registers the owner account, and links their profile. Also provides a one-click WhatsApp demo booking link.
+
+#### 10. SEO Optimization, Dynamic Robots & Sitemap
+- **Feature**: Full search engine indexing setup and crawler controls.
+- **Implementation**:
+  - **Dynamic `robots.ts` (`app/robots.ts`)**: Instructs search engines to index public pages (`/`, `/start-trial`, `/plans`, `/legal/*`) while strictly blocking internal firm data, admin routes, member passbooks, collection workspaces, and auction logs (`/admin/`, `/superadmin/`, `/groups/`, `/members/`, `/collection/`).
+  - **Dynamic `sitemap.ts` (`app/sitemap.ts`)**: Automatically generates an XML sitemap with change frequencies and priorities for Google, Bing, etc.
+  - **Enhanced Meta Tags (`app/layout.tsx`)**: Configured OpenGraph, Twitter Cards, rich title templates, targeted Indian chit fund keywords, and canonical metadataBase.
+
+#### 11. Standardized Version & Subsidiary Credit Footers
+- **Feature**: Standardized corporate credits, subsidiary acknowledgment, and version format matching the NDT Exchange / Seyon Nexa Labs standard.
+- **Format**:
+  `© {currentYear} CHITVAULT. Developed by SEYON NEXA LABS (A subsidiary of NVISION SYSTEMS) • v{APP_VERSION} ({APP_COMMIT_ID})`.
+- **Applied In**:
+  - Landing Page footer (`app/page.tsx`)
+  - Start Trial wizard footer (`app/start-trial/page.tsx`)
+  - Internal Sidebar (`app/(internal)/layout.tsx`)
+  - Firm Passport Badge & System Status (`app/(internal)/settings/page.tsx`)
+
+#### 12. Product Branding & Identity Cleanup ("Silenced Seyon")
+- **Refinement**: Standardized user-facing product branding strictly to **ChitVault** (single word, no prefix or space) while preserving "Seyon Nexa Labs" exclusively for developer credits and corporate attribution lines.
+- **Changes**:
+  - `app/onboarding/page.tsx`: Changed welcome header from `Welcome to Seyon ChitVault!` to `Welcome to ChitVault!`.
+  - `electron/package.json`: Updated `productName`, `description`, `copyright`, `publisherName`, and `shortcutName` to remove "Seyon" prefix. Corporate authorship (`Seyon Nexa Labs`) remains intact.
+  - `electron/loading.html`: Updated splash logo from `Seyon ChitVault` to `ChitVault`.
+  - `app/(internal)/help/page.tsx`: Updated footer from `Powered by Seyon Nexa Labs • Ultimate Help Book Edition` to `Powered by ChitVault Platform • Ultimate Help Book Edition`.

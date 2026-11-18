@@ -162,6 +162,10 @@ export default function GroupLedgerPage() {
       showToast(`Group full! Only ${group.num_members - members.length} spots remaining.`, 'error')
       return
     }
+    if (payload.phone && !/^\d{10}$/.test(payload.phone.replace(/\D/g, ''))) {
+      showToast('Phone number must be exactly 10 digits', 'error')
+      return
+    }
     setSaving(true)
     try {
       const { data: userData } = await supabase.auth.getUser()

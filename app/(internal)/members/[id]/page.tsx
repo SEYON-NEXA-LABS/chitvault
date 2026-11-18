@@ -75,6 +75,10 @@ export default function MemberProfilePage() {
   }, [supabase, personId, firm, isSuper, switchedFirmId])
 
   const handleUpdatePerson = async () => {
+    if (editForm.phone && !/^\d{10}$/.test(editForm.phone.replace(/\D/g, ''))) {
+      showToast('Phone number must be exactly 10 digits', 'error')
+      return
+    }
     setSaving(true)
     const targetId = isSuper ? switchedFirmId : firm?.id
     try {
@@ -241,7 +245,7 @@ export default function MemberProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Full Name"><input className={inputClass} style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></Field>
             <Field label="Nickname"><input className={inputClass} style={inputStyle} value={editForm.nickname} onChange={e => setEditForm(f => ({ ...f, nickname: e.target.value }))} /></Field>
-            <Field label="Phone Number"><input className={inputClass} style={inputStyle} type="tel" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></Field>
+            <Field label="Phone Number"><input className={inputClass} style={inputStyle} type="tel" maxLength={10} placeholder="10-digit mobile" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))} /></Field>
             <Field label="Physical Address"><input className={inputClass} style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} /></Field>
           </div>
           <div className="flex justify-end gap-3 pt-6 border-t" style={{ borderColor: 'var(--border)' }}>

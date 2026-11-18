@@ -110,6 +110,10 @@ export default function SettingsPage() {
 
   async function saveBranding() {
     if (!firm) return
+    if (phone && !/^\d{10}$/.test(phone.replace(/\D/g, ''))) {
+      show('Support phone must be exactly 10 digits', 'error')
+      return
+    }
     setSaving(true)
     const { error } = await supabase.from('firms').update({
       name: name.trim() || undefined,
@@ -630,7 +634,7 @@ export default function SettingsPage() {
             <ShieldCheck size={18} />
             <span className="uppercase tracking-widest text-[10px]">Official Firm Passport</span>
           </div>
-          <Badge variant="success" className="font-mono text-[9px] px-2">Live System v${APP_VERSION}</Badge>
+          <Badge variant="success" className="font-mono text-[9px] px-2">Live v{APP_VERSION} ({APP_COMMIT_ID})</Badge>
         </div>
 
         <div className="p-6">

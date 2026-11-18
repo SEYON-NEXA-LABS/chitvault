@@ -12,7 +12,7 @@ import versionInfo from '@/lib/version.json'
 
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'ChitVault'
 export const APP_BRAND = process.env.NEXT_PUBLIC_APP_BRAND || 'CV'
-export const APP_VERSION = '3.2.0'
+export const APP_VERSION = '3.3.0'
 export const APP_COMMIT_ID = versionInfo.commit || 'dev'
 export const APP_SLOGAN = ''
 export const APP_DESCRIPTION = 'Advanced digital ledger for transparent chit fund management and secure auction auditing.'
@@ -171,12 +171,45 @@ export function getGroupDisplayName(g: { name: string, auction_scheme: string },
 }
 
 /**
+ * Validates whether a phone number is complete (exactly 10 digits for standard mobile, or 11-13 with country code)
+ */
+export function isValidPhone(phone: string | null | undefined): boolean {
+  if (!phone) return false
+  const clean = phone.replace(/\D/g, '')
+  if (clean.length === 11 && clean.startsWith('0')) {
+    return clean.slice(1).length === 10
+  }
+  return clean.length === 10 || (clean.length >= 11 && clean.length <= 13)
+}
+
+/**
+ * Normalizes phone numbers to include country code prefix (default: 91 for India).
+ * Returns empty string if the number has fewer than 10 digits (invalid/incomplete).
+ */
+export function normalizePhone(phone: string | null | undefined, defaultCountryCode: string = '91'): string {
+  if (!phone) return ''
+  let clean = phone.replace(/\D/g, '')
+  // If user entered with leading 0 (e.g. 09876543210), trim it
+  if (clean.length === 11 && clean.startsWith('0')) {
+    clean = clean.slice(1)
+  }
+  // Standard 10-digit mobile -> prepend default country code (e.g. 919876543210)
+  if (clean.length === 10) {
+    return `${defaultCountryCode}${clean}`
+  }
+  // If already has country code (11 to 13 digits)
+  if (clean.length >= 11 && clean.length <= 13) {
+    return clean
+  }
+  // If fewer than 10 digits, treat as invalid/incomplete
+  return ''
+}
+
+/**
  * Generates a WhatsApp wa.me link for sending messages.
  */
 export function getWhatsAppLink(phone: string | null | undefined, message: string): string {
-  if (!phone) return '#'
-  const cleanPhone = phone.replace(/\D/g, '')
-  // Add 91 prefix if missing (assuming India for small-town pitch)
-  const fullPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone
+  const fullPhone = normalizePhone(phone)
+  if (!fullPhone) return '#'
   return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`
 }

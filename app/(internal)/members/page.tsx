@@ -325,6 +325,10 @@ export default function MembersPage() {
   async function saveMember() {
     if (!firm) { showToast('Session error!', 'error'); return }
     if (!form.name) { showToast('Name is required', 'error'); return }
+    if (form.phone && !/^\d{10}$/.test(form.phone)) {
+      showToast('Phone number must be exactly 10 digits', 'error')
+      return
+    }
 
     setSaving(true)
     const { data: authData, error: authErr } = await supabase.auth.getUser()
