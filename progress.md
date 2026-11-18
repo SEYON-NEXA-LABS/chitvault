@@ -73,6 +73,56 @@
     - App Sidebar (`app/(internal)/layout.tsx`)
     - Login & Auth Portal (`app/login/page.tsx`)
     - PIN Overlay (`components/ui/PinOverlay.tsx`)
+- **Expanded Landing Page (`app/page.tsx`) Sections**:
+  - **Modern Sticky Navbar**: Navigation anchors (`#features`, `#how-it-works`, `#interactive-preview`, `#security`, `#faq`) and quick access buttons.
+  - **Hero Section**: Value proposition for registered chit fund promoters and operators.
+  - **Simulated Live Ledger Console**: Visual mock of a ₹10,00,000 active chit group showing instant discount distributions, winner prize payout, member net dues, and an active 20-month cycle streak bar.
+  - **Enterprise 6-Card Feature Matrix**: Automated Auction Engine, WhatsApp Receipts, Defaulter Radar, Historical Ledger Sync, Thermal & A4 Prints, and Encrypted Multi-Tenant Schemas.
+  - **3-Step Operational Workflow**: Visual guide from Ticket Allocation to Auction Auto-Split and Payment Collection.
+  - **Audit Compliance & Mathematical Model**: Transparent breakdown of dividend, net installment, and prize formulas.
+  - **FAQ Section**: Practical answers on date rescheduling, WhatsApp delivery, multi-user concurrency, and tenant security.
+  - **Legal & Corporate Footer**: Added terms, privacy policy links, and corporate credit standard.
+
+#### 14. Auction Schemes Guide Overhaul (`/schemes`)
+- **Problem**: The schemes guide was a basic static text page describing only two models with limited operational context.
+- **Implementation**:
+  - Expanded into a full interactive guide covering all 6 engine methodologies:
+    1. **Dividend Sharing Scheme** (Classic Indian Reverse Auction / Act 1982 Standard)
+    2. **Accumulation Scheme** (Fixed Installments / Cumulative Surplus Pool for Early Maturity)
+    3. **Hybrid Split Scheme** (Configurable Part Dividend / Part Surplus)
+    4. **Bounded Auction Scheme** (Enforced Statutory Floors & 30%/40% Ceilings)
+    5. **Lottery / Lucky Draw Scheme** (Fixed Installments, Zero Discount Equal Payout)
+    6. **Fixed Rotation / ROSCA Scheme** (Deterministic Pre-Agreed Order of Disbursement)
+  - Added interactive methodology switcher tabs with live math formulas (Winner Payout, Subscriber Net Due, Foreman Commission).
+  - Concrete financial examples for each scheme with real ₹ figures, pros & cons, and Tamil terminology labels.
+  - Clean light-theme design with quick print utility and back navigation.
+
+#### 15. Pricing & Subscription Plans Page Overhaul (`/plans`)
+- **Problem**: The previous `/plans` page was a basic placeholder listing two disabled buttons with no real financial details.
+- **Implementation**:
+  - Built an enterprise-grade 4-tier pricing matrix matching the actual system database plan structure:
+    1. **30-Day Free Trial** (₹0 Setup / Free for 30 days / 2 Groups, 20 Members) &rarr; Direct 1-click self-serve trial activation.
+    2. **Standard Growth** (₹2,000 Setup + ₹1,000/yr AMC / 10 Groups, 200 Members) &rarr; Recommended for family and local finance firms.
+    3. **Professional Scale** (₹5,000 Setup + ₹2,500/yr AMC / Unlimited Groups & Members) &rarr; Custom branding, multi-user cashiers, and auditor exports.
+    4. **Perpetual Enterprise** (₹29,999 One-Time Lifetime License + Optional ₹10,00,000/yr AMC) &rarr; Self-hosted or white-labeled deployment with dedicated SQL dumps.
+  - Added pricing FAQ section answering post-trial migration, 0% transaction commissions, tier upgrades, and AMC renewal protocols.
+  - Incorporated direct WhatsApp concierge sales trigger (`wa.me`) for operators.
+  - Synchronized typography, `<ChitVaultLogo />`, and light financial theme matching the landing page.
+
+#### 16. Statutory Compliance & Vendor Safe-Harbor Legal Policy (`/legal/disclaimer`)
+- **Regulatory Framework**: Explicitly anchored ChitVault's operational model within the statutory Indian legal boundaries:
+  - **Technology Vendor vs. Chit Fund Operator**: Clarifies under the *Chit Funds Act, 1982 (Section 4)* that ChitVault is purely a Software-as-a-Service (SaaS) vendor and does NOT act as a Foreman or conduct chits on its own behalf.
+  - **State Sanction & Registration**: Mandates that subscribing chit companies/foremen maintain sole legal responsibility for obtaining state government sanctions and registrar approvals (e.g. Registrar of Chits, Tamil Nadu).
+  - **Non-Custodial Architecture**: Affirms that ChitVault never pools, holds, collects, or disburses money, maintaining zero escrow or wallet accounts (direct member settlement via cash/bank UPI).
+  - **Banning of Unregulated Deposit Schemes (BUDS Act, 2019) & MLM Prohibitions**: Prohibits speculative pyramid, prize chit, or multi-level deposit schemes.
+  - **Digital Personal Data Protection (DPDP) Act, 2023**: Establishes chit firms as Data Fiduciaries and ChitVault as a secure Data Processor with isolated multi-tenant schemas.
+
+#### 17. Master Terms of Service & Legal Safe-Harbor Overhaul (`/legal/terms`)
+- **Intermediary Safe Harbor (Section 79, IT Act, 2000)**: Formally documents ChitVault's status as an automated, passive technology intermediary with zero transaction initiation or modification.
+- **Mandatory User Covenant & Licensing Warranty**: Requires operators to legally warrant that their groups comply with state government sanctions and Section 4 of the *Chit Funds Act, 1982*, prohibiting MLM or unregulated deposits.
+- **Absolute User Indemnification**: Protects ChitVault against subscriber disputes, police notices, insolvency claims, and operator defaults.
+- **DPDP Act, 2023 Privacy Allocation**: Explicitly assigns the Operator as the **Data Fiduciary** responsible for lawful member consent, while ChitVault acts strictly as a secure **Data Processor**.
+- **Law Enforcement Cooperation**: Formal protocol acknowledging immutable audit trail preservation for statutory and court orders.
 
 ---
 
@@ -202,3 +252,53 @@
     - App Sidebar (`app/(internal)/layout.tsx`)
     - Login & Auth Portal (`app/login/page.tsx`)
     - PIN Overlay (`components/ui/PinOverlay.tsx`)
+- **Expanded Landing Page (`app/page.tsx`) Sections**:
+  - **Modern Sticky Navbar**: Navigation anchors (`#features`, `#how-it-works`, `#interactive-preview`, `#security`, `#faq`) and quick access buttons.
+  - **Hero Section**: Value proposition for registered chit fund promoters and operators.
+  - **Simulated Live Ledger Console**: Visual mock of a ₹10,00,000 active chit group showing instant discount distributions, winner prize payout, member net dues, and an active 20-month cycle streak bar.
+  - **Enterprise 6-Card Feature Matrix**: Automated Auction Engine, WhatsApp Receipts, Defaulter Radar, Historical Ledger Sync, Thermal & A4 Prints, and Encrypted Multi-Tenant Schemas.
+  - **3-Step Operational Workflow**: Visual guide from Ticket Allocation to Auction Auto-Split and Payment Collection.
+  - **Audit Compliance & Mathematical Model**: Transparent breakdown of dividend, net installment, and prize formulas.
+  - **FAQ Section**: Practical answers on date rescheduling, WhatsApp delivery, multi-user concurrency, and tenant security.
+  - **Legal & Corporate Footer**: Added terms, privacy policy links, and corporate credit standard.
+
+#### 14. Auction Schemes Guide Overhaul (`/schemes`)
+- **Problem**: The schemes guide was a basic static text page describing only two models with limited operational context.
+- **Implementation**:
+  - Expanded into a full interactive guide covering all 6 engine methodologies:
+    1. **Dividend Sharing Scheme** (Classic Indian Reverse Auction / Act 1982 Standard)
+    2. **Accumulation Scheme** (Fixed Installments / Cumulative Surplus Pool for Early Maturity)
+    3. **Hybrid Split Scheme** (Configurable Part Dividend / Part Surplus)
+    4. **Bounded Auction Scheme** (Enforced Statutory Floors & 30%/40% Ceilings)
+    5. **Lottery / Lucky Draw Scheme** (Fixed Installments, Zero Discount Equal Payout)
+    6. **Fixed Rotation / ROSCA Scheme** (Deterministic Pre-Agreed Order of Disbursement)
+  - Added interactive methodology switcher tabs with live math formulas (Winner Payout, Subscriber Net Due, Foreman Commission).
+  - Concrete financial examples for each scheme with real ₹ figures, pros & cons, and Tamil terminology labels.
+  - Clean light-theme design with quick print utility and back navigation.
+
+#### 15. Pricing & Subscription Plans Page Overhaul (`/plans`)
+- **Problem**: The previous `/plans` page was a basic placeholder listing two disabled buttons with no real financial details.
+- **Implementation**:
+  - Built an enterprise-grade 4-tier pricing matrix matching the actual system database plan structure:
+    1. **30-Day Free Trial** (₹0 Setup / Free for 30 days / 2 Groups, 20 Members) &rarr; Direct 1-click self-serve trial activation.
+    2. **Standard Growth** (₹2,000 Setup + ₹1,000/yr AMC / 10 Groups, 200 Members) &rarr; Recommended for family and local finance firms.
+    3. **Professional Scale** (₹5,000 Setup + ₹2,500/yr AMC / Unlimited Groups & Members) &rarr; Custom branding, multi-user cashiers, and auditor exports.
+    4. **Perpetual Enterprise** (₹29,999 One-Time Lifetime License + Optional ₹10,00,000/yr AMC) &rarr; Self-hosted or white-labeled deployment with dedicated SQL dumps.
+  - Added pricing FAQ section answering post-trial migration, 0% transaction commissions, tier upgrades, and AMC renewal protocols.
+  - Incorporated direct WhatsApp concierge sales trigger (`wa.me`) for operators.
+  - Synchronized typography, `<ChitVaultLogo />`, and light financial theme matching the landing page.
+
+#### 16. Statutory Compliance & Vendor Safe-Harbor Legal Policy (`/legal/disclaimer`)
+- **Regulatory Framework**: Explicitly anchored ChitVault's operational model within the statutory Indian legal boundaries:
+  - **Technology Vendor vs. Chit Fund Operator**: Clarifies under the *Chit Funds Act, 1982 (Section 4)* that ChitVault is purely a Software-as-a-Service (SaaS) vendor and does NOT act as a Foreman or conduct chits on its own behalf.
+  - **State Sanction & Registration**: Mandates that subscribing chit companies/foremen maintain sole legal responsibility for obtaining state government sanctions and registrar approvals (e.g. Registrar of Chits, Tamil Nadu).
+  - **Non-Custodial Architecture**: Affirms that ChitVault never pools, holds, collects, or disburses money, maintaining zero escrow or wallet accounts (direct member settlement via cash/bank UPI).
+  - **Banning of Unregulated Deposit Schemes (BUDS Act, 2019) & MLM Prohibitions**: Prohibits speculative pyramid, prize chit, or multi-level deposit schemes.
+  - **Digital Personal Data Protection (DPDP) Act, 2023**: Establishes chit firms as Data Fiduciaries and ChitVault as a secure Data Processor with isolated multi-tenant schemas.
+
+#### 17. Master Terms of Service & Legal Safe-Harbor Overhaul (`/legal/terms`)
+- **Intermediary Safe Harbor (Section 79, IT Act, 2000)**: Formally documents ChitVault's status as an automated, passive technology intermediary with zero transaction initiation or modification.
+- **Mandatory User Covenant & Licensing Warranty**: Requires operators to legally warrant that their groups comply with state government sanctions and Section 4 of the *Chit Funds Act, 1982*, prohibiting MLM or unregulated deposits.
+- **Absolute User Indemnification**: Protects ChitVault against subscriber disputes, police notices, insolvency claims, and operator defaults.
+- **DPDP Act, 2023 Privacy Allocation**: Explicitly assigns the Operator as the **Data Fiduciary** responsible for lawful member consent, while ChitVault acts strictly as a secure **Data Processor**.
+- **Law Enforcement Cooperation**: Formal protocol acknowledging immutable audit trail preservation for statutory and court orders.
