@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback, Suspense } from 'reac
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, cn, getGroupDisplayName, fmtDate } from '@/lib/utils'
+import { fmt, cn, getGroupDisplayName, fmtDate, getWhatsAppLink } from '@/lib/utils'
 import { Loading, Empty, Badge, Btn, Modal, Toast, Pagination, Table, TableCard, Th, Td, Tr, Tabs, GroupBadge } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
 import {
@@ -313,6 +313,24 @@ function AuditTable({ data, isOwner, onRevert, firm, t }: { data: any[], isOwner
               </Td>
               <Td right>
                 <div className="flex justify-end gap-2">
+                  <Btn 
+                    variant="secondary" 
+                    size="sm" 
+                    title="Send WhatsApp Receipt"
+                    onClick={() => {
+                      const personName = p.members?.persons?.name || 'Member'
+                      const phone = p.members?.persons?.phone
+                      const amt = Number(p.amount).toLocaleString('en-IN')
+                      const dateStr = fmtDate(p.payment_date)
+                      const firmName = firm?.name || 'ChitVault'
+                      
+                      const msg = `*Payment Receipt - ${firmName}*\n\nDear *${personName}*,\nWe have received your payment of *₹${amt}* on *${dateStr}* via ${(p.mode || 'CASH').toUpperCase()} for *${p.groups?.name || 'Group'}* (Month ${p.month}).\n\nThank you for your payment!`
+                      const link = getWhatsAppLink(phone, msg)
+                      window.open(link, '_blank')
+                    }} 
+                    className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" 
+                    icon={MessageCircle} 
+                  />
                   <Btn variant="secondary" size="sm" onClick={() => {
                     printPaymentReceipt(firm, p.members?.persons?.name || '...', [p], p.amount, p.payment_date, p.mode, t)
                   }} className="h-8 w-8 p-0" icon={Printer} />

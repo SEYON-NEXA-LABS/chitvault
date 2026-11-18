@@ -56,3 +56,10 @@
   - Created automated build script `scripts/generate-version.js` that pulls `git rev-parse --short HEAD` directly from Git and writes to `lib/version.json`.
   - Hooked script into `predev`, `prebuild`, and `postinstall` in `package.json`.
   - In `lib/utils/index.ts`, `APP_COMMIT_ID` imports `versionInfo.commit` directly—zero hardcoding, zero `process.env` dependency.
+
+#### 7. WhatsApp (`wa.me`) Instant Payment Receipts & Audit Sharing
+- **Feature**: Integrated instant WhatsApp payment receipts following the pattern used in PledgeVault.
+- **Implementation**:
+  - **Record Collection Success Modal (`RecordCollectionModal.tsx`)**: Added a prominent **"Send WhatsApp Receipt"** button right after recording a payment, pre-formatting a professional receipt with firm name, member name, amount received, payment mode, applied installments, and date (`dd-MMM-yyyy`).
+  - **Payment Audit Table (`/collection`)**: Added a quick WhatsApp icon button next to the Print button on each payment entry so cashiers can re-send payment confirmations at any time.
+  - Utilizes `getWhatsAppLink()` with automatic Indian country code prefixing (`+91`) and zero-cost, serverless dispatch.

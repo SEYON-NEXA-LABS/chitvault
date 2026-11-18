@@ -4,12 +4,12 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n/context'
 import { useFirm } from '@/lib/firm/context'
-import { fmt, getToday, cn, getGroupDisplayName } from '@/lib/utils'
+import { fmt, fmtDate, getToday, cn, getGroupDisplayName, getWhatsAppLink } from '@/lib/utils'
 import {
   Loading, Badge, Btn, Modal, Field, Toast, Empty
 } from '@/components/ui'
 import { useToast } from '@/lib/hooks/useToast'
-import { CreditCard, CheckCircle2, Printer, X } from 'lucide-react'
+import { CreditCard, CheckCircle2, Printer, X, MessageCircle } from 'lucide-react'
 import { printPaymentReceipt } from '@/lib/utils/print'
 
 interface CollectionItem {
@@ -210,6 +210,25 @@ export function RecordCollectionModal({ personId, onClose, onSuccess, initialDat
             <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-2">₹{Number(payForm.amount).toLocaleString('en-IN')} Received</p>
           </div>
           <div className="flex flex-col gap-3 pt-4">
+            <button
+              type="button"
+              className="py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/20 transition-all cursor-pointer"
+              onClick={() => {
+                const targetDues = allDues.filter(d => selectedDues.includes(d.key))
+                const duesSummary = targetDues.map(d => `${d.groupName} M${d.month}`).join(', ')
+                const firmName = firm?.name || 'ChitVault'
+                const personName = personData?.person_name || 'Member'
+                const amt = Number(payForm.amount).toLocaleString('en-IN')
+                const dateStr = fmtDate(payForm.date)
+                
+                const msg = `*Payment Receipt - ${firmName}*\n\nDear *${personName}*,\nWe have received your payment of *₹${amt}* on *${dateStr}* via ${payForm.mode.toUpperCase()}.\n\n*Applied For:* ${duesSummary || 'Chit Installment'}\n\nThank you for your timely payment!`
+                
+                const link = getWhatsAppLink(personData?.person_phone, msg)
+                window.open(link, '_blank')
+              }}
+            >
+              <MessageCircle size={18} /> Send WhatsApp Receipt
+            </button>
             <Btn 
               variant="primary" 
               className="py-4 rounded-2xl bg-slate-900 shadow-xl shadow-slate-900/20" 
