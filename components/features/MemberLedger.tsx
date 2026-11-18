@@ -138,7 +138,7 @@ export function MemberLedger({ personId, firmId }: MemberLedgerProps) {
                     
                     return (
                       <Tr key={m}>
-                        <Td className="font-bold text-xs">M{m} <span className="opacity-40 font-normal ml-1">({fmtMonth(m, group.start_date)})</span></Td>
+                        <Td className="font-bold text-xs">M{m} <span className="opacity-40 font-normal ml-1">({fmtMonth(m, group.start_date, '—', auc?.auction_date)})</span></Td>
                         <Td>
                            {auc ? (
                              <div className="flex items-center gap-1">

@@ -19,7 +19,7 @@ export function StreakBar({ streak, startDate, maxMonths = 12, compact = false }
   return (
     <div className="flex items-center gap-1">
       {items.map(s => {
-        const monthLabel = fmtMonth(s.month, startDate, `M${s.month}`)
+        const monthLabel = fmtMonth(s.month, startDate, `M${s.month}`, s.auctionDate)
         
         let tooltip = `${monthLabel}`
         if (s.hasAuctionHappened) {

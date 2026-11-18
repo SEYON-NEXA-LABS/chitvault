@@ -126,7 +126,7 @@ export const MemberDirectory: React.FC<MemberDirectoryProps> = ({
                   {(() => {
                     const auc = auctionHistory.find(a => a.winner_id === m.id && a.status === 'confirmed')
                     return auc 
-                      ? <Badge variant="accent" className="text-[10px] font-bold">{fmtMonth(auc.month, group?.start_date)}</Badge> 
+                      ? <Badge variant="accent" className="text-[10px] font-bold">{fmtMonth(auc.month, group?.start_date, '—', auc.auction_date)}</Badge> 
                       : <span className="text-xs text-slate-300">—</span>
                   })()}
                 </Td>
