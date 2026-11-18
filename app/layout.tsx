@@ -8,6 +8,7 @@ import { APP_NAME, APP_DESCRIPTION, APP_SLOGAN, APP_VERSION, APP_COMMIT_ID } fro
 import { ThemeProvider } from '@/lib/theme/context'
 import { UpdateNotification } from '@/components/ui'
 import { CookieConsent } from '@/components/ui/CookieConsent'
+import './fonts.css'
 import './globals.css'
 export const metadata: Metadata = {
   title: {

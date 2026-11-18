@@ -185,8 +185,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )} style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}>
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#E4E4E7' }}>
             <Link href="/dashboard" className="flex items-center gap-2.5 group">
-              <Image src="/icons/icon-512.png" alt={APP_NAME} width={28} height={28} className="w-7 h-7 object-contain transition-transform group-hover:rotate-12 duration-500" />
-              <span className="font-bold text-lg tracking-tight text-[#09090B] font-brand">{APP_NAME}</span>
+              <Image src="/icons/icon-512.png" alt={APP_NAME} width={28} height={28} className="w-7 h-7 object-contain transition-transform group-hover:scale-105 duration-300" />
+              <span className="font-brand font-black text-lg tracking-wider text-[#09090B]">{APP_NAME}</span>
             </Link>
           </div>
 

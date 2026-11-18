@@ -231,7 +231,8 @@ p, .text-body {
 }
 
 .font-brand {
-  font-family: var(--font-base) !important;
+  font-family: 'Audiowide', var(--font-base), sans-serif !important;
+  letter-spacing: 0.05em;
 }
 
 /* ── Smooth transitions ─────────────────── */

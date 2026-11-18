@@ -53,6 +53,27 @@
   - `electron/loading.html`: Updated splash logo from `Seyon ChitVault` to `ChitVault`.
   - `app/(internal)/help/page.tsx`: Updated footer from `Powered by Seyon Nexa Labs • Ultimate Help Book Edition` to `Powered by ChitVault Platform • Ultimate Help Book Edition`.
 
+#### 13. Official ChitVault Brand Logo Sheet Integration
+- **Brand Geometry**: Integrated the pristine vector assets from the official **ChitVault Brand Assets package** (`C:\Users\Jag\Downloads\ChitVault_Brand_Assets`):
+  - True transparent PNGs in all standardized dimensions (512x512, 256x256, 192x192, 128x128, 64x64, 32x32, 16x16).
+  - Official multi-resolution `favicon.ico` and desktop application `icon.ico`.
+  - Official Transparent & White-Background Horizontal and Vertical Logo lockups saved under `public/branding/`.
+- **Master Assets Deployed**:
+  - `public/icons/icon-512.png` (From `chitvault-icon-512x512-transparent.png`)
+  - `public/icons/icon-192.png` (From `chitvault-icon-192x192-transparent.png`)
+  - `public/favicon.ico` (From official `favicon.ico`)
+  - `electron/build/icon.ico` (For desktop release builds)
+  - `public/branding/Logos/Horizontal/chitvault-logo-horizontal-transparent.png`
+  - `public/branding/Logos/Vertical/chitvault-logo-vertical-transparent.png`
+- **Component `<ChitVaultLogo />`**:
+  - Automatically loads the pixel-perfect `icon-512.png` with transparent alpha backing and `Audiowide` / ChitVault typography.
+  - Active across:
+    - Light Theme Landing Page (`app/page.tsx` top navbar & footer)
+    - Start Trial Wizard (`app/start-trial/page.tsx`)
+    - App Sidebar (`app/(internal)/layout.tsx`)
+    - Login & Auth Portal (`app/login/page.tsx`)
+    - PIN Overlay (`components/ui/PinOverlay.tsx`)
+
 ---
 
 ## [3.2.0] - 2026-11-13
@@ -160,3 +181,24 @@
   - `electron/package.json`: Updated `productName`, `description`, `copyright`, `publisherName`, and `shortcutName` to remove "Seyon" prefix. Corporate authorship (`Seyon Nexa Labs`) remains intact.
   - `electron/loading.html`: Updated splash logo from `Seyon ChitVault` to `ChitVault`.
   - `app/(internal)/help/page.tsx`: Updated footer from `Powered by Seyon Nexa Labs • Ultimate Help Book Edition` to `Powered by ChitVault Platform • Ultimate Help Book Edition`.
+
+#### 13. Official ChitVault Brand Logo Sheet Integration
+- **Brand Geometry**: Integrated the pristine vector assets from the official **ChitVault Brand Assets package** (`C:\Users\Jag\Downloads\ChitVault_Brand_Assets`):
+  - True transparent PNGs in all standardized dimensions (512x512, 256x256, 192x192, 128x128, 64x64, 32x32, 16x16).
+  - Official multi-resolution `favicon.ico` and desktop application `icon.ico`.
+  - Official Transparent & White-Background Horizontal and Vertical Logo lockups saved under `public/branding/`.
+- **Master Assets Deployed**:
+  - `public/icons/icon-512.png` (From `chitvault-icon-512x512-transparent.png`)
+  - `public/icons/icon-192.png` (From `chitvault-icon-192x192-transparent.png`)
+  - `public/favicon.ico` (From official `favicon.ico`)
+  - `electron/build/icon.ico` (For desktop release builds)
+  - `public/branding/Logos/Horizontal/chitvault-logo-horizontal-transparent.png`
+  - `public/branding/Logos/Vertical/chitvault-logo-vertical-transparent.png`
+- **Component `<ChitVaultLogo />`**:
+  - Automatically loads the pixel-perfect `icon-512.png` with transparent alpha backing and `Audiowide` / ChitVault typography.
+  - Active across:
+    - Light Theme Landing Page (`app/page.tsx` top navbar & footer)
+    - Start Trial Wizard (`app/start-trial/page.tsx`)
+    - App Sidebar (`app/(internal)/layout.tsx`)
+    - Login & Auth Portal (`app/login/page.tsx`)
+    - PIN Overlay (`components/ui/PinOverlay.tsx`)

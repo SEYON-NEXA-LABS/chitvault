@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { startTrialAction } from '@/app/actions/start-trial'
 import { createClient } from '@/lib/supabase/client'
 import { APP_VERSION, APP_COMMIT_ID } from '@/lib/utils'
+import { ChitVaultLogo } from '@/components/ui/ChitVaultLogo'
 import { 
   Building2, User, Mail, Lock, Phone, MapPin, 
   ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Loader2, Sparkles
@@ -87,13 +88,7 @@ export default function StartTrialPage() {
       {/* Top Navbar */}
       <header className="border-b border-white/5 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-black shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-            CV
-          </div>
-          <div>
-            <span className="font-extrabold text-lg tracking-tight text-white">ChitVault</span>
-            <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-widest leading-none">Cloud Ledger</span>
-          </div>
+          <ChitVaultLogo size={36} showText subtitle="Cloud Ledger" textClassName="text-lg text-white" />
         </Link>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-slate-400 hidden sm:inline">Already have a vault?</span>

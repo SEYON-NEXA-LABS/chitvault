@@ -84,7 +84,7 @@ export function PinOverlay({ onUnlock }: PinOverlayProps) {
         <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center overflow-hidden">
           <Image src="/icons/icon-512.png" alt="Logo" width={32} height={32} className="object-cover opacity-80" />
         </div>
-        <span className="text-xl font-black tracking-tighter text-white/80 uppercase italic">ChitVault</span>
+        <span className="text-xl font-black tracking-widest text-white/90 uppercase font-brand">ChitVault</span>
       </div>
 
       <div id="pin-card" className={cn(
